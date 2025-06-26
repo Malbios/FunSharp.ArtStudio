@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Compile Include="Abstraction.fs" />
+      <Compile Include="Common.fs" />
+      <Compile Include="Persistence.fs" />
+      <Compile Include="Http.fs" />
+      <Compile Include="Authentication.fs" />
+      <Compile Include="DeviantArt.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+      <PackageReference Include="Suave" Version="2.6.2" />
+    </ItemGroup>
+
+</Project>
