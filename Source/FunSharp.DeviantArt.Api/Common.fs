@@ -1,4 +1,4 @@
-﻿namespace DeviantArt.Api
+﻿namespace FunSharp.DeviantArt.Api
 
 [<RequireQualifiedAccess>]
 module Async =

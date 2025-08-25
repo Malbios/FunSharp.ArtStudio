@@ -6,12 +6,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Include="Abstraction.fs" />
       <Compile Include="Common.fs" />
-      <Compile Include="Persistence.fs" />
+      <Compile Include="Abstraction.fs" />
+      <Compile Include="Secrets.fs" />
       <Compile Include="Http.fs" />
+      <Compile Include="Model.fs" />
       <Compile Include="Authentication.fs" />
-      <Compile Include="DeviantArt.fs" />
+      <Compile Include="Client.fs" />
     </ItemGroup>
 
     <ItemGroup>

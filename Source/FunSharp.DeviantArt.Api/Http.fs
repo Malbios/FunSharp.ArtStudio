@@ -1,4 +1,4 @@
-﻿namespace DeviantArt.Api
+﻿namespace FunSharp.DeviantArt.Api
 
 open System
 open System.Net
@@ -18,10 +18,15 @@ module Http =
         Port: int
         Endpoint: string
     }
+    
+    type Request =
+        | Get of url: string
+        | PostWithFormContent of url: string * content: FormUrlEncodedContent
+        | PostWithMultipartContent of url: string * content: MultipartFormDataContent
 
     let private client = new HttpClient()
-
-    let private mapToContent (values: Map<string, string>) =
+    
+    let formContent (values: Map<string, string>) =
         
         new FormUrlEncodedContent(values)
 
@@ -29,13 +34,14 @@ module Http =
         
         client.DefaultRequestHeaders.Authorization <- AuthenticationHeaderValue("Bearer", accessToken)
 
-    let request (url: string) (content: Map<string, string> option) =
+    let request (payload: Request) =
             
         let request () = async {
             let! response =
-                match content with
-                | None -> client.GetAsync url |> Async.AwaitTask
-                | Some body -> client.PostAsync(url, mapToContent body) |> Async.AwaitTask
+                match payload with
+                | Get url -> client.GetAsync url |> Async.AwaitTask
+                | PostWithFormContent (url, content) -> client.PostAsync(url, content) |> Async.AwaitTask
+                | PostWithMultipartContent (url, content) -> client.PostAsync(url, content) |> Async.AwaitTask
                 
             let! content = response.Content.ReadAsStringAsync() |> Async.AwaitTask
             
@@ -44,12 +50,12 @@ module Http =
         
         let processResponse (response: HttpResponseMessage, content: string) =
             response.EnsureSuccessStatusCode() |> ignore
-                
             content
         
         request ()
         |> Async.bind (fun (response, content) ->
             if response.StatusCode = HttpStatusCode.TooManyRequests then
+                printfn "  Too many requests - waiting 30s..." 
                 System.Threading.Thread.Sleep 30000
                 
                 request ()
@@ -57,25 +63,37 @@ module Http =
             else
                 processResponse (response, content) |> Async.returnM
         )
-
-    let requestWithRefresh (url: string) (content: Map<string, string> option) (refresh: unit -> Async<unit>) = async {
         
+    // let requestWithRefresh (payload: Request) (refresh: unit -> Async<unit>) : Async<Response> =
+    //     request payload
+    //     |> Async.catch
+    //     |> Async.bind (function
+    //         | Choice1Of2 res -> async.Return res
+    //         | Choice2Of2 (:? HttpRequestException as ex) when ex.StatusCode = Nullable HttpStatusCode.Unauthorized ->
+    //             printfn "requestWithRefresh: 401"
+    //             refresh ()
+    //             |> Async.bind (fun () -> request payload)
+    //         | Choice2Of2 ex ->
+    //             return raise ex
+    //     )
+
+    let requestWithRefresh (payload: Request) (refresh: unit -> Async<unit>) = async {
         try
-            return! request url content
+            return! request payload
         with :? HttpRequestException as ex when ex.StatusCode = Nullable HttpStatusCode.Unauthorized ->
             printfn "requestWithRefresh: 401"
             refresh () |> Async.RunSynchronously
-            return! request url content
+            return! request payload
     }
     
-    let requestWithRefreshAndReAuth (url: string) (content: Map<string, string> option) (refresh: unit -> Async<unit>) (reAuth: unit -> Async<unit>) = async {
+    let requestWithRefreshAndReAuth (payload: Request) (refresh: unit -> Async<unit>) (reAuthenticate: unit -> Async<unit>) = async {
         
         try
-            return! requestWithRefresh url content refresh
+            return! requestWithRefresh payload refresh
         with :? HttpRequestException as ex when ex.StatusCode = Nullable HttpStatusCode.Unauthorized ->
             printfn "requestWithRefreshAndReAuth: 401"
-            reAuth () |> Async.RunSynchronously
-            return! request url content
+            reAuthenticate () |> Async.RunSynchronously
+            return! request payload
     }
 
     let getAuthorizationCode (config: CallbackConfiguration) =

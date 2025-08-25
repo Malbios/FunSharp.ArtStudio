@@ -10,12 +10,12 @@
         <Content Include=".secrets">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
-        <Compile Include="Secrets.fs" />
+        <Compile Include="Persistence.fs" />
         <Compile Include="Program.fs"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\DeviantArt.Api\DeviantArt.Api.fsproj" />
+      <ProjectReference Include="..\FunSharp.DeviantArt.Api\FunSharp.DeviantArt.Api.fsproj" />
     </ItemGroup>
 
 </Project>
