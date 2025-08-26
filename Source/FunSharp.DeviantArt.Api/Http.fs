@@ -4,14 +4,19 @@ open System
 open System.Net
 open System.Net.Http
 open System.Net.Http.Headers
+open System.Threading.Tasks
+open Newtonsoft.Json
 open Suave
 open Suave.Successful
 open Suave.Operators
 open Suave.Filters
 open Suave.RequestErrors
+open FunSharp.Common
 
 [<RequireQualifiedAccess>]
 module Http =
+    
+    let debug = false
 
     type CallbackConfiguration = {
         Address: string
@@ -19,50 +24,124 @@ module Http =
         Endpoint: string
     }
     
+    type File = {
+        Title: string
+        Content: byte array
+        MediaType: string option
+    }
+    
+    type private ApiError = {
+        [<JsonProperty("error")>]
+        Error: string
+        
+        [<JsonProperty("error_description")>]
+        Description: string
+        
+        [<JsonProperty("error_details")>]
+        Details: (string * string) array
+    }
+    
+    [<RequireQualifiedAccess>]
     type Request =
         | Get of url: string
-        | PostWithFormContent of url: string * content: FormUrlEncodedContent
-        | PostWithMultipartContent of url: string * content: MultipartFormDataContent
+        | PostWithProperties of url: string * properties: Map<string, string>
+        | PostWithFileAndProperties of url: string * files: File array * properties: Map<string, string>
+        
+    [<RequireQualifiedAccess>]
+    type private InternalRequest =
+        | Get of url: string
+        | PostWithForm of url: string * content: FormUrlEncodedContent
+        | PostWithMultipart of url: string * content: MultipartFormDataContent
 
     let private client = new HttpClient()
-    
-    let formContent (values: Map<string, string>) =
-        
-        new FormUrlEncodedContent(values)
 
     let updateAuthorization accessToken =
         
         client.DefaultRequestHeaders.Authorization <- AuthenticationHeaderValue("Bearer", accessToken)
+        
+    let private apiError content =
+        try
+            JsonConvert.DeserializeObject<ApiError> content |> Some
+        with
+            | _ -> None
+        
+    let private internalRequest (payload: Request) =
+        
+        let internalRequest =
+            match payload with
+            | Request.Get url ->
+                InternalRequest.Get url
+            | Request.PostWithProperties (url, properties) ->
+                InternalRequest.PostWithForm (url, new FormUrlEncodedContent(properties))
+            | Request.PostWithFileAndProperties (url, files, properties) ->
+                let content = new MultipartFormDataContent()
+                
+                for i, file in Array.indexed files do
+                    let partName = if i = 0 then "file" else $"file{i}"
+                    let fileContent = new ByteArrayContent(file.Content)
+                    let mediaType = match file.MediaType with | Some v -> v | None -> "application/octet-stream"
+                
+                    fileContent.Headers.ContentType <- MediaTypeHeaderValue.Parse(mediaType)
+                    
+                    content.Add(fileContent, partName, file.Title)
+                
+                for kvp in properties do
+                    content.Add(new StringContent(kvp.Value), kvp.Key)
+                
+                InternalRequest.PostWithMultipart (url, content)
+                
+        match internalRequest with
+        | InternalRequest.Get url ->
+            client.GetAsync url |> Async.AwaitTask
+        | InternalRequest.PostWithForm (url, content) ->
+            client.PostAsync(url, content)
+            |> Async.AwaitTask
+            |> Async.tee (fun _ -> content.Dispose())
+        | InternalRequest.PostWithMultipart (url, content) ->
+            client.PostAsync(url, content)
+            |> Async.AwaitTask
+            |> Async.tee (fun _ -> content.Dispose())
 
     let request (payload: Request) =
-            
-        let request () = async {
-            let! response =
-                match payload with
-                | Get url -> client.GetAsync url |> Async.AwaitTask
-                | PostWithFormContent (url, content) -> client.PostAsync(url, content) |> Async.AwaitTask
-                | PostWithMultipartContent (url, content) -> client.PostAsync(url, content) |> Async.AwaitTask
-                
-            let! content = response.Content.ReadAsStringAsync() |> Async.AwaitTask
-            
-            return (response, content)
-        }
         
-        let processResponse (response: HttpResponseMessage, content: string) =
-            response.EnsureSuccessStatusCode() |> ignore
-            content
-        
-        request ()
-        |> Async.bind (fun (response, content) ->
-            if response.StatusCode = HttpStatusCode.TooManyRequests then
-                printfn "  Too many requests - waiting 30s..." 
-                System.Threading.Thread.Sleep 30000
+        internalRequest payload
+        |> Async.bind (fun response ->
+            match response.StatusCode with
+            | HttpStatusCode.TooManyRequests ->
+                printfn $"DEBUG: {response.Headers}"
+                printfn "  Too many requests - waiting 30s..."
                 
-                request ()
-                |> Async.map processResponse
-            else
-                processResponse (response, content) |> Async.returnM
+                Task.Delay 30000
+                |> Async.AwaitTask
+                |> Async.bind (fun () -> internalRequest payload)
+                
+            | _ ->
+                response |> Async.returnM
         )
+        |> Async.bind (fun response ->
+            response.Content.ReadAsStringAsync()
+            |> Async.AwaitTask
+            |> Async.map (fun content -> response, content)
+        )
+        |> Async.tee (fun (response, content) ->
+            if debug && not response.IsSuccessStatusCode then
+                [
+                    $"StatusCode: {response.StatusCode}"
+                    "Response Content:"
+                    content
+                    "Payload:"
+                    $"{payload}"
+                ]
+                |> String.concat "\n"
+                |> fun x -> printfn $"{x}"
+                
+            response.EnsureSuccessStatusCode |> ignore
+            
+            match apiError content with
+            | Some error -> failwith $"{error}"
+            | None -> ()
+        )
+        |> Async.map (fun (_, content) -> content)
         
     // let requestWithRefresh (payload: Request) (refresh: unit -> Async<unit>) : Async<Response> =
     //     request payload

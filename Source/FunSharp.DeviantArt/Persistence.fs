@@ -9,7 +9,7 @@ module Persistence =
     
     type File<'T>() =
         
-        let filePath = "persistence"
+        let filePath = ".persistence"
         
         let read () =
             File.ReadAllText filePath

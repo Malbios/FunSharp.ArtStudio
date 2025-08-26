@@ -32,6 +32,104 @@ module Model =
         description: string
         stats: Stats
     }
+    
+    type SubmitDestination =
+        | RootStack
+        | Replace of id: int64
+        | Stack of id: int64
+        | StackWithName of name: string
+    
+    type MatureLevel =
+        | Strict
+        | Moderate
+        
+    type MatureClassification =
+        | Nudity
+        | Sexual
+        | Gore
+        | Language
+        | Ideology
+    
+    type LicenseOptionsModify =
+        | Yes
+        | No
+        | Share
+        
+    type Gallery =
+        | Caricatures = 97042046
+        | Spicy = 97053849
+        | RandomPile = 97042059
+        | Scenery = 97716869
+        
+    type LicenseOptions = {
+        [<JsonProperty("creative_commons")>]
+        CreativeCommons: bool
+        
+        [<JsonProperty("commercial")>]
+        Commercial: bool
+        
+        [<JsonProperty("modify")>]
+        Modify: LicenseOptionsModify
+    }
+    
+    type StashPublication = {
+        [<JsonProperty("is_mature")>]
+        IsMature: bool
+        
+        [<JsonProperty("mature_level")>]
+        MatureLevel: MatureLevel
+        
+        [<JsonProperty("mature_classification")>]
+        MatureClassification: MatureClassification array
+        
+        [<JsonProperty("feature")>]
+        Feature: bool
+        
+        [<JsonProperty("allow_comments")>]
+        AllowComments: bool
+        
+        [<JsonProperty("display_resolution")>]
+        DisplayResolution: int64
+        
+        [<JsonProperty("license_options")>]
+        LicenseOptions: LicenseOptions
+        
+        [<JsonProperty("galleryids")>]
+        Galleries: Gallery array
+        
+        [<JsonProperty("allow_free_download")>]
+        AllowFreeDownload: bool
+        
+        [<JsonProperty("add_watermark")>]
+        AddWatermark: bool
+        
+        [<JsonProperty("tags")>]
+        Tags: string array
+        
+        [<JsonProperty("subject_tags")>]
+        SubjectTags: string array 
+        
+        [<JsonProperty("subject_tag_types")>]
+        SubjectTagTypes: string array 
+        
+        [<JsonProperty("location_tag")>]
+        LocationTag: string
+        
+        [<JsonProperty("groups")>]
+        Groups: int64 array
+        
+        [<JsonProperty("group_folders")>]
+        GroupFolders: int64 array 
+        
+        [<JsonProperty("is_ai_generated")>]
+        IsAiGenerated: bool
+        
+        [<JsonProperty("noai")>]
+        NoAi: bool
+        
+        [<JsonProperty("itemid")>]
+        ItemId: int64
+    }
 
 module ApiResponses =
     

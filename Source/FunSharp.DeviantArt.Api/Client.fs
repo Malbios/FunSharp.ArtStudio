@@ -2,12 +2,11 @@
 
 open System
 open System.IO
-open System.Net.Http
-open System.Net.Http.Headers
-open FunSharp.DeviantArt.Api.ApiResponses
-open FunSharp.DeviantArt.Api.Model
 open Newtonsoft.Json
 open Newtonsoft.Json.Linq
+open FunSharp.Common
+open FunSharp.DeviantArt.Api.ApiResponses
+open FunSharp.DeviantArt.Api.Model
     
 module private Endpoints =
     
@@ -16,6 +15,9 @@ module private Endpoints =
     
     let submitToStash =
         $"{common}/stash/submit"
+        
+    let publishFromStash =
+        $"{common}/stash/publish"
     
     let whoAmI =
         $"{common}/user/whoami"
@@ -133,6 +135,29 @@ type Client(persistence: IPersistence<Token>, clientId: string, clientSecret: st
             )
             |> Seq.toArray
         )
+        
+    let submitToStash (destination: SubmitDestination) (title: string) (files: Http.File array) =
+        
+        let url = $"{config.RootUrl}{Endpoints.submitToStash}"
+            
+        let stack =
+            match destination with
+            | RootStack -> []
+            | Replace id -> [ "itemid", $"{id}" ]
+            | Stack id -> [ "stackid", $"{id}" ]
+            | StackWithName name -> [ "stack", name ]
+            |> Map.ofList
+        
+        let properties =
+            [
+                "title", title |> String.truncate 50
+            ]
+            |> Map.ofList
+            |> Map.fold (fun acc k v -> Map.add k v acc) stack
+        
+        Http.Request.PostWithFileAndProperties (url, files, properties)
+        |> request
+        |> Async.map JsonConvert.DeserializeObject<StashSubmission>
 
     member _.WhoAmI() =
 
@@ -174,24 +199,47 @@ type Client(persistence: IPersistence<Token>, clientId: string, clientSecret: st
                 |> Array.toList
                 |> List.zip deviations))
         
-    member _.SubmitToStash (filePath: string) =
+    member _.SubmitToStash(file: Http.File) =
         
-        let title = Path.GetFileName(filePath)
+        submitToStash SubmitDestination.RootStack file.Title [|file|]
         
-        let content = new MultipartFormDataContent()
+    member _.SubmitToStash(title: string, files: Http.File array) =
         
-        content.Add(new StringContent(title), "title")
+        submitToStash SubmitDestination.RootStack title files
         
-        let fileContent =
-            File.ReadAllBytes filePath
-            |> fun x -> new ByteArrayContent(x)
-            
-        fileContent.Headers.ContentType <- MediaTypeHeaderValue.Parse("application/octet-stream")
+    member _.SubmitToStash(title: string, files: Http.File array, stackId: int64) =
         
-        content.Add(fileContent, "file", title)
+        submitToStash (SubmitDestination.Stack stackId) title files
         
-        ($"{config.RootUrl}{Endpoints.submitToStash}", content)
-        |> Http.Request.PostWithMultipartContent 
+    member _.SubmitToStash(title: string, files: Http.File array, stackName: string) =
+        
+        submitToStash (SubmitDestination.StackWithName stackName) title files
+        
+    member _.ReplaceInStash(title: string, files: Http.File array, id: int64) =
+        
+        submitToStash (SubmitDestination.Replace id) title files
+        
+    member _.PublishFromStash(publication: StashPublication)  =
+        
+        let properties = publication |> Record.toMap
+        
+        ($"{config.RootUrl}{Endpoints.publishFromStash}", properties)
+        |> Http.Request.PostWithProperties
         |> request
-        |> Async.tee (fun _ -> content.Dispose())
         |> Async.map JsonConvert.DeserializeObject<StashSubmission>
+        
+    member _.Test() =
+        
+        // $"{config.RootUrl}/api/v1/oauth2/stash/metadata"
+        // |> Http.Request.Get
+        // |> request
+        
+        // [|3068584964637828L|]
+        // |> Seq.map (fun id -> $"deviationids[]={Uri.EscapeDataString (id.ToString())}")
+        // |> String.concat "&"
+        // |> Endpoints.deviationMetadata
+        // |> fun endpoint -> $"{config.RootUrl}{endpoint}"
+        // |> Http.Request.Get
+        // |> request
+        
+        galleryPage 0
