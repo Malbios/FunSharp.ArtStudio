@@ -9,6 +9,7 @@
         <Compile Include="Record.fs" />
         <Compile Include="Async.fs" />
         <Compile Include="String.fs" />
+        <Compile Include="Debug.fs" />
     </ItemGroup>
 
     <ItemGroup>

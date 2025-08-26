@@ -72,15 +72,26 @@ module Model =
         Modify: LicenseOptionsModify
     }
     
+    type DisplayResolution =
+        | Original = 0
+        | Width_400px = 1
+        | Width_600px = 2
+        | Width_800px = 3
+        | Width_900px = 4
+        | Width_1024px = 5
+        | Width_1280px = 6
+        | Width_1600px = 7
+        | Width_1920px = 8
+    
     type StashPublication = {
         [<JsonProperty("is_mature")>]
         IsMature: bool
         
-        [<JsonProperty("mature_level")>]
-        MatureLevel: MatureLevel
-        
-        [<JsonProperty("mature_classification")>]
-        MatureClassification: MatureClassification array
+        // [<JsonProperty("mature_level")>]
+        // MatureLevel: MatureLevel
+        //
+        // [<JsonProperty("mature_classification")>]
+        // MatureClassification: MatureClassification array
         
         [<JsonProperty("feature")>]
         Feature: bool
@@ -88,14 +99,14 @@ module Model =
         [<JsonProperty("allow_comments")>]
         AllowComments: bool
         
-        [<JsonProperty("display_resolution")>]
-        DisplayResolution: int64
+        // [<JsonProperty("display_resolution")>]
+        // DisplayResolution: DisplayResolution
         
         [<JsonProperty("license_options")>]
         LicenseOptions: LicenseOptions
         
-        [<JsonProperty("galleryids")>]
-        Galleries: Gallery array
+        // [<JsonProperty("galleryids")>]
+        // Galleries: Gallery array
         
         [<JsonProperty("allow_free_download")>]
         AllowFreeDownload: bool
@@ -106,20 +117,20 @@ module Model =
         [<JsonProperty("tags")>]
         Tags: string array
         
-        [<JsonProperty("subject_tags")>]
-        SubjectTags: string array 
+        // [<JsonProperty("subject_tags")>]
+        // SubjectTags: string array
+        //
+        // [<JsonProperty("subject_tag_types")>]
+        // SubjectTagTypes: string array
         
-        [<JsonProperty("subject_tag_types")>]
-        SubjectTagTypes: string array 
+        // [<JsonProperty("location_tag")>]
+        // LocationTag: string
         
-        [<JsonProperty("location_tag")>]
-        LocationTag: string
-        
-        [<JsonProperty("groups")>]
-        Groups: int64 array
-        
-        [<JsonProperty("group_folders")>]
-        GroupFolders: int64 array 
+        // [<JsonProperty("groups")>]
+        // Groups: string array
+        //
+        // [<JsonProperty("group_folders")>]
+        // GroupFolders: string array
         
         [<JsonProperty("is_ai_generated")>]
         IsAiGenerated: bool
@@ -197,4 +208,12 @@ module ApiResponses =
         
         status: string
         stack: string
+    }
+
+    type Publication = {
+        [<JsonProperty("deviationid")>]
+        id: string
+        
+        status: string
+        url: string
     }

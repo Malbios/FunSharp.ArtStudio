@@ -34,7 +34,7 @@ type Client(persistence: IPersistence<Token>, clientId: string, clientSecret: st
         ClientId = clientId
         ClientSecret = clientSecret
         RedirectUri = "http://localhost:8080/callback"
-        Scope = "user browse"
+        Scope = "user browse stash publish"
         Callback = {
             Endpoint = "/callback"
             Address = "127.0.0.1"
@@ -225,20 +225,4 @@ type Client(persistence: IPersistence<Token>, clientId: string, clientSecret: st
         ($"{config.RootUrl}{Endpoints.publishFromStash}", properties)
         |> Http.Request.PostWithProperties
         |> request
-        |> Async.map JsonConvert.DeserializeObject<StashSubmission>
-        
-    member _.Test() =
-        
-        // $"{config.RootUrl}/api/v1/oauth2/stash/metadata"
-        // |> Http.Request.Get
-        // |> request
-        
-        // [|3068584964637828L|]
-        // |> Seq.map (fun id -> $"deviationids[]={Uri.EscapeDataString (id.ToString())}")
-        // |> String.concat "&"
-        // |> Endpoints.deviationMetadata
-        // |> fun endpoint -> $"{config.RootUrl}{endpoint}"
-        // |> Http.Request.Get
-        // |> request
-        
-        galleryPage 0
+        |> Async.map JsonConvert.DeserializeObject<Publication>

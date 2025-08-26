@@ -15,8 +15,6 @@ open FunSharp.Common
 
 [<RequireQualifiedAccess>]
 module Http =
-    
-    let debug = false
 
     type CallbackConfiguration = {
         Address: string
@@ -58,6 +56,22 @@ module Http =
     let updateAuthorization accessToken =
         
         client.DefaultRequestHeaders.Authorization <- AuthenticationHeaderValue("Bearer", accessToken)
+        
+    let private logResponse (response: HttpResponseMessage) content (payload: Request) =
+        if Debug.isEnabled then
+            [
+                ""
+                $"StatusCode: {response.StatusCode}"
+                ""
+                "Response Content:"
+                content
+                ""
+                "Payload:"
+                $"{payload}"
+                ""
+            ]
+            |> String.concat "\n"
+            |> fun x -> printfn $"{x}"
         
     let private apiError content =
         try
@@ -121,24 +135,15 @@ module Http =
             |> Async.map (fun content -> response, content)
         )
         |> Async.tee (fun (response, content) ->
-            if debug && not response.IsSuccessStatusCode then
-                [
-                    $"StatusCode: {response.StatusCode}"
-                    "Response Content:"
-                    content
-                    "Payload:"
-                    $"{payload}"
-                ]
-                |> String.concat "\n"
-                |> fun x -> printfn $"{x}"
-                
+            logResponse response content payload
+            
             response.EnsureSuccessStatusCode |> ignore
             
             match apiError content with
             | Some error -> failwith $"{error}"
             | None -> ()
         )
-        |> Async.map (fun (_, content) -> content)
+        |> Async.map snd
         
     // let requestWithRefresh (payload: Request) (refresh: unit -> Async<unit>) : Async<Response> =
     //     request payload

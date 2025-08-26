@@ -22,7 +22,8 @@ module Program =
 
     [<EntryPoint>]
     let main _ =
-        // File.Delete ".persistence"
+        if Debug.isEnabled then
+            File.Delete ".persistence"
         
         let secrets = Secrets.load ()
         let persistence = Persistence.File<ApiResponses.Token>()
@@ -41,20 +42,32 @@ module Program =
         
         let oneFile : Http.File = { Title = "a1"; Content = File.ReadAllBytes filePath1; MediaType = Some "image/png" }
         
-        // client.SubmitToStash("test", [|"a", filePath|])
-        // client.SubmitToStash("test", twoFiles)
-        // client.SubmitToStash(filePath, 3307645702784122L)
-        // client.SubmitToStash(filePath, "Sta.sh")
-        // client.SubmitToStash(filePath, "Test")
-        // client.SubmitToStash("test_title", [|"a", filePath; "b", filePath|], "test_folder")
-        // client.ReplaceInStash(filePath, 4885876966633365L)
-        // client.ReplaceInStash("test2", oneFile, 865778078484153L)
-        client.SubmitToStash("test abc", oneFile)
+        let itemId = 2252502243219020L
+        
+        let stashPublication = {
+            IsMature = true
+            // MatureLevel = MatureLevel.Moderate
+            // MatureClassification = [| MatureClassification.Sexual |]
+            Feature = false
+            AllowComments = true
+            // DisplayResolution = DisplayResolution.Original
+            LicenseOptions = { CreativeCommons = true; Commercial = true; Modify = LicenseOptionsModify.Share }
+            // Galleries = [| Gallery.Spicy |]
+            AllowFreeDownload = true
+            AddWatermark = false
+            Tags = Array.empty
+            // Groups = Array.empty
+            // GroupFolders = Array.empty
+            IsAiGenerated = true
+            NoAi = false
+            ItemId = itemId
+        }
+        // client.SubmitToStash("test abc", oneFile)
+        stashPublication
+        |> client.PublishFromStash 
         |> Async.tee (fun submission -> printfn $"{submission}")
         |> Async.Ignore
         |> Async.RunSynchronously
-        
-        // printfn $"{client.Test() |> Async.RunSynchronously}"
 
         printfn "Bye!"
         
