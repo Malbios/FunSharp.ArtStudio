@@ -1,7 +1,6 @@
 ﻿namespace FunSharp.DeviantArt.Api
 
 open System
-open System.IO
 open Newtonsoft.Json
 open Newtonsoft.Json.Linq
 open FunSharp.Common
@@ -136,7 +135,7 @@ type Client(persistence: IPersistence<Token>, clientId: string, clientSecret: st
             |> Seq.toArray
         )
         
-    let submitToStash (destination: SubmitDestination) (title: string) (files: Http.File array) =
+    let submitToStash (destination: SubmitDestination) (title: string) (file: Http.File) =
         
         let url = $"{config.RootUrl}{Endpoints.submitToStash}"
             
@@ -155,7 +154,7 @@ type Client(persistence: IPersistence<Token>, clientId: string, clientSecret: st
             |> Map.ofList
             |> Map.fold (fun acc k v -> Map.add k v acc) stack
         
-        Http.Request.PostWithFileAndProperties (url, files, properties)
+        Http.Request.PostWithFileAndProperties (url, file, properties)
         |> request
         |> Async.map JsonConvert.DeserializeObject<StashSubmission>
 
@@ -201,23 +200,23 @@ type Client(persistence: IPersistence<Token>, clientId: string, clientSecret: st
         
     member _.SubmitToStash(file: Http.File) =
         
-        submitToStash SubmitDestination.RootStack file.Title [|file|]
+        submitToStash SubmitDestination.RootStack file.Title file
         
-    member _.SubmitToStash(title: string, files: Http.File array) =
+    member _.SubmitToStash(title: string, file: Http.File) =
         
-        submitToStash SubmitDestination.RootStack title files
+        submitToStash SubmitDestination.RootStack title file
         
-    member _.SubmitToStash(title: string, files: Http.File array, stackId: int64) =
+    member _.SubmitToStash(title: string, file: Http.File, stackId: int64) =
         
-        submitToStash (SubmitDestination.Stack stackId) title files
+        submitToStash (SubmitDestination.Stack stackId) title file
         
-    member _.SubmitToStash(title: string, files: Http.File array, stackName: string) =
+    member _.SubmitToStash(title: string, file: Http.File, stackName: string) =
         
-        submitToStash (SubmitDestination.StackWithName stackName) title files
+        submitToStash (SubmitDestination.StackWithName stackName) title file
         
-    member _.ReplaceInStash(title: string, files: Http.File array, id: int64) =
+    member _.ReplaceInStash(title: string, file: Http.File, id: int64) =
         
-        submitToStash (SubmitDestination.Replace id) title files
+        submitToStash (SubmitDestination.Replace id) title file
         
     member _.PublishFromStash(publication: StashPublication)  =
         

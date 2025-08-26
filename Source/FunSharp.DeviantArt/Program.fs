@@ -39,9 +39,7 @@ module Program =
         let filePath1 = "C:\\Users\\User\\Documents\\Sora\\images\\spicy\\20250822_1917_Mystical Fire Goddess_simple_compose_01k39cfzjxeqmraztn2etdw422.png"
         let filePath2 = "C:\\Users\\User\\Documents\\Sora\\images\\spicy\\20250821_0951_Enchanting Forest Command_simple_compose_01k35sp2h8e74bzhsejh05vq80.png"
         
-        let oneFile : Http.File array = [|
-            { Title = "a1"; Content = File.ReadAllBytes filePath1; MediaType = Some "image/png" }
-        |]
+        let oneFile : Http.File = { Title = "a1"; Content = File.ReadAllBytes filePath1; MediaType = Some "image/png" }
         
         // client.SubmitToStash("test", [|"a", filePath|])
         // client.SubmitToStash("test", twoFiles)

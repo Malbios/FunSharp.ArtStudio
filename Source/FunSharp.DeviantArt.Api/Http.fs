@@ -45,7 +45,7 @@ module Http =
     type Request =
         | Get of url: string
         | PostWithProperties of url: string * properties: Map<string, string>
-        | PostWithFileAndProperties of url: string * files: File array * properties: Map<string, string>
+        | PostWithFileAndProperties of url: string * file: File * properties: Map<string, string>
         
     [<RequireQualifiedAccess>]
     type private InternalRequest =
@@ -73,17 +73,14 @@ module Http =
                 InternalRequest.Get url
             | Request.PostWithProperties (url, properties) ->
                 InternalRequest.PostWithForm (url, new FormUrlEncodedContent(properties))
-            | Request.PostWithFileAndProperties (url, files, properties) ->
+            | Request.PostWithFileAndProperties (url, file, properties) ->
+                let fileContent = new ByteArrayContent(file.Content)
+                let mediaType = match file.MediaType with | Some v -> v | None -> "application/octet-stream"
+                
+                fileContent.Headers.ContentType <- MediaTypeHeaderValue.Parse(mediaType)
+                
                 let content = new MultipartFormDataContent()
-                
-                for i, file in Array.indexed files do
-                    let partName = if i = 0 then "file" else $"file{i}"
-                    let fileContent = new ByteArrayContent(file.Content)
-                    let mediaType = match file.MediaType with | Some v -> v | None -> "application/octet-stream"
-                
-                    fileContent.Headers.ContentType <- MediaTypeHeaderValue.Parse(mediaType)
-                    
-                    content.Add(fileContent, partName, file.Title)
+                content.Add(fileContent, "file", file.Title)
                 
                 for kvp in properties do
                     content.Add(new StringContent(kvp.Value), kvp.Key)
