@@ -38,56 +38,32 @@ module Http =
         [<JsonProperty("error_details")>]
         Details: (string * string) array
     }
+        
+    [<RequireQualifiedAccess>]
+    type private InternalPayload =
+        | Get of url: string
+        | PostWithForm of url: string * content: FormUrlEncodedContent
+        | PostWithMultipart of url: string * content: MultipartFormDataContent
     
     [<RequireQualifiedAccess>]
-    type Request =
+    type RequestPayload =
         | Get of url: string
         | PostWithProperties of url: string * properties: Map<string, string>
         | PostWithFileAndProperties of url: string * file: File * properties: Map<string, string>
         
     [<RequireQualifiedAccess>]
-    type private InternalRequest =
-        | Get of url: string
-        | PostWithForm of url: string * content: FormUrlEncodedContent
-        | PostWithMultipart of url: string * content: MultipartFormDataContent
-
-    let private client = new HttpClient()
-
-    let updateAuthorization accessToken =
-        
-        client.DefaultRequestHeaders.Authorization <- AuthenticationHeaderValue("Bearer", accessToken)
-        
-    let private logResponse (response: HttpResponseMessage) content (payload: Request) =
-        if Debug.isEnabled then
-            [
-                ""
-                $"StatusCode: {response.StatusCode}"
-                ""
-                "Response Content:"
-                content
-                ""
-                "Payload:"
-                $"{payload}"
-                ""
-            ]
-            |> String.concat "\n"
-            |> fun x -> printfn $"{x}"
-        
-    let private apiError content =
-        try
-            JsonConvert.DeserializeObject<ApiError> content |> Some
-        with
-            | _ -> None
-        
-    let private internalRequest (payload: Request) =
-        
-        let internalRequest =
+    module private RequestPayload =
+            
+        let toInternalPayload payload =
+            
             match payload with
-            | Request.Get url ->
-                InternalRequest.Get url
-            | Request.PostWithProperties (url, properties) ->
-                InternalRequest.PostWithForm (url, new FormUrlEncodedContent(properties))
-            | Request.PostWithFileAndProperties (url, file, properties) ->
+            | RequestPayload.Get url ->
+                InternalPayload.Get url
+                
+            | RequestPayload.PostWithProperties (url, properties) ->
+                InternalPayload.PostWithForm (url, new FormUrlEncodedContent(properties))
+                
+            | RequestPayload.PostWithFileAndProperties (url, file, properties) ->
                 let fileContent = new ByteArrayContent(file.Content)
                 let mediaType = match file.MediaType with | Some v -> v | None -> "application/octet-stream"
                 
@@ -99,36 +75,73 @@ module Http =
                 for kvp in properties do
                     content.Add(new StringContent(kvp.Value), kvp.Key)
                 
-                InternalRequest.PostWithMultipart (url, content)
-                
-        match internalRequest with
-        | InternalRequest.Get url ->
-            client.GetAsync url |> Async.AwaitTask
-        | InternalRequest.PostWithForm (url, content) ->
-            client.PostAsync(url, content)
-            |> Async.AwaitTask
-            |> Async.tee (fun _ -> content.Dispose())
-        | InternalRequest.PostWithMultipart (url, content) ->
-            client.PostAsync(url, content)
-            |> Async.AwaitTask
-            |> Async.tee (fun _ -> content.Dispose())
+                InternalPayload.PostWithMultipart (url, content)
+        
+    let private log message =
+        // printfn $"{message}"
+        ()
+        
+    let private logResponse (response: HttpResponseMessage) content (payload: RequestPayload) =
+        [
+            ""
+            $"StatusCode: {response.StatusCode}"
+            ""
+            "Response Content:"
+            content
+            ""
+            "Payload:"
+            $"{payload}"
+            ""
+        ]
+        |> String.concat "\n"
+        |> log
 
-    let request (payload: Request) =
+    let private client = new HttpClient()
+
+    let updateAuthorization accessToken =
+        
+        client.DefaultRequestHeaders.Authorization <- AuthenticationHeaderValue("Bearer", accessToken)
+        
+    let private apiError content =
+        
+        try
+            JsonConvert.DeserializeObject<ApiError> content |> Some
+        with
+            | _ -> None
+        
+    let private internalRequest (request: RequestPayload) =
+        
+        request
+        |> RequestPayload.toInternalPayload
+        |> function
+            | InternalPayload.Get url ->
+                client.GetAsync url |> Async.AwaitTask
+            | InternalPayload.PostWithForm (url, content) ->
+                client.PostAsync(url, content)
+                |> Async.AwaitTask
+                |> Async.tee (fun _ -> content.Dispose())
+            | InternalPayload.PostWithMultipart (url, content) ->
+                client.PostAsync(url, content)
+                |> Async.AwaitTask
+                |> Async.tee (fun _ -> content.Dispose())
+                
+    let retryTooManyRequests payload (response: HttpResponseMessage) =
+        
+        match response.StatusCode with
+        | HttpStatusCode.TooManyRequests ->
+            log $"DEBUG: {response.Headers}"
+            log "  Too many requests - waiting 30s..."
+            
+            Task.Delay 30000
+            |> Async.AwaitTask
+            |> Async.bind (fun () -> internalRequest payload)
+        | _ ->
+            response |> Async.returnM
+
+    let request (payload: RequestPayload) =
         
         internalRequest payload
-        |> Async.bind (fun response ->
-            match response.StatusCode with
-            | HttpStatusCode.TooManyRequests ->
-                printfn $"DEBUG: {response.Headers}"
-                printfn "  Too many requests - waiting 30s..."
-                
-                Task.Delay 30000
-                |> Async.AwaitTask
-                |> Async.bind (fun () -> internalRequest payload)
-                
-            | _ ->
-                response |> Async.returnM
-        )
+        |> Async.bind (retryTooManyRequests payload)
         |> Async.bind (fun response ->
             response.Content.ReadAsStringAsync()
             |> Async.AwaitTask
@@ -137,45 +150,48 @@ module Http =
         |> Async.tee (fun (response, content) ->
             logResponse response content payload
             
-            response.EnsureSuccessStatusCode |> ignore
+            response.EnsureSuccessStatusCode () |> ignore
             
             match apiError content with
             | Some error -> failwith $"{error}"
             | None -> ()
         )
-        |> Async.map snd
+        |> Async.catch
+        |> AsyncResult.map snd
         
-    // let requestWithRefresh (payload: Request) (refresh: unit -> Async<unit>) : Async<Response> =
-    //     request payload
-    //     |> Async.catch
-    //     |> Async.bind (function
-    //         | Choice1Of2 res -> async.Return res
-    //         | Choice2Of2 (:? HttpRequestException as ex) when ex.StatusCode = Nullable HttpStatusCode.Unauthorized ->
-    //             printfn "requestWithRefresh: 401"
-    //             refresh ()
-    //             |> Async.bind (fun () -> request payload)
-    //         | Choice2Of2 ex ->
-    //             return raise ex
-    //     )
+    let onUnauthorized f (result: Result<_, exn>) =
+        
+        match result with
+        | Error (:? HttpRequestException as ex) when ex.StatusCode = Nullable HttpStatusCode.Unauthorized ->
+            f ()
+        | _ ->
+            result |> Async.returnM
 
-    let requestWithRefresh (payload: Request) (refresh: unit -> Async<unit>) = async {
-        try
-            return! request payload
-        with :? HttpRequestException as ex when ex.StatusCode = Nullable HttpStatusCode.Unauthorized ->
-            printfn "requestWithRefresh: 401"
-            refresh () |> Async.RunSynchronously
-            return! request payload
-    }
-    
-    let requestWithRefreshAndReAuth (payload: Request) (refresh: unit -> Async<unit>) (reAuthenticate: unit -> Async<unit>) = async {
+    let private refreshAndRetryOnUnauthorized payload refresh result =
         
-        try
-            return! requestWithRefresh payload refresh
-        with :? HttpRequestException as ex when ex.StatusCode = Nullable HttpStatusCode.Unauthorized ->
-            printfn "requestWithRefreshAndReAuth: 401"
-            reAuthenticate () |> Async.RunSynchronously
-            return! request payload
-    }
+        result
+        |> onUnauthorized (fun () ->
+            refresh ()
+            |> AsyncResult.bind (fun () -> request payload)
+        )
+
+    let requestWithRefresh payload refresh =
+        
+        request payload
+        |> Async.bind (refreshAndRetryOnUnauthorized payload refresh)
+        
+    let private reAuthenticateAndRetryOnUnauthorized payload reAuthenticate result =
+        
+        result
+        |> onUnauthorized (fun () ->
+            reAuthenticate ()
+            |> AsyncResult.bind (fun () -> request payload)
+        )
+        
+    let requestWithRefreshAndReAuth payload refresh reAuthenticate =
+        
+        requestWithRefresh payload refresh
+        |> Async.bind (reAuthenticateAndRetryOnUnauthorized payload reAuthenticate)
 
     let getAuthorizationCode (config: CallbackConfiguration) =
 

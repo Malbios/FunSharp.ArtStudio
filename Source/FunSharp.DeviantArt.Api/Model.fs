@@ -5,6 +5,11 @@ open Newtonsoft.Json
 
 module Model =
 
+    type AuthenticationData = {
+        AccessToken: string
+        RefreshToken: string
+    }
+    
     type Stats = {
         views: int
         views_today: int
@@ -141,7 +146,10 @@ module Model =
         [<JsonProperty("itemid")>]
         ItemId: int64
     }
+    
+open Model
 
+[<RequireQualifiedAccess>]
 module ApiResponses =
     
     type Token = {
@@ -152,18 +160,6 @@ module ApiResponses =
         scope: string
         status: string
     }
-
-    [<RequireQualifiedAccess>]
-    module Token =
-
-        let empty = {
-            access_token = ""
-            token_type = ""
-            expires_in = -1
-            refresh_token = ""
-            scope = ""
-            status = ""
-        }
 
     type WhoAmI = {
         [<JsonProperty("userid")>]
@@ -185,7 +181,7 @@ module ApiResponses =
         title: string
     }
 
-    type GalleryAll = {
+    type Gallery = {
         has_more: bool
         next_offset: int option
         results: Deviation[]
@@ -216,4 +212,41 @@ module ApiResponses =
         
         status: string
         url: string
+    }
+
+[<RequireQualifiedAccess>]
+module Token =
+
+    let empty : ApiResponses.Token = {
+        access_token = ""
+        token_type = ""
+        expires_in = -1
+        refresh_token = ""
+        scope = ""
+        status = ""
+    }
+
+[<RequireQualifiedAccess>]
+module AuthenticationData =
+    
+    let fromTokenResponse (response: ApiResponses.Token) = {
+        AccessToken = response.access_token
+        RefreshToken = response.refresh_token
+    }
+
+[<RequireQualifiedAccess>]
+module Gallery =
+    
+    let empty : ApiResponses.Gallery = {
+        has_more = false
+        next_offset = None
+        results = Array.empty
+    }
+
+[<RequireQualifiedAccess>]
+module Metadata =
+    
+    let empty : ApiResponses.Metadata = {
+        description = ""
+        stats = None
     }

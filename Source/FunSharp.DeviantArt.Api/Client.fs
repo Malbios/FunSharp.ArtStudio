@@ -4,7 +4,7 @@ open System
 open Newtonsoft.Json
 open Newtonsoft.Json.Linq
 open FunSharp.Common
-open FunSharp.DeviantArt.Api.ApiResponses
+open FunSharp.Common.AsyncResultCE
 open FunSharp.DeviantArt.Api.Model
     
 module private Endpoints =
@@ -27,7 +27,7 @@ module private Endpoints =
     let deviationMetadata query =
         $"{common}/deviation/metadata?{query}&ext_stats=true"
         
-type Client(persistence: IPersistence<Token>, clientId: string, clientSecret: string) =
+type Client(persistence: IPersistence<AuthenticationData>, clientId: string, clientSecret: string) =
 
     let config: Authentication.Configuration = {
         RootUrl = "https://www.deviantart.com"
@@ -45,69 +45,99 @@ type Client(persistence: IPersistence<Token>, clientId: string, clientSecret: st
     let updateAuthorization accessToken =
         
         Http.updateAuthorization accessToken
-    
-    let acquireNewToken () =
         
-        printfn "Acquiring new token..."
+    let saveAuthDataAndUpdateAuthorization result =
+        
+        result
+        |> AsyncResult.map JsonConvert.DeserializeObject<ApiResponses.Token>
+        |> AsyncResult.map AuthenticationData.fromTokenResponse
+        |> AsyncResult.tee (fun data -> data |> persistence.Save)
+        |> AsyncResult.tee (fun data -> updateAuthorization data.AccessToken)
+    
+    let getNewAuthData () =
         
         Authentication.authenticate config
-        |> Async.map JsonConvert.DeserializeObject<Token>
-        |> Async.tee persistence.Save
-        |> Async.tee (fun tokenResponse -> updateAuthorization tokenResponse.access_token)
+        |> saveAuthDataAndUpdateAuthorization
 
-    let token =
-
-        match persistence.Load() with
-        | None -> acquireNewToken () |> Async.RunSynchronously
-        | Some tokenResponse ->
-            printfn "Re-using persisted token..."
-            
-            updateAuthorization tokenResponse.access_token
-            tokenResponse
-
-    let refreshToken () =
-
-        printfn "Refreshing token..."
-
-        Authentication.refresh config token.refresh_token
-        |> Async.map JsonConvert.DeserializeObject<Token>
-        |> Async.tee persistence.Save
-        |> Async.tee (fun tokenResponse -> updateAuthorization tokenResponse.access_token)
-        |> Async.Ignore
-
-    let request (payload: Http.Request) =
+    let authenticationData =
         
-        fun () -> acquireNewToken () |> Async.Ignore
-        |> Http.requestWithRefreshAndReAuth payload refreshToken
+        persistence.Load()
+        |> Option.map (fun data ->
+            printfn "Re-using persisted authentication data..."
+            
+            updateAuthorization data.AccessToken
+            
+            data |> AsyncResult.returnM
+        )
+        |> Option.defaultWith (fun () ->
+            printfn "Acquiring new token..."
+            
+            getNewAuthData ()
+        )
+    
+    let refreshToken () =
+        
+        authenticationData
+        |> AsyncResult.tee (fun _ -> printfn "Refreshing token...")
+        |> AsyncResult.bind (fun data ->
+            Authentication.refresh config data.RefreshToken
+            |> saveAuthDataAndUpdateAuthorization
+        )
+        |> AsyncResult.ignore
 
-    let galleryPage (offset: int) : Async<GalleryAll> =
+    let request (payload: Http.RequestPayload) =
+        
+        fun () -> getNewAuthData () |> AsyncResult.ignore
+        |> Http.requestWithRefreshAndReAuth payload refreshToken
+        
+    let toGalleryResponse content =
+        
+        let jsonObject = JObject.Parse content
+
+        let results =
+            jsonObject["results"] :?> JArray
+            |> Seq.map (fun j -> JsonConvert.DeserializeObject<ApiResponses.Deviation>(j.ToString()))
+            |> Seq.toArray
+
+        let hasMore = jsonObject["has_more"].ToObject<bool>()
+
+        let nextOffset =
+            match jsonObject.TryGetValue "next_offset" with
+            | true, value when value.Type <> JTokenType.Null -> Some(value.ToObject<int>())
+            | _ -> None
+            
+        {
+            Gallery.empty with
+                has_more = hasMore
+                next_offset = nextOffset
+                results = results
+        }
+
+    let galleryPage (offset: int) =
 
         printfn $"Reading gallery offset {offset}..."
 
         Endpoints.allDeviations offset
-        |> fun endpoint -> Http.Request.Get $"{config.RootUrl}{endpoint}"
+        |> fun endpoint -> Http.RequestPayload.Get $"{config.RootUrl}{endpoint}"
         |> request
-        |> Async.map (fun content ->
-            let jsonObject = JObject.Parse content
+        |> AsyncResult.map toGalleryResponse
+        
+    let toDeviations content =
+        
+        let jsonObject = JObject.Parse content
 
-            let results =
-                jsonObject["results"] :?> JArray
-                |> Seq.map (fun j -> JsonConvert.DeserializeObject<ApiResponses.Deviation>(j.ToString()))
-                |> Seq.toArray
-
-            let hasMore = jsonObject["has_more"].ToObject<bool>()
-
-            let nextOffset =
-                match jsonObject.TryGetValue "next_offset" with
-                | true, value when value.Type <> JTokenType.Null -> Some(value.ToObject<int>())
-                | _ -> None
-
+        jsonObject["metadata"] :?> JArray
+        |> Seq.map (fun j ->
+            let description = j["description"].Value<string>()
+            let stats = JsonConvert.DeserializeObject<Stats>(j["stats"].ToString())
+            
             {
-                has_more = hasMore
-                next_offset = nextOffset
-                results = results
+                Metadata.empty with
+                    description = description
+                    stats = Some stats
             }
         )
+        |> Seq.toArray
 
     let metadata chunkIndex (ids: string list) =
 
@@ -117,23 +147,9 @@ type Client(persistence: IPersistence<Token>, clientId: string, clientSecret: st
         |> Seq.map (fun id -> $"deviationids[]={Uri.EscapeDataString id}")
         |> String.concat "&"
         |> Endpoints.deviationMetadata
-        |> fun endpoint -> Http.Request.Get $"{config.RootUrl}{endpoint}"
+        |> fun endpoint -> Http.RequestPayload.Get $"{config.RootUrl}{endpoint}"
         |> request
-        |> Async.map (fun content ->
-            let jsonObject = JObject.Parse content
-
-            jsonObject["metadata"] :?> JArray
-            |> Seq.map (fun j ->
-                let description = j["description"].Value<string>()
-                let stats = JsonConvert.DeserializeObject<Stats>(j["stats"].ToString())
-            
-                {
-                    Metadata.description = description
-                    stats = Some stats
-                }
-            )
-            |> Seq.toArray
-        )
+        |> AsyncResult.map toDeviations
         
     let submitToStash (destination: SubmitDestination) (title: string) (file: Http.File) =
         
@@ -154,20 +170,20 @@ type Client(persistence: IPersistence<Token>, clientId: string, clientSecret: st
             |> Map.ofList
             |> Map.fold (fun acc k v -> Map.add k v acc) stack
         
-        Http.Request.PostWithFileAndProperties (url, file, properties)
+        Http.RequestPayload.PostWithFileAndProperties (url, file, properties)
         |> request
-        |> Async.map JsonConvert.DeserializeObject<StashSubmission>
+        |> AsyncResult.map JsonConvert.DeserializeObject<ApiResponses.StashSubmission>
 
     member _.WhoAmI() =
 
         Endpoints.whoAmI
-        |> fun endpoint -> Http.Request.Get $"{config.RootUrl}{endpoint}"
+        |> fun endpoint -> Http.RequestPayload.Get $"{config.RootUrl}{endpoint}"
         |> request
-        |> Async.map JsonConvert.DeserializeObject<WhoAmI>
+        |> AsyncResult.map JsonConvert.DeserializeObject<ApiResponses.WhoAmI>
         
     member _.AllDeviations() =
             
-        let rec loop offset acc = async {
+        let rec loop offset acc = asyncResult {
             let! page = galleryPage offset
             let combined = acc @ Array.toList page.results
 
@@ -181,7 +197,7 @@ type Client(persistence: IPersistence<Token>, clientId: string, clientSecret: st
     member this.AllDeviationsWithMetadata() =
         
         this.AllDeviations ()
-        |> Async.bind (fun deviations ->
+        |> AsyncResult.bind (fun deviations ->
             deviations
             |> List.chunkBySize 10
             |> List.indexed
@@ -190,13 +206,15 @@ type Client(persistence: IPersistence<Token>, clientId: string, clientSecret: st
                 |> List.map _.id
                 |> metadata i
             )
-            |> Async.Sequential
-            |> Async.map (fun metadataChunks ->
+            |> AsyncResult.sequential
+            |> AsyncResult.map (fun metadataChunks ->
                 printfn "combining chunks..."
                 metadataChunks
                 |> Array.concat
                 |> Array.toList
-                |> List.zip deviations))
+                |> List.zip deviations
+            )
+        )
         
     member _.SubmitToStash(file: Http.File) =
         
@@ -223,6 +241,6 @@ type Client(persistence: IPersistence<Token>, clientId: string, clientSecret: st
         let properties = publication |> Record.toMap
         
         ($"{config.RootUrl}{Endpoints.publishFromStash}", properties)
-        |> Http.Request.PostWithProperties
+        |> Http.RequestPayload.PostWithProperties
         |> request
-        |> Async.map JsonConvert.DeserializeObject<Publication>
+        |> AsyncResult.map JsonConvert.DeserializeObject<ApiResponses.Publication>

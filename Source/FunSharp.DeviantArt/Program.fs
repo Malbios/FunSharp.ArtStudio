@@ -12,24 +12,26 @@ module Program =
     let getAllDeviationsWithMetadata (client: Client) =
         client.AllDeviationsWithMetadata()
         |> Async.RunSynchronously
-        |> List.map (fun (deviation, metadata) ->
-            match metadata.stats with
-            | None -> { id = deviation.id; title = deviation.title; description = metadata.description; stats = Stats.empty }
-            | Some stats -> { id = deviation.id; title = deviation.title; description = metadata.description; stats = stats }
+        |> Result.map (fun data ->
+            data
+            |> List.map (fun (deviation, metadata) ->
+                match metadata.stats with
+                | None -> { id = deviation.id; title = deviation.title; description = metadata.description; stats = Stats.empty }
+                | Some stats -> { id = deviation.id; title = deviation.title; description = metadata.description; stats = stats }
+            )
+            |> List.sortBy (fun x -> x.stats.views, x.stats.favourites, x.stats.comments)
+            |> fun x -> File.WriteAllText ("deviations.json", JsonConvert.SerializeObject(x))
         )
-        |> List.sortBy (fun x -> x.stats.views, x.stats.favourites, x.stats.comments)
-        |> fun x -> File.WriteAllText ("deviations.json", JsonConvert.SerializeObject(x))
 
     [<EntryPoint>]
     let main _ =
-        if Debug.isEnabled then
-            File.Delete ".persistence"
+        // File.Delete ".persistence"
         
         let secrets = Secrets.load ()
-        let persistence = Persistence.File<ApiResponses.Token>()
+        let persistence = Persistence.File<AuthenticationData>()
         let client = Client(persistence, secrets.client_id, secrets.client_secret)
         
-        let profile = client.WhoAmI() |> Async.RunSynchronously
+        let profile = client.WhoAmI() |> AsyncResult.getOrFail |> Async.RunSynchronously
         
         printfn $"Hello, {profile.username}!"
         
@@ -62,10 +64,12 @@ module Program =
             NoAi = false
             ItemId = itemId
         }
-        // client.SubmitToStash("test abc", oneFile)
-        stashPublication
-        |> client.PublishFromStash 
-        |> Async.tee (fun submission -> printfn $"{submission}")
+        
+        client.SubmitToStash("test abc", oneFile)
+        // stashPublication
+        // |> client.PublishFromStash 
+        |> AsyncResult.tee (fun submission -> printfn $"{submission}")
+        |> AsyncResult.getOrFail
         |> Async.Ignore
         |> Async.RunSynchronously
 

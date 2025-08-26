@@ -21,7 +21,7 @@ module Authentication =
         content
         |> Map.ofList
         |> fun content -> ($"{rootUrl}{tokenEndpoint}", content)
-        |> Http.Request.PostWithProperties
+        |> Http.RequestPayload.PostWithProperties
         |> Http.request
 
     let authenticate config =
