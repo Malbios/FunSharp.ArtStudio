@@ -45,6 +45,15 @@ module Program =
         )
         |> List.sortBy (fun x -> x.stats.views, x.stats.favourites, x.stats.comments)
         |> fun x -> File.WriteAllText ("deviations.json", JsonConvert.SerializeObject(x))
+        
+    let withGalleryId (deviation: Data.Deviation) =
+        let gallery =
+            match deviation.Gallery with
+            | v when v = "RandomPile" -> Gallery.RandomPile
+            | v when v = "Spicy" -> Gallery.Spicy
+            | v -> failwith $"unexpected gallery: {v}"
+            
+        { deviation with Gallery = galleryId gallery }
 
     [<EntryPoint>]
     let main _ =
@@ -57,11 +66,42 @@ module Program =
         
         let profile = client.WhoAmI() |> AsyncResult.getOrFail |> Async.RunSynchronously
         
+        if profile.username = "" then
+            failwith "Something went wrong! Could not read profile username."
+        
         printfn $"Hello, {profile.username}!"
+        printfn ""
         
         for deviation in deviations do
-            printfn $"Processing '{JsonConvert.SerializeObject deviation}'..."
-        
+            let deviation = deviation |> withGalleryId
+            
+            let submission = {
+                StashSubmission.defaults with
+                    Title = deviation.Title
+            }
+            
+            let file : Http.File = {
+                MediaType = Some "image/png"
+                Content = File.ReadAllBytes deviation.FilePath
+            }
+            
+            client.SubmitToStash(submission, file)
+            |> AsyncResult.bind (fun response ->
+                {
+                    StashPublication.defaults with
+                        ItemId = response.item_id
+                        IsMature = deviation.IsMature
+                        Galleries = [deviation.Gallery] |> Array.ofList
+                }
+                |> client.PublishFromStash
+            )
+            |> getOrFail
+            |> fun response ->
+                printfn $"Status: {response.status}"
+                printfn $"URL: {response.url}"
+                printfn $"Inspired by {deviation.Inspiration}"
+                printfn ""
+            
         printfn "Bye!"
         
         0

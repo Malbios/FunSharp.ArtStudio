@@ -10,6 +10,7 @@ module Data =
     type Deviation = {
         FilePath: string
         Inspiration: Uri
+        Title: string
         Gallery: string
         IsMature: bool
     }
