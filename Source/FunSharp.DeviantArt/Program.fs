@@ -9,19 +9,42 @@ open FunSharp.DeviantArt.Api.Model
 
 module Program =
     
-    let getAllDeviationsWithMetadata (client: Client) =
-        client.AllDeviationsWithMetadata()
+    type Gallery =
+        | Featured
+        | Caricatures
+        | Spicy
+        | Scenery
+        | RandomPile
+        
+    let galleries =
+        [
+            Gallery.Featured, "487A4797-E595-CA89-7083-32FCD1F33831"
+            Gallery.Caricatures, "01EFCC0B-6625-48F5-1C09-74B69FFCA526"
+            Gallery.Spicy, "EAC6F867-87CA-333C-9C09-74C7587BAFAF"
+            Gallery.Scenery, "B6120853-CD73-52D0-35D3-61BC719AE611"
+            Gallery.RandomPile, "A5FA99E2-3756-B8A3-E145-59666660C224"
+        ]
+        |> Map.ofList
+        
+    let galleryId gallery = galleries[gallery]
+    
+    let getOrFail callResult =
+        
+        callResult
+        |> AsyncResult.getOrFail
         |> Async.RunSynchronously
-        |> Result.map (fun data ->
-            data
-            |> List.map (fun (deviation, metadata) ->
-                match metadata.stats with
-                | None -> { id = deviation.id; title = deviation.title; description = metadata.description; stats = Stats.empty }
-                | Some stats -> { id = deviation.id; title = deviation.title; description = metadata.description; stats = stats }
-            )
-            |> List.sortBy (fun x -> x.stats.views, x.stats.favourites, x.stats.comments)
-            |> fun x -> File.WriteAllText ("deviations.json", JsonConvert.SerializeObject(x))
+    
+    let getAllDeviationsWithMetadata (client: Client) =
+        
+        client.AllDeviationsWithMetadata()
+        |> getOrFail
+        |> List.map (fun (deviation, metadata) ->
+            match metadata.stats with
+            | None -> { id = deviation.id; title = deviation.title; description = metadata.description; stats = Stats.empty }
+            | Some stats -> { id = deviation.id; title = deviation.title; description = metadata.description; stats = stats }
         )
+        |> List.sortBy (fun x -> x.stats.views, x.stats.favourites, x.stats.comments)
+        |> fun x -> File.WriteAllText ("deviations.json", JsonConvert.SerializeObject(x))
 
     [<EntryPoint>]
     let main _ =
@@ -30,49 +53,15 @@ module Program =
         let secrets = Secrets.load ()
         let persistence = Persistence.File<AuthenticationData>()
         let client = Client(persistence, secrets.client_id, secrets.client_secret)
+        let deviations = Data.readDeviations ()
         
         let profile = client.WhoAmI() |> AsyncResult.getOrFail |> Async.RunSynchronously
         
         printfn $"Hello, {profile.username}!"
         
-        // printfn $"{persistence.ToString()}"
-
-        // getAllDeviationsWithMetadata client
+        for deviation in deviations do
+            printfn $"Processing '{JsonConvert.SerializeObject deviation}'..."
         
-        let filePath1 = "C:\\Users\\User\\Documents\\Sora\\images\\spicy\\20250822_1917_Mystical Fire Goddess_simple_compose_01k39cfzjxeqmraztn2etdw422.png"
-        let filePath2 = "C:\\Users\\User\\Documents\\Sora\\images\\spicy\\20250821_0951_Enchanting Forest Command_simple_compose_01k35sp2h8e74bzhsejh05vq80.png"
-        
-        let oneFile : Http.File = { Title = "a1"; Content = File.ReadAllBytes filePath1; MediaType = Some "image/png" }
-        
-        let itemId = 2252502243219020L
-        
-        let stashPublication = {
-            IsMature = true
-            // MatureLevel = MatureLevel.Moderate
-            // MatureClassification = [| MatureClassification.Sexual |]
-            Feature = false
-            AllowComments = true
-            // DisplayResolution = DisplayResolution.Original
-            LicenseOptions = { CreativeCommons = true; Commercial = true; Modify = LicenseOptionsModify.Share }
-            // Galleries = [| Gallery.Spicy |]
-            AllowFreeDownload = true
-            AddWatermark = false
-            Tags = Array.empty
-            // Groups = Array.empty
-            // GroupFolders = Array.empty
-            IsAiGenerated = true
-            NoAi = false
-            ItemId = itemId
-        }
-        
-        client.SubmitToStash("test abc", oneFile)
-        // stashPublication
-        // |> client.PublishFromStash 
-        |> AsyncResult.tee (fun submission -> printfn $"{submission}")
-        |> AsyncResult.getOrFail
-        |> Async.Ignore
-        |> Async.RunSynchronously
-
         printfn "Bye!"
         
         0

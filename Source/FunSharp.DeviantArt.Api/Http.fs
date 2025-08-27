@@ -1,6 +1,7 @@
 ﻿namespace FunSharp.DeviantArt.Api
 
 open System
+open System.Collections.Generic
 open System.Net
 open System.Net.Http
 open System.Net.Http.Headers
@@ -23,7 +24,6 @@ module Http =
     }
     
     type File = {
-        Title: string
         Content: byte array
         MediaType: string option
     }
@@ -48,8 +48,8 @@ module Http =
     [<RequireQualifiedAccess>]
     type RequestPayload =
         | Get of url: string
-        | PostWithProperties of url: string * properties: Map<string, string>
-        | PostWithFileAndProperties of url: string * file: File * properties: Map<string, string>
+        | PostWithProperties of url: string * properties: (string * string) list
+        | PostWithFileAndProperties of url: string * file: File * properties: (string * string) list
         
     [<RequireQualifiedAccess>]
     module private RequestPayload =
@@ -61,6 +61,7 @@ module Http =
                 InternalPayload.Get url
                 
             | RequestPayload.PostWithProperties (url, properties) ->
+                let properties = properties |> Seq.map (fun (k, v) -> KeyValuePair(k, v))
                 InternalPayload.PostWithForm (url, new FormUrlEncodedContent(properties))
                 
             | RequestPayload.PostWithFileAndProperties (url, file, properties) ->
@@ -69,11 +70,17 @@ module Http =
                 
                 fileContent.Headers.ContentType <- MediaTypeHeaderValue.Parse(mediaType)
                 
+                let title =
+                    properties
+                    |> List.tryFind (fun x -> fst x = "title")
+                    |> Option.map snd
+                    |> Option.defaultValue ""
+                
                 let content = new MultipartFormDataContent()
-                content.Add(fileContent, "file", file.Title)
+                content.Add(fileContent, "file", title)
                 
                 for kvp in properties do
-                    content.Add(new StringContent(kvp.Value), kvp.Key)
+                    content.Add(new StringContent(snd kvp), fst kvp)
                 
                 InternalPayload.PostWithMultipart (url, content)
         

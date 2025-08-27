@@ -21,11 +21,14 @@ module private Endpoints =
     let whoAmI =
         $"{common}/user/whoami"
     
-    let allDeviations offset =
-        $"{common}/gallery/all?with_session=false&mature_content=true&limit=24&offset={offset}"
+    let allDeviations limit offset =
+        $"{common}/gallery/all?with_session=false&mature_content=true&limit={limit}&offset={offset}"
         
     let deviationMetadata query =
         $"{common}/deviation/metadata?{query}&ext_stats=true"
+        
+    let galleryFolders (limit: int) =
+        $"{common}/gallery/folders?limit={limit}"
         
 type Client(persistence: IPersistence<AuthenticationData>, clientId: string, clientSecret: string) =
 
@@ -117,8 +120,8 @@ type Client(persistence: IPersistence<AuthenticationData>, clientId: string, cli
 
         printfn $"Reading gallery offset {offset}..."
 
-        Endpoints.allDeviations offset
-        |> fun endpoint -> Http.RequestPayload.Get $"{config.RootUrl}{endpoint}"
+        $"{config.RootUrl}{Endpoints.allDeviations 24 offset}"
+        |> Http.RequestPayload.Get
         |> request
         |> AsyncResult.map toGalleryResponse
         
@@ -151,9 +154,7 @@ type Client(persistence: IPersistence<AuthenticationData>, clientId: string, cli
         |> request
         |> AsyncResult.map toDeviations
         
-    let submitToStash (destination: SubmitDestination) (title: string) (file: Http.File) =
-        
-        let url = $"{config.RootUrl}{Endpoints.submitToStash}"
+    let submitToStash (destination: SubmitDestination) (file: Http.File) (submission: StashSubmission) =
             
         let stack =
             match destination with
@@ -161,14 +162,22 @@ type Client(persistence: IPersistence<AuthenticationData>, clientId: string, cli
             | Replace id -> [ "itemid", $"{id}" ]
             | Stack id -> [ "stackid", $"{id}" ]
             | StackWithName name -> [ "stack", name ]
-            |> Map.ofList
-        
+            
         let properties =
-            [
-                "title", title |> String.truncate 50
-            ]
-            |> Map.ofList
-            |> Map.fold (fun acc k v -> Map.add k v acc) stack
+            submission
+            |> StashSubmission.toProperties
+            |> List.map (fun (key, value) ->
+                let value =
+                    if key = "title" then
+                        value |> String.truncate 50
+                    else
+                        value
+                        
+                (key, value)
+            )
+            |> fun p -> p @ stack 
+        
+        let url = $"{config.RootUrl}{Endpoints.submitToStash}"
         
         Http.RequestPayload.PostWithFileAndProperties (url, file, properties)
         |> request
@@ -216,31 +225,47 @@ type Client(persistence: IPersistence<AuthenticationData>, clientId: string, cli
             )
         )
         
-    member _.SubmitToStash(file: Http.File) =
+    member _.SubmitToStash(submission: StashSubmission, file: Http.File) =
         
-        submitToStash SubmitDestination.RootStack file.Title file
+        submitToStash SubmitDestination.RootStack file submission
         
-    member _.SubmitToStash(title: string, file: Http.File) =
+    member _.SubmitToStash(submission: StashSubmission, file: Http.File, stackId: int64) =
         
-        submitToStash SubmitDestination.RootStack title file
+        submitToStash (SubmitDestination.Stack stackId) file submission
         
-    member _.SubmitToStash(title: string, file: Http.File, stackId: int64) =
+    member _.SubmitToStash(submission: StashSubmission, file: Http.File, stackName: string) =
         
-        submitToStash (SubmitDestination.Stack stackId) title file
+        submitToStash (SubmitDestination.StackWithName stackName) file submission
         
-    member _.SubmitToStash(title: string, file: Http.File, stackName: string) =
+    member _.ReplaceInStash(submission: StashSubmission, file: Http.File, id: int64) =
         
-        submitToStash (SubmitDestination.StackWithName stackName) title file
-        
-    member _.ReplaceInStash(title: string, file: Http.File, id: int64) =
-        
-        submitToStash (SubmitDestination.Replace id) title file
+        submitToStash (SubmitDestination.Replace id) file submission
         
     member _.PublishFromStash(publication: StashPublication)  =
         
-        let properties = publication |> Record.toMap
+        let properties = publication |> StashPublication.toProperties
         
         ($"{config.RootUrl}{Endpoints.publishFromStash}", properties)
         |> Http.RequestPayload.PostWithProperties
         |> request
         |> AsyncResult.map JsonConvert.DeserializeObject<ApiResponses.Publication>
+
+    member _.GalleryFolders() =
+        
+        $"{config.RootUrl}{Endpoints.galleryFolders 50}"
+        |> Http.RequestPayload.Get
+        |> request
+
+    member _.GetLatestDeviation() =
+        
+        $"{config.RootUrl}{Endpoints.allDeviations 1 0}"
+        |> Http.RequestPayload.Get
+        |> request
+        |> AsyncResult.map toGalleryResponse
+        |> AsyncResult.bind (fun galleryResponse ->
+            $"deviationids[]={Uri.EscapeDataString galleryResponse.results[0].id}"
+            |> Endpoints.deviationMetadata
+            |> fun endpoint -> $"{config.RootUrl}{endpoint}"
+            |> Http.RequestPayload.Get
+            |> request
+        )

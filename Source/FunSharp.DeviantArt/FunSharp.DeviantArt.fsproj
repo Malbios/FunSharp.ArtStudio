@@ -11,7 +11,11 @@
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
         <Compile Include="Persistence.fs" />
+        <Compile Include="Data.fs" />
         <Compile Include="Program.fs"/>
+        <Content Include="data.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
 
     <ItemGroup>

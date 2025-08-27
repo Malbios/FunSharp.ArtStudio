@@ -19,7 +19,6 @@ module Authentication =
     let private tokenRequest rootUrl (content: (string * string) list) =
         
         content
-        |> Map.ofList
         |> fun content -> ($"{rootUrl}{tokenEndpoint}", content)
         |> Http.RequestPayload.PostWithProperties
         |> Http.request

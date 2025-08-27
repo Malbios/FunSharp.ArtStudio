@@ -1,6 +1,7 @@
 ﻿namespace FunSharp.DeviantArt.Api
 
 open System
+open FunSharp.Common
 open Newtonsoft.Json
 
 module Model =
@@ -43,6 +44,20 @@ module Model =
         | Replace of id: int64
         | Stack of id: int64
         | StackWithName of name: string
+        
+    type StashSubmission = {
+        [<JsonProperty("title")>]
+        Title: string
+        
+        [<JsonProperty("noai")>]
+        NoAi: bool
+        
+        [<JsonProperty("is_ai_generated")>]
+        IsAiGenerated: bool
+        
+        [<JsonProperty("is_dirty")>]
+        IsDirty: bool
+    }
     
     type MatureLevel =
         | Strict
@@ -59,12 +74,6 @@ module Model =
         | Yes
         | No
         | Share
-        
-    type Gallery =
-        | Caricatures = 97042046
-        | Spicy = 97053849
-        | RandomPile = 97042059
-        | Scenery = 97716869
         
     type LicenseOptions = {
         [<JsonProperty("creative_commons")>]
@@ -104,14 +113,14 @@ module Model =
         [<JsonProperty("allow_comments")>]
         AllowComments: bool
         
-        // [<JsonProperty("display_resolution")>]
-        // DisplayResolution: DisplayResolution
+        [<JsonProperty("display_resolution")>]
+        DisplayResolution: int
         
         [<JsonProperty("license_options")>]
         LicenseOptions: LicenseOptions
         
-        // [<JsonProperty("galleryids")>]
-        // Galleries: Gallery array
+        [<JsonProperty("galleryids")>]
+        Galleries: string array
         
         [<JsonProperty("allow_free_download")>]
         AllowFreeDownload: bool
@@ -146,8 +155,46 @@ module Model =
         [<JsonProperty("itemid")>]
         ItemId: int64
     }
+
+[<RequireQualifiedAccess>]
+module StashSubmission =
+    open Model
     
-open Model
+    let defaults : StashSubmission = {
+        Title = ""
+        NoAi = false
+        IsAiGenerated = true
+        IsDirty = false
+    }
+            
+    let toProperties (submission: StashSubmission) =
+        submission
+        |> Record.toKeyValueTypes
+        |> KeyValueType.splitArrays
+
+[<RequireQualifiedAccess>]
+module StashPublication =
+    open Model
+    
+    let defaults : StashPublication = {
+        IsMature = false
+        Feature = false
+        AllowComments = true
+        DisplayResolution = DisplayResolution.Original |> int
+        LicenseOptions = { CreativeCommons = true; Commercial = true; Modify = LicenseOptionsModify.Share }
+        Galleries = Array.empty
+        AllowFreeDownload = true
+        AddWatermark = false
+        Tags = [ "digital_art"; "made_with_ai" ] |> Array.ofList
+        IsAiGenerated = true
+        NoAi = false
+        ItemId = -1L
+    }
+            
+    let toProperties (publication: StashPublication) =
+        publication
+        |> Record.toKeyValueTypes
+        |> KeyValueType.splitArrays
 
 [<RequireQualifiedAccess>]
 module ApiResponses =
@@ -163,7 +210,7 @@ module ApiResponses =
 
     type WhoAmI = {
         [<JsonProperty("userid")>]
-        user_id: string
+        id: string
         
         [<JsonProperty("usericon")>]
         icon: Uri
@@ -184,7 +231,7 @@ module ApiResponses =
     type Gallery = {
         has_more: bool
         next_offset: int option
-        results: Deviation[]
+        results: Deviation array
     }
 
     type Metadata = {
@@ -229,7 +276,7 @@ module Token =
 [<RequireQualifiedAccess>]
 module AuthenticationData =
     
-    let fromTokenResponse (response: ApiResponses.Token) = {
+    let fromTokenResponse (response: ApiResponses.Token) : Model.AuthenticationData = {
         AccessToken = response.access_token
         RefreshToken = response.refresh_token
     }
