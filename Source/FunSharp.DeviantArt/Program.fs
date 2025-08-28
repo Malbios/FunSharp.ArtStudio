@@ -46,38 +46,51 @@ module Program =
         |> List.sortBy (fun x -> x.stats.views, x.stats.favourites, x.stats.comments)
         |> fun x -> File.WriteAllText ("deviations.json", JsonConvert.SerializeObject(x))
         
-    let withGalleryId (deviation: Data.Deviation) =
+    let withGalleryId (deviation: Data.LocalDeviation) =
         let gallery =
-            match deviation.Gallery with
+            match deviation.Metadata.Gallery with
             | v when v = "RandomPile" -> Gallery.RandomPile
             | v when v = "Spicy" -> Gallery.Spicy
+            | v when v = "Scenery" -> Gallery.Scenery
             | v -> failwith $"unexpected gallery: {v}"
             
-        { deviation with Gallery = galleryId gallery }
-
-    [<EntryPoint>]
-    let main _ =
-        // File.Delete ".persistence"
+        { deviation with Metadata.Gallery = galleryId gallery }
         
-        let secrets = Secrets.load ()
-        let persistence = Persistence.File<AuthenticationData>()
-        let client = Client(persistence, secrets.client_id, secrets.client_secret)
-        let deviations = Data.readDeviations ()
+    let stashNewDeviations (client: Client) =
         
-        let profile = client.WhoAmI() |> AsyncResult.getOrFail |> Async.RunSynchronously
-        
-        if profile.username = "" then
-            failwith "Something went wrong! Could not read profile username."
-        
-        printfn $"Hello, {profile.username}!"
-        printfn ""
+        let deviations = Data.readLocalDeviations ()
         
         for deviation in deviations do
             let deviation = deviation |> withGalleryId
             
             let submission = {
                 StashSubmission.defaults with
-                    Title = deviation.Title
+                    Title = deviation.Metadata.Title
+            }
+            
+            let file : Http.File = {
+                MediaType = Some "image/png"
+                Content = File.ReadAllBytes deviation.FilePath
+            }
+            
+            client.SubmitToStash(submission, file)
+            |> getOrFail
+            |> fun response ->
+                printfn $"Status: {response.status}"
+                printfn $"ID: {response.item_id}"
+                printfn $"Inspired by {deviation.Metadata.Inspiration}"
+                printfn ""
+        
+    let publishNewDeviations (client: Client) =
+        
+        let deviations = Data.readLocalDeviations ()
+        
+        for deviation in deviations do
+            let deviation = deviation |> withGalleryId
+            
+            let submission = {
+                StashSubmission.defaults with
+                    Title = deviation.Metadata.Title
             }
             
             let file : Http.File = {
@@ -90,8 +103,8 @@ module Program =
                 {
                     StashPublication.defaults with
                         ItemId = response.item_id
-                        IsMature = deviation.IsMature
-                        Galleries = [deviation.Gallery] |> Array.ofList
+                        IsMature = deviation.Metadata.IsMature
+                        Galleries = [deviation.Metadata.Gallery] |> Array.ofList
                 }
                 |> client.PublishFromStash
             )
@@ -99,9 +112,38 @@ module Program =
             |> fun response ->
                 printfn $"Status: {response.status}"
                 printfn $"URL: {response.url}"
-                printfn $"Inspired by {deviation.Inspiration}"
+                printfn $"Inspired by {deviation.Metadata.Inspiration}"
                 printfn ""
-            
+                
+    let importExistingDeviations (client: Client) =
+        
+        // TODO: implement
+        ()
+
+    [<EntryPoint>]
+    let main args =
+        // File.Delete ".persistence"
+        
+        let secrets = Secrets.load ()
+        let authPersistence = Persistence.File<AuthenticationData>()
+        let dataPersistence = Persistence.LiteDb<Data.Deviation>("persistence.db", "deviations")
+        let client = Client(authPersistence, secrets.client_id, secrets.client_secret)
+        
+        let profile = client.WhoAmI() |> AsyncResult.getOrFail |> Async.RunSynchronously
+        if profile.username = "" then
+            failwith "Something went wrong! Could not read profile username."
+        
+        printfn $"Hello, {profile.username}!"
+        printfn ""
+        
+        let cmd = args |> Array.tryHead |> Option.defaultValue ""
+        match cmd with
+        | "" -> ()
+        | "import" -> importExistingDeviations client
+        | "stash" -> stashNewDeviations client
+        | "publish" -> publishNewDeviations client
+        | _ -> printfn $"invalid command: {cmd}"
+        
         printfn "Bye!"
         
         0

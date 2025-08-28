@@ -7,15 +7,38 @@ open Newtonsoft.Json
 [<RequireQualifiedAccess>]
 module Data =
     
-    type Deviation = {
-        FilePath: string
-        Inspiration: Uri
+    type DeviationMetadata = {
         Title: string
         Gallery: string
         IsMature: bool
+        Inspiration: Uri
+    }
+    
+    type LocalDeviation = {
+        FilePath: string
+        Metadata: DeviationMetadata
+    }
+    
+    type StashedDeviation = {
+        Id: int64
+        Local: LocalDeviation
+    }
+    
+    type PublishedDeviation = {
+        Url: Uri
+        Stashed: StashedDeviation
+    }
+    
+    type Deviation =
+        | Local of LocalDeviation
+        | Stashed of StashedDeviation
+        | Published of PublishedDeviation
+    
+    type State = {
+        Deviations: Deviation array
     }
 
-    let readDeviations () =
+    let readLocalDeviations () =
         
         File.ReadAllText "data.json"
-        |> JsonConvert.DeserializeObject<Deviation array>
+        |> JsonConvert.DeserializeObject<LocalDeviation array>
