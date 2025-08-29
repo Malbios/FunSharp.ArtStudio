@@ -84,11 +84,13 @@ module Program =
         let deviations = readLocalDeviations ()
         
         for deviation in deviations do
-            if deviation.Inspiration = null then
-                failwith "Deviation Metadata: inspiration is empty!"
+            if not (File.Exists deviation.FilePath) then
+                failwith $"[Deviation Metadata] File does not exist: {deviation.FilePath}"
             
             if deviation.Title = "" then
-                failwith "Deviation Metadata: title is empty!"
+                failwith "[Deviation Metadata] Title is empty!"
+                
+            galleryId deviation.Gallery |> ignore
             
             let submission = {
                 StashSubmission.defaults with
