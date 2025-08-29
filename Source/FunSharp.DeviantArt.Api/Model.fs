@@ -83,7 +83,7 @@ module Model =
         Commercial: bool
         
         [<JsonProperty("modify")>]
-        Modify: LicenseOptionsModify
+        Modify: string
     }
     
     type DisplayResolution =
@@ -155,6 +155,30 @@ module Model =
         [<JsonProperty("itemid")>]
         ItemId: int64
     }
+    
+    type DeviationMetadata = {
+        FilePath: string
+        Inspiration: Uri
+        Title: string
+        Gallery: string
+        IsMature: bool
+    }
+    
+    type StashedDeviation = {
+        StashId: int64
+        Metadata: DeviationMetadata
+    }
+    
+    type PublishedDeviation = {
+        Url: Uri
+        Metadata: DeviationMetadata
+    }
+    
+    type DeviationData =
+        | Stashed of StashedDeviation
+        | Published of PublishedDeviation
+
+open Model
 
 [<RequireQualifiedAccess>]
 module StashSubmission =
@@ -176,12 +200,18 @@ module StashSubmission =
 module StashPublication =
     open Model
     
+    let private modifyToString (modify: LicenseOptionsModify) =
+        match modify with
+        | Yes -> "yes"
+        | No -> "no"
+        | Share -> "share"
+    
     let defaults : StashPublication = {
         IsMature = false
         Feature = false
         AllowComments = true
         DisplayResolution = DisplayResolution.Original |> int
-        LicenseOptions = { CreativeCommons = true; Commercial = true; Modify = LicenseOptionsModify.Share }
+        LicenseOptions = { CreativeCommons = true; Commercial = true; Modify = (modifyToString LicenseOptionsModify.Share) }
         Galleries = Array.empty
         AllowFreeDownload = true
         AddWatermark = false

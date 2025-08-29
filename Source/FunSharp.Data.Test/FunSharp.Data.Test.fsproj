@@ -7,11 +7,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Content Include=".secrets">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Compile Include="Model.Tests.fs" />
-        <Compile Include="Program.fs" />
+        <Compile Include="LiteDbPersistence.Tests.fs" />
+        <Compile Include="PickledPersistence.Tests.fs" />
+        <Compile Include="Program.fs"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -23,7 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\FunSharp.DeviantArt.Api\FunSharp.DeviantArt.Api.fsproj" />
+      <ProjectReference Include="..\FunSharp.DeviantArt\FunSharp.DeviantArt.fsproj" />
     </ItemGroup>
 
 </Project>

@@ -1,5 +1,6 @@
 ﻿namespace FunSharp.DeviantArt
 
+open System
 open System.IO
 open Newtonsoft.Json
 open FunSharp.Common
@@ -26,7 +27,23 @@ module Program =
         ]
         |> Map.ofList
         
-    let galleryId gallery = galleries[gallery]
+    let galleryId (galleryName: string) =
+        let gallery =
+            match galleryName with
+            | v when v = "RandomPile" -> Gallery.RandomPile
+            | v when v = "Spicy" -> Gallery.Spicy
+            | v when v = "Scenery" -> Gallery.Scenery
+            | v -> failwith $"unexpected gallery: {v}"
+        
+        galleries[gallery]
+        
+    let stashUrl itemId =
+        $"https://sta.sh/0{Base36.encode itemId}"
+        
+    let readLocalDeviations () =
+        
+        File.ReadAllText "data.json"
+        |> JsonConvert.DeserializeObject<DeviationMetadata array>
     
     let getOrFail callResult =
         
@@ -46,118 +63,90 @@ module Program =
         |> List.sortBy (fun x -> x.stats.views, x.stats.favourites, x.stats.comments)
         |> fun x -> File.WriteAllText ("deviations.json", JsonConvert.SerializeObject(x))
         
-    let withGalleryId (deviation: Data.LocalDeviation) =
-        let gallery =
-            match deviation.Metadata.Gallery with
-            | v when v = "RandomPile" -> Gallery.RandomPile
-            | v when v = "Spicy" -> Gallery.Spicy
-            | v when v = "Scenery" -> Gallery.Scenery
-            | v -> failwith $"unexpected gallery: {v}"
+    let stashNewDeviations (persistence: PickledPersistence<DeviationData, string>) (client: Client) =
+        
+        let metadata = readLocalDeviations ()
+        
+        for metadata in metadata do
+            if metadata.Inspiration = null then
+                failwith "Deviation Metadata: inspiration is empty!"
             
-        { deviation with Metadata.Gallery = galleryId gallery }
-        
-    let stashNewDeviations (client: Client) =
-        
-        let deviations = Data.readLocalDeviations ()
-        
-        for deviation in deviations do
-            let deviation = deviation |> withGalleryId
+            if metadata.Title = "" then
+                failwith "Deviation Metadata: title is empty!"
             
             let submission = {
                 StashSubmission.defaults with
-                    Title = deviation.Metadata.Title
+                    Title = metadata.Title
             }
             
             let file : Http.File = {
                 MediaType = Some "image/png"
-                Content = File.ReadAllBytes deviation.FilePath
+                Content = File.ReadAllBytes metadata.FilePath
             }
             
             client.SubmitToStash(submission, file)
             |> getOrFail
             |> fun response ->
-                printfn $"Status: {response.status}"
-                printfn $"ID: {response.item_id}"
-                printfn $"Inspired by {deviation.Metadata.Inspiration}"
-                printfn ""
+                match response.status with
+                | "success" ->
+                    DeviationData.Stashed {
+                        StashId = response.item_id
+                        Metadata = metadata
+                    }
+                    |> fun x -> (metadata.FilePath, x)
+                    |> persistence.Insert
+                    |> fun x ->
+                        printfn $"success: {x}"
+                        printfn $"URL: {stashUrl response.item_id}"
+                        printfn $"Inspired by {metadata.Inspiration}"
+                        printfn ""
+                    
+                | _ ->
+                    printfn $"Failed to stash {metadata.FilePath}"
         
-    let publishNewDeviations (client: Client) =
+    let publishNewDeviations (persistence: PickledPersistence<DeviationData, string>) (client: Client) =
         
-        let deviations = Data.readLocalDeviations ()
-        
-        for deviation in deviations do
-            let deviation = deviation |> withGalleryId
-            
-            let submission = {
-                StashSubmission.defaults with
-                    Title = deviation.Metadata.Title
-            }
-            
-            let file : Http.File = {
-                MediaType = Some "image/png"
-                Content = File.ReadAllBytes deviation.FilePath
-            }
-            
-            client.SubmitToStash(submission, file)
-            |> AsyncResult.bind (fun response ->
-                {
-                    StashPublication.defaults with
-                        ItemId = response.item_id
-                        IsMature = deviation.Metadata.IsMature
-                        Galleries = [deviation.Metadata.Gallery] |> Array.ofList
-                }
-                |> client.PublishFromStash
+        let data =
+            persistence.FindAll()
+            |> Array.choose (fun x ->
+                match x with
+                | Stashed x -> Some x
+                | _ -> None
             )
+        
+        for deviation in data do
+            {
+                StashPublication.defaults with
+                    ItemId = deviation.StashId
+                    IsMature = deviation.Metadata.IsMature
+                    Galleries = [galleryId deviation.Metadata.Gallery] |> Array.ofList
+            }
+            |> client.PublishFromStash
             |> getOrFail
             |> fun response ->
-                printfn $"Status: {response.status}"
-                printfn $"URL: {response.url}"
-                printfn $"Inspired by {deviation.Metadata.Inspiration}"
-                printfn ""
-                
-    let importExistingDeviations (dataPersistence: Persistence.LiteDb<Data.Deviation>) (client: Client) =
-        
-        let existingDeviations = dataPersistence.Load()
-        
-        let localDeviations =
-            existingDeviations
-            |> Array.map (fun x ->
-                match x with
-                | Data.Local x -> x
-                | _ -> ()
-            )
-            
-        let stashedDeviations =
-            existingDeviations
-            |> Array.map (fun x ->
-                match x with
-                | Data.Stashed x -> x
-                | _ -> ()
-            )
-            
-        let publishedDeviations =
-            existingDeviations
-            |> Array.map (fun x ->
-                match x with
-                | Data.Published x -> x
-                | _ -> ()
-            )
-            
-        let deviantArtDeviations = client.AllDeviations() |> getOrFail
-        
-        let newDeviantArtDeviations =
-            deviantArtDeviations
-            |> Array.filter (fun deviation ->
-                publishedDeviations |> Array.forall (fun known -> )
-            )
-
+                match response.status with
+                | "success" ->
+                    DeviationData.Published {
+                        Url = Uri response.url
+                        Metadata = deviation.Metadata
+                    }
+                    |> fun x -> (deviation.Metadata.FilePath, x)
+                    |> persistence.Update
+                    |> fun x ->
+                        printfn $"success: {x}"
+                        printfn $"URL: {response.url}"
+                        printfn ""
+                    
+                | _ ->
+                    printfn $"Failed to publish {deviation.Metadata.FilePath}"
+                    
     [<EntryPoint>]
     let main args =
-        // File.Delete ".persistence"
+        // File.Delete "persistence.db"
         
         let secrets = Secrets.load ()
-        let authPersistence = Persistence.File<AuthenticationData>()
-        let dataPersistence = Persistence.LiteDb<Data.Deviation>("persistence.db", "deviations")
+        let authPersistence = Persistence.AuthenticationPersistence()
+        let dataPersistence = PickledPersistence<DeviationData, string>("persistence.db", "deviations")
         let client = Client(authPersistence, secrets.client_id, secrets.client_secret)
         
         let profile = client.WhoAmI() |> AsyncResult.getOrFail |> Async.RunSynchronously
@@ -170,9 +159,8 @@ module Program =
         let cmd = args |> Array.tryHead |> Option.defaultValue ""
         match cmd with
         | "" -> ()
-        | "import" -> importExistingDeviations client
-        | "stash" -> stashNewDeviations client
-        | "publish" -> publishNewDeviations client
+        | "stash" -> stashNewDeviations dataPersistence client
+        | "publish" -> publishNewDeviations dataPersistence client
         | _ -> printfn $"invalid command: {cmd}"
         
         printfn "Bye!"

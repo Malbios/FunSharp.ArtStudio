@@ -5,6 +5,7 @@ open System.Collections.Generic
 open System.Net
 open System.Net.Http
 open System.Net.Http.Headers
+open System.Net.Http.Json
 open System.Threading.Tasks
 open Newtonsoft.Json
 open Suave
@@ -124,6 +125,7 @@ module Http =
             | InternalPayload.Get url ->
                 client.GetAsync url |> Async.AwaitTask
             | InternalPayload.PostWithForm (url, content) ->
+                printfn $"{content.ReadAsStringAsync() |> Async.AwaitTask |> Async.RunSynchronously}"
                 client.PostAsync(url, content)
                 |> Async.AwaitTask
                 |> Async.tee (fun _ -> content.Dispose())
