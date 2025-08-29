@@ -115,10 +115,41 @@ module Program =
                 printfn $"Inspired by {deviation.Metadata.Inspiration}"
                 printfn ""
                 
-    let importExistingDeviations (client: Client) =
+    let importExistingDeviations (dataPersistence: Persistence.LiteDb<Data.Deviation>) (client: Client) =
         
-        // TODO: implement
-        ()
+        let existingDeviations = dataPersistence.Load()
+        
+        let localDeviations =
+            existingDeviations
+            |> Array.map (fun x ->
+                match x with
+                | Data.Local x -> x
+                | _ -> ()
+            )
+            
+        let stashedDeviations =
+            existingDeviations
+            |> Array.map (fun x ->
+                match x with
+                | Data.Stashed x -> x
+                | _ -> ()
+            )
+            
+        let publishedDeviations =
+            existingDeviations
+            |> Array.map (fun x ->
+                match x with
+                | Data.Published x -> x
+                | _ -> ()
+            )
+            
+        let deviantArtDeviations = client.AllDeviations() |> getOrFail
+        
+        let newDeviantArtDeviations =
+            deviantArtDeviations
+            |> Array.filter (fun deviation ->
+                publishedDeviations |> Array.forall (fun known -> )
+            )
 
     [<EntryPoint>]
     let main args =
