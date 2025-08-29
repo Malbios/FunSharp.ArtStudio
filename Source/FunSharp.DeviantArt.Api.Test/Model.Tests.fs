@@ -25,7 +25,7 @@ module ``Model Tests`` =
             Feature = false
             AllowComments = true
             DisplayResolution = DisplayResolution.Original |> int
-            LicenseOptions = { CreativeCommons = true; Commercial = true; Modify = LicenseOptionsModify.Share }
+            LicenseOptions = { CreativeCommons = true; Commercial = true; Modify = "share" }
             Galleries = ["invalid-uuid"] |> Array.ofList
             AllowFreeDownload = true
             AddWatermark = false

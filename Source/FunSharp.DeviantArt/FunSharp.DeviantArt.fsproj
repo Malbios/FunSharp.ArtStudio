@@ -10,9 +10,7 @@
         <Content Include=".secrets">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
-        <Content Include="data.json">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
+        <EmbeddedResource Include="data.json" />
         <Compile Include="Persistence.fs" />
         <Compile Include="Program.fs"/>
     </ItemGroup>

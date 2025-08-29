@@ -2,6 +2,7 @@
 
 open System
 open System.IO
+open System.Reflection
 open Newtonsoft.Json
 open FunSharp.Common
 open FunSharp.DeviantArt
@@ -40,7 +41,22 @@ module Program =
     let stashUrl itemId =
         $"https://sta.sh/0{Base36.encode itemId}"
         
+    let resetLocalDeviations () =
+    
+        let asm = Assembly.GetExecutingAssembly()
+        use stream = asm.GetManifestResourceStream("DeviantArtApiClient.data.json")
+        if isNull stream then
+            let names = String.Join(", ", asm.GetManifestResourceNames())
+            printfn $"{names}"
+            failwithf "Resource '%s' not found" "data.json"
+        use reader = new StreamReader(stream)
+        reader.ReadToEnd()
+        |> fun x -> File.WriteAllText("data.json", x)
+        
     let readLocalDeviations () =
+        
+        if not (File.Exists "data.json") then
+            resetLocalDeviations ()
         
         File.ReadAllText "data.json"
         |> JsonConvert.DeserializeObject<DeviationMetadata array>
@@ -65,23 +81,23 @@ module Program =
         
     let stashNewDeviations (persistence: PickledPersistence<DeviationData, string>) (client: Client) =
         
-        let metadata = readLocalDeviations ()
+        let deviations = readLocalDeviations ()
         
-        for metadata in metadata do
-            if metadata.Inspiration = null then
+        for deviation in deviations do
+            if deviation.Inspiration = null then
                 failwith "Deviation Metadata: inspiration is empty!"
             
-            if metadata.Title = "" then
+            if deviation.Title = "" then
                 failwith "Deviation Metadata: title is empty!"
             
             let submission = {
                 StashSubmission.defaults with
-                    Title = metadata.Title
+                    Title = deviation.Title
             }
             
             let file : Http.File = {
                 MediaType = Some "image/png"
-                Content = File.ReadAllBytes metadata.FilePath
+                Content = File.ReadAllBytes deviation.FilePath
             }
             
             client.SubmitToStash(submission, file)
@@ -91,18 +107,20 @@ module Program =
                 | "success" ->
                     DeviationData.Stashed {
                         StashId = response.item_id
-                        Metadata = metadata
+                        Metadata = deviation
                     }
-                    |> fun x -> (metadata.FilePath, x)
+                    |> fun x -> (deviation.FilePath, x)
                     |> persistence.Insert
                     |> fun x ->
                         printfn $"success: {x}"
                         printfn $"URL: {stashUrl response.item_id}"
-                        printfn $"Inspired by {metadata.Inspiration}"
+                        printfn $"Inspired by {deviation.Inspiration}"
                         printfn ""
                     
                 | _ ->
-                    printfn $"Failed to stash {metadata.FilePath}"
+                    printfn $"Failed to stash {deviation.FilePath}"
+                    
+        resetLocalDeviations ()
         
     let publishNewDeviations (persistence: PickledPersistence<DeviationData, string>) (client: Client) =
         
