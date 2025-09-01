@@ -35,7 +35,7 @@ module AsyncResult =
         |> Async.bind (fun r ->
             match r with
             | Ok x -> Async.returnM x
-            | Error ex -> failwith ex.Message
+            | Error ex -> raise ex
         )
         
 module AsyncResultCE =

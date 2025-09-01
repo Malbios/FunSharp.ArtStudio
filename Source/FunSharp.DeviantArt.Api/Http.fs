@@ -5,7 +5,6 @@ open System.Collections.Generic
 open System.Net
 open System.Net.Http
 open System.Net.Http.Headers
-open System.Net.Http.Json
 open System.Threading.Tasks
 open Newtonsoft.Json
 open Suave
@@ -104,8 +103,13 @@ module Http =
         |> String.concat "\n"
         |> log
 
-    let private client = new HttpClient()
-
+    let private client =
+        let handler = new HttpClientHandler()
+        
+        handler.AutomaticDecompression <- DecompressionMethods.All
+        
+        new HttpClient(handler)
+        
     let updateAuthorization accessToken =
         
         client.DefaultRequestHeaders.Authorization <- AuthenticationHeaderValue("Bearer", accessToken)
@@ -159,6 +163,9 @@ module Http =
             logResponse response content payload
             
             response.EnsureSuccessStatusCode () |> ignore
+            
+            if content.Trim() = "" then
+                failwith "response content is empty"
             
             match apiError content with
             | Some error -> failwith $"{error}"

@@ -116,7 +116,10 @@ module Program =
                     |> fun x ->
                         printfn $"success: {x}"
                         printfn $"URL: {stashUrl response.item_id}"
-                        printfn $"Inspired by {deviation.Inspiration}"
+                        
+                        if deviation.Inspiration <> null then
+                            printfn $"Inspired by {deviation.Inspiration}"
+                        
                         printfn ""
                     
                 | _ ->

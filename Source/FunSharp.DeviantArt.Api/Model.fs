@@ -182,7 +182,6 @@ open Model
 
 [<RequireQualifiedAccess>]
 module StashSubmission =
-    open Model
     
     let defaults : StashSubmission = {
         Title = ""
@@ -198,7 +197,6 @@ module StashSubmission =
 
 [<RequireQualifiedAccess>]
 module StashPublication =
-    open Model
     
     let private modifyToString (modify: LicenseOptionsModify) =
         match modify with
@@ -306,7 +304,7 @@ module Token =
 [<RequireQualifiedAccess>]
 module AuthenticationData =
     
-    let fromTokenResponse (response: ApiResponses.Token) : Model.AuthenticationData = {
+    let fromTokenResponse (response: ApiResponses.Token) : AuthenticationData = {
         AccessToken = response.access_token
         RefreshToken = response.refresh_token
     }
