@@ -1,0 +1,3 @@
+[submodule "External/blazor-dragdrop"]
+	path = External/blazor-dragdrop
+	url = https://github.com/Malbios/blazor-dragdrop.git
