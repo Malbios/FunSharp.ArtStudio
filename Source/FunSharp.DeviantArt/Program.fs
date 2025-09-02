@@ -79,9 +79,18 @@ module Program =
         |> List.sortBy (fun x -> x.stats.views, x.stats.favourites, x.stats.comments)
         |> fun x -> File.WriteAllText ("deviations.json", JsonConvert.SerializeObject(x))
         
+    let inspirationAlreadyPublished (existingDeviations: DeviationData array) inspiration =
+        
+        existingDeviations |> Array.exists (fun x ->
+            match x with
+            | Published x -> x.Metadata.Inspiration = inspiration
+            | _ -> false
+        )
+        
     let stashNewDeviations (persistence: PickledPersistence<DeviationData, string>) (client: Client) =
         
         let deviations = readLocalDeviations ()
+        let existingDeviations = persistence.FindAll()
         
         for deviation in deviations do
             if not (File.Exists deviation.FilePath) then
@@ -89,6 +98,9 @@ module Program =
             
             if deviation.Title = "" then
                 failwith "[Deviation Metadata] Title is empty!"
+                
+            if deviation.Inspiration |> inspirationAlreadyPublished existingDeviations then
+                failwith $"Inspiration already published: {deviation.Inspiration}"
                 
             galleryId deviation.Gallery |> ignore
             
@@ -112,7 +124,7 @@ module Program =
                         Metadata = deviation
                     }
                     |> fun x -> (deviation.FilePath, x)
-                    |> persistence.Insert
+                    |> persistence.Upsert
                     |> fun x ->
                         printfn $"success: {x}"
                         printfn $"URL: {stashUrl response.item_id}"

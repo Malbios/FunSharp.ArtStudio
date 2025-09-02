@@ -1,0 +1,35 @@
+﻿namespace FunSharp.DeviantArt.Manager.Components
+
+open Bolero
+open Bolero.Html
+open FunSharp.DeviantArt.Manager.Model
+open Microsoft.AspNetCore.Components
+open Radzen.Blazor
+
+type ImagePreview() =
+    inherit Component()
+
+    [<Parameter>]
+    member val File: Application.UploadedFile = Application.UploadedFile.empty with get, set
+    
+    member this.TriggerReRender() =
+        
+        this.StateHasChanged()
+
+    override this.Render() =
+        div {
+            match this.File.PreviewUrl with
+            | url when url <> "" ->
+                img {
+                    attr.style "max-width: 200px; max-height: 200px;"
+                    attr.src url
+                }
+                
+            | _ ->
+                comp<RadzenProgressBarCircular> {
+                    attr.style "width: 100px;"
+                    
+                    "ShowValue" => false
+                    "Mode" => Radzen.ProgressBarMode.Indeterminate
+                }
+        }
