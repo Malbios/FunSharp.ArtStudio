@@ -59,7 +59,7 @@ module Program =
             resetLocalDeviations ()
         
         File.ReadAllText "data.json"
-        |> JsonConvert.DeserializeObject<DeviationMetadata array>
+        |> JsonConvert.DeserializeObject<LocalDeviation array>
     
     let getOrFail callResult =
         
@@ -96,17 +96,17 @@ module Program =
             if not (File.Exists deviation.FilePath) then
                 failwith $"[Deviation Metadata] File does not exist: {deviation.FilePath}"
             
-            if deviation.Title = "" then
+            if deviation.Metadata.Title = "" then
                 failwith "[Deviation Metadata] Title is empty!"
                 
-            if deviation.Inspiration |> inspirationAlreadyPublished existingDeviations then
-                failwith $"Inspiration already published: {deviation.Inspiration}"
+            if deviation.Metadata.Inspiration |> inspirationAlreadyPublished existingDeviations then
+                failwith $"Inspiration already published: {deviation.Metadata.Inspiration}"
                 
-            galleryId deviation.Gallery |> ignore
+            galleryId deviation.Metadata.Gallery |> ignore
             
             let submission = {
-                StashSubmission.defaults with
-                    Title = deviation.Title
+                StashSubmission.empty with
+                    Title = deviation.Metadata.Title
             }
             
             let file : Http.File = {
@@ -121,7 +121,7 @@ module Program =
                 | "success" ->
                     DeviationData.Stashed {
                         StashId = response.item_id
-                        Metadata = deviation
+                        Metadata = deviation.Metadata
                     }
                     |> fun x -> (deviation.FilePath, x)
                     |> persistence.Upsert
@@ -129,8 +129,9 @@ module Program =
                         printfn $"success: {x}"
                         printfn $"URL: {stashUrl response.item_id}"
                         
-                        if deviation.Inspiration <> null then
-                            printfn $"Inspired by {deviation.Inspiration}"
+                        match deviation.Metadata.Inspiration with
+                        | Some v -> printfn $"Inspired by {v}"
+                        | None -> ()
                         
                         printfn ""
                     
@@ -165,7 +166,7 @@ module Program =
                         Url = Uri response.url
                         Metadata = deviation.Metadata
                     }
-                    |> fun x -> (deviation.Metadata.FilePath, x)
+                    |> fun x -> (deviation.StashId.ToString(), x)
                     |> persistence.Update
                     |> fun x ->
                         printfn $"success: {x}"
@@ -173,7 +174,7 @@ module Program =
                         printfn ""
                     
                 | _ ->
-                    printfn $"Failed to publish {deviation.Metadata.FilePath}"
+                    printfn $"Failed to publish {deviation.StashId}"
                     
     [<EntryPoint>]
     let main args =

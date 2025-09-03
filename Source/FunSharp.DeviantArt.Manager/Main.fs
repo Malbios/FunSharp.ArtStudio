@@ -1,5 +1,6 @@
 module FunSharp.DeviantArt.Manager.Main
 
+open FunSharp.DeviantArt.Manager.Model.Application
 open Microsoft.AspNetCore.Components
 open Microsoft.Extensions.Logging
 open Elmish
@@ -8,12 +9,15 @@ open FunSharp.DeviantArt.Manager.Model
 open FunSharp.DeviantArt.Manager.View
 
 type ClientApplication() =
-    inherit ProgramComponent<Application.State, Application.Message>()
+    inherit ProgramComponent<State, Message>()
 
-    override _.CssScope = CssScopes.MyApp
+    override _.CssScope = CssScopes.``FunSharp.DeviantArt.Manager``
     
     [<Inject>]
     member val Logger : ILogger<ClientApplication> = Unchecked.defaultof<_> with get, set
+    
+    [<Inject>]
+    member val IndexedDatabase = Unchecked.defaultof<IndexedDb> with get, set
     
     override this.OnInitialized() =
         
@@ -23,13 +27,13 @@ type ClientApplication() =
 
     override this.Program =
         
-        let initialState _ = Application.State.initial, Cmd.none
+        let initialState _ = State.empty, Cmd.ofMsg Message.LoadDeviations
         
-        let update = Update.update this.Logger
+        let update = Update.update this.Logger this.IndexedDatabase
         
         let page (model: Application.State) = model.Page
 
-        let router = Router.infer Application.Message.SetPage page |> Router.withNotFound Page.NotFound
+        let router = Router.infer Message.SetPage page |> Router.withNotFound Page.NotFound
             
         this.Logger.LogInformation $"Serving client application from '{this.NavigationManager.BaseUri.TrimEnd('/')}'"
         

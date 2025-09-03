@@ -1,80 +1,45 @@
 <!DOCTYPE html>
-<html lang="en-US">
+<html lang="en">
   <head>
-    <meta charset="UTF-8">
+  
+    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  
     <title>DeviantArt Manager</title>
-    
-    <base href="/">
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.4/css/bulma.min.css">
-    <link rel="stylesheet" href="css/index.css">
-    
-    <link href="manifest.json" rel="manifest" />
+  
+    <base href="/" />
+  
+    <link rel="shortcut icon" href="assets/favicon.ico" />
+  
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  
+    <!--suppress HtmlUnknownTarget -->
+    <link rel="stylesheet" href="_content/Radzen.Blazor/css/material-base.css" />
+  
+    <link rel="stylesheet" href="css/index.css" />
+  
+    <!--suppress HtmlUnknownTarget -->
+    <link rel="stylesheet" href="FunSharp.DeviantArt.Manager.styles.css" />
+  
+    <link rel="manifest" href="manifest.json" />
     <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
+  
+    <!--suppress HtmlUnknownTarget -->
+    <script src="_content/Radzen.Blazor/Radzen.Blazor.js?v=7.1.2.0"></script>
+  
   </head>
   <body>
-    <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
-      <div class="navbar-brand">
-        <a class="navbar-item has-text-weight-bold is-size-5" href="https://fsbolero.io">
-          <img style="height:40px" src="https://github.com/fsbolero/website/raw/master/src/Website/img/wasm-fsharp.png" />
-          &nbsp;
-          Bolero
-        </a>
+  
+    <div id="main">
+      <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+        Loading...
       </div>
-    </nav>
-    <div id="main">Loading...</div>
+    </div>
+    
     <!--suppress HtmlUnknownTarget -->
     <script src="_framework/blazor.webassembly.js"></script>
+    
     <script>navigator.serviceWorker.register('service-worker.js');</script>
+  
   </body>
-</html>
-
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <title>DeviantArt Manager</title>
-
-  <base href="/" />
-
-  <link rel="shortcut icon" href="assets/favicon.ico" />
-
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
-
-  <!--suppress HtmlUnknownTarget -->
-  <link rel="stylesheet" href="_content/Radzen.Blazor/css/material-base.css" />
-
-  <link rel="stylesheet" href="css/global.css" />
-  <link rel="stylesheet" href="css/DropZone.css" />
-
-  <!--suppress HtmlUnknownTarget -->
-  <link rel="stylesheet" href="LoreBuilder.styles.css" />
-
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" sizes="512x512" href="assets/icon-512.png" />
-
-  <!--suppress HtmlUnknownTarget -->
-  <script src="_content/Radzen.Blazor/Radzen.Blazor.js?v=7.1.2.0"></script>
-
-</head>
-<body>
-
-<div id="main">
-  <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
-    Loading...
-  </div>
-</div>
-
-<!--suppress HtmlUnknownTarget -->
-<script src="_framework/blazor.webassembly.js"></script>
-
-<script>navigator.serviceWorker.register('service-worker.js');</script>
-
-</body>
 </html>

@@ -157,11 +157,15 @@ module Model =
     }
     
     type DeviationMetadata = {
-        FilePath: string
-        Inspiration: Uri
+        Inspiration: Uri option
         Title: string
         Gallery: string
         IsMature: bool
+    }
+    
+    type LocalDeviation = {
+        FilePath: string
+        Metadata: DeviationMetadata
     }
     
     type StashedDeviation = {
@@ -181,9 +185,19 @@ module Model =
 open Model
 
 [<RequireQualifiedAccess>]
+module DeviationMetadata =
+    
+    let empty = {
+        Inspiration = None
+        Title = ""
+        Gallery = ""
+        IsMature = false
+    }
+
+[<RequireQualifiedAccess>]
 module StashSubmission =
     
-    let defaults : StashSubmission = {
+    let empty : StashSubmission = {
         Title = ""
         NoAi = false
         IsAiGenerated = true

@@ -26,10 +26,5 @@ type ImagePreview() =
                 }
                 
             | _ ->
-                comp<RadzenProgressBarCircular> {
-                    attr.style "width: 100px;"
-                    
-                    "ShowValue" => false
-                    "Mode" => Radzen.ProgressBarMode.Indeterminate
-                }
+                LoadingWidget.render ()
         }

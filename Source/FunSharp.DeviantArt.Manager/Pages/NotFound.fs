@@ -7,7 +7,7 @@ open Radzen.Blazor
 type NotFound() =
     inherit Component()
     
-    override _.CssScope = CssScopes.MyApp
+    override _.CssScope = CssScopes.``FunSharp.DeviantArt.Manager``
     
     override this.Render() =
         

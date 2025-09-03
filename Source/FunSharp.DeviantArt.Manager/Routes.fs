@@ -5,4 +5,4 @@ open Bolero
 type Page =
     | [<EndPoint "/">] Home
     | [<EndPoint "/not-found">] NotFound
-    | [<EndPoint "/test">] Test
+    | [<EndPoint "/settings">] Settings

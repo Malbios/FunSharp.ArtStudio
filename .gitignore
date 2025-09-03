@@ -5,6 +5,7 @@
 
 Source/FunSharp.DeviantArt/.secrets
 Source/FunSharp.DeviantArt.Api.Test/.secrets
+Source/FunSharp.DeviantArt.Authenticator/.secrets
 Source/FunSharp.DeviantArt/data.json
 
 *.orig

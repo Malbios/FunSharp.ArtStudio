@@ -6,8 +6,8 @@ open Radzen.Blazor
 
 module View =
     
-    let view (model: Application.State) _ =
-    
+    let view (model: Application.State) dispatch =
+        
         concat {
             comp<RadzenComponents>
     
@@ -16,8 +16,8 @@ module View =
                 
                 cond model.Page
                 <| function
-                    | Page.Home -> comp<Pages.Home> { attr.empty() }
+                    | Page.Home -> ecomp<Pages.Home,_,_> model dispatch { attr.empty() }
                     | Page.NotFound -> comp<Pages.NotFound> { attr.empty() }
-                    | Page.Test -> comp<Pages.Test> { attr.empty() }
+                    | Page.Settings -> ecomp<Pages.Settings,_,_> model dispatch { attr.empty() }
             }
         }

@@ -1,7 +1,7 @@
 namespace FunSharp.DeviantArt.Manager
 
-open Blazored.LocalStorage
 open Microsoft.AspNetCore.Components.WebAssembly.Hosting
+open Microsoft.Extensions.DependencyInjection
 open Radzen
 
 module Program =
@@ -13,9 +13,9 @@ module Program =
         builder.RootComponents.Add<Main.ClientApplication>("#main")
         
         builder.Services
-            .AddBlazoredLocalStorage()
             .AddRadzenComponents()
-            |> ignore
+            .AddScoped<IndexedDb>()
+        |> ignore
         
         builder.Build().RunAsync() |> ignore
         
