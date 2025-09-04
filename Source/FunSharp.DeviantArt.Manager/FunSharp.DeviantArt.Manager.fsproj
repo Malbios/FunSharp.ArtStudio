@@ -28,6 +28,7 @@
       <Compile Include="Components\DropDown.fs" />
       <Compile Include="Components\FileInput.fs" />
       <Compile Include="Components\Button.fs" />
+      <Compile Include="Components\UploadedFile.fs" />
       <Compile Include="Pages\Home.fs" />
       <Compile Include="Pages\NotFound.fs" />
       <Compile Include="View.fs" />

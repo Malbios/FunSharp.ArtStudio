@@ -1,7 +1,5 @@
 ﻿namespace FunSharp.DeviantArt.Manager
 
-open FunSharp.DeviantArt.Api
-open FunSharp.DeviantArt.Api.Model
 open Microsoft.JSInterop
 
 type IndexedDb(js: IJSRuntime) =
@@ -33,9 +31,9 @@ type IndexedDb(js: IJSRuntime) =
         return v
     }
     
-    member this.GetAll<'T>(storeName: string) = async {
+    member this.GetAll<'id, 'value>(storeName: string) = async {
         let! m = this.GetModule()
-        let! items = m.InvokeAsync<'T array>("getAll", storeName).AsTask() |> Async.AwaitTask
+        let! items = m.InvokeAsync<('id * 'value) array>("getAll", storeName).AsTask() |> Async.AwaitTask
         return items
     }
 

@@ -1,13 +1,12 @@
 ﻿namespace FunSharp.DeviantArt.Manager.Pages
 
-open Microsoft.AspNetCore.Components.Forms
-open System
 open Bolero
 open Bolero.Html
+open Bolero.Html.attr
+open FunSharp.DeviantArt.Manager
+open Microsoft.AspNetCore.Components.Forms
 open Radzen
 open Radzen.Blazor
-open FunSharp.Common
-open FunSharp.DeviantArt.Manager.Common
 open FunSharp.DeviantArt.Manager.Components
 open FunSharp.DeviantArt.Manager.Model
 
@@ -22,20 +21,6 @@ type Home() =
         oldModel.UploadedFiles <> newModel.UploadedFiles
         
     override this.View model dispatch =
-            
-        let updateInspiration file (newValue: string) =
-            let newValue =
-                match newValue with
-                | v when v.Trim() = "" -> None
-                | v -> Uri v |> Some
-            
-            Message.UpdateUploadedFile { file with Metadata.Inspiration = newValue } |> dispatch
-            
-        let updateTitle file (newValue: string) =
-            Message.UpdateUploadedFile { file with Metadata.Title = newValue } |> dispatch
-            
-        let updateGallery file (newValue: string) =
-            Message.UpdateUploadedFile { file with Metadata.Gallery = newValue } |> dispatch
         
         let uploadFiles (args: InputFileChangeEventArgs) =
             args.GetMultipleFiles(args.FileCount)
@@ -47,7 +32,7 @@ type Home() =
             attr.``class`` "center-wrapper"
             
             comp<RadzenStack> {
-                attr.style "height: 100%"
+                style "height: 100%"
 
                 "JustifyContent" => JustifyContent.Center
                 "AlignItems" => AlignItems.Center
@@ -64,43 +49,18 @@ type Home() =
                         "AlignItems" => AlignItems.Center
                         
                         for file in model.UploadedFiles do
-                            comp<RadzenStack> {
-                                attr.style "margin: 0.25rem; padding: 0.5rem; border: 2px solid gray; border-radius: 8px; max-width: 700px;"
-                                
-                                "Orientation" => Orientation.Horizontal
-                                "JustifyContent" => JustifyContent.Center
-                                "AlignItems" => AlignItems.Center
-                                
-                                comp<ImagePreview> {
-                                    "File" => file
-                                }
-                                
-                                comp<RadzenStack> {
-                                    "Orientation" => Orientation.Vertical
-                                    
-                                    div { text $"{file.FileName}" }
-                                    
-                                    file.Metadata.Inspiration
-                                    |> Option.map _.ToString()
-                                    |> Option.defaultValue ""
-                                    |> TextInput.render (updateInspiration file) "Enter inspiration URL..."
-                                    
-                                    file.Metadata.Title
-                                    |> TextInput.render (updateTitle file) "Enter title..."
-                                    
-                                    file.Metadata.Gallery
-                                    |> DropDown.render (updateGallery file) "Gallery" "Select gallery..." (Union.asStrings<ImageType>())
-                                    
-                                    comp<RadzenStack> {
-                                        "Orientation" => Orientation.Horizontal
-                                        "JustifyContent" => JustifyContent.Center
-                                        "AlignItems" => AlignItems.Center
-                                        
-                                        Button.render this (fun () -> dispatch (Message.SaveUploadedFile file)) "Save"
-                                        Button.render this (fun () -> dispatch (Message.Stash file)) "Stash"
-                                    }
-                                }
-                            }
+                            UploadedFile.render this dispatch file
                     }
+                    
+                    for file in model.StashedDeviations do
+                        
+                        let inspiration = file.Metadata.Inspiration |> Option.map _.ToString() |> Option.defaultValue ""
+                        
+                        div {
+                            style "padding: 2rem; border: 2px solid gray; border-radius: 8px;"
+                            
+                            a { href $"{Helpers.stashUrl file.StashId}" }
+                            text $"Inspired by {inspiration}"
+                        }
             }
         }

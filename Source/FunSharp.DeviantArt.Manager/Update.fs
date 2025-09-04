@@ -67,10 +67,14 @@ module Update =
         logger.LogInformation $"loading deviations from {storeName}..."
         
         initDatabase database
+        |> Async.catch
+        |> AsyncResult.getOrFail
         |> Async.bind (fun () ->
-            database.GetAll<DbItem>(storeName)
-            |> Async.map (fun x -> x |> Array.map (fun x -> pickler.UnPickle<'T> x.Value))
+            database.GetAll<string, byte array>(storeName)
+            |> Async.map (fun x -> x |> Array.map (fun (_, value) -> pickler.UnPickle<'T> value))
         )
+        |> Async.catch
+        |> AsyncResult.getOrFail
     
     let private loadLocalDeviations logger database =
         loadDeviations<UploadedFile> logger database Common.dbKey_LocalDeviations
@@ -81,28 +85,25 @@ module Update =
     let private loadPublishedDeviations logger database =
         loadDeviations<PublishedDeviation> logger database Common.dbKey_PublishedDeviations
         
-    let private saveDeviation<'T> (logger: ILogger) (database: IndexedDb) storeName key (value: 'T) =
+    let private saveItem<'T> (logger: ILogger) (database: IndexedDb) storeName key (value: 'T) =
         
         logger.LogInformation $"saving deviation to '{storeName}': {key}"
         
-        let dbItem = {
-            Id = key
-            Value = pickler.Pickle value
-        }
+        let value = pickler.Pickle value
         
         initDatabase database
         |> Async.bind (fun () ->
-            database.Set(storeName, key, dbItem)
+            database.Set(storeName, key, value)
         )
         
-    let private saveLocalDeviation logger database key =
-        saveDeviation logger database Common.dbKey_LocalDeviations key
+    let private saveLocalDeviation logger database key (value: UploadedFile) =
+        saveItem logger database Common.dbKey_LocalDeviations key value
         
-    let private saveStashedDeviation logger database key =
-        saveDeviation logger database Common.dbKey_StashedDeviations key
+    let private saveStashedDeviation logger database key (value: StashedDeviation) =
+        saveItem logger database Common.dbKey_StashedDeviations key value
         
-    let private savePublishedDeviations logger database key =
-        saveDeviation logger database Common.dbKey_PublishedDeviations key
+    let private savePublishedDeviations logger database key (value: StashedDeviation) =
+        saveItem logger database Common.dbKey_PublishedDeviations key value
         
     let private deleteDeviation<'T> (logger: ILogger) (database: IndexedDb) storeName key =
         

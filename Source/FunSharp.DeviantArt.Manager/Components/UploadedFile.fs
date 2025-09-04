@@ -1,0 +1,66 @@
+﻿namespace FunSharp.DeviantArt.Manager.Components
+
+open System
+open Bolero.Html
+open FunSharp.Common
+open FunSharp.DeviantArt.Manager.Common
+open FunSharp.DeviantArt.Manager.Model
+open Radzen
+open Radzen.Blazor
+
+[<RequireQualifiedAccess>]
+module UploadedFile =
+            
+    let private updateInspiration dispatch file (newValue: string) =
+        let newValue =
+            match newValue with
+            | v when v.Trim() = "" -> None
+            | v -> Uri v |> Some
+        
+        Message.UpdateUploadedFile { file with Metadata.Inspiration = newValue } |> dispatch
+        
+    let private updateTitle dispatch file (newValue: string) =
+        Message.UpdateUploadedFile { file with Metadata.Title = newValue } |> dispatch
+        
+    let private updateGallery dispatch file (newValue: string) =
+        Message.UpdateUploadedFile { file with Metadata.Gallery = newValue } |> dispatch
+    
+    let render parent dispatch (file: UploadedFile) =
+        
+        comp<RadzenStack> {
+            attr.style "margin: 0.25rem; padding: 0.5rem; border: 2px solid gray; border-radius: 8px; max-width: 700px;"
+            
+            "Orientation" => Orientation.Horizontal
+            "JustifyContent" => JustifyContent.Center
+            "AlignItems" => AlignItems.Center
+            
+            comp<ImagePreview> {
+                "File" => file
+            }
+            
+            comp<RadzenStack> {
+                "Orientation" => Orientation.Vertical
+                
+                div { text $"{file.FileName}" }
+                
+                file.Metadata.Inspiration
+                |> Option.map _.ToString()
+                |> Option.defaultValue ""
+                |> TextInput.render (updateInspiration dispatch file) "Enter inspiration URL..."
+                
+                file.Metadata.Title
+                |> TextInput.render (updateTitle dispatch file) "Enter title..."
+                
+                file.Metadata.Gallery
+                |> DropDown.render (updateGallery dispatch file) "Gallery" "Select gallery..." (Union.asStrings<ImageType>())
+                
+                comp<RadzenStack> {
+                    "Orientation" => Orientation.Horizontal
+                    "JustifyContent" => JustifyContent.Center
+                    "AlignItems" => AlignItems.Center
+                    
+                    Button.render parent (fun () -> dispatch (Message.SaveUploadedFile file)) "Save"
+                    Button.render parent (fun () -> dispatch (Message.Stash file)) "Stash"
+                }
+            }
+        }
