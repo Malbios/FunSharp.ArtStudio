@@ -1,57 +1,51 @@
-﻿namespace FunSharp.DeviantArt
+﻿namespace FunSharp.Data
 
 open LiteDB
 open MBrace.FsPickler
 
-type PickledPersistence<'T, 'Id when 'T : not struct and 'T : equality and 'T: not null>
-    (databaseFilePath: string, collectionName: string) =
+type PickledPersistence(databaseFilePath: string) =
     
     let pickler = FsPickler.CreateBinarySerializer()
-    let persistence = LiteDbPersistence<BsonDocument, 'Id>(databaseFilePath, collectionName)
+    let persistence = LiteDbPersistence<string, BsonDocument>(databaseFilePath)
     
-    let doc (value: 'T) =
+    let asBsonDocument (value: 'Value) =
         let doc = BsonDocument()
         doc["data"] <- pickler.Pickle value
         doc
         
-    let value (doc: BsonDocument) =
+    let asValue (doc: BsonDocument) =
         pickler.UnPickle<'T> doc["data"]
     
-    member _.Insert(id: 'Id, value: 'T) =
+    member _.Insert<'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
+        (collectionName, key: string, value: 'Value) =
+            persistence.Insert(collectionName, key, asBsonDocument value)
         
-        persistence.Insert(id, doc value)
+    member _.Update<'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
+        (collectionName, key: string, value: 'Value) =
+            persistence.Update(collectionName, key, asBsonDocument value)
         
-    member _.Update(id: 'Id, value: 'T) =
+    member _.Upsert<'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
+        (collectionName, key: string, value: 'Value) =
+            persistence.Upsert(collectionName, key, asBsonDocument value)
         
-        persistence.Update(id, doc value)
+    member _.Find<'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
+        (collectionName, key: string) : 'Value option =
+            persistence.Find(collectionName, key) |> Option.map asValue
         
-    member _.Upsert(id: 'Id, value: 'T) =
+    member _.Delete(collectionName, key: string) =
+        persistence.Delete(collectionName, key)
         
-        persistence.Upsert(id, doc value)
-        
-    member _.Find(id: 'Id) =
-        
-        persistence.Find(id) |> function
-            | Some x -> value x |> Some
-            | None -> None
-        
-    member _.Delete(id: 'Id) =
-        
-        persistence.Delete(id)
-        
-    member _.FindAll() =
-        
-        persistence.FindAll() |> Seq.toArray |> Array.map value
+    member _.FindAll<'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
+        collectionName : 'Value array =
+            persistence.FindAll(collectionName) |> Seq.toArray |> Array.map asValue
 
-type PickledSinglePersistence<'T when 'T : not struct and 'T : equality and 'T: not null>
+type PickledSinglePersistence<'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
     (databaseFilePath: string, key: string) =
     
-    let persistence = PickledPersistence<'T, string>(databaseFilePath, key)
+    let persistence = PickledPersistence(databaseFilePath)
         
-    member _.Upsert(value: 'T) =
-        
-        persistence.Upsert(key, value)
+    member _.Upsert(value: 'Value) =
+        persistence.Upsert(key, key, value)
         
     member _.Find() =
-        
-        persistence.Find(key)
+        persistence.Find(key, key)

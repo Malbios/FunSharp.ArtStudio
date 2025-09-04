@@ -17,9 +17,6 @@ type ClientApplication() =
     member val Logger : ILogger<ClientApplication> = Unchecked.defaultof<_> with get, set
     
     [<Inject>]
-    member val IndexedDatabase = Unchecked.defaultof<IndexedDb> with get, set
-    
-    [<Inject>]
     member val HttpClient = Unchecked.defaultof<HttpClient> with get, set
     
     override this.OnInitialized() =
@@ -32,7 +29,7 @@ type ClientApplication() =
         
         let initialState _ = State.empty, Cmd.ofMsg Message.LoadDeviations
         
-        let update = Update.update this.Logger this.IndexedDatabase this.HttpClient
+        let update = Update.update this.Logger this.HttpClient
         
         let page (model: Model.State) = model.Page
 

@@ -1,4 +1,4 @@
-﻿namespace FunSharp.DeviantArt
+﻿namespace FunSharp.Data
 
 open System
 open System.Linq.Expressions

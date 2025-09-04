@@ -166,7 +166,7 @@ module Update =
         |> AsyncResult.getOrFail
         |> Async.bind (fun response -> processStashSubmission file response)
     
-    let update (logger: ILogger) (database: IndexedDb) (client: HttpClient) message (model: Model.State) =
+    let update (logger: ILogger) (client: HttpClient) message (model: Model.State) =
     
         match message with
         

@@ -1,6 +1,7 @@
 ﻿namespace FunSharp.DeviantArt.Server
 
 open System.IO
+open FunSharp.Data
 open Suave
 open Suave.Filters
 open Suave.Operators
@@ -14,6 +15,7 @@ module Program =
     
     let secrets = Secrets.load ()
     let authPersistence = Persistence.AuthenticationPersistence()
+    let dataPersistence = PickledPersistence("persistence.db")
     let client = Client(authPersistence, secrets.client_id, secrets.client_secret)
     
     let readAllBytesAsync (path: string) : Async<byte[]> = async {

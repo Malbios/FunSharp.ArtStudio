@@ -4,12 +4,6 @@ open FunSharp.Common
 
 [<RequireQualifiedAccess>]
 module Helpers =
-    type Gallery =
-        | Featured
-        | Caricatures
-        | Spicy
-        | Scenery
-        | RandomPile
         
     let galleries =
         [

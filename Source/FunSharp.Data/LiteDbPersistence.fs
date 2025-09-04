@@ -1,40 +1,34 @@
-﻿namespace FunSharp.DeviantArt
+﻿namespace FunSharp.Data
 
 open LiteDB
 
-type LiteDbPersistence<'T, 'Id when 'T : not struct and 'T : equality and 'T: not null>
-    (databaseFilePath: string, collectionName: string) =
+type LiteDbPersistence<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value : not null>
+    (databaseFilePath: string) =
     
     let mapper = FSharpBsonMapper()
     
-    do mapper.EnsureRecord<'T>() |> ignore
+    do mapper.EnsureRecord<'Value>() |> ignore
 
-    let withCollection f =
+    let withCollection (collectionName: string) f =
         
         use db = new LiteDatabase(databaseFilePath, mapper)
         let collection = db.GetCollection<'T>(collectionName)
         f collection
     
-    member _.Insert (id: 'Id, item: 'T) =
+    member _.Insert(collectionName, key: 'Key, value: 'Value) =
+        withCollection collectionName _.Insert(BsonValue(key), value)
         
-        withCollection _.Insert(BsonValue(id), item)
+    member _.Update(collectionName, key: 'Key, value: 'Value) =
+        withCollection collectionName _.Update(BsonValue(key), value)
         
-    member _.Update (id: 'Id, item: 'T) =
+    member _.Upsert(collectionName, key: 'Key, value: 'Value) =
+        withCollection collectionName _.Upsert(BsonValue(key), value)
         
-        withCollection _.Update(BsonValue(id), item)
+    member _.Find(collectionName, key: 'Key) : 'Value option =
+        withCollection collectionName (fun collection -> collection.FindById(BsonValue(key)) |> Option.ofObj)
         
-    member _.Upsert (id: 'Id, item: 'T) =
+    member _.Delete(collectionName, key: 'Key) =
+        withCollection collectionName _.Delete(BsonValue(key))
         
-        withCollection _.Upsert(BsonValue(id), item)
-        
-    member _.Find (id: 'Id) =
-        
-        withCollection (fun collection -> collection.FindById(BsonValue(id)) |> Option.ofObj)
-        
-    member _.Delete (id: 'Id) =
-        
-        withCollection _.Delete(BsonValue(id))
-        
-    member _.FindAll () =
-        
-        withCollection (fun collection -> collection.FindAll() |> Seq.toArray)
+    member _.FindAll(collectionName) : 'Value array =
+        withCollection collectionName (fun collection -> collection.FindAll() |> Seq.toArray)
