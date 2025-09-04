@@ -2,7 +2,7 @@
 
 open System
 open System.IO
-open FunSharp.DeviantArt
+open FunSharp.Data
 open Xunit
 open Faqt
 open Faqt.Operators
@@ -17,20 +17,19 @@ type TestModel = {
 [<Trait("Category", "Standard")>]
 module ``LiteDbPersistence Tests`` =
     
-    let createPersistence<'T, 'Id when 'T : not struct and 'T : equality and 'T: not null>
-        (databaseFilePath: string, collectionName: string) =
+    let createPersistence(databaseFilePath: string) =
         
         if File.Exists databaseFilePath then File.Delete databaseFilePath
-        LiteDbPersistence<'T, 'Id>(databaseFilePath, collectionName)
+        LiteDbPersistence(databaseFilePath)
     
     [<Fact>]
     let ``FindAll() for new database should return no items`` () =
     
         // Arrange
-        let persistence = createPersistence<TestModel, Guid>("test.db", "test")
+        let persistence = createPersistence("test.db")
         
         // Act
-        let result = persistence.FindAll()
+        let result = persistence.FindAll("test")
         
         // Assert
         %result.Should().BeEmpty()
@@ -46,12 +45,12 @@ module ``LiteDbPersistence Tests`` =
             Timestamp = DateTimeOffset(2023, 12, 25, 15, 30, 0, TimeSpan.FromHours(-5.0))
         }
         
-        let persistence = createPersistence<TestModel, Guid>("test.db", "test")
+        let persistence = createPersistence("test.db")
         
-        %persistence.Insert(testItem.Id, testItem)
+        %persistence.Insert("test", testItem.Id, testItem)
         
         // Act
-        let result = persistence.Find(testItem.Id)
+        let result = persistence.Find("test", testItem.Id)
         
         // Assert
         %result.Should().BeSome()
@@ -68,12 +67,12 @@ module ``LiteDbPersistence Tests`` =
             Timestamp = DateTimeOffset(2023, 12, 25, 15, 30, 0, TimeSpan.FromHours(-5.0))
         }
         
-        let persistence = createPersistence<TestModel, Guid>("test.db", "test")
+        let persistence = createPersistence("test.db")
         
-        %persistence.Upsert(testItem.Id, testItem)
+        %persistence.Upsert("test", testItem.Id, testItem)
         
         // Act
-        let result = persistence.FindAll()
+        let result = persistence.FindAll("test")
         
         // Assert
         %result.Should().HaveLength(1)

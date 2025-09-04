@@ -156,48 +156,55 @@ module Model =
         ItemId: int64
     }
     
-    type DeviationMetadata = {
-        Inspiration: Uri option
+    type Image(fileName: string, mimeType: string, fileContent: byte array) =
+        
+        member val FileName = fileName with get
+        
+        member val MimeType = mimeType with get
+        
+        member val FileContent = fileContent with get
+        
+        member _.AsUrl() =
+            match mimeType, fileContent with
+            | mime, content when mime = "" || content.Length = 0 -> ""
+            | mime, content -> $"data:{mime};base64,{Convert.ToBase64String(content)}"
+    
+    type Inspiration = {
+        Url: Uri
+        Image: Image
+    }
+    
+    type Prompt = {
+        Text: string
+        Inspiration: Inspiration option
+    }
+    
+    type Metadata = {
+        Inspiration: Inspiration option
+        Image: Image
         Title: string
         Gallery: string
         IsMature: bool
     }
     
-    type LocalDeviation = {
-        FilePath: string
-        Metadata: DeviationMetadata
-    }
+    type LocalDeviation = Metadata
     
     type StashedDeviation = {
         StashId: int64
-        Metadata: DeviationMetadata
+        Metadata: Metadata
     }
     
     type PublishedDeviation = {
         Url: Uri
-        Metadata: DeviationMetadata
+        Metadata: Metadata
     }
-    
-    type DeviationData =
-        | Stashed of StashedDeviation
-        | Published of PublishedDeviation
 
 open Model
 
 [<RequireQualifiedAccess>]
-module DeviationMetadata =
-    
-    let empty = {
-        Inspiration = None
-        Title = ""
-        Gallery = ""
-        IsMature = false
-    }
-
-[<RequireQualifiedAccess>]
 module StashSubmission =
     
-    let empty : StashSubmission = {
+    let defaults : StashSubmission = {
         Title = ""
         NoAi = false
         IsAiGenerated = true
@@ -304,38 +311,9 @@ module ApiResponses =
     }
 
 [<RequireQualifiedAccess>]
-module Token =
-
-    let empty : ApiResponses.Token = {
-        access_token = ""
-        token_type = ""
-        expires_in = -1
-        refresh_token = ""
-        scope = ""
-        status = ""
-    }
-
-[<RequireQualifiedAccess>]
 module AuthenticationData =
     
     let fromTokenResponse (response: ApiResponses.Token) : AuthenticationData = {
         AccessToken = response.access_token
         RefreshToken = response.refresh_token
-    }
-
-[<RequireQualifiedAccess>]
-module Gallery =
-    
-    let empty : ApiResponses.Gallery = {
-        has_more = false
-        next_offset = None
-        results = Array.empty
-    }
-
-[<RequireQualifiedAccess>]
-module Metadata =
-    
-    let empty : ApiResponses.Metadata = {
-        description = ""
-        stats = None
     }

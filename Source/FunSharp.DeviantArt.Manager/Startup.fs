@@ -14,7 +14,6 @@ module Program =
         
         builder.Services
             .AddRadzenComponents()
-            .AddScoped<IndexedDb>()
             .AddHttpClient()
         |> ignore
         

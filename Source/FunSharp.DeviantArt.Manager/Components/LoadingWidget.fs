@@ -1,6 +1,5 @@
 ﻿namespace FunSharp.DeviantArt.Manager.Components
 
-open System
 open Bolero.Html
 open Radzen
 open Radzen.Blazor

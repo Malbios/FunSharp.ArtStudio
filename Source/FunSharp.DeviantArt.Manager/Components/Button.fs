@@ -2,10 +2,8 @@
 
 open Bolero.Html
 open Microsoft.AspNetCore.Components
-open Microsoft.AspNetCore.Components.Forms
 open Microsoft.AspNetCore.Components.Web
 open Radzen.Blazor
-open Toolbelt.Blazor.FileDropZone
 
 [<RequireQualifiedAccess>]
 module Button =

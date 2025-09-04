@@ -2,12 +2,9 @@
 
 open LiteDB
 
-type LiteDbPersistence<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value : not null>
-    (databaseFilePath: string) =
+type LiteDbPersistence(databaseFilePath: string) =
     
     let mapper = FSharpBsonMapper()
-    
-    do mapper.EnsureRecord<'Value>() |> ignore
 
     let withCollection (collectionName: string) f =
         
@@ -15,20 +12,31 @@ type LiteDbPersistence<'Key, 'Value when 'Value : not struct and 'Value : equali
         let collection = db.GetCollection<'T>(collectionName)
         f collection
     
-    member _.Insert(collectionName, key: 'Key, value: 'Value) =
-        withCollection collectionName _.Insert(BsonValue(key), value)
+    member _.Insert<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value : not null>
+        (collectionName, key: 'Key, value: 'Value) =
+            
+            mapper.EnsureRecord<'Value>() |> ignore
+            withCollection collectionName _.Insert(BsonValue(key), value)
         
-    member _.Update(collectionName, key: 'Key, value: 'Value) =
-        withCollection collectionName _.Update(BsonValue(key), value)
+    member _.Update<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value : not null>
+        (collectionName, key: 'Key, value: 'Value) =
+            mapper.EnsureRecord<'Value>() |> ignore
+            withCollection collectionName _.Update(BsonValue(key), value)
         
-    member _.Upsert(collectionName, key: 'Key, value: 'Value) =
-        withCollection collectionName _.Upsert(BsonValue(key), value)
+    member _.Upsert<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value : not null>
+        (collectionName, key: 'Key, value: 'Value) =
+            mapper.EnsureRecord<'Value>() |> ignore
+            withCollection collectionName _.Upsert(BsonValue(key), value)
         
-    member _.Find(collectionName, key: 'Key) : 'Value option =
-        withCollection collectionName (fun collection -> collection.FindById(BsonValue(key)) |> Option.ofObj)
+    member _.Find<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value : not null>
+        (collectionName, key: 'Key) : 'Value option =
+            mapper.EnsureRecord<'Value>() |> ignore
+            withCollection collectionName (fun collection -> collection.FindById(BsonValue(key)) |> Option.ofObj)
         
-    member _.Delete(collectionName, key: 'Key) =
+    member _.FindAll<'Value when 'Value : not struct and 'Value : equality and 'Value : not null>
+        collectionName : 'Value array =
+            mapper.EnsureRecord<'Value>() |> ignore
+            withCollection collectionName (fun collection -> collection.FindAll() |> Seq.toArray)
+        
+    member _.Delete<'Key>(collectionName, key: 'Key) =
         withCollection collectionName _.Delete(BsonValue(key))
-        
-    member _.FindAll(collectionName) : 'Value array =
-        withCollection collectionName (fun collection -> collection.FindAll() |> Seq.toArray)

@@ -6,7 +6,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Include="Abstraction.fs" />
       <Compile Include="Secrets.fs" />
       <Compile Include="Http.fs" />
       <Compile Include="Model.fs" />

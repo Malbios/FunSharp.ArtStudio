@@ -1,6 +1,5 @@
 ﻿namespace FunSharp.DeviantArt.Server
 
-open System.IO
 open FunSharp.Data
 open Suave
 open Suave.Filters
@@ -15,54 +14,8 @@ module ServerStartup =
 
     let secrets = Secrets.load ()
     let authPersistence = Persistence.AuthenticationPersistence()
-    let dataPersistence = PickledPersistence("persistence.db")
+    let dataPersistence : Abstraction.IPersistence = PickledPersistence("persistence.db")
     let client = Client(authPersistence, secrets.client_id, secrets.client_secret)
-
-    let readAllBytesAsync (path: string) : Async<byte[]> = async {
-        use stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, bufferSize = 64 * 1024, options = FileOptions.Asynchronous)
-
-        let buffer =
-            match stream.Length with
-            | length when length <= int64 System.Int32.MaxValue ->
-                int length
-            | _ ->
-                failwith "The file is too large for a single buffer"
-            |> Array.zeroCreate<byte>
-
-        let! _ = stream.ReadAsync(buffer, 0, buffer.Length) |> Async.AwaitTask
-        
-        return buffer
-    }
-
-    let submitToStash title file =
-
-        let submission = {
-            StashSubmission.empty with
-                Title = title
-        }
-
-        printfn $"title: {title}"
-        printfn $"mime: {file.mimeType}"
-        printfn $"tempFilePath: {file.tempFilePath}"
-
-        readAllBytesAsync file.tempFilePath
-        |> Async.bind (fun content ->
-            let httpFile: Http.File = {
-                MediaType = Some file.mimeType
-                Content = content
-            }
-
-            printfn "Submitting to stash..."
-
-            client.SubmitToStash(submission, httpFile)
-            |> AsyncResult.getOrFail
-        )
-
-    let jsonResponse data =
-        data
-        |> JsonSerializer.serialize
-        |> OK
-        >=> setHeader "Content-Type" "application/json"
 
     let allowCors: WebPart =
         setHeader "Access-Control-Allow-Origin" "*"
@@ -79,7 +32,20 @@ module ServerStartup =
                 |> AsyncResult.getOrFail
                 |> Async.map _.username
                 
-            return! {| username = username |} |> jsonResponse <| ctx
+            return! {| username = username |} |> Helpers.jsonResponse <| ctx
+        }
+        
+    let uploadHandler: WebPart =
+        fun ctx -> async {
+            match ctx.request.files with
+            | [] -> return! BAD_REQUEST "No files uploaded" ctx
+
+            | [ file ] ->
+                let key = file.fileName
+
+                return! "ok" |> Helpers.jsonResponse <| ctx
+
+            | _ -> return! BAD_REQUEST "Upload of multiple files is currently not supported" ctx
         }
 
     let stashHandler: WebPart =
@@ -93,9 +59,9 @@ module ServerStartup =
                     | Choice1Of2 v -> v
                     | Choice2Of2 v -> failwith $"{v}"
 
-                let! response = submitToStash title file
+                let! response = Helpers.submitToStash client title file
 
-                return! response |> jsonResponse <| ctx
+                return! response |> Helpers.jsonResponse <| ctx
 
             | _ -> return! BAD_REQUEST "Multiple files not supported" ctx
         }
@@ -107,15 +73,17 @@ module ServerStartup =
             { defaultConfig with
                 bindings = [ HttpBinding.createSimple HTTP "0.0.0.0" 5123 ] }
 
-        let apiRoot = "/api/v1"
+        let apiBase = "/api/v1"
 
         allowCors
         >=> choose
                 [ corsPreflight
 
-                  GET >=> path $"{apiRoot}/username" >=> usernameHandler
+                  GET >=> path $"{apiBase}/username" >=> usernameHandler
 
-                  POST >=> path $"{apiRoot}/stash" >=> stashHandler
+                  POST >=> path $"{apiBase}/upload" >=> uploadHandler
+
+                  POST >=> path $"{apiBase}/stash" >=> stashHandler
 
                   NOT_FOUND "Unknown route" ]
         |> startWebServer config

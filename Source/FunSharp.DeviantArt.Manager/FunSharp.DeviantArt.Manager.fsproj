@@ -40,7 +40,4 @@
       <ProjectReference Include="..\FunSharp.Common\FunSharp.Common.fsproj" />
       <ProjectReference Include="..\FunSharp.DeviantArt.Api\FunSharp.DeviantArt.Api.fsproj" />
     </ItemGroup>
-    <ItemGroup>
-      <_ContentIncludedByDefault Remove="wwwroot\js\idb.js" />
-    </ItemGroup>
 </Project>

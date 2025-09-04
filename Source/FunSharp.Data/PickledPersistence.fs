@@ -1,51 +1,54 @@
 ﻿namespace FunSharp.Data
 
+open FunSharp.Common.Abstraction
 open LiteDB
 open MBrace.FsPickler
 
 type PickledPersistence(databaseFilePath: string) =
     
     let pickler = FsPickler.CreateBinarySerializer()
-    let persistence = LiteDbPersistence<string, BsonDocument>(databaseFilePath)
-    
-    let asBsonDocument (value: 'Value) =
+    let persistence = LiteDbPersistence(databaseFilePath)
+        
+    member _.AsBson<'T>(value: 'T) =
         let doc = BsonDocument()
         doc["data"] <- pickler.Pickle value
         doc
         
-    let asValue (doc: BsonDocument) =
+    member _.AsValue<'T>(doc: BsonDocument) =
         pickler.UnPickle<'T> doc["data"]
+        
+    interface IPersistence with
     
-    member _.Insert<'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
-        (collectionName, key: string, value: 'Value) =
-            persistence.Insert(collectionName, key, asBsonDocument value)
-        
-    member _.Update<'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
-        (collectionName, key: string, value: 'Value) =
-            persistence.Update(collectionName, key, asBsonDocument value)
-        
-    member _.Upsert<'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
-        (collectionName, key: string, value: 'Value) =
-            persistence.Upsert(collectionName, key, asBsonDocument value)
-        
-    member _.Find<'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
-        (collectionName, key: string) : 'Value option =
-            persistence.Find(collectionName, key) |> Option.map asValue
-        
-    member _.Delete(collectionName, key: string) =
-        persistence.Delete(collectionName, key)
-        
-    member _.FindAll<'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
-        collectionName : 'Value array =
-            persistence.FindAll(collectionName) |> Seq.toArray |> Array.map asValue
-
-type PickledSinglePersistence<'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
+        member this.Insert<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
+            (collectionName, key: 'Key, value: 'Value) =
+                persistence.Insert(collectionName, key, value |> this.AsBson)
+                
+        member this.Update<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
+            (collectionName, key: 'Key, value: 'Value) =
+                persistence.Update(collectionName, key, value |> this.AsBson)
+                
+        member this.Upsert<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
+            (collectionName, key: 'Key, value: 'Value) =
+                persistence.Upsert(collectionName, key, value |> this.AsBson)
+                
+        member this.Find<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
+            (collectionName, key: 'Key) =
+                persistence.Find(collectionName, key) |> Option.map this.AsValue<'Value>
+                
+        member this.FindAll<'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
+            collectionName =
+                persistence.FindAll(collectionName) |> Seq.toArray |> Array.map this.AsValue<'Value>
+                
+        member _.Delete<'Key> (collectionName, key: 'Key) =
+            persistence.Delete(collectionName, key)
+            
+type SingleValuePickledPersistence<'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
     (databaseFilePath: string, key: string) =
     
-    let persistence = PickledPersistence(databaseFilePath)
-        
-    member _.Upsert(value: 'Value) =
+    let persistence : IPersistence = PickledPersistence(databaseFilePath)
+    
+    member _.Upsert (value: 'Value) =
         persistence.Upsert(key, key, value)
         
-    member _.Find() =
+    member _.Find() : 'Value option =
         persistence.Find(key, key)

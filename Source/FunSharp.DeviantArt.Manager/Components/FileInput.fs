@@ -2,7 +2,6 @@
 
 open Bolero.Html
 open Microsoft.AspNetCore.Components.Forms
-open Radzen.Blazor
 open Toolbelt.Blazor.FileDropZone
 
 [<RequireQualifiedAccess>]
@@ -18,6 +17,8 @@ module FileInput =
               attr.callback "OnChange" upload
             }
         }
+
+// TODO: maybe change to Radzen component
 
 // <RadzenStack AlignItems="AlignItems.Center">
 //     <RadzenCard class="rz-m-0 rz-m-md-12" Style="width: 100%; max-width: 600px;">

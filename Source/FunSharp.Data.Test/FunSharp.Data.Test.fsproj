@@ -21,7 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\FunSharp.DeviantArt\FunSharp.DeviantArt.fsproj" />
+      <ProjectReference Include="..\FunSharp.Data\FunSharp.Data.fsproj" />
     </ItemGroup>
 
 </Project>

@@ -3,7 +3,7 @@
 open System
 open Bolero.Html
 open FunSharp.Common
-open FunSharp.DeviantArt.Manager.Common
+open FunSharp.DeviantArt.Api.Model
 open FunSharp.DeviantArt.Manager.Model
 open Radzen
 open Radzen.Blazor
@@ -16,16 +16,19 @@ module UploadedFile =
             match newValue with
             | v when v.Trim() = "" -> None
             | v -> Uri v |> Some
-        
-        Message.UpdateUploadedFile { file with Metadata.Inspiration = newValue } |> dispatch
+            
+        ()
+        // Message.UpdateUploadedFile { file with Metadata.Inspiration = newValue } |> dispatch
         
     let private updateTitle dispatch file (newValue: string) =
-        Message.UpdateUploadedFile { file with Metadata.Title = newValue } |> dispatch
+        ()
+        // Message.UpdateUploadedFile { file with Metadata.Title = newValue } |> dispatch
         
     let private updateGallery dispatch file (newValue: string) =
-        Message.UpdateUploadedFile { file with Metadata.Gallery = newValue } |> dispatch
+        ()
+        // Message.UpdateUploadedFile { file with Metadata.Gallery = newValue } |> dispatch
     
-    let render parent dispatch (file: UploadedFile) =
+    let render parent dispatch (deviation: LocalDeviation) =
         
         comp<RadzenStack> {
             attr.style "margin: 0.25rem; padding: 0.5rem; border: 2px solid gray; border-radius: 8px; max-width: 700px;"
@@ -35,32 +38,32 @@ module UploadedFile =
             "AlignItems" => AlignItems.Center
             
             comp<ImagePreview> {
-                "File" => file
+                "File" => deviation
             }
             
             comp<RadzenStack> {
                 "Orientation" => Orientation.Vertical
                 
-                div { text $"{file.FileName}" }
+                div { text $"{deviation.Image.FileName}" }
                 
-                file.Metadata.Inspiration
-                |> Option.map _.ToString()
+                deviation.Inspiration
+                |> Option.map _.Url.ToString()
                 |> Option.defaultValue ""
-                |> TextInput.render (updateInspiration dispatch file) "Enter inspiration URL..."
+                |> TextInput.render (updateInspiration dispatch deviation) "Enter inspiration URL..."
                 
-                file.Metadata.Title
-                |> TextInput.render (updateTitle dispatch file) "Enter title..."
+                deviation.Title
+                |> TextInput.render (updateTitle dispatch deviation) "Enter title..."
                 
-                file.Metadata.Gallery
-                |> DropDown.render (updateGallery dispatch file) "Gallery" "Select gallery..." (Union.asStrings<ImageType>())
+                deviation.Gallery
+                |> DropDown.render (updateGallery dispatch deviation) "Gallery" "Select gallery..." (Union.asStrings<ImageType>())
                 
                 comp<RadzenStack> {
                     "Orientation" => Orientation.Horizontal
                     "JustifyContent" => JustifyContent.Center
                     "AlignItems" => AlignItems.Center
                     
-                    Button.render parent (fun () -> dispatch (Message.SaveUploadedFile file)) "Save"
-                    Button.render parent (fun () -> dispatch (Message.Stash file)) "Stash"
+                    // Button.render parent (fun () -> dispatch (Message.SaveUploadedFile file)) "Save"
+                    // Button.render parent (fun () -> dispatch (Message.Stash file)) "Stash"
                 }
             }
         }

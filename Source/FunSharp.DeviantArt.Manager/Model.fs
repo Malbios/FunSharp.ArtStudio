@@ -1,76 +1,63 @@
 ﻿namespace FunSharp.DeviantArt.Manager
 
-open FunSharp.DeviantArt.Api
 open FunSharp.DeviantArt.Api.Model
 open FunSharp.DeviantArt.Manager
 open Microsoft.AspNetCore.Components.Forms
 
 module Model =
     
-    type UploadedFile = {
-        FileName: string
-        PreviewUrl: string
-        Content: byte array
-        Metadata: DeviationMetadata
-    }
-    
-    [<RequireQualifiedAccess>]
-    module UploadedFile =
-        
-        let empty = {
-            FileName = ""
-            PreviewUrl = ""
-            Content = Array.empty
-            Metadata = DeviationMetadata.empty
-        }
+    type Loadable<'T> =
+        | NotLoaded
+        | Loading
+        | Loaded of 'T
+        | LoadingFailed of exn
     
     type State = {
         Page: Page
-        Error: string option
-        IsBusy: bool
         
-        UploadedFiles: UploadedFile array
-        
-        StashedDeviations: StashedDeviation array
-        PublishedDeviations: PublishedDeviation array
+        Inspirations: Loadable<Inspiration array>
+        Prompts: Loadable<Prompt array>
+        LocalDeviations: Loadable<LocalDeviation array>
+        StashedDeviations: Loadable<StashedDeviation array>
+        PublishedDeviations: Loadable<PublishedDeviation array>
     }
 
     [<RequireQualifiedAccess>]
     module State =
         
         let empty = {
-            IsBusy = false
             Page = Page.Home
-            Error = None
             
-            UploadedFiles = Array.empty
-            
-            StashedDeviations = Array.empty
-            PublishedDeviations = Array.empty
+            Inspirations = Loadable.NotLoaded
+            Prompts = Loadable.NotLoaded
+            LocalDeviations = Loadable.NotLoaded
+            StashedDeviations = Loadable.NotLoaded
+            PublishedDeviations = Loadable.NotLoaded
         }
         
     type Message =
         | SetPage of Page
         
-        | Error of exn
-        | ClearError
-        | Done
+        | Initialize
         
-        | LoadDeviations
-        | LoadedDeviations of local: UploadedFile array * stashed: StashedDeviation array * published: PublishedDeviation array
+        | LoadInspirations
+        | LoadedInspirations of Loadable<Inspiration array>
+        | LoadPrompts
+        | LoadedPrompts of Loadable<Prompt array>
+        | LoadLocalDeviation
+        | LoadedLocalDeviation of Loadable<LocalDeviation array>
+        | LoadStashedDeviation
+        | LoadedStashedDeviation of Loadable<StashedDeviation array>
+        | LoadPublishedDeviation
+        | LoadedPublishedDeviation of Loadable<PublishedDeviation array>
         
-        | UploadFiles of IBrowserFile[]
-        | UploadedFiles of fileName: string * previewUrl: string * content: byte array
+        | AddInspiration of Inspiration
+        | Inspiration2Prompt of Inspiration * Prompt
+        | Prompt2LocalDeviation of Prompt * LocalDeviation
+        | StashDeviation of LocalDeviation
+        | PublishStashed of StashedDeviation
         
-        | UpdateUploadedFile of UploadedFile
-        
-        | SaveUploadedFile of UploadedFile
-        | SaveStashedFile of StashedDeviation
-        
-        | DeleteLocalFile of UploadedFile
-        
-        | Stash of UploadedFile
-        | Stashed of file: UploadedFile * deviation: StashedDeviation
+        | UploadLocalDeviations of IBrowserFile[]
 
     type ImageType =
         | Spicy
@@ -83,21 +70,3 @@ module Model =
         | Spicy
         | Scenery
         | RandomPile
-    
-    [<Literal>]
-    let dbKey_Settings = "Settings"
-    
-    [<Literal>]
-    let dbKey_Inspirations = "Inspirations"
-    
-    [<Literal>]
-    let dbKey_LocalDeviations = "LocalDeviations"
-    
-    [<Literal>]
-    let dbKey_StashedDeviations = "StashedDeviations"
-    
-    [<Literal>]
-    let dbKey_PublishedDeviations = "PublishedDeviations"
-
-    [<Literal>]
-    let dbName = "FunSharp.DeviantArt.Manager"

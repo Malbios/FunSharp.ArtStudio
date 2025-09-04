@@ -2,6 +2,7 @@
 
 open Bolero
 open Bolero.Html
+open FunSharp.DeviantArt.Api.Model
 open FunSharp.DeviantArt.Manager.Model
 open Microsoft.AspNetCore.Components
 
@@ -9,7 +10,7 @@ type ImagePreview() =
     inherit Component()
 
     [<Parameter>]
-    member val File: UploadedFile = UploadedFile.empty with get, set
+    member val Image: Image = Image("", "", Array.empty) with get, set
     
     member this.TriggerReRender() =
         
@@ -17,7 +18,7 @@ type ImagePreview() =
 
     override this.Render() =
         div {
-            match this.File.PreviewUrl with
+            match this.Image.AsUrl() with
             | url when url <> "" ->
                 img {
                     attr.style "max-width: 200px; max-height: 200px;"

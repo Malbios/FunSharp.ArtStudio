@@ -83,7 +83,8 @@ module Http =
                     content.Add(new StringContent(snd kvp), fst kvp)
                 
                 InternalPayload.PostWithMultipart (url, content)
-        
+                
+    // TODO: get rid of this
     let private log message =
         // printfn $"{message}"
         ()

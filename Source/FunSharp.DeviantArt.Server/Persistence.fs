@@ -1,16 +1,16 @@
 ﻿namespace FunSharp.DeviantArt.Server
 
-open FunSharp.DeviantArt
+open FunSharp.Common.Abstraction
+open FunSharp.Data
 open FunSharp.DeviantArt.Api.Model
-open FunSharp.DeviantArt.Api
 
 [<RequireQualifiedAccess>]
 module Persistence =
     
     type AuthenticationPersistence() =
-        let persistence = PickledSinglePersistence<AuthenticationData>("persistence.db", "authentication")
+        let persistence = SingleValuePickledPersistence<AuthenticationData>("persistence.db", "authentication")
         
-        interface IPersistence<AuthenticationData> with
+        interface IAuthPersistence<AuthenticationData> with
             
             member this.Load() =
                 

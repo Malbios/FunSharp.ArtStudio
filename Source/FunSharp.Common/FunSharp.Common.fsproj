@@ -6,6 +6,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="Abstraction.fs" />
         <Compile Include="Record.fs" />
         <Compile Include="Async.fs" />
         <Compile Include="String.fs" />

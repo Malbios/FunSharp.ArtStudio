@@ -1,6 +1,7 @@
 ﻿namespace FunSharp.DeviantArt.Api
 
 open System
+open FunSharp.Common.Abstraction
 open Newtonsoft.Json
 open Newtonsoft.Json.Linq
 open FunSharp.Common
@@ -30,7 +31,7 @@ module Endpoints =
     let galleryFolders (limit: int) =
         $"{common}/gallery/folders?limit={limit}"
         
-type Client(persistence: IPersistence<AuthenticationData>, clientId: string, clientSecret: string) =
+type Client(persistence: IAuthPersistence<AuthenticationData>, clientId: string, clientSecret: string) =
 
     let config: Authentication.Configuration = {
         RootUrl = "https://www.deviantart.com"
@@ -93,7 +94,7 @@ type Client(persistence: IPersistence<AuthenticationData>, clientId: string, cli
         fun () -> getNewAuthData () |> AsyncResult.ignore
         |> Http.requestWithRefreshAndReAuth payload refreshToken
         
-    let toGalleryResponse content =
+    let toGalleryResponse content : ApiResponses.Gallery =
         
         let jsonObject = JObject.Parse content
 
@@ -110,10 +111,9 @@ type Client(persistence: IPersistence<AuthenticationData>, clientId: string, cli
             | _ -> None
             
         {
-            Gallery.empty with
-                has_more = hasMore
-                next_offset = nextOffset
-                results = results
+            has_more = hasMore
+            next_offset = nextOffset
+            results = results
         }
 
     let galleryPage (offset: int) =
@@ -134,11 +134,12 @@ type Client(persistence: IPersistence<AuthenticationData>, clientId: string, cli
             let description = j["description"].Value<string>()
             let stats = JsonConvert.DeserializeObject<Stats>(j["stats"].ToString())
             
-            {
-                Metadata.empty with
-                    description = description
-                    stats = Some stats
+            let metadata : ApiResponses.Metadata = {
+                description = description
+                stats = Some stats
             }
+            
+            metadata
         )
         |> Seq.toArray
 
