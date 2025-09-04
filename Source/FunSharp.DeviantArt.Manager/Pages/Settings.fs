@@ -2,9 +2,8 @@
 
 open Bolero
 open Bolero.Html
-open Elmish.Sub.Internal.NewSubs
 open FunSharp.DeviantArt.Manager.Components
-open FunSharp.DeviantArt.Manager.Model.Application
+open FunSharp.DeviantArt.Manager.Model
 open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Components.Web
 open Radzen

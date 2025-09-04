@@ -1,4 +1,4 @@
-﻿namespace FunSharp.DeviantArt.Manager.Model
+﻿namespace FunSharp.DeviantArt.Manager
 
 module Common =
     

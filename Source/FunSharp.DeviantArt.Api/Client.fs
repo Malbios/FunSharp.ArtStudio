@@ -7,7 +7,7 @@ open FunSharp.Common
 open FunSharp.Common.AsyncResultCE
 open FunSharp.DeviantArt.Api.Model
     
-module private Endpoints =
+module Endpoints =
     
     [<Literal>]
     let private common = "/api/v1/oauth2"

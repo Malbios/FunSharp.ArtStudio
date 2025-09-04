@@ -4,13 +4,12 @@ open Bolero
 open Bolero.Html
 open FunSharp.DeviantArt.Manager.Model
 open Microsoft.AspNetCore.Components
-open Radzen.Blazor
 
 type ImagePreview() =
     inherit Component()
 
     [<Parameter>]
-    member val File: Application.UploadedFile = Application.UploadedFile.empty with get, set
+    member val File: UploadedFile = UploadedFile.empty with get, set
     
     member this.TriggerReRender() =
         

@@ -17,12 +17,13 @@
         <PackageReference Include="Toolbelt.Blazor.FileDropZone" Version="3.0.1" />
     </ItemGroup>
     <ItemGroup>
-      <Compile Include="Helpers.fs" />
-      <Compile Include="IndexedDb.fs" />
-      <Compile Include="InMemoryAuthPersistence.fs" />
       <Compile Include="Routes.fs" />
+      <Compile Include="Stuff\Helpers.fs" />
+      <Compile Include="Stuff\IndexedDb.fs" />
+      <Compile Include="Stuff\InMemoryAuthPersistence.fs" />
+      <Compile Include="Stuff\ApiClient.fs" />
       <Compile Include="Model\Common.fs" />
-      <Compile Include="Model\Application.fs" />
+      <Compile Include="Model\Model.fs" />
       <Compile Include="Components\LoadingWidget.fs" />
       <Compile Include="Components\ImagePreview.fs" />
       <Compile Include="Components\TextInput.fs" />

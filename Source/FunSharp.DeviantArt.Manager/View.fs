@@ -6,7 +6,7 @@ open Radzen.Blazor
 
 module View =
     
-    let view (model: Application.State) dispatch =
+    let view (model: Model.State) dispatch =
         
         concat {
             comp<RadzenComponents>

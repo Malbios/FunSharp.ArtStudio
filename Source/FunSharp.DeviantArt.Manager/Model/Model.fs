@@ -1,11 +1,11 @@
-﻿namespace FunSharp.DeviantArt.Manager.Model
+﻿namespace FunSharp.DeviantArt.Manager
 
 open FunSharp.DeviantArt.Api
 open FunSharp.DeviantArt.Api.Model
 open FunSharp.DeviantArt.Manager
 open Microsoft.AspNetCore.Components.Forms
 
-module Application =
+module Model =
     
     type AuthData = {
         ClientId: string
@@ -94,3 +94,7 @@ module Application =
         
         | UpdateAuthData of AuthData
         | SetupClient
+        
+        | Test
+        | TestSucceeded
+        | TestFailed of exn

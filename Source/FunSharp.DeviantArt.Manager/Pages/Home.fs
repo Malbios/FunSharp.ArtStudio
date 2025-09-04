@@ -3,9 +3,9 @@
 open System
 open Bolero
 open Bolero.Html
+open FunSharp.DeviantArt.Manager.Common
 open FunSharp.DeviantArt.Manager.Components
-open FunSharp.DeviantArt.Manager.Model.Application
-open FunSharp.DeviantArt.Manager.Model.Common
+open FunSharp.DeviantArt.Manager.Model
 open FunSharp.Common
 open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Components.Forms
@@ -73,9 +73,9 @@ type Home() =
                         }
                         
                         comp<RadzenButton> {
-                            let onClick (_: MouseEventArgs) = dispatch Message.LoadDeviations
+                            let onClick (_: MouseEventArgs) = dispatch Message.Test
                             
-                            "Text" => "Load"
+                            "Text" => "Test"
                             "Click" => EventCallback.Factory.Create<MouseEventArgs>(this, onClick)
                         }
                     }

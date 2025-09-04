@@ -5,8 +5,6 @@ open System.IO
 open Elmish
 open FunSharp.DeviantArt.Api.Model
 open FunSharp.DeviantArt.Manager.Model
-open FunSharp.DeviantArt.Manager.Model.Application
-open FunSharp.DeviantArt.Manager.Model.Common
 open MBrace.FsPickler
 open Microsoft.AspNetCore.Components.Forms
 open Microsoft.Extensions.Logging
@@ -51,7 +49,7 @@ module Update =
         
         logger.LogTrace $"loading deviations from {storeName}..."
         
-        database.Init(dbName, [|dbKeyStashedDeviations; dbKeyPublishedDeviations|])
+        database.Init(Common.dbName, [|Common.dbKeyStashedDeviations; Common.dbKeyPublishedDeviations|])
         |> Async.bind (fun () ->
             database.GetAll<DbItem>(storeName)
             |> Async.map (fun x -> x |> Array.map (fun x -> pickler.UnPickle<'T> x.Value))
@@ -59,11 +57,11 @@ module Update =
     
     let private loadStashedDeviations logger database =
         
-        loadDeviations<StashedDeviation> logger database dbKeyStashedDeviations
+        loadDeviations<StashedDeviation> logger database Common.dbKeyStashedDeviations
     
     let private loadPublishedDeviations logger database =
         
-        loadDeviations<PublishedDeviation> logger database dbKeyPublishedDeviations
+        loadDeviations<PublishedDeviation> logger database Common.dbKeyPublishedDeviations
         
     let private saveDeviation<'T> (logger: ILogger) (database: IndexedDb) storeName key (value: 'T) =
         
@@ -78,11 +76,11 @@ module Update =
         
     let private saveStashedDeviation logger database key (value: StashedDeviation) =
         
-        saveDeviation logger database dbKeyStashedDeviations key value
+        saveDeviation logger database Common.dbKeyStashedDeviations key value
         
     let private savePublishedDeviations logger database key (value: PublishedDeviation) =
         
-        saveDeviation logger database dbKeyPublishedDeviations key value
+        saveDeviation logger database Common.dbKeyPublishedDeviations key value
         
     let private submitToStash (logger: ILogger) (client: Client) file =
         
@@ -114,7 +112,7 @@ module Update =
             |> fun x -> (file, x)
         )
     
-    let update (logger: ILogger) (database: IndexedDb) message (model: Application.State) =
+    let update (logger: ILogger) (database: IndexedDb) (client: ApiClient) message (model: Model.State) =
     
         match message with
         | SetPage page ->
@@ -248,8 +246,28 @@ module Update =
             
         | SetupClient ->
             
-            let persistence : IPersistence<AuthenticationData> = InMemoryAuthPersistence()
-            persistence.Save({ AccessToken = model.AuthData.AccessToken; RefreshToken = model.AuthData.RefreshToken })
-            let client = Client(persistence, model.AuthData.ClientId, model.AuthData.ClientSecret)
+            client.UpdateAuth(model.AuthData.AccessToken)
             
-            { model with Client = Some client }, Cmd.ofMsg (Message.SetPage Page.Home)
+            model, Cmd.ofMsg (Message.SetPage Page.Home)
+            
+        | Test ->
+            
+            let test () =
+                client.WhoAmI()
+                |> AsyncResult.map(fun x ->
+                    logger.LogTrace $"whoami: {x.username}"
+                )
+            
+            model, Cmd.OfAsync.either test () (fun _ -> TestSucceeded) TestFailed
+            
+        | TestSucceeded ->
+            
+            logger.LogTrace "successful test"
+            
+            model, Cmd.none
+            
+        | TestFailed ex ->
+            
+            logger.LogError $"test failed: {ex.Message}"
+            
+            model, Cmd.none
