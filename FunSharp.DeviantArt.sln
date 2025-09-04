@@ -24,6 +24,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plk.Blazor.DragDrop.Test", 
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.Authenticator", "Source\FunSharp.DeviantArt.Authenticator\FunSharp.DeviantArt.Authenticator.fsproj", "{8665B6CA-21D1-43AE-A564-727471B5F76B}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.Server", "Source\FunSharp.DeviantArt.Server\FunSharp.DeviantArt.Server.fsproj", "{F247836B-00D5-4E3C-BBD8-CC62908915D0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,10 @@ Global
 		{8665B6CA-21D1-43AE-A564-727471B5F76B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8665B6CA-21D1-43AE-A564-727471B5F76B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8665B6CA-21D1-43AE-A564-727471B5F76B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F247836B-00D5-4E3C-BBD8-CC62908915D0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F247836B-00D5-4E3C-BBD8-CC62908915D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F247836B-00D5-4E3C-BBD8-CC62908915D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F247836B-00D5-4E3C-BBD8-CC62908915D0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{3151693C-42C5-4446-9C80-EBB97DF2C5A6} = {B97A3DD6-0A9B-4019-B642-C8F4AF623C69}

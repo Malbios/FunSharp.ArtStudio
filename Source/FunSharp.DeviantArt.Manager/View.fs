@@ -18,6 +18,5 @@ module View =
                 <| function
                     | Page.Home -> ecomp<Pages.Home,_,_> model dispatch { attr.empty() }
                     | Page.NotFound -> comp<Pages.NotFound> { attr.empty() }
-                    | Page.Settings -> ecomp<Pages.Settings,_,_> model dispatch { attr.empty() }
             }
         }

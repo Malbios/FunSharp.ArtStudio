@@ -1,18 +1,15 @@
 ﻿namespace FunSharp.DeviantArt.Manager.Pages
 
+open Microsoft.AspNetCore.Components.Forms
 open System
 open Bolero
 open Bolero.Html
+open Radzen
+open Radzen.Blazor
+open FunSharp.Common
 open FunSharp.DeviantArt.Manager.Common
 open FunSharp.DeviantArt.Manager.Components
 open FunSharp.DeviantArt.Manager.Model
-open FunSharp.Common
-open Microsoft.AspNetCore.Components
-open Microsoft.AspNetCore.Components.Forms
-open Microsoft.AspNetCore.Components.Web
-open Radzen
-open Radzen.Blazor
-open Toolbelt.Blazor.FileDropZone
 
 type Home() =
     inherit ElmishComponent<State, Message>()
@@ -43,7 +40,7 @@ type Home() =
         let uploadFiles (args: InputFileChangeEventArgs) =
             args.GetMultipleFiles(args.FileCount)
             |> Array.ofSeq
-            |> Message.UploadImages
+            |> Message.UploadFiles
             |> dispatch
         
         div {
@@ -58,27 +55,7 @@ type Home() =
                 if model.IsBusy then
                     LoadingWidget.render ()
                 else
-                    comp<RadzenStack> {
-                        "Orientation" => Orientation.Horizontal
-                        "JustifyContent" => JustifyContent.Center
-                        "AlignItems" => AlignItems.Center
-                        
-                        comp<FileDropZone> {
-                            attr.style "padding: 2rem; border: 2px solid gray; border-radius: 8px;"
-                            
-                            comp<InputFile> {
-                              attr.multiple true
-                              attr.callback "OnChange" uploadFiles
-                            }
-                        }
-                        
-                        comp<RadzenButton> {
-                            let onClick (_: MouseEventArgs) = dispatch Message.Test
-                            
-                            "Text" => "Test"
-                            "Click" => EventCallback.Factory.Create<MouseEventArgs>(this, onClick)
-                        }
-                    }
+                    FileInput.render true uploadFiles
                 
                     comp<RadzenStack> {
                         "Orientation" => Orientation.Horizontal
@@ -114,11 +91,13 @@ type Home() =
                                     file.Metadata.Gallery
                                     |> DropDown.render (updateGallery file) "Gallery" "Select gallery..." (Union.asStrings<ImageType>())
                                     
-                                    comp<RadzenButton> {
-                                        let onClick (_: MouseEventArgs) = dispatch (Message.Stash file)
+                                    comp<RadzenStack> {
+                                        "Orientation" => Orientation.Horizontal
+                                        "JustifyContent" => JustifyContent.Center
+                                        "AlignItems" => AlignItems.Center
                                         
-                                        "Text" => "Stash"
-                                        "Click" => EventCallback.Factory.Create<MouseEventArgs>(this, onClick)
+                                        Button.render this (fun () -> dispatch (Message.SaveUploadedFile file)) "Save"
+                                        Button.render this (fun () -> dispatch (Message.Stash file)) "Stash"
                                     }
                                 }
                             }

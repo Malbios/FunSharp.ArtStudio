@@ -1,5 +1,6 @@
 module FunSharp.DeviantArt.Manager.Main
 
+open System.Net.Http
 open Microsoft.AspNetCore.Components
 open Microsoft.Extensions.Logging
 open Elmish
@@ -19,7 +20,7 @@ type ClientApplication() =
     member val IndexedDatabase = Unchecked.defaultof<IndexedDb> with get, set
     
     [<Inject>]
-    member val ApiClient = Unchecked.defaultof<ApiClient> with get, set
+    member val HttpClient = Unchecked.defaultof<HttpClient> with get, set
     
     override this.OnInitialized() =
         
@@ -31,7 +32,7 @@ type ClientApplication() =
         
         let initialState _ = State.empty, Cmd.ofMsg Message.LoadDeviations
         
-        let update = Update.update this.Logger this.IndexedDatabase this.ApiClient
+        let update = Update.update this.Logger this.IndexedDatabase this.HttpClient
         
         let page (model: Model.State) = model.Page
 

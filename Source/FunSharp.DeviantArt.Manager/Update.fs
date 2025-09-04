@@ -2,6 +2,9 @@
 
 open System
 open System.IO
+open System.Net.Http
+
+open System.Net.Http.Headers
 open Elmish
 open FunSharp.DeviantArt.Api.Model
 open FunSharp.DeviantArt.Manager.Model
@@ -13,13 +16,15 @@ open FunSharp.Common
 open FunSharp.DeviantArt.Api
 
 module Update =
+    
+    let private apiRoot = "http://localhost:5123/api/v1"
+    
+    let private pickler = FsPickler.CreateBinarySerializer()
 
-    type DbItem = {
+    type private DbItem = {
         Id: string
         Value: byte array
     }
-    
-    let private pickler = FsPickler.CreateBinarySerializer()
     
     let private modelWithUpdatedUploadedFile model key (update: UploadedFile -> UploadedFile) = {
         model with
@@ -45,86 +50,144 @@ module Update =
         return (file.Name, $"data:{file.ContentType};base64,{Convert.ToBase64String(byteArray)}", byteArray)
     }
     
+    let private initDatabase (database: IndexedDb) =
+        
+        let stores = [|
+            Common.dbKey_Settings
+            Common.dbKey_Inspirations
+            Common.dbKey_LocalDeviations
+            Common.dbKey_StashedDeviations
+            Common.dbKey_PublishedDeviations
+        |]
+        
+        database.Init(Common.dbName, stores)
+    
     let private loadDeviations<'T> (logger: ILogger) (database: IndexedDb) storeName=
         
-        logger.LogTrace $"loading deviations from {storeName}..."
+        logger.LogInformation $"loading deviations from {storeName}..."
         
-        database.Init(Common.dbName, [|Common.dbKeyStashedDeviations; Common.dbKeyPublishedDeviations|])
+        initDatabase database
         |> Async.bind (fun () ->
             database.GetAll<DbItem>(storeName)
             |> Async.map (fun x -> x |> Array.map (fun x -> pickler.UnPickle<'T> x.Value))
         )
     
+    let private loadLocalDeviations logger database =
+        loadDeviations<UploadedFile> logger database Common.dbKey_LocalDeviations
+    
     let private loadStashedDeviations logger database =
-        
-        loadDeviations<StashedDeviation> logger database Common.dbKeyStashedDeviations
+        loadDeviations<StashedDeviation> logger database Common.dbKey_StashedDeviations
     
     let private loadPublishedDeviations logger database =
-        
-        loadDeviations<PublishedDeviation> logger database Common.dbKeyPublishedDeviations
+        loadDeviations<PublishedDeviation> logger database Common.dbKey_PublishedDeviations
         
     let private saveDeviation<'T> (logger: ILogger) (database: IndexedDb) storeName key (value: 'T) =
         
-        logger.LogTrace $"saving deviation to '{storeName}': {value |> JsonConvert.SerializeObject}"
+        logger.LogInformation $"saving deviation to '{storeName}': {key}"
         
         let dbItem = {
             Id = key
             Value = pickler.Pickle value
         }
         
-        database.Set(storeName, key, dbItem)
+        initDatabase database
+        |> Async.bind (fun () ->
+            database.Set(storeName, key, dbItem)
+        )
         
-    let private saveStashedDeviation logger database key (value: StashedDeviation) =
+    let private saveLocalDeviation logger database key =
+        saveDeviation logger database Common.dbKey_LocalDeviations key
         
-        saveDeviation logger database Common.dbKeyStashedDeviations key value
+    let private saveStashedDeviation logger database key =
+        saveDeviation logger database Common.dbKey_StashedDeviations key
         
-    let private savePublishedDeviations logger database key (value: PublishedDeviation) =
+    let private savePublishedDeviations logger database key =
+        saveDeviation logger database Common.dbKey_PublishedDeviations key
         
-        saveDeviation logger database Common.dbKeyPublishedDeviations key value
+    let private deleteDeviation<'T> (logger: ILogger) (database: IndexedDb) storeName key =
         
-    let private submitToStash (logger: ILogger) (client: Client) file =
+        logger.LogInformation $"deleting deviation in '{storeName}': {key}"
         
-        logger.LogTrace $"Stashing {file.FileName}..."
-        logger.LogTrace $"{file.Metadata |> JsonConvert.SerializeObject}"
+        initDatabase database
+        |> Async.bind (fun () ->
+            database.Delete(storeName, key)
+        )
         
-        let submission = {
-            StashSubmission.empty with
-                Title = file.Metadata.Title
-        }
+    let private deleteLocalDeviation logger database =
+        deleteDeviation logger database Common.dbKey_LocalDeviations
         
-        let httpFile : Http.File = {
-            MediaType = Some "image/png"
-            Content = file.Content
-        }
+    let private deleteStashedDeviation logger database =
+        deleteDeviation logger database Common.dbKey_StashedDeviations
         
-        (submission, httpFile)
-        |> client.SubmitToStash
+    let private deletePublishedDeviations logger database =
+        deleteDeviation logger database Common.dbKey_PublishedDeviations
+        
+    let private processStashSubmission file (response: HttpResponseMessage) =
+        
+        response.Content.ReadAsStringAsync()
+        |> Async.AwaitTask
+        |> Async.catch
         |> AsyncResult.getOrFail
-        |> Async.map (fun response ->
+        |> Async.map (fun content ->
+            let response =
+                content |> JsonSerializer.deserialize<ApiResponses.StashSubmission>
+                
             match response.status with
             | "success" ->
-                {
+                let submission = {
                     StashId = response.item_id
                     Metadata = file.Metadata
                 }
+                
+                (file, submission)
             | _ ->
                 failwith $"Failed to stash {file.FileName}"
-            |> fun x -> (file, x)
         )
+        
+    let private submitToStash (logger: ILogger) (client: HttpClient) file =
+        
+        logger.LogInformation $"Stashing {file.FileName}..."
+        logger.LogInformation $"{file.Metadata |> JsonConvert.SerializeObject}"
+        
+        let url = $"{apiRoot}/stash"
+        
+        let byteContent = new ByteArrayContent(file.Content)
+        
+        use content = new MultipartFormDataContent()
+        byteContent.Headers.ContentType <- MediaTypeHeaderValue("image/png")
+        content.Add(byteContent, "file", file.FileName)
+        content.Add(new StringContent(file.Metadata.Title), "title")
+
+        client.PostAsync(url, content)
+        |> Async.AwaitTask
+        |> Async.tee (fun response -> response.EnsureSuccessStatusCode() |> ignore)
+        |> Async.catch
+        |> AsyncResult.getOrFail
+        |> Async.bind (fun response -> processStashSubmission file response)
     
-    let update (logger: ILogger) (database: IndexedDb) (client: ApiClient) message (model: Model.State) =
+    let update (logger: ILogger) (database: IndexedDb) (client: HttpClient) message (model: Model.State) =
     
         match message with
+        
         | SetPage page ->
             { model with Page = page }, Cmd.none
 
         | Error ex ->
-            { model with Error = Some ex.Message }, Cmd.none
+            
+            let model = {
+                model with
+                    Error = Some ex.Message
+            }
+            
+            model, Cmd.ofMsg Done
             
         | ClearError ->
             { model with Error = None }, Cmd.none
             
-        | UploadImages newFiles ->
+        | Done ->
+            { model with IsBusy = false }, Cmd.none
+            
+        | UploadFiles newFiles ->
             
             let alreadyExists (file: IBrowserFile) =
                 model.UploadedFiles |> Array.exists (fun x -> x.FileName = file.Name)
@@ -135,7 +198,7 @@ module Update =
             
             let processUploadCommands =
                 newFiles
-                |> Array.map (fun x -> Cmd.OfAsync.perform processUpload x FinishUpload)
+                |> Array.map (fun x -> Cmd.OfAsync.perform processUpload x UploadedFiles)
                 
             let newFiles =
                 newFiles
@@ -146,7 +209,7 @@ module Update =
             
             { model with UploadedFiles = consolidatedFiles }, Cmd.batch processUploadCommands
 
-        | FinishUpload (fileName, previewUrl, content) ->
+        | UploadedFiles (fileName, previewUrl, content) ->
             
             let update x =
                 { x with PreviewUrl = previewUrl; Content = content }
@@ -162,53 +225,60 @@ module Update =
         | LoadDeviations ->
             
             let loadAllDeviations () =
-                loadStashedDeviations logger database
-                |> Async.bind (fun stashed ->
+                loadLocalDeviations logger database
+                |> Async.bind (fun local ->
+                    loadStashedDeviations logger database
+                    |> Async.map (fun stashed ->
+                        (local, stashed)
+                    )
+                )
+                |> Async.bind (fun (local, stashed) ->
                     loadPublishedDeviations logger database
                     |> Async.map (fun published ->
-                        (stashed, published)
+                        (local, stashed, published)
                     )
-                ) 
+                )
             
-            { model with IsBusy = true }, Cmd.OfAsync.perform loadAllDeviations () LoadedDeviations
+            { model with IsBusy = true }, Cmd.OfAsync.either loadAllDeviations () LoadedDeviations Error
             
-        | LoadedDeviations (stashed, published) ->
+        | LoadedDeviations(local, stashed, published) ->
                 
             let model =
                 {
                     model with
-                        IsBusy = false
+                        UploadedFiles = local
                         StashedDeviations = stashed
                         PublishedDeviations = published
                 }
             
-            logger.LogInformation $"Loaded {stashed.Length} stashed and {published.Length} published deviations."
+            logger.LogInformation $"Loaded {local.Length} uploaded, {stashed.Length} stashed and {published.Length} published deviations."
             
-            model, Cmd.none
+            model, Cmd.ofMsg Done
+            
+        | SaveUploadedFile file ->
+            
+            let save = saveLocalDeviation logger database file.FileName
+            
+            { model with IsBusy = true }, Cmd.OfAsync.either save file (fun () -> Done) Error
 
-        | SaveDeviation (file, deviationData) ->
+        | SaveStashedFile file ->
             
-            let cmd =
-                match deviationData with
-                | DeviationData.Stashed deviation ->
-                    let func = saveStashedDeviation logger database file.FileName
-                    Cmd.OfAsync.either func deviation (fun () -> SavedDeviation) Error
-                | DeviationData.Published deviation ->
-                    let func = savePublishedDeviations logger database file.FileName
-                    Cmd.OfAsync.either func deviation (fun () -> SavedDeviation) Error
-                
-            { model with IsBusy = true }, cmd
+            let save = saveStashedDeviation logger database (file.StashId.ToString())
             
-        | SavedDeviation ->
+            { model with IsBusy = true }, Cmd.OfAsync.either save file (fun () -> Done) Error
+
+        | DeleteLocalFile file ->
             
-            { model with IsBusy = false }, Cmd.none
+            let model = {
+                model with
+                    UploadedFiles = model.UploadedFiles |> Array.filter (fun x -> x.FileName <> file.FileName)
+            }
+            
+            let delete = deleteLocalDeviation logger database
+            
+            model, Cmd.OfAsync.either delete file.FileName (fun () -> Done) Error
 
         | Stash file ->
-            
-            let client =
-                match model.Client with
-                | None -> failwith $"cannot stash without a client"
-                | Some c -> c
             
             let gallery = file.Metadata.Gallery
             
@@ -239,35 +309,9 @@ module Update =
                     StashedDeviations = [model.StashedDeviations; [|deviation|]] |> Array.concat
             }
             
-            model, Cmd.ofMsg (Message.SaveDeviation (file, DeviationData.Stashed deviation))
-
-        | UpdateAuthData authData ->
-            { model with AuthData = authData }, Cmd.none
+            let batch = Cmd.batch [|
+                Cmd.ofMsg (DeleteLocalFile file)
+                Cmd.ofMsg (SaveStashedFile deviation)
+            |]
             
-        | SetupClient ->
-            
-            client.UpdateAuth(model.AuthData.AccessToken)
-            
-            model, Cmd.ofMsg (Message.SetPage Page.Home)
-            
-        | Test ->
-            
-            let test () =
-                client.WhoAmI()
-                |> AsyncResult.map(fun x ->
-                    logger.LogTrace $"whoami: {x.username}"
-                )
-            
-            model, Cmd.OfAsync.either test () (fun _ -> TestSucceeded) TestFailed
-            
-        | TestSucceeded ->
-            
-            logger.LogTrace "successful test"
-            
-            model, Cmd.none
-            
-        | TestFailed ex ->
-            
-            logger.LogError $"test failed: {ex.Message}"
-            
-            model, Cmd.none
+            model, batch

@@ -7,23 +7,6 @@ open Microsoft.AspNetCore.Components.Forms
 
 module Model =
     
-    type AuthData = {
-        ClientId: string
-        ClientSecret: string
-        AccessToken: string
-        RefreshToken: string
-    }
-    
-    [<RequireQualifiedAccess>]
-    module AuthData =
-        
-        let empty = {
-            ClientId = ""
-            ClientSecret = ""
-            AccessToken = ""
-            RefreshToken = ""
-        }
-    
     type UploadedFile = {
         FileName: string
         PreviewUrl: string
@@ -50,9 +33,6 @@ module Model =
         
         StashedDeviations: StashedDeviation array
         PublishedDeviations: PublishedDeviation array
-        
-        AuthData: AuthData
-        Client: Client option
     }
 
     [<RequireQualifiedAccess>]
@@ -67,9 +47,6 @@ module Model =
             
             StashedDeviations = Array.empty
             PublishedDeviations = Array.empty
-            
-            AuthData = AuthData.empty
-            Client = None
         }
         
     type Message =
@@ -77,24 +54,20 @@ module Model =
         
         | Error of exn
         | ClearError
+        | Done
         
-        | UploadImages of IBrowserFile[]
-        | FinishUpload of fileName: string * previewUrl: string * content: byte array
+        | LoadDeviations
+        | LoadedDeviations of local: UploadedFile array * stashed: StashedDeviation array * published: PublishedDeviation array
+        
+        | UploadFiles of IBrowserFile[]
+        | UploadedFiles of fileName: string * previewUrl: string * content: byte array
         
         | UpdateUploadedFile of UploadedFile
         
-        | LoadDeviations
-        | LoadedDeviations of stashed: StashedDeviation array * published: PublishedDeviation array
+        | SaveUploadedFile of UploadedFile
+        | SaveStashedFile of StashedDeviation
+        
+        | DeleteLocalFile of UploadedFile
         
         | Stash of UploadedFile
         | Stashed of file: UploadedFile * deviation: StashedDeviation
-        
-        | SaveDeviation of file: UploadedFile * deviation: DeviationData
-        | SavedDeviation
-        
-        | UpdateAuthData of AuthData
-        | SetupClient
-        
-        | Test
-        | TestSucceeded
-        | TestFailed of exn

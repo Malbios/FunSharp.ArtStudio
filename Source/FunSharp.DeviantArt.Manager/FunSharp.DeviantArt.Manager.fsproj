@@ -20,15 +20,14 @@
       <Compile Include="Routes.fs" />
       <Compile Include="Stuff\Helpers.fs" />
       <Compile Include="Stuff\IndexedDb.fs" />
-      <Compile Include="Stuff\InMemoryAuthPersistence.fs" />
-      <Compile Include="Stuff\ApiClient.fs" />
       <Compile Include="Model\Common.fs" />
       <Compile Include="Model\Model.fs" />
       <Compile Include="Components\LoadingWidget.fs" />
       <Compile Include="Components\ImagePreview.fs" />
       <Compile Include="Components\TextInput.fs" />
       <Compile Include="Components\DropDown.fs" />
-      <Compile Include="Pages\Settings.fs" />
+      <Compile Include="Components\FileInput.fs" />
+      <Compile Include="Components\Button.fs" />
       <Compile Include="Pages\Home.fs" />
       <Compile Include="Pages\NotFound.fs" />
       <Compile Include="View.fs" />

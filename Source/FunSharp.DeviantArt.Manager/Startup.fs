@@ -15,7 +15,7 @@ module Program =
         builder.Services
             .AddRadzenComponents()
             .AddScoped<IndexedDb>()
-            .AddSingleton<ApiClient>(ApiClient ())
+            .AddHttpClient()
         |> ignore
         
         builder.Build().RunAsync() |> ignore
