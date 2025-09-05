@@ -29,7 +29,7 @@ module Helpers =
     [<Literal>]
     let dbName = "FunSharp.DeviantArt.Manager"
 
-    let submitToStash (client: Client) title (file: HttpUpload) =
+    let submitToStash (client: Client) (deviation: LocalDeviation) =
 
         let submission = {
             StashSubmission.defaults with
@@ -59,13 +59,17 @@ module Helpers =
         |> JsonSerializer.serialize
         |> OK
         >=> setHeader "Content-Type" "application/json"
-
-    let stashUrl itemId =
         
-        $"https://sta.sh/0{Base36.encode itemId}"
-        
-    let asJson<'T> request =
+    let asString request =
         
         request.rawForm
         |> Encoding.UTF8.GetString
+        
+    let asJson<'T> request =
+        
+        request
+        |> asString
         |> JsonSerializer.deserialize<'T>
+
+    let keyOf (deviation: LocalDeviation) =
+        deviation.Image.Name

@@ -26,10 +26,6 @@ type Home() =
             |> Array.ofSeq
             |> Message.ProcessImages
             |> dispatch
-            
-        match model.LocalDeviations with
-        | NotLoaded -> dispatch Message.LoadLocalDeviations
-        | _ -> ()
         
         div {
             attr.``class`` "center-wrapper"
@@ -50,15 +46,7 @@ type Home() =
                     "OnStash" => (fun x -> dispatch (Message.StashDeviation x))
                 }
                 
-                // for file in model.StashedDeviations do
-                //     
-                //     let inspiration = file.Metadata.Inspiration |> Option.map _.ToString() |> Option.defaultValue ""
-                //     
-                //     div {
-                //         style "padding: 2rem; border: 2px solid gray; border-radius: 8px;"
-                //         
-                //         a { href $"{Helpers.stashUrl file.StashId}" }
-                //         text $"Inspired by {inspiration}"
-                //     }
+                model.StashedDeviations
+                |> StashedDeviations.render this (fun deviation -> dispatch (Message.PublishStashed deviation))
             }
         }

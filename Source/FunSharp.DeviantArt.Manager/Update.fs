@@ -87,6 +87,10 @@ module Update =
             (deviation, submission)
         | _ ->
             failwith $"Failed to stash {deviation.Image.Name}"
+            
+    let private stash client (deviation: LocalDeviation) =
+        
+        
     
     let private loadItems<'T> client endpoint (asLoadable: string -> Loadable<'T>) =
         
@@ -160,18 +164,18 @@ module Update =
         | SetPage page ->
             { model with Page = page }, Cmd.none
 
-        // | Initialize ->
-        //     
-        //     let batch = Cmd.batch [
-        //         Cmd.ofMsg LoadSettings
-        //         Cmd.ofMsg LoadInspirations
-        //         Cmd.ofMsg LoadPrompts
-        //         Cmd.ofMsg LoadLocalDeviations
-        //         Cmd.ofMsg LoadStashedDeviations
-        //         Cmd.ofMsg LoadPublishedDeviations
-        //     ]
-        //     
-        //     model, batch
+        | Initialize ->
+            
+            let batch = Cmd.batch [
+                Cmd.ofMsg LoadSettings
+                Cmd.ofMsg LoadInspirations
+                Cmd.ofMsg LoadPrompts
+                Cmd.ofMsg LoadLocalDeviations
+                Cmd.ofMsg LoadStashedDeviations
+                Cmd.ofMsg LoadPublishedDeviations
+            ]
+            
+            model, batch
 
         | LoadSettings ->
             let load () = loadSettings client
@@ -210,11 +214,6 @@ module Update =
             { model with LocalDeviations = Loading }, Cmd.OfAsync.either load () LoadedLocalDeviations failed
 
         | LoadedLocalDeviations loadable ->
-            match loadable with
-            | Loaded v ->
-                v |> Array.iter (fun x -> printfn $"title: {x.Title}")
-            | _ -> printfn $"???"
-            
             { model with LocalDeviations = loadable }, Cmd.none
 
         | LoadStashedDeviations ->
@@ -228,6 +227,7 @@ module Update =
             { model with StashedDeviations = loadable }, Cmd.none
 
         | LoadPublishedDeviations ->
+            
             let load () = loadPublishedDeviations client
             let failed ex = LoadedPublishedDeviations (Loadable.LoadingFailed ex)
             
@@ -255,7 +255,11 @@ module Update =
             failwith "todo"
         
         | StashDeviation deviation ->
-            failwith "todo"
+            
+            let stash () = stashDeviation client deviation
+            let failed ex = StashDeviationFailed (ex, deviation)
+            
+            { model with PublishedDeviations = Loading }, Cmd.OfAsync.either stash () LoadedPublishedDeviations failed
             
         | StashedDeviation (local, stashed) ->
             failwith "todo"
@@ -285,6 +289,7 @@ module Update =
             model, Cmd.ofMsg (UploadLocalDeviation deviation)
 
         | ProcessImageFailed (error, file) ->
+            
             printfn $"processing failed for: {file |> JsonSerializer.serialize}"
             printfn $"error: {error}"
             

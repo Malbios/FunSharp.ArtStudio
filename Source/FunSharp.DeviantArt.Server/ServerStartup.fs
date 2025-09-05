@@ -19,7 +19,7 @@ module ServerStartup =
     let secrets = Secrets.load ()
     let authPersistence = Persistence.AuthenticationPersistence()
     let dataPersistence : Abstraction.IPersistence = PickledPersistence("persistence.db")
-    let client = Client(authPersistence, secrets.client_id, secrets.client_secret)
+    let apiClient = Client(authPersistence, secrets.client_id, secrets.client_secret)
 
     let allowCors: WebPart =
         setHeader "Access-Control-Allow-Origin" "*"
@@ -32,7 +32,7 @@ module ServerStartup =
     let username: WebPart =
         fun ctx -> async {
             let! username =
-                client.WhoAmI()
+                apiClient.WhoAmI()
                 |> AsyncResult.getOrFail
                 |> Async.map _.username
                 
@@ -43,15 +43,10 @@ module ServerStartup =
         fun ctx -> {| Galleries = secrets.galleries |} |> asOkJsonResponse <| ctx
         
     let downloadLocalDeviations: WebPart =
-        fun ctx ->
-            let deviations = dataPersistence.FindAll<LocalDeviation>(dbKey_LocalDeviations)
-            
-            deviations |> Array.iter (fun x -> printfn $"title: {x.Title}")
-            
-            deviations |> asOkJsonResponse <| ctx
-            
-            // dataPersistence.FindAll<LocalDeviation>(dbKey_LocalDeviations) |> asOkJsonResponse <| ctx
-            
+        fun ctx -> async {
+            return! dataPersistence.FindAll<LocalDeviation>(dbKey_LocalDeviations) |> asOkJsonResponse <| ctx
+        }
+        
     let uploadLocalDeviation: WebPart =
         fun ctx -> async {
             match ctx.request.files with
@@ -67,8 +62,6 @@ module ServerStartup =
                             Image = Image(key, file.mimeType, content)
                     }
                     
-                    printfn $"saving deviation: {deviation}"
-                    
                     do dataPersistence.Insert(dbKey_LocalDeviations, key, deviation)
 
                     return! "ok" |> asOkJsonResponse <| ctx
@@ -82,10 +75,9 @@ module ServerStartup =
         fun ctx -> async {
             try
                 let deviation = ctx.request |> asJson<LocalDeviation>
+                let key = keyOf deviation
                 
-                do printfn $"updating title: {deviation.Title}"
-                
-                do dataPersistence.Upsert(dbKey_LocalDeviations, deviation.Image.Name, deviation) |> ignore
+                do dataPersistence.Upsert(dbKey_LocalDeviations, key, deviation) |> ignore
                 
                 return! "ok" |> asOkJsonResponse <| ctx
                 
@@ -93,23 +85,41 @@ module ServerStartup =
                 return! BAD_REQUEST ex.Message ctx
         }
 
-    // let stash: WebPart =
-    //     fun ctx -> async {
-    //         match ctx.request.files with
-    //         | [] -> return! BAD_REQUEST "No files uploaded" ctx
-    //
-    //         | [ file ] ->
-    //             let title =
-    //                 match ctx.request.fieldData "title" with
-    //                 | Choice1Of2 v -> v
-    //                 | Choice2Of2 v -> failwith $"{v}"
-    //
-    //             let! response = submitToStash client title file
-    //
-    //             return! response |> asOkJsonResponse <| ctx
-    //
-    //         | _ -> return! BAD_REQUEST "Multiple files not supported" ctx
-    //     }
+    let stash: WebPart =
+        fun ctx -> async {
+            try
+                let key = ctx.request |> asString
+                
+                match dataPersistence.Find<string, LocalDeviation>(dbKey_LocalDeviations, key) with
+                | None -> return! BAD_REQUEST $"local deviation '{key}' not found" ctx
+                | Some localDeviation ->
+                    let! stashedDeviation = submitToStash apiClient localDeviation
+                    
+                    do dataPersistence.Delete(dbKey_LocalDeviations, key) |> ignore
+                    do dataPersistence.Insert(dbKey_StashedDeviations, key, stashedDeviation)
+                    
+                    return! "ok" |> asOkJsonResponse <| ctx
+                
+            with ex ->
+                return! BAD_REQUEST ex.Message ctx
+        }
+        
+        // fun ctx -> async {
+        //     match ctx.request.files with
+        //     | [] -> return! BAD_REQUEST "No files uploaded" ctx
+        //
+        //     | [ file ] ->
+        //         let title =
+        //             match ctx.request.fieldData "title" with
+        //             | Choice1Of2 v -> v
+        //             | Choice2Of2 v -> failwith $"{v}"
+        //
+        //         let! response = submitToStash client title file
+        //
+        //         return! response |> asOkJsonResponse <| ctx
+        //
+        //     | _ -> return! BAD_REQUEST "Multiple files not supported" ctx
+        // }
 
     let cts = new CancellationTokenSource()
     
@@ -138,7 +148,7 @@ module ServerStartup =
             POST >=> path $"{apiBase}/local/inspiration" >=> BAD_REQUEST "not implemented yet"
             POST >=> path $"{apiBase}/local/prompt" >=> BAD_REQUEST "not implemented yet"
             POST >=> path $"{apiBase}/local/deviation" >=> uploadLocalDeviation
-            POST >=> path $"{apiBase}/stash" >=> BAD_REQUEST "not implemented yet"
+            POST >=> path $"{apiBase}/stash" >=> stash
             POST >=> path $"{apiBase}/publish" >=> BAD_REQUEST "not implemented yet"
 
             PATCH >=> path $"{apiBase}/local/deviation" >=> updateLocalDeviation

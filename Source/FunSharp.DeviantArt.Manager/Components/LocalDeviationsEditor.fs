@@ -11,8 +11,6 @@ open FunSharp.DeviantArt.Manager.Model
 type LocalDeviationsEditor() =
     inherit Component()
     
-    let mutable draft = Array.empty<LocalDeviation>
-    
     [<Parameter>]
     member val Galleries = Array.empty<string> with get, set
     
@@ -24,28 +22,18 @@ type LocalDeviationsEditor() =
 
     [<Parameter>]
     member val OnStash : LocalDeviation -> unit = ignore with get, set
-    
-    override this.OnParametersSet() =
-        
-        let deviations =
-            match this.Items with
-            | Loaded v -> v
-            | _ -> Array.empty
-        
-        draft <- deviations
         
     override this.Render() =
         
         match this.Items with
-        | Loading -> LoadingWidget.render ()
-        | _ ->
+        | Loaded deviations ->
             comp<RadzenStack> {
                 "Orientation" => Orientation.Horizontal
                 "JustifyContent" => JustifyContent.Center
                 "AlignItems" => AlignItems.Center
                 "Wrap" => FlexWrap.Wrap
                 
-                for deviation in draft do
+                for deviation in deviations do
                     comp<LocalDeviationEditor> {
                         "Galleries" => this.Galleries
                         "Deviation" => deviation
@@ -53,3 +41,6 @@ type LocalDeviationsEditor() =
                         "OnStash" => this.OnStash
                     }
             }
+            
+        | _ ->
+            LoadingWidget.render ()

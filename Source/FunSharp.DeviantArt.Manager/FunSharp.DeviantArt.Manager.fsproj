@@ -18,6 +18,7 @@
     <ItemGroup>
       <Compile Include="Routes.fs" />
       <Compile Include="Model.fs" />
+      <Compile Include="Helpers.fs" />
       <Compile Include="Components\LoadingWidget.fs" />
       <Compile Include="Components\ImagePreview.fs" />
       <Compile Include="Components\TextInput.fs" />
@@ -26,6 +27,7 @@
       <Compile Include="Components\Button.fs" />
       <Compile Include="Components\LocalDeviationEditor.fs" />
       <Compile Include="Components\LocalDeviationsEditor.fs" />
+      <Compile Include="Components\StashedDeviations.fs" />
       <Compile Include="Pages\Home.fs" />
       <Content Include="Pages\Home.bolero.css" />
       <Compile Include="Pages\NotFound.fs" />
