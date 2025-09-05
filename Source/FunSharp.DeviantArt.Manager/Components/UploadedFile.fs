@@ -2,11 +2,9 @@
 
 open System
 open Bolero.Html
-open FunSharp.Common
-open FunSharp.DeviantArt.Api.Model
-open FunSharp.DeviantArt.Manager.Model
 open Radzen
 open Radzen.Blazor
+open FunSharp.DeviantArt.Api.Model
 
 [<RequireQualifiedAccess>]
 module UploadedFile =
@@ -28,7 +26,9 @@ module UploadedFile =
         ()
         // Message.UpdateUploadedFile { file with Metadata.Gallery = newValue } |> dispatch
     
-    let render parent dispatch (deviation: LocalDeviation) =
+    let render parent dispatch (galleries: Gallery[]) (deviation: LocalDeviation) =
+
+        let galleries = galleries |> Array.map _.name        
         
         comp<RadzenStack> {
             attr.style "margin: 0.25rem; padding: 0.5rem; border: 2px solid gray; border-radius: 8px; max-width: 700px;"
@@ -44,7 +44,7 @@ module UploadedFile =
             comp<RadzenStack> {
                 "Orientation" => Orientation.Vertical
                 
-                div { text $"{deviation.Image.FileName}" }
+                div { text $"{deviation.Image.Name}" }
                 
                 deviation.Inspiration
                 |> Option.map _.Url.ToString()
@@ -55,7 +55,7 @@ module UploadedFile =
                 |> TextInput.render (updateTitle dispatch deviation) "Enter title..."
                 
                 deviation.Gallery
-                |> DropDown.render (updateGallery dispatch deviation) "Gallery" "Select gallery..." (Union.asStrings<ImageType>())
+                |> DropDown.render (updateGallery dispatch deviation) "Gallery" "Select gallery..." galleries
                 
                 comp<RadzenStack> {
                     "Orientation" => Orientation.Horizontal

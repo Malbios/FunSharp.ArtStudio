@@ -1,212 +1,111 @@
 ﻿namespace FunSharp.DeviantArt.Manager
 
-open System
-open System.IO
 open System.Net.Http
-
 open System.Net.Http.Headers
+open System.Threading.Tasks
 open Elmish
+open FunSharp.Common
 open FunSharp.DeviantArt.Api.Model
 open FunSharp.DeviantArt.Manager.Model
-open MBrace.FsPickler
-open Microsoft.AspNetCore.Components.Forms
-open Microsoft.Extensions.Logging
-open Newtonsoft.Json
-open FunSharp.Common
-open FunSharp.DeviantArt.Api
 
 module Update =
     
     let private apiRoot = "http://localhost:5123/api/v1"
     
-    // let private pickler = FsPickler.CreateBinarySerializer()
-    //
-    // type private DbItem = {
-    //     Id: string
-    //     Value: byte array
-    // }
-    //
-    // let private modelWithUpdatedUploadedFile model key (update: UploadedFile -> UploadedFile) = {
-    //     model with
-    //         UploadedFiles = model.UploadedFiles
-    //         |> Array.map (fun x ->
-    //             if x.FileName = key then
-    //                 update x
-    //             else
-    //                 x
-    //         )
-    // }
-    //
-    // let private processUpload (file: IBrowserFile) = async {
-    //     let maxSize = 1024L * 1024L * 100L // 100 MB
-    //     
-    //     use stream = file.OpenReadStream(maxAllowedSize = maxSize)
-    //     use ms = new MemoryStream()
-    //     
-    //     do! stream.CopyToAsync(ms)
-    //     
-    //     let byteArray = ms.ToArray()
-    //     
-    //     return (file.Name, $"data:{file.ContentType};base64,{Convert.ToBase64String(byteArray)}", byteArray)
-    // }
-    //
-    // let private initDatabase (database: IndexedDb) =
-    //     
-    //     let stores = [|
-    //         Common.dbKey_Settings
-    //         Common.dbKey_Inspirations
-    //         Common.dbKey_LocalDeviations
-    //         Common.dbKey_StashedDeviations
-    //         Common.dbKey_PublishedDeviations
-    //     |]
-    //     
-    //     database.Init(Common.dbName, stores)
-    //
-    // let private loadDeviations<'T> (logger: ILogger) (database: IndexedDb) storeName=
-    //     
-    //     logger.LogInformation $"loading deviations from {storeName}..."
-    //     
-    //     initDatabase database
-    //     |> Async.catch
-    //     |> AsyncResult.getOrFail
-    //     |> Async.bind (fun () ->
-    //         database.GetAll<string, byte array>(storeName)
-    //         |> Async.map (fun x -> x |> Array.map (fun (_, value) -> pickler.UnPickle<'T> value))
-    //     )
-    //     |> Async.catch
-    //     |> AsyncResult.getOrFail
-    //
-    // let private loadLocalDeviations logger database =
-    //     loadDeviations<UploadedFile> logger database Common.dbKey_LocalDeviations
-    //
-    // let private loadStashedDeviations logger database =
-    //     loadDeviations<StashedDeviation> logger database Common.dbKey_StashedDeviations
-    //
-    // let private loadPublishedDeviations logger database =
-    //     loadDeviations<PublishedDeviation> logger database Common.dbKey_PublishedDeviations
-    //     
-    // let private saveItem<'T> (logger: ILogger) (database: IndexedDb) storeName key (value: 'T) =
-    //     
-    //     logger.LogInformation $"saving deviation to '{storeName}': {key}"
-    //     
-    //     let value = pickler.Pickle value
-    //     
-    //     initDatabase database
-    //     |> Async.bind (fun () ->
-    //         database.Set(storeName, key, value)
-    //     )
-    //     
-    // let private saveLocalDeviation logger database key (value: UploadedFile) =
-    //     saveItem logger database Common.dbKey_LocalDeviations key value
-    //     
-    // let private saveStashedDeviation logger database key (value: StashedDeviation) =
-    //     saveItem logger database Common.dbKey_StashedDeviations key value
-    //     
-    // let private savePublishedDeviations logger database key (value: StashedDeviation) =
-    //     saveItem logger database Common.dbKey_PublishedDeviations key value
-    //     
-    // let private deleteDeviation<'T> (logger: ILogger) (database: IndexedDb) storeName key =
-    //     
-    //     logger.LogInformation $"deleting deviation in '{storeName}': {key}"
-    //     
-    //     initDatabase database
-    //     |> Async.bind (fun () ->
-    //         database.Delete(storeName, key)
-    //     )
-    //     
-    // let private deleteLocalDeviation logger database =
-    //     deleteDeviation logger database Common.dbKey_LocalDeviations
-    //     
-    // let private deleteStashedDeviation logger database =
-    //     deleteDeviation logger database Common.dbKey_StashedDeviations
-    //     
-    // let private deletePublishedDeviations logger database =
-    //     deleteDeviation logger database Common.dbKey_PublishedDeviations
-    //     
-    // let private processStashSubmission file (response: HttpResponseMessage) =
-    //     
-    //     response.Content.ReadAsStringAsync()
-    //     |> Async.AwaitTask
-    //     |> Async.catch
-    //     |> AsyncResult.getOrFail
-    //     |> Async.map (fun content ->
-    //         let response =
-    //             content |> JsonSerializer.deserialize<ApiResponses.StashSubmission>
-    //             
-    //         match response.status with
-    //         | "success" ->
-    //             let submission = {
-    //                 StashId = response.item_id
-    //                 Metadata = file.Metadata
-    //             }
-    //             
-    //             (file, submission)
-    //         | _ ->
-    //             failwith $"Failed to stash {file.FileName}"
-    //     )
-    //     
-    // let private submitToStash (logger: ILogger) (client: HttpClient) file =
-    //     
-    //     logger.LogInformation $"Stashing {file.FileName}..."
-    //     logger.LogInformation $"{file.Metadata |> JsonConvert.SerializeObject}"
-    //     
-    //     let url = $"{apiRoot}/stash"
-    //     
-    //     let byteContent = new ByteArrayContent(file.Content)
-    //     
-    //     use content = new MultipartFormDataContent()
-    //     byteContent.Headers.ContentType <- MediaTypeHeaderValue("image/png")
-    //     content.Add(byteContent, "file", file.FileName)
-    //     content.Add(new StringContent(file.Metadata.Title), "title")
-    //
-    //     client.PostAsync(url, content)
-    //     |> Async.AwaitTask
-    //     |> Async.tee (fun response -> response.EnsureSuccessStatusCode() |> ignore)
-    //     |> Async.catch
-    //     |> AsyncResult.getOrFail
-    //     |> Async.bind (fun response -> processStashSubmission file response)
-    
-    let loadItems<'T> (client: HttpClient) (endpoint: string) (asLoadable: string -> Loadable<'T>) =
+    let private ensureSuccessOrFail (task: Task<HttpResponseMessage>) =
         
-        client.GetAsync($"{apiRoot}{endpoint}")
+        task
         |> Async.AwaitTask
         |> Async.tee (fun response -> response.EnsureSuccessStatusCode() |> ignore)
         |> Async.catch
         |> AsyncResult.getOrFail
-        |> Async.bind (fun response ->
-            response.Content.ReadAsStringAsync()
-            |> Async.AwaitTask
-            |> Async.catch
-            |> AsyncResult.getOrFail
-            |> Async.map asLoadable
-        )
     
-    let loadInspirations (client: HttpClient) =
+    let private get (client: HttpClient) (url: string) =
+        
+        client.GetAsync(url)
+        |> ensureSuccessOrFail
+        
+    let private post (client: HttpClient) (url: string) (content: HttpContent) =
+        
+        client.PostAsync(url, content)
+        |> ensureSuccessOrFail
+        
+    let private contentAsString (response: HttpResponseMessage) =
+        
+        response.Content.ReadAsStringAsync()
+        |> Async.AwaitTask
+        |> Async.catch
+        |> AsyncResult.getOrFail
+        
+    let private processStashSubmission (deviation: LocalDeviation) content =
+        
+        let stashSubmission = content |> JsonSerializer.deserialize<StashSubmissionResponse>
+            
+        match stashSubmission.status with
+        | "success" ->
+            let submission = {
+                StashId = stashSubmission.item_id
+                Metadata = deviation
+            }
+            
+            (deviation, submission)
+        | _ ->
+            failwith $"Failed to stash {deviation.Image.Name}"
+        
+    let private postImage client url (deviation: LocalDeviation) =
+        
+        let byteContent = new ByteArrayContent(deviation.Image.Content)
+        
+        byteContent.Headers.ContentType <- MediaTypeHeaderValue(deviation.Image.MimeType)
+        
+        use content = new MultipartFormDataContent()
+        
+        content.Add(byteContent, "file", deviation.Image.Name)
+        content.Add(new StringContent(deviation.Title), "title")
+        
+        content
+        |> post client url
+        |> Async.bind contentAsString
+        |> Async.map (processStashSubmission deviation)
+    
+    let private loadItems<'T> client endpoint (asLoadable: string -> Loadable<'T>) =
+        
+        $"{apiRoot}{endpoint}"
+        |> get client
+        |> Async.bind contentAsString
+        |> Async.map asLoadable
+        
+    let private loadSettings (client: HttpClient) =
+        
+        (JsonSerializer.deserialize<Settings> >> Loadable.Loaded)
+        |> loadItems client "/settings"
+    
+    let private loadInspirations client =
         
         (JsonSerializer.deserialize<Inspiration array> >> Loadable.Loaded)
         |> loadItems client "/inspirations"
     
-    let loadPrompts (client: HttpClient) =
+    let private loadPrompts client =
         
         (JsonSerializer.deserialize<Prompt array> >> Loadable.Loaded)
         |> loadItems client "/prompts"
     
-    let loadLocalDeviations (client: HttpClient) =
+    let private loadLocalDeviations client =
         
         (JsonSerializer.deserialize<LocalDeviation array> >> Loadable.Loaded)
         |> loadItems client "/local-deviations"
     
-    let loadStashedDeviations (client: HttpClient) =
+    let private loadStashedDeviations client =
         
         (JsonSerializer.deserialize<StashedDeviation array> >> Loadable.Loaded)
         |> loadItems client "/stashed-deviations"
     
-    let loadPublishedDeviations (client: HttpClient) =
+    let private loadPublishedDeviations client =
         
         (JsonSerializer.deserialize<PublishedDeviation array> >> Loadable.Loaded)
         |> loadItems client "/published-deviations"
     
-    let update (_: ILogger) (client: HttpClient) message (model: Model.State) =
+    let update _ client message model =
     
         match message with
         
@@ -216,6 +115,7 @@ module Update =
         | Initialize ->
             
             let batch = Cmd.batch [
+                Cmd.ofMsg LoadSettings
                 Cmd.ofMsg LoadInspirations
                 Cmd.ofMsg LoadPrompts
                 Cmd.ofMsg LoadLocalDeviation
@@ -224,6 +124,15 @@ module Update =
             ]
             
             model, batch
+
+        | LoadSettings ->
+            let load () = loadSettings client
+            let failed ex = LoadedSettings (Loadable.LoadingFailed ex)
+            
+            { model with Settings = Loading }, Cmd.OfAsync.either load () LoadedSettings failed
+        
+        | LoadedSettings loadable ->
+           { model with Settings = loadable }, Cmd.none
         
         | LoadInspirations ->
             
@@ -273,150 +182,22 @@ module Update =
 
         | LoadedPublishedDeviation loadable ->
             { model with PublishedDeviations = loadable }, Cmd.none
-        
-        | AddInspiration inspiration ->
-            failwith "todo"
-            
-        | Inspiration2Prompt (inspiration, prompt) ->
-            failwith "todo"
-            
-        | Prompt2LocalDeviation (prompt, metadata) ->
-            failwith "todo"
-        
-        | StashDeviation metadata ->
-            failwith "todo"
-        
-        | PublishStashed stashedDeviation ->
-            failwith "todo"
-        
-        | UploadLocalDeviations browserFiles ->
-            failwith "todo"
-            
-        // | UploadLocalDeviations newFiles ->
-        //     
-        //     let alreadyExists (file: IBrowserFile) =
-        //         model.UploadedFiles |> Array.exists (fun x -> x.FileName = file.Name)
-        //         
-        //     let newFiles =
-        //         newFiles
-        //         |> Array.filter (fun x -> alreadyExists x |> not)
-        //     
-        //     let processUploadCommands =
-        //         newFiles
-        //         |> Array.map (fun x -> Cmd.OfAsync.perform processUpload x UploadedFiles)
-        //         
-        //     let newFiles =
-        //         newFiles
-        //         |> Array.map (fun x -> { UploadedFile.empty with FileName = x.Name })
-        //         
-        //     let consolidatedFiles =
-        //         [model.UploadedFiles; newFiles] |> Array.concat
-        //     
-        //     { model with UploadedFiles = consolidatedFiles }, Cmd.batch processUploadCommands
-        //
-        // | UploadedFiles (fileName, previewUrl, content) ->
-        //     
-        //     let update x =
-        //         { x with ImageUrl = previewUrl; Content = content }
-        //     
-        //     modelWithUpdatedUploadedFile model fileName update, Cmd.none
-        //
-        // | UpdateUploadedFile file ->
-        //     
-        //     let model = modelWithUpdatedUploadedFile model file.FileName (fun _ -> file)
-        //     
-        //     model, Cmd.none
 
-        // | LoadDeviations ->
-        //     
-        //     let loadAllDeviations () =
-        //         loadLocalDeviations logger database
-        //         |> Async.bind (fun local ->
-        //             loadStashedDeviations logger database
-        //             |> Async.map (fun stashed ->
-        //                 (local, stashed)
-        //             )
-        //         )
-        //         |> Async.bind (fun (local, stashed) ->
-        //             loadPublishedDeviations logger database
-        //             |> Async.map (fun published ->
-        //                 (local, stashed, published)
-        //             )
-        //         )
-        //     
-        //     { model with IsBusy = true }, Cmd.OfAsync.either loadAllDeviations () LoadedDeviations Error
-        //     
-        // | LoadedDeviations(local, stashed, published) ->
-        //         
-        //     let model =
-        //         {
-        //             model with
-        //                 UploadedFiles = local
-        //                 StashedDeviations = stashed
-        //                 PublishedDeviations = published
-        //         }
-        //     
-        //     logger.LogInformation $"Loaded {local.Length} uploaded, {stashed.Length} stashed and {published.Length} published deviations."
-        //     
-        //     model, Cmd.ofMsg Done
-        //     
-        // | SaveUploadedFile file ->
-        //     
-        //     let save = saveLocalDeviation logger database file.FileName
-        //     
-        //     { model with IsBusy = true }, Cmd.OfAsync.either save file (fun () -> Done) Error
-        //
-        // | SaveStashedFile file ->
-        //     
-        //     let save = saveStashedDeviation logger database (file.StashId.ToString())
-        //     
-        //     { model with IsBusy = true }, Cmd.OfAsync.either save file (fun () -> Done) Error
-        //
-        // | DeleteLocalFile file ->
-        //     
-        //     let model = {
-        //         model with
-        //             UploadedFiles = model.UploadedFiles |> Array.filter (fun x -> x.FileName <> file.FileName)
-        //     }
-        //     
-        //     let delete = deleteLocalDeviation logger database
-        //     
-        //     model, Cmd.OfAsync.either delete file.FileName (fun () -> Done) Error
-        //
-        // | Stash file ->
-        //     
-        //     let gallery = file.Metadata.Gallery
-        //     
-        //     let isMature =
-        //         match Helpers.gallery gallery with
-        //         | Helpers.Gallery.Spicy -> true
-        //         | _ -> false
-        //     
-        //     let file = {
-        //         file with
-        //             Metadata.Gallery = Helpers.galleryId gallery
-        //             Metadata.IsMature = isMature
-        //     }
-        //     
-        //     let submitToStash = submitToStash logger client
-        //     
-        //     let batch = Cmd.batch [
-        //         Cmd.ofMsg (UpdateUploadedFile file)
-        //         Cmd.OfAsync.either submitToStash file Stashed Error
-        //     ]
-        //     
-        //     { model with IsBusy = true }, batch
-        //
-        // | Stashed (file, deviation) ->
-        //         
-        //     let model = {
-        //         model with
-        //             StashedDeviations = [model.StashedDeviations; [|deviation|]] |> Array.concat
-        //     }
-        //     
-        //     let batch = Cmd.batch [|
-        //         Cmd.ofMsg (DeleteLocalFile file)
-        //         Cmd.ofMsg (SaveStashedFile deviation)
-        //     |]
-        //     
-        //     model, batch
+        | AddInspiration inspiration -> failwith "todo"
+        | InspirationRejected (error, inspiration) -> failwith "todo"
+        
+        | Inspiration2Prompt (inspiration, prompt) -> failwith "todo"
+        | PromptRejected (error, inspiration, prompt) -> failwith "todo"
+        
+        | Prompt2LocalDeviation (prompt, local) -> failwith "todo"
+        | LocalDeviationRejected (error, prompt, local) -> failwith "todo"
+        
+        | StashDeviation metadata -> failwith "todo"
+        | StashedDeviation (local, stashed) -> failwith "todo"
+        | StashFailed (error, local) -> failwith "todo"
+        
+        | PublishStashed stashedDeviation -> failwith "todo"
+        | PublishedDeviation (stashed, published) -> failwith "todo"
+        | PublishFailed (error, stashed) -> failwith "todo"
+        
+        | UploadLocalDeviations browserFiles -> failwith "todo"

@@ -1,12 +1,13 @@
 ﻿namespace FunSharp.DeviantArt.Server
 
 open System.IO
-open FunSharp.Common
-open FunSharp.DeviantArt.Api
 open Suave
 open Suave.Operators
 open Suave.Successful
 open Suave.Writers
+open FunSharp.Common
+open FunSharp.DeviantArt.Api
+open FunSharp.DeviantArt.Api.Model
 
 module Helpers =
     
@@ -44,7 +45,7 @@ module Helpers =
         return buffer
     }
 
-    let submitToStash (client: Client) title (file: Http.HttpUpload) =
+    let submitToStash (client: Client) title (file: HttpUpload) =
 
         let submission = {
             StashSubmission.defaults with
@@ -73,3 +74,6 @@ module Helpers =
         |> JsonSerializer.serialize
         |> OK
         >=> setHeader "Content-Type" "application/json"
+
+    let stashUrl itemId =
+        $"https://sta.sh/0{Base36.encode itemId}"

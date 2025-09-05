@@ -3,7 +3,6 @@
 open Bolero
 open Bolero.Html
 open FunSharp.DeviantArt.Api.Model
-open FunSharp.DeviantArt.Manager.Model
 open Microsoft.AspNetCore.Components
 
 type ImagePreview() =

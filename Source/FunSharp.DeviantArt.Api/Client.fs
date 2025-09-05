@@ -53,7 +53,7 @@ type Client(persistence: IAuthPersistence<AuthenticationData>, clientId: string,
     let saveAuthDataAndUpdateAuthorization result =
         
         result
-        |> AsyncResult.map JsonConvert.DeserializeObject<ApiResponses.Token>
+        |> AsyncResult.map JsonConvert.DeserializeObject<TokenResponse>
         |> AsyncResult.map AuthenticationData.fromTokenResponse
         |> AsyncResult.tee (fun data -> data |> persistence.Save)
         |> AsyncResult.tee (fun data -> updateAuthorization data.AccessToken)
@@ -94,13 +94,13 @@ type Client(persistence: IAuthPersistence<AuthenticationData>, clientId: string,
         fun () -> getNewAuthData () |> AsyncResult.ignore
         |> Http.requestWithRefreshAndReAuth payload refreshToken
         
-    let toGalleryResponse content : ApiResponses.Gallery =
+    let toGalleryResponse content : GalleryResponse =
         
         let jsonObject = JObject.Parse content
 
         let results =
             jsonObject["results"] :?> JArray
-            |> Seq.map (fun j -> JsonConvert.DeserializeObject<ApiResponses.Deviation>(j.ToString()))
+            |> Seq.map (fun j -> JsonConvert.DeserializeObject<DeviationResponse>(j.ToString()))
             |> Seq.toArray
 
         let hasMore = jsonObject["has_more"].ToObject<bool>()
@@ -134,7 +134,7 @@ type Client(persistence: IAuthPersistence<AuthenticationData>, clientId: string,
             let description = j["description"].Value<string>()
             let stats = JsonConvert.DeserializeObject<Stats>(j["stats"].ToString())
             
-            let metadata : ApiResponses.Metadata = {
+            let metadata : MetadataResponse = {
                 description = description
                 stats = Some stats
             }
@@ -182,14 +182,14 @@ type Client(persistence: IAuthPersistence<AuthenticationData>, clientId: string,
         
         Http.RequestPayload.PostWithFileAndProperties (url, file, properties)
         |> request
-        |> AsyncResult.map JsonConvert.DeserializeObject<ApiResponses.StashSubmission>
+        |> AsyncResult.map JsonConvert.DeserializeObject<StashSubmissionResponse>
 
     member _.WhoAmI() =
 
         Endpoints.whoAmI
         |> fun endpoint -> Http.RequestPayload.Get $"{config.RootUrl}{endpoint}"
         |> request
-        |> AsyncResult.map JsonConvert.DeserializeObject<ApiResponses.WhoAmI>
+        |> AsyncResult.map JsonConvert.DeserializeObject<WhoAmIResponse>
         
     member _.AllDeviations() =
             
@@ -249,7 +249,7 @@ type Client(persistence: IAuthPersistence<AuthenticationData>, clientId: string,
         ($"{config.RootUrl}{Endpoints.publishFromStash}", properties)
         |> Http.RequestPayload.PostWithProperties
         |> request
-        |> AsyncResult.map JsonConvert.DeserializeObject<ApiResponses.Publication>
+        |> AsyncResult.map JsonConvert.DeserializeObject<PublicationResponse>
 
     member _.GalleryFolders() =
         

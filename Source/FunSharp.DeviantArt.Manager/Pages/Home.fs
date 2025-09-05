@@ -20,6 +20,11 @@ type Home() =
         
     override this.View model dispatch =
         
+        let galleries =
+            match model.Settings with
+            | Loaded settings -> settings.Galleries
+            | _ -> Array.empty
+        
         let uploadFiles (args: InputFileChangeEventArgs) =
             args.GetMultipleFiles(args.FileCount)
             |> Array.ofSeq
@@ -46,7 +51,7 @@ type Home() =
                         "AlignItems" => AlignItems.Center
                         
                         for deviation in deviations do
-                            UploadedFile.render this dispatch deviation
+                            UploadedFile.render this dispatch galleries deviation
                     }
                     
                 | NotLoaded

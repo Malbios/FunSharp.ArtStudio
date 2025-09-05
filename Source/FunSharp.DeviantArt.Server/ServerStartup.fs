@@ -89,3 +89,11 @@ module ServerStartup =
         |> startWebServer config
 
         0
+
+// get stash url (maybe as part of the response instead)
+
+// local/inspiration
+// local/prompt
+// local/deviation
+// stash
+// publish

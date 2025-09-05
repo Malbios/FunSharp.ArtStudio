@@ -2,16 +2,23 @@
 
 open System.IO
 open Newtonsoft.Json
-    
+
+type Gallery = {
+    id: string
+    name: string
+}
+
 type Secrets = {
     client_id: string
     client_secret: string
+    
+    galleries: Gallery[]
 }
 
 [<RequireQualifiedAccess>]
 module Secrets =
     
-    let filePath = ".secrets"
+    let filePath = "secrets.json"
     
     let load () =
         
