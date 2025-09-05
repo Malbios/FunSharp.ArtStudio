@@ -150,7 +150,8 @@ module Update =
     let private updateLocalDeviation client (deviation: LocalDeviation) =
         
         patchObject client $"{apiRoot}/local/deviation" deviation
-        |> Async.ignore
+        |> Async.bind contentAsString
+        |> Async.tee (fun x -> printfn $"update done: {x}")
     
     let update _ client message model =
     
@@ -209,6 +210,11 @@ module Update =
             { model with LocalDeviations = Loading }, Cmd.OfAsync.either load () LoadedLocalDeviations failed
 
         | LoadedLocalDeviations loadable ->
+            match loadable with
+            | Loaded v ->
+                v |> Array.iter (fun x -> printfn $"title: {x.Title}")
+            | _ -> printfn $"???"
+            
             { model with LocalDeviations = loadable }, Cmd.none
 
         | LoadStashedDeviations ->

@@ -43,7 +43,14 @@ module ServerStartup =
         fun ctx -> {| Galleries = secrets.galleries |} |> asOkJsonResponse <| ctx
         
     let downloadLocalDeviations: WebPart =
-        fun ctx -> dataPersistence.FindAll<LocalDeviation>(dbKey_LocalDeviations) |> asOkJsonResponse <| ctx
+        fun ctx ->
+            let deviations = dataPersistence.FindAll<LocalDeviation>(dbKey_LocalDeviations)
+            
+            deviations |> Array.iter (fun x -> printfn $"title: {x.Title}")
+            
+            deviations |> asOkJsonResponse <| ctx
+            
+            // dataPersistence.FindAll<LocalDeviation>(dbKey_LocalDeviations) |> asOkJsonResponse <| ctx
             
     let uploadLocalDeviation: WebPart =
         fun ctx -> async {
@@ -62,7 +69,7 @@ module ServerStartup =
                     
                     printfn $"saving deviation: {deviation}"
                     
-                    dataPersistence.Insert(dbKey_LocalDeviations, key, deviation)
+                    do dataPersistence.Insert(dbKey_LocalDeviations, key, deviation)
 
                     return! "ok" |> asOkJsonResponse <| ctx
                 with ex ->
@@ -72,16 +79,19 @@ module ServerStartup =
         }
         
     let updateLocalDeviation: WebPart =
-        fun ctx ->
+        fun ctx -> async {
             try
                 let deviation = ctx.request |> asJson<LocalDeviation>
                 
-                dataPersistence.Upsert(dbKey_LocalDeviations, deviation.Image.Name, deviation) |> ignore
+                do printfn $"updating title: {deviation.Title}"
                 
-                "ok" |> asOkJsonResponse <| ctx
+                do dataPersistence.Upsert(dbKey_LocalDeviations, deviation.Image.Name, deviation) |> ignore
+                
+                return! "ok" |> asOkJsonResponse <| ctx
                 
             with ex ->
-                BAD_REQUEST ex.Message ctx
+                return! BAD_REQUEST ex.Message ctx
+        }
 
     // let stash: WebPart =
     //     fun ctx -> async {

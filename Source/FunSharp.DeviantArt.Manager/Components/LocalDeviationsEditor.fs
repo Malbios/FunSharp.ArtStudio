@@ -47,8 +47,8 @@ type LocalDeviationsEditor() =
                 
                 for deviation in draft do
                     comp<LocalDeviationEditor> {
-                        "Item" => deviation
                         "Galleries" => this.Galleries
+                        "Deviation" => deviation
                         "OnSave" => this.OnSave
                         "OnStash" => this.OnStash
                     }
