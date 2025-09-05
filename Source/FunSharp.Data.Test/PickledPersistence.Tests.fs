@@ -2,11 +2,11 @@
 
 open System
 open System.IO
-open FunSharp.Common.Abstraction
 open Xunit
 open Faqt
 open Faqt.Operators
 open FunSharp.Data
+open FunSharp.Data.Abstraction
 
 type TestModelA = {
     Id: Guid

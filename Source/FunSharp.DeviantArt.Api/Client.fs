@@ -1,7 +1,7 @@
 ﻿namespace FunSharp.DeviantArt.Api
 
 open System
-open FunSharp.Common.Abstraction
+open FunSharp.Data.Abstraction
 open Newtonsoft.Json
 open Newtonsoft.Json.Linq
 open FunSharp.Common

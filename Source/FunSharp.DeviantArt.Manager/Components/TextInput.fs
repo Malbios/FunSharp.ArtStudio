@@ -16,7 +16,6 @@ module TextInput =
             attr.callback "Change" update
             
             // TODO: maybe needs this, maybe not
-            
             // attr.callback "oninput" (fun (args: ChangeEventArgs) -> args.Value.ToString() |> update)
             
             "Value" => currentValue

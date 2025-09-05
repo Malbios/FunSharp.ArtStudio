@@ -9,7 +9,7 @@ type ImagePreview() =
     inherit Component()
 
     [<Parameter>]
-    member val Image: Image = Image("", "", Array.empty) with get, set
+    member val Image = Image.empty with get, set
     
     member this.TriggerReRender() =
         

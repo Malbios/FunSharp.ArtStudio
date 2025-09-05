@@ -1,7 +1,7 @@
 ﻿namespace FunSharp.DeviantArt.Server
 
-open FunSharp.Common.Abstraction
 open FunSharp.Data
+open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.Api.Model
 
 [<RequireQualifiedAccess>]

@@ -283,6 +283,12 @@ type Image(name: string, mimeType: string, content: byte array) =
         match mimeType, content with
         | mime, content when mime = "" || content.Length = 0 -> ""
         | mime, content -> $"data:{mime};base64,{Convert.ToBase64String(content)}"
+        
+[<RequireQualifiedAccess>]
+module Image =
+    
+    let empty =
+        Image("", "", Array.empty)
 
 type Inspiration = {
     Url: Uri
@@ -302,7 +308,24 @@ type Metadata = {
     IsMature: bool
 }
 
+[<RequireQualifiedAccess>]
+module Metadata =
+    
+    let empty = {
+        Inspiration = None
+        Image = Image.empty
+        Title = ""
+        Gallery = ""
+        IsMature = false
+    }
+
 type LocalDeviation = Metadata
+
+[<RequireQualifiedAccess>]
+module LocalDeviation =
+    
+    let empty : LocalDeviation =
+        Metadata.empty
 
 type StashedDeviation = {
     StashId: int64

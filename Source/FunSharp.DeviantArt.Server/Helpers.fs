@@ -1,6 +1,6 @@
 ﻿namespace FunSharp.DeviantArt.Server
 
-open System.IO
+open System.Text
 open Suave
 open Suave.Operators
 open Suave.Successful
@@ -28,22 +28,6 @@ module Helpers =
 
     [<Literal>]
     let dbName = "FunSharp.DeviantArt.Manager"
-    
-    let readAllBytesAsync (path: string) : Async<byte[]> = async {
-        use stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, bufferSize = 64 * 1024, options = FileOptions.Asynchronous)
-
-        let buffer =
-            match stream.Length with
-            | length when length <= int64 System.Int32.MaxValue ->
-                int length
-            | _ ->
-                failwith "The file is too large for a single buffer"
-            |> Array.zeroCreate<byte>
-
-        let! _ = stream.ReadAsync(buffer, 0, buffer.Length) |> Async.AwaitTask
-        
-        return buffer
-    }
 
     let submitToStash (client: Client) title (file: HttpUpload) =
 
@@ -56,7 +40,7 @@ module Helpers =
         printfn $"mime: {file.mimeType}"
         printfn $"tempFilePath: {file.tempFilePath}"
 
-        readAllBytesAsync file.tempFilePath
+        File.readAllBytesAsync file.tempFilePath
         |> Async.bind (fun content ->
             let httpFile: Http.File = {
                 MediaType = Some file.mimeType
@@ -69,11 +53,19 @@ module Helpers =
             |> AsyncResult.getOrFail
         )
         
-    let jsonResponse data =
+    let asOkJsonResponse data =
+        
         data
         |> JsonSerializer.serialize
         |> OK
         >=> setHeader "Content-Type" "application/json"
 
     let stashUrl itemId =
+        
         $"https://sta.sh/0{Base36.encode itemId}"
+        
+    let asJson<'T> request =
+        
+        request.rawForm
+        |> Encoding.UTF8.GetString
+        |> JsonSerializer.deserialize<'T>

@@ -1,8 +1,8 @@
 ﻿namespace FunSharp.Data
 
-open FunSharp.Common.Abstraction
 open LiteDB
 open MBrace.FsPickler
+open FunSharp.Data.Abstraction
 
 type PickledPersistence(databaseFilePath: string) =
     
@@ -29,7 +29,9 @@ type PickledPersistence(databaseFilePath: string) =
                 
         member this.Upsert<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
             (collectionName, key: 'Key, value: 'Value) =
-                persistence.Upsert(collectionName, key, value |> this.AsBson)
+                match persistence.Upsert(collectionName, key, value |> this.AsBson) with
+                | true -> UpsertResult.Insert
+                | false -> UpsertResult.Update
                 
         member this.Find<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
             (collectionName, key: 'Key) =

@@ -12,23 +12,19 @@ open FunSharp.DeviantArt.Manager.Model
 type Home() =
     inherit ElmishComponent<State, Message>()
     
-    override _.CssScope = CssScopes.``FunSharp.DeviantArt.Manager``
+    override _.CssScope = CssScopes.Home
     
-    // override this.ShouldRender(oldModel, newModel) =
-    //     
-    //     oldModel.UploadedFiles <> newModel.UploadedFiles
-        
     override this.View model dispatch =
         
         let galleries =
             match model.Settings with
-            | Loaded settings -> settings.Galleries
+            | Loaded settings -> settings.Galleries |> Array.map _.name
             | _ -> Array.empty
-        
+    
         let uploadFiles (args: InputFileChangeEventArgs) =
-            args.GetMultipleFiles(args.FileCount)
+            args.GetMultipleFiles ()
             |> Array.ofSeq
-            |> Message.UploadLocalDeviations
+            |> Message.ProcessImages
             |> dispatch
         
         div {
@@ -37,28 +33,18 @@ type Home() =
             comp<RadzenStack> {
                 style "height: 100%"
 
+                "Orientation" => Orientation.Vertical
                 "JustifyContent" => JustifyContent.Center
                 "AlignItems" => AlignItems.Center
                 
                 FileInput.render true uploadFiles
                 
-                match model.LocalDeviations with
-                | Loaded deviations ->
-                    comp<RadzenStack> {
-                        "Orientation" => Orientation.Horizontal
-                        "Wrap" => FlexWrap.Wrap
-                        "JustifyContent" => JustifyContent.Center
-                        "AlignItems" => AlignItems.Center
-                        
-                        for deviation in deviations do
-                            UploadedFile.render this dispatch galleries deviation
-                    }
-                    
-                | NotLoaded
-                | Loading ->
-                    LoadingWidget.render ()
-                
-                | _ -> ()
+                comp<LocalDeviationsEditor> {
+                    "Galleries" => galleries
+                    "Items" => model.LocalDeviations
+                    "OnSave" => (fun x -> dispatch (Message.UpdateLocalDeviation x))
+                    "OnStash" => (fun x -> dispatch (Message.StashDeviation x))
+                }
                 
                 // for file in model.StashedDeviations do
                 //     

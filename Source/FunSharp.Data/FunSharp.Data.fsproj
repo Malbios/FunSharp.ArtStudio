@@ -6,6 +6,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <Compile Include="Abstraction.fs" />
       <Compile Include="FSharpBsonMapper.fs" />
       <Compile Include="LiteDbPersistence.fs" />
       <Compile Include="PickledPersistence.fs" />

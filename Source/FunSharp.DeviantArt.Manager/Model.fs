@@ -57,30 +57,38 @@ module Model =
         | LoadPrompts
         | LoadedPrompts of Loadable<Prompt array>
         
-        | LoadLocalDeviation
-        | LoadedLocalDeviation of Loadable<LocalDeviation array>
+        | LoadLocalDeviations
+        | LoadedLocalDeviations of Loadable<LocalDeviation array>
         
-        | LoadStashedDeviation
-        | LoadedStashedDeviation of Loadable<StashedDeviation array>
+        | LoadStashedDeviations
+        | LoadedStashedDeviations of Loadable<StashedDeviation array>
         
-        | LoadPublishedDeviation
-        | LoadedPublishedDeviation of Loadable<PublishedDeviation array>
+        | LoadPublishedDeviations
+        | LoadedPublishedDeviations of Loadable<PublishedDeviation array>
         
         | AddInspiration of Inspiration
-        | InspirationRejected of error: exn * inspiration: Inspiration
+        | AddInspirationFailed of error: exn * inspiration: Inspiration
         
         | Inspiration2Prompt of inspiration: Inspiration * prompt: Prompt
-        | PromptRejected of error: exn * inspiration: Inspiration * prompt: Prompt
+        | Inspiration2PromptFailed of error: exn * inspiration: Inspiration * prompt: Prompt
         
         | Prompt2LocalDeviation of prompt: Prompt * local: LocalDeviation
-        | LocalDeviationRejected of error: exn * prompt: Prompt * local: LocalDeviation
+        | Prompt2LocalDeviationFailed of error: exn * prompt: Prompt * local: LocalDeviation
         
         | StashDeviation of LocalDeviation
         | StashedDeviation of local: LocalDeviation * stashed: StashedDeviation
-        | StashFailed of error: exn * local: LocalDeviation
+        | StashDeviationFailed of error: exn * local: LocalDeviation
         
         | PublishStashed of StashedDeviation
         | PublishedDeviation of stashed: StashedDeviation * published: PublishedDeviation
-        | PublishFailed of error: exn * stashed: StashedDeviation
+        | PublishStashedFailed of error: exn * stashed: StashedDeviation
         
-        | UploadLocalDeviations of IBrowserFile[]
+        | ProcessImages of IBrowserFile[]
+        | ProcessedImage of LocalDeviation
+        | ProcessImageFailed of error: exn * file: IBrowserFile
+        
+        | UploadLocalDeviation of LocalDeviation
+        | UploadLocalDeviationFailed of error: exn * local: LocalDeviation
+        
+        | UpdateLocalDeviation of LocalDeviation
+        | UpdateLocalDeviationFailed of error: exn * local: LocalDeviation

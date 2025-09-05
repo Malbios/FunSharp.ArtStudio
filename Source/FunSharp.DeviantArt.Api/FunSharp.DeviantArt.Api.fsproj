@@ -19,6 +19,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\FunSharp.Common\FunSharp.Common.fsproj" />
+      <ProjectReference Include="..\FunSharp.Data\FunSharp.Data.fsproj" />
     </ItemGroup>
 
 </Project>
