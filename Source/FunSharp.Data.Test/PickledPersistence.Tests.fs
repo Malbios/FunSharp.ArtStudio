@@ -43,6 +43,7 @@ module ``PickledPersistence Tests`` =
         
         // Assert
         %result.Should().BeEmpty()
+        persistence.Dispose()
         
     [<Fact>]
     let ``Find() after inserting an item should return that item`` () =
@@ -66,6 +67,7 @@ module ``PickledPersistence Tests`` =
         // Assert
         %result.Should().BeSome()
         %result.Value.Should().Be(testItem)
+        persistence.Dispose()
         
     [<Fact>]
     let ``GetAll() after inserting an item should return a single-item collection with that item`` () =
@@ -89,3 +91,4 @@ module ``PickledPersistence Tests`` =
         // Assert
         %result.Should().HaveLength(1)
         %(result |> Array.head).Should().Be(testItem)
+        persistence.Dispose()

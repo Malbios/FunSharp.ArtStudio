@@ -27,7 +27,7 @@ type ClientApplication() =
 
     override this.Program =
         
-        let initialState _ = State.empty, Cmd.ofMsg Message.Initialize
+        let initialState _ = State.empty, Cmd.ofMsg Message.LoadSettings
         
         let update = Update.update this.Logger this.HttpClient
         

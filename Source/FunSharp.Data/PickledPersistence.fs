@@ -18,6 +18,9 @@ type PickledPersistence(databaseFilePath: string) =
         pickler.UnPickle<'T> doc["data"]
         
     interface IPersistence with
+
+        member this.Dispose() =
+            persistence.Dispose()
     
         member this.Insert<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
             (collectionName, key: 'Key, value: 'Value) =

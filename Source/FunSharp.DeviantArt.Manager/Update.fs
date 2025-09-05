@@ -159,18 +159,18 @@ module Update =
         | SetPage page ->
             { model with Page = page }, Cmd.none
 
-        | Initialize ->
-            
-            let batch = Cmd.batch [
-                Cmd.ofMsg LoadSettings
-                Cmd.ofMsg LoadInspirations
-                Cmd.ofMsg LoadPrompts
-                Cmd.ofMsg LoadLocalDeviations
-                Cmd.ofMsg LoadStashedDeviations
-                Cmd.ofMsg LoadPublishedDeviations
-            ]
-            
-            model, batch
+        // | Initialize ->
+        //     
+        //     let batch = Cmd.batch [
+        //         Cmd.ofMsg LoadSettings
+        //         Cmd.ofMsg LoadInspirations
+        //         Cmd.ofMsg LoadPrompts
+        //         Cmd.ofMsg LoadLocalDeviations
+        //         Cmd.ofMsg LoadStashedDeviations
+        //         Cmd.ofMsg LoadPublishedDeviations
+        //     ]
+        //     
+        //     model, batch
 
         | LoadSettings ->
             let load () = loadSettings client
@@ -301,7 +301,7 @@ module Update =
             let success _ = LoadLocalDeviations
             let error ex = UpdateLocalDeviationFailed (ex, deviation)
             
-            model, Cmd.OfAsync.either update deviation success error
+            { model with LocalDeviations = Loading }, Cmd.OfAsync.either update deviation success error
 
         | UpdateLocalDeviationFailed (error, local) ->
             failwith "todo"

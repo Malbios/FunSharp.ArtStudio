@@ -1,5 +1,7 @@
 ﻿namespace FunSharp.DeviantArt.Server
 
+open System
+open System.Threading
 open FunSharp.Data
 open FunSharp.DeviantArt.Api.Model
 open FunSharp.DeviantArt.Server.Helpers
@@ -99,13 +101,16 @@ module ServerStartup =
     //         | _ -> return! BAD_REQUEST "Multiple files not supported" ctx
     //     }
 
-    [<EntryPoint>]
-    let main _ =
-
-        let config =
-            { defaultConfig with
-                bindings = [ HttpBinding.createSimple HTTP "0.0.0.0" 5123 ] }
-
+    let cts = new CancellationTokenSource()
+    
+    let startServer () =
+        
+        let config = {
+            defaultConfig with
+                cancellationToken = cts.Token
+                bindings = [ HttpBinding.createSimple HTTP "127.0.0.1" 5123 ] 
+        }
+        
         let apiBase = "/api/v1"
 
         allowCors >=> choose [
@@ -131,5 +136,17 @@ module ServerStartup =
             NOT_FOUND "Unknown route"
         ]
         |> startWebServer config
+    
+    [<EntryPoint>]
+    let main _ =
+        Async.Start(async { do startServer () }, cancellationToken = cts.Token)
+        
+        printfn "Press Enter to stop..."
+        Console.ReadLine() |> ignore
 
+        printfn "Shutting down..."
+        
+        cts.Cancel()
+        dataPersistence.Dispose()
+        
         0

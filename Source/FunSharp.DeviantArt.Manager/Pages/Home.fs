@@ -26,6 +26,10 @@ type Home() =
             |> Array.ofSeq
             |> Message.ProcessImages
             |> dispatch
+            
+        match model.LocalDeviations with
+        | NotLoaded -> dispatch Message.LoadLocalDeviations
+        | _ -> ()
         
         div {
             attr.``class`` "center-wrapper"

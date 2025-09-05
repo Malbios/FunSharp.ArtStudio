@@ -46,7 +46,7 @@ module Model =
     type Message =
         | SetPage of Page
         
-        | Initialize
+        // | Initialize
         
         | LoadSettings
         | LoadedSettings of Loadable<Settings>

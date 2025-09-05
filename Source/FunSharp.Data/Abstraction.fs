@@ -8,6 +8,8 @@ module Abstraction =
     
     type IPersistence =
         
+        abstract member Dispose : unit -> unit
+        
         abstract member Insert<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
             : string * 'Key * 'Value -> unit
             

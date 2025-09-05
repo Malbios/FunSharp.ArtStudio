@@ -5,12 +5,15 @@ open LiteDB
 type LiteDbPersistence(databaseFilePath: string) =
     
     let mapper = FSharpBsonMapper()
+    let db = new LiteDatabase(databaseFilePath, mapper)
 
     let withCollection (collectionName: string) f =
         
-        use db = new LiteDatabase(databaseFilePath, mapper)
         let collection = db.GetCollection<'T>(collectionName)
         f collection
+        
+    member _.Dispose() =
+        db.Dispose()
     
     member _.Insert<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value : not null>
         (collectionName, key: 'Key, value: 'Value) =

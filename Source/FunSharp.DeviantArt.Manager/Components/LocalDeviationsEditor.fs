@@ -37,7 +37,8 @@ type LocalDeviationsEditor() =
     override this.Render() =
         
         match this.Items with
-        | Loaded _ ->
+        | Loading -> LoadingWidget.render ()
+        | _ ->
             comp<RadzenStack> {
                 "Orientation" => Orientation.Horizontal
                 "JustifyContent" => JustifyContent.Center
@@ -52,9 +53,3 @@ type LocalDeviationsEditor() =
                         "OnStash" => this.OnStash
                     }
             }
-            
-        | NotLoaded
-        | Loading ->
-            LoadingWidget.render ()
-        
-        | _ -> Node.Empty ()

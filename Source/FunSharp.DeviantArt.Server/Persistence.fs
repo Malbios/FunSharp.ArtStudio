@@ -8,7 +8,7 @@ open FunSharp.DeviantArt.Api.Model
 module Persistence =
     
     type AuthenticationPersistence() =
-        let persistence = SingleValuePickledPersistence<AuthenticationData>("persistence.db", "authentication")
+        let persistence = SingleValuePickledPersistence<AuthenticationData>("auth_persistence.db", "authentication")
         
         interface IAuthPersistence<AuthenticationData> with
             
