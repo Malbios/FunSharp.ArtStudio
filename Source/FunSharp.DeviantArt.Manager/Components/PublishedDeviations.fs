@@ -10,12 +10,16 @@ open FunSharp.DeviantArt.Api.Model
 [<RequireQualifiedAccess>]
 module PublishedDeviations =
     
-    let render (images: Map<string, Loadable<Image>>) (deviations: Loadable<PublishedDeviation array>) =
+    let render (loadImage: string -> unit) (images: Map<string, Loadable<Image>>) (deviations: Loadable<PublishedDeviation array>) =
         
         match deviations with
         | Loaded deviations ->
             deviations
             |> Array.map (fun deviation ->
+                match images |> Map.tryFind deviation.Metadata.Id with
+                | None -> loadImage deviation.Metadata.Id
+                | _ -> ()
+                
                 comp<RadzenStack> {
                     attr.style "margin: 0.25rem; padding: 0.5rem; border: 2px solid gray; border-radius: 8px; max-width: 700px;"
             

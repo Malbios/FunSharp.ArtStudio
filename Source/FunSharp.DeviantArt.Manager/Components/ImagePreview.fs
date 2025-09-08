@@ -19,7 +19,7 @@ type ImagePreview() =
     override this.Render() =
         div {
             match this.Image with
-            | None -> "???"
+            | None -> LoadingWidget.render ()
             | Some x ->
                 match x with
                 | Loaded image ->

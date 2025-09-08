@@ -86,13 +86,20 @@ module ServerStartup =
             return! dataPersistence.FindAll<PublishedDeviation>(dbKey_PublishedDeviations)
                     |> asOkJsonResponse <| ctx
         }
+            
+    // match ctx.request.queryParam "id" with
+    // | Choice1Of2 id -> 
+    //     return! Successful.OK (sprintf "Got id = %s" id) ctxOpt
+    // | Choice2Of2 msg -> 
+    //     return! RequestErrors.BAD_REQUEST (sprintf "Missing param: %s" msg) ctxOpt
         
     let downloadImage: WebPart =
         fun ctx -> async {
-            let key = ctx.request |> asString
-            
-            return! dataPersistence.Find<string, Image>(dbKey_Images, key)
-                    |> asOkJsonResponse <| ctx
+            match ctx.request.queryParam "id" with
+            | Choice2Of2 _ ->
+                return! BAD_REQUEST "No files uploaded" ctx
+            | Choice1Of2 id ->
+                return! dataPersistence.Find<string, Image>(dbKey_Images, id) |> asOkJsonResponse <| ctx
         }
         
     let uploadLocalDeviations: WebPart =

@@ -21,6 +21,9 @@ type Home() =
     
     override this.View model dispatch =
         
+        let loadImage imageId =
+            dispatch (Message.LoadImage imageId)
+        
         let galleries =
             match model.Settings with
             | Loaded settings -> settings.Galleries |> Array.map _.name
@@ -45,17 +48,18 @@ type Home() =
                 FileInput.render true uploadFiles
                 
                 comp<LocalDeviations> {
+                    "LoadImage" => loadImage
                     "Galleries" => galleries
                     "Images" => model.Images
                     "Items" => model.LocalDeviations
-                    "OnSave" => (fun x -> dispatch (Message.UpdateLocalDeviation x))
-                    "OnStash" => (fun x -> dispatch (Message.StashDeviation x))
+                    "OnSave" => (fun deviation -> dispatch (Message.UpdateLocalDeviation deviation))
+                    "OnStash" => (fun deviation -> dispatch (Message.StashDeviation deviation))
                 }
                 
                 model.StashedDeviations
-                |> StashedDeviations.render this this.JSRuntime (fun deviation -> dispatch (Message.PublishStashed deviation)) model.Images
+                |> StashedDeviations.render this this.JSRuntime (fun deviation -> dispatch (Message.PublishStashed deviation)) loadImage model.Images
                 
                 model.PublishedDeviations
-                |> PublishedDeviations.render model.Images
+                |> PublishedDeviations.render loadImage model.Images
             }
         }

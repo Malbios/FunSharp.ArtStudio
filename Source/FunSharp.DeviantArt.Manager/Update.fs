@@ -118,6 +118,14 @@ module Update =
         (JsonSerializer.deserialize<PublishedDeviation array> >> Loadable.Loaded)
         |> loadItems client "/publish"
         
+    let private loadImage client (id: string) =
+        
+        $"{apiRoot}/image?id={id}"
+        |> get client
+        |> Async.bind contentAsString
+        |> Async.map JsonSerializer.deserialize<Image>
+        |> Async.map (fun x -> (id, x))
+        
     let private processUpload (file: IBrowserFile) = async {
         let maxSize = 1024L * 1024L * 100L // 100 MB
         
@@ -245,10 +253,25 @@ module Update =
             { model with PublishedDeviations = loadable }, Cmd.none
             
         | LoadImage id ->
-            failwith "todo"
+            
+            let load () = loadImage client id
+            let error ex = LoadImageFailed (ex, id)
+            
+            let model = {
+                model with
+                    Images = model.Images |> Map.add id Loadable.Loading
+            }
+            
+            model, Cmd.OfAsync.either load () LoadedImage error
         
         | LoadedImage (id, image) ->
-            failwith "todo"
+            
+            let model = {
+                model with
+                    Images = model.Images |> Map.add id (Loadable.Loaded image)
+            }
+            
+            model, Cmd.none
         
         | LoadImageFailed (error, id) ->
             
