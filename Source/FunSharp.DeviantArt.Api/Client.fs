@@ -242,9 +242,9 @@ type Client(persistence: IAuthPersistence<AuthenticationData>, clientId: string,
         
         submitToStash (SubmitDestination.Replace id) file submission
         
-    member _.PublishFromStash(publication: StashPublication)  =
+    member _.PublishFromStash(submission: PublishSubmission)  =
         
-        let properties = publication |> StashPublication.toProperties
+        let properties = submission |> PublishSubmission.toProperties
         
         ($"{config.RootUrl}{Endpoints.publishFromStash}", properties)
         |> Http.RequestPayload.PostWithProperties

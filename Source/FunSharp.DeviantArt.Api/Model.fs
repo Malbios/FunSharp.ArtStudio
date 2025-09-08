@@ -105,7 +105,7 @@ type DisplayResolution =
     | Width_1600px = 7
     | Width_1920px = 8
 
-type StashPublication = {
+type PublishSubmission = {
     [<JsonProperty("is_mature")>]
     IsMature: bool
     
@@ -165,7 +165,7 @@ type StashPublication = {
 }
 
 [<RequireQualifiedAccess>]
-module StashPublication =
+module PublishSubmission =
     
     let private modifyToString modify =
         match modify with
@@ -188,7 +188,7 @@ module StashPublication =
         ItemId = -1L
     }
             
-    let toProperties (publication: StashPublication) =
+    let toProperties (publication: PublishSubmission) =
         publication
         |> Record.toKeyValueTypes
         |> KeyValueType.splitArrays
@@ -291,18 +291,19 @@ module Image =
         Image("", "", Array.empty)
 
 type Inspiration = {
+    Id: string
     Url: Uri
-    Image: Image
 }
 
 type Prompt = {
+    Id: string
     Text: string
     Inspiration: Inspiration option
 }
 
 type Metadata = {
+    Id: string
     Inspiration: Inspiration option
-    Image: Image
     Title: string
     Gallery: string
     IsMature: bool
@@ -312,8 +313,8 @@ type Metadata = {
 module Metadata =
     
     let empty = {
+        Id = ""
         Inspiration = None
-        Image = Image.empty
         Title = ""
         Gallery = ""
         IsMature = false

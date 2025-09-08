@@ -1,5 +1,6 @@
 ﻿namespace FunSharp.DeviantArt.Server
 
+open System
 open System.Text
 open Suave
 open Suave.Operators
@@ -18,6 +19,9 @@ module Helpers =
     let dbKey_Inspirations = "Inspirations"
     
     [<Literal>]
+    let dbKey_Prompts = "Prompts"
+    
+    [<Literal>]
     let dbKey_LocalDeviations = "LocalDeviations"
     
     [<Literal>]
@@ -25,33 +29,60 @@ module Helpers =
     
     [<Literal>]
     let dbKey_PublishedDeviations = "PublishedDeviations"
+    
+    [<Literal>]
+    let dbKey_Images = "Images"
 
     [<Literal>]
     let dbName = "FunSharp.DeviantArt.Manager"
+        
+    let private asStashed (local: LocalDeviation) (response: StashSubmissionResponse) =
+        
+        match response.status with
+        | "success" ->
+            {
+                StashId = response.item_id
+                Metadata = local
+            }
+        | _ ->
+            failwith $"Failed to stash {local.Title}"
+        
+    let private asPublished (stashed: StashedDeviation) (response: PublicationResponse) =
+        
+        match response.status with
+        | "success" ->
+            {
+                Url = Uri response.url
+                Metadata = stashed.Metadata
+            }
+        | _ ->
+            failwith $"Failed to publish {stashed.Metadata.Title}"
 
-    let submitToStash (client: Client) (deviation: LocalDeviation) =
+    let submitToStash (client: Client) (local: LocalDeviation) (image: Image) =
 
-        let submission = {
-            StashSubmission.defaults with
-                Title = title
+        let submission = { StashSubmission.defaults with Title = local.Title }
+
+        let httpFile: Http.File = {
+            MediaType = Some image.MimeType
+            Content = image.Content
         }
 
-        printfn $"title: {title}"
-        printfn $"mime: {file.mimeType}"
-        printfn $"tempFilePath: {file.tempFilePath}"
+        client.SubmitToStash(submission, httpFile)
+        |> AsyncResult.getOrFail
+        |> Async.map (asStashed local)
+        
+    let publishFromStash (client: Client) (stashed: StashedDeviation) =
+        
+        let submission = {
+            PublishSubmission.defaults with
+                ItemId = stashed.StashId
+        }
+        
+        printfn $"Publishing '{stashed.Metadata.Title}' from stash..."
 
-        File.readAllBytesAsync file.tempFilePath
-        |> Async.bind (fun content ->
-            let httpFile: Http.File = {
-                MediaType = Some file.mimeType
-                Content = content
-            }
-
-            printfn "Submitting to stash..."
-
-            client.SubmitToStash(submission, httpFile)
-            |> AsyncResult.getOrFail
-        )
+        client.PublishFromStash(submission)
+        |> AsyncResult.getOrFail
+        |> Async.map (asPublished stashed)
         
     let asOkJsonResponse data =
         
@@ -70,6 +101,3 @@ module Helpers =
         request
         |> asString
         |> JsonSerializer.deserialize<'T>
-
-    let keyOf (deviation: LocalDeviation) =
-        deviation.Image.Name

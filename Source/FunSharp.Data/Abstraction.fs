@@ -1,5 +1,7 @@
 ﻿namespace FunSharp.Data
 
+open System
+
 module Abstraction =
     
     type UpsertResult =
@@ -7,8 +9,7 @@ module Abstraction =
         | Update
     
     type IPersistence =
-        
-        abstract member Dispose : unit -> unit
+        inherit IDisposable
         
         abstract member Insert<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
             : string * 'Key * 'Value -> unit

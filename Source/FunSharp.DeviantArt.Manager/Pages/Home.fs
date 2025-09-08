@@ -3,7 +3,9 @@
 open Bolero
 open Bolero.Html
 open Bolero.Html.attr
+open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Components.Forms
+open Microsoft.JSInterop
 open Radzen
 open Radzen.Blazor
 open FunSharp.DeviantArt.Manager.Components
@@ -13,6 +15,9 @@ type Home() =
     inherit ElmishComponent<State, Message>()
     
     override _.CssScope = CssScopes.Home
+    
+    [<Inject>]
+    member val JSRuntime = Unchecked.defaultof<IJSRuntime> with get, set
     
     override this.View model dispatch =
         
@@ -39,14 +44,18 @@ type Home() =
                 
                 FileInput.render true uploadFiles
                 
-                comp<LocalDeviationsEditor> {
+                comp<LocalDeviations> {
                     "Galleries" => galleries
+                    "Images" => model.Images
                     "Items" => model.LocalDeviations
                     "OnSave" => (fun x -> dispatch (Message.UpdateLocalDeviation x))
                     "OnStash" => (fun x -> dispatch (Message.StashDeviation x))
                 }
                 
                 model.StashedDeviations
-                |> StashedDeviations.render this (fun deviation -> dispatch (Message.PublishStashed deviation))
+                |> StashedDeviations.render this this.JSRuntime (fun deviation -> dispatch (Message.PublishStashed deviation)) model.Images
+                
+                model.PublishedDeviations
+                |> PublishedDeviations.render model.Images
             }
         }

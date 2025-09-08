@@ -10,7 +10,11 @@ module DropDown =
     
     let render (update: string -> unit) label placeholder values currentValue =
         
-        let guid = Guid.NewGuid ()
+        let update (newValue: string) =
+            if currentValue <> newValue then
+                update newValue
+        
+        let guid = Guid.NewGuid()
         
         comp<RadzenStack> {
             "Orientation" => Orientation.Horizontal

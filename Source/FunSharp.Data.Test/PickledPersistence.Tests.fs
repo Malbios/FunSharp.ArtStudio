@@ -30,7 +30,7 @@ module ``PickledPersistence Tests`` =
     let createPersistence(databaseFilePath: string) =
         
         if File.Exists databaseFilePath then File.Delete databaseFilePath
-        PickledPersistence(databaseFilePath) :> IPersistence
+        new PickledPersistence(databaseFilePath) :> IPersistence
     
     [<Fact>]
     let ``FindAll() for new database should return no items`` () =

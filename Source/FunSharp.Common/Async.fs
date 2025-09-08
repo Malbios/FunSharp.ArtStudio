@@ -9,12 +9,6 @@ module Async =
     
     let ignore _ =
         returnM ()
-
-    let tee (f: 'T -> unit) (workflow: Async<'T>) : Async<'T> = async {
-        let! value = workflow
-        f value
-        return value
-    }
     
     let map f asyncValue = async {
         let! v = asyncValue

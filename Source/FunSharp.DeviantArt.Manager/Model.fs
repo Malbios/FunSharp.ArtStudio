@@ -26,6 +26,7 @@ module Model =
         LocalDeviations: Loadable<LocalDeviation array>
         StashedDeviations: Loadable<StashedDeviation array>
         PublishedDeviations: Loadable<PublishedDeviation array>
+        Images: Map<string, Loadable<Image>>
     }
 
     [<RequireQualifiedAccess>]
@@ -41,6 +42,7 @@ module Model =
             LocalDeviations = Loadable.NotLoaded
             StashedDeviations = Loadable.NotLoaded
             PublishedDeviations = Loadable.NotLoaded
+            Images = Map.empty
         }
         
     type Message =
@@ -66,6 +68,10 @@ module Model =
         | LoadPublishedDeviations
         | LoadedPublishedDeviations of Loadable<PublishedDeviation array>
         
+        | LoadImage of id: string
+        | LoadedImage of id: string * Image
+        | LoadImageFailed of error: exn * id: string
+        
         | AddInspiration of Inspiration
         | AddInspirationFailed of error: exn * inspiration: Inspiration
         
@@ -75,20 +81,17 @@ module Model =
         | Prompt2LocalDeviation of prompt: Prompt * local: LocalDeviation
         | Prompt2LocalDeviationFailed of error: exn * prompt: Prompt * local: LocalDeviation
         
+        | ProcessImages of IBrowserFile[]
+        | ProcessedImage of local: LocalDeviation * image: Image
+        | ProcessImageFailed of error: exn * file: IBrowserFile
+        
+        | UpdateLocalDeviation of LocalDeviation
+        | UpdateLocalDeviationFailed of error: exn * local: LocalDeviation
+        
         | StashDeviation of LocalDeviation
         | StashedDeviation of local: LocalDeviation * stashed: StashedDeviation
         | StashDeviationFailed of error: exn * local: LocalDeviation
         
         | PublishStashed of StashedDeviation
-        | PublishedDeviation of stashed: StashedDeviation * published: PublishedDeviation
+        | PublishedStashed of stashed: StashedDeviation * published: PublishedDeviation
         | PublishStashedFailed of error: exn * stashed: StashedDeviation
-        
-        | ProcessImages of IBrowserFile[]
-        | ProcessedImage of LocalDeviation
-        | ProcessImageFailed of error: exn * file: IBrowserFile
-        
-        | UploadLocalDeviation of LocalDeviation
-        | UploadLocalDeviationFailed of error: exn * local: LocalDeviation
-        
-        | UpdateLocalDeviation of LocalDeviation
-        | UpdateLocalDeviationFailed of error: exn * local: LocalDeviation

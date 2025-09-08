@@ -8,11 +8,14 @@ open Radzen.Blazor
 open FunSharp.DeviantArt.Api.Model
 open FunSharp.DeviantArt.Manager.Model
 
-type LocalDeviationsEditor() =
+type LocalDeviations() =
     inherit Component()
     
     [<Parameter>]
     member val Galleries = Array.empty<string> with get, set
+    
+    [<Parameter>]
+    member val Images: Map<string, Loadable<Image>> = Map.empty with get, set
     
     [<Parameter>]
     member val Items : Loadable<LocalDeviation array> = Loadable.NotLoaded with get, set
@@ -37,6 +40,7 @@ type LocalDeviationsEditor() =
                     comp<LocalDeviationEditor> {
                         "Galleries" => this.Galleries
                         "Deviation" => deviation
+                        "Image" => (this.Images |> Map.tryFind deviation.Id)
                         "OnSave" => this.OnSave
                         "OnStash" => this.OnStash
                     }

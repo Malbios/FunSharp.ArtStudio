@@ -36,7 +36,7 @@ module ``Model Tests`` =
         }
         
         // Act
-        let result = StashPublication.toProperties publication
+        let result = PublishSubmission.toProperties publication
         
         // Assert
         %result.Should().HaveLength(13)

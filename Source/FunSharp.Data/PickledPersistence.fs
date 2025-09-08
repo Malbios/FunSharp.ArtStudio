@@ -1,5 +1,6 @@
 ﻿namespace FunSharp.Data
 
+open System
 open LiteDB
 open MBrace.FsPickler
 open FunSharp.Data.Abstraction
@@ -17,10 +18,12 @@ type PickledPersistence(databaseFilePath: string) =
     member _.AsValue<'T>(doc: BsonDocument) =
         pickler.UnPickle<'T> doc["data"]
         
-    interface IPersistence with
-
+    interface IDisposable with
+        
         member this.Dispose() =
             persistence.Dispose()
+        
+    interface IPersistence with
     
         member this.Insert<'Key, 'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
             (collectionName, key: 'Key, value: 'Value) =
@@ -50,7 +53,7 @@ type PickledPersistence(databaseFilePath: string) =
 type SingleValuePickledPersistence<'Value when 'Value : not struct and 'Value : equality and 'Value: not null>
     (databaseFilePath: string, key: string) =
     
-    let persistence : IPersistence = PickledPersistence(databaseFilePath)
+    let persistence : IPersistence = new PickledPersistence(databaseFilePath)
     
     member _.Upsert (value: 'Value) =
         persistence.Upsert(key, key, value)

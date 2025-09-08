@@ -3,6 +3,7 @@
 open System
 open Bolero
 open Bolero.Html
+open FunSharp.DeviantArt.Manager.Model
 open Microsoft.AspNetCore.Components
 open Radzen
 open Radzen.Blazor
@@ -16,6 +17,9 @@ type LocalDeviationEditor() =
     
     [<Parameter>]
     member val Deviation = LocalDeviation.empty with get, set
+    
+    [<Parameter>]
+    member val Image : Loadable<Image> option = None with get, set
 
     [<Parameter>]
     member val OnSave : LocalDeviation -> unit = ignore with get, set
@@ -26,13 +30,24 @@ type LocalDeviationEditor() =
     override this.Render() =
     
         let withNewInspiration (newUrl: string) =
-            this.Deviation <- { this.Deviation with Inspiration = Some { Url = Uri newUrl; Image = Image.empty } }
+            this.Deviation <- { this.Deviation with Inspiration = Some { Id = Guid.NewGuid().ToString(); Url = Uri newUrl } }
         
         let withNewTitle (newTitle: string) =
             this.Deviation <- { this.Deviation with Title = newTitle }
+            
+        let withNewIsMature (newIsMature: bool) =
+            this.Deviation <- { this.Deviation with IsMature = newIsMature }
         
         let withNewGallery (newGallery: string) =
-            this.Deviation <- { this.Deviation with Gallery = newGallery }
+            
+            this.Deviation <- {
+                this.Deviation with
+                    Gallery = newGallery
+                    IsMature =
+                        match newGallery with
+                        | "Spicy" -> true
+                        | _ -> this.Deviation.IsMature
+            }
         
         comp<RadzenStack> {
             attr.style "margin: 0.25rem; padding: 0.5rem; border: 2px solid gray; border-radius: 8px; max-width: 700px;"
@@ -42,13 +57,13 @@ type LocalDeviationEditor() =
             "AlignItems" => AlignItems.Center
 
             comp<ImagePreview> {
-                "Image" => this.Deviation.Image
+                "Image" => this.Image
             }
 
             comp<RadzenStack> {
                 "Orientation" => Orientation.Vertical
 
-                div { text $"{this.Deviation.Image.Name}" }
+                div { text $"{this.Deviation.Id}" }
 
                 this.Deviation.Inspiration
                 |> Option.map _.Url.ToString()
@@ -58,9 +73,16 @@ type LocalDeviationEditor() =
                 this.Deviation.Title
                 |> TextInput.render withNewTitle "Enter title..."
 
-                this.Deviation.Gallery
-                |> DropDown.render withNewGallery "Gallery" "Select gallery..." this.Galleries
-
+                comp<RadzenStack> {
+                    "Orientation" => Orientation.Horizontal
+                    
+                    this.Deviation.Gallery
+                    |> DropDown.render withNewGallery "Gallery" "Select gallery..." this.Galleries
+                    
+                    this.Deviation.IsMature
+                    |> CheckBox.render withNewIsMature "IsMature"
+                }
+                
                 comp<RadzenStack> {
                     "Orientation" => Orientation.Horizontal
                     "JustifyContent" => JustifyContent.Center

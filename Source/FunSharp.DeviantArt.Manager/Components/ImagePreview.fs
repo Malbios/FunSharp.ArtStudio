@@ -3,13 +3,14 @@
 open Bolero
 open Bolero.Html
 open FunSharp.DeviantArt.Api.Model
+open FunSharp.DeviantArt.Manager.Model
 open Microsoft.AspNetCore.Components
 
 type ImagePreview() =
     inherit Component()
 
     [<Parameter>]
-    member val Image = Image.empty with get, set
+    member val Image : Loadable<Image> option = None with get, set
     
     member this.TriggerReRender() =
         
@@ -17,13 +18,14 @@ type ImagePreview() =
 
     override this.Render() =
         div {
-            match this.Image.AsUrl() with
-            | url when url <> "" ->
-                img {
-                    attr.style "max-width: 200px; max-height: 200px;"
-                    attr.src url
-                }
-                
-            | _ ->
-                LoadingWidget.render ()
+            match this.Image with
+            | None -> "???"
+            | Some x ->
+                match x with
+                | Loaded image ->
+                    img {
+                        attr.style "max-width: 200px; max-height: 200px;"
+                        attr.src (image.AsUrl())
+                    }
+                | _ -> LoadingWidget.render ()
         }

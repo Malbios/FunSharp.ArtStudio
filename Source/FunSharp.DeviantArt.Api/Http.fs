@@ -132,11 +132,17 @@ module Http =
             | InternalPayload.PostWithForm (url, content) ->
                 client.PostAsync(url, content)
                 |> Async.AwaitTask
-                |> Async.tee (fun _ -> content.Dispose())
+                |> Async.map (fun response ->
+                    content.Dispose()
+                    response
+                )
             | InternalPayload.PostWithMultipart (url, content) ->
                 client.PostAsync(url, content)
                 |> Async.AwaitTask
-                |> Async.tee (fun _ -> content.Dispose())
+                |> Async.map (fun response ->
+                    content.Dispose()
+                    response
+                )
                 
     let retryTooManyRequests payload (response: HttpResponseMessage) =
         
@@ -160,10 +166,10 @@ module Http =
             |> Async.AwaitTask
             |> Async.map (fun content -> response, content)
         )
-        |> Async.tee (fun (response, content) ->
+        |> Async.map (fun (response, content) ->
             logResponse response content payload
             
-            response.EnsureSuccessStatusCode () |> ignore
+            response.EnsureSuccessStatusCode() |> ignore
             
             if content.Trim() = "" then
                 failwith "response content is empty"
@@ -171,6 +177,8 @@ module Http =
             match apiError content with
             | Some error -> failwith $"{error}"
             | None -> ()
+            
+            (response, content)
         )
         |> Async.catch
         |> AsyncResult.map snd
