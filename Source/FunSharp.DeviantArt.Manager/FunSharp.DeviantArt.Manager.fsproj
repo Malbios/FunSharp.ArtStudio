@@ -27,6 +27,7 @@
       <Compile Include="Components\FileInput.fs" />
       <Compile Include="Components\Button.fs" />
       <Compile Include="Components\IconButton.fs" />
+      <Compile Include="Components\Accordion.fs" />
       <Compile Include="Components\LocalDeviationEditor.fs" />
       <Compile Include="Components\LocalDeviations.fs" />
       <Compile Include="Components\StashedDeviations.fs" />

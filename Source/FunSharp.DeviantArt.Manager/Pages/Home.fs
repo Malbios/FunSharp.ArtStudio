@@ -11,8 +11,16 @@ open Radzen.Blazor
 open FunSharp.DeviantArt.Manager.Components
 open FunSharp.DeviantArt.Manager.Model
 
+type HomeTabs =
+    | UploadFiles
+    | LocalDeviations
+    | StashedDeviations
+    | PublishedDeviations
+
 type Home() =
     inherit ElmishComponent<State, Message>()
+    
+    let mutable currentTab = HomeTabs.LocalDeviations
     
     override _.CssScope = CssScopes.Home
     
@@ -20,7 +28,7 @@ type Home() =
     member val JSRuntime = Unchecked.defaultof<IJSRuntime> with get, set
     
     override this.View model dispatch =
-        
+            
         let loadImage imageId =
             dispatch (Message.LoadImage imageId)
         
@@ -34,32 +42,51 @@ type Home() =
             |> Array.ofSeq
             |> Message.ProcessImages
             |> dispatch
+            
+        let publish deviation =
+            dispatch (Message.PublishStashed deviation)
         
         div {
             attr.``class`` "center-wrapper"
             
             comp<RadzenStack> {
                 style "height: 100%"
-
+            
                 "Orientation" => Orientation.Vertical
                 "JustifyContent" => JustifyContent.Center
                 "AlignItems" => AlignItems.Center
                 
-                FileInput.render true uploadFiles
-                
-                comp<LocalDeviations> {
-                    "LoadImage" => loadImage
-                    "Galleries" => galleries
-                    "Images" => model.Images
-                    "Items" => model.LocalDeviations
-                    "OnSave" => (fun deviation -> dispatch (Message.UpdateLocalDeviation deviation))
-                    "OnStash" => (fun deviation -> dispatch (Message.StashDeviation deviation))
+                comp<RadzenStack> {
+                    "Orientation" => Orientation.Horizontal
+                    "JustifyContent" => JustifyContent.Center
+                    "AlignItems" => AlignItems.Center
+                    
+                    Button.render this (fun () -> currentTab <- HomeTabs.UploadFiles) "Upload Files"
+                    Button.render this (fun () -> currentTab <- HomeTabs.LocalDeviations) "Local Deviations"
+                    Button.render this (fun () -> currentTab <- HomeTabs.StashedDeviations) "Stashed Deviations"
+                    Button.render this (fun () -> currentTab <- HomeTabs.PublishedDeviations) "Published Deviations"
                 }
                 
-                model.StashedDeviations
-                |> StashedDeviations.render this this.JSRuntime (fun deviation -> dispatch (Message.PublishStashed deviation)) loadImage model.Images
-                
-                model.PublishedDeviations
-                |> PublishedDeviations.render loadImage model.Images
+                match currentTab with
+                | UploadFiles ->
+                    FileInput.render true uploadFiles
+                    
+                | LocalDeviations ->
+                    comp<LocalDeviations> {
+                        "LoadImage" => loadImage
+                        "Galleries" => galleries
+                        "Images" => model.Images
+                        "Items" => model.LocalDeviations
+                        "OnSave" => (fun deviation -> dispatch (Message.UpdateLocalDeviation deviation))
+                        "OnStash" => (fun deviation -> dispatch (Message.StashDeviation deviation))
+                    }
+                    
+                | StashedDeviations ->
+                    model.StashedDeviations
+                    |> StashedDeviations.render this this.JSRuntime publish loadImage model.Images
+                    
+                | PublishedDeviations ->
+                    model.PublishedDeviations
+                    |> PublishedDeviations.render loadImage model.Images
             }
         }
