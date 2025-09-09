@@ -3,7 +3,6 @@
 open System
 open Bolero
 open Bolero.Html
-open FunSharp.DeviantArt.Manager.Model
 open Microsoft.AspNetCore.Components
 open Radzen
 open Radzen.Blazor
@@ -16,10 +15,7 @@ type LocalDeviationEditor() =
     member val Galleries = Array.empty<string> with get, set
     
     [<Parameter>]
-    member val Deviation = LocalDeviation.empty with get, set
-    
-    [<Parameter>]
-    member val Image : Loadable<Image> option = None with get, set
+    member val Deviation : LocalDeviation option = None with get, set
 
     [<Parameter>]
     member val OnSave : LocalDeviation -> unit = ignore with get, set
@@ -27,28 +23,42 @@ type LocalDeviationEditor() =
     [<Parameter>]
     member val OnStash : LocalDeviation -> unit = ignore with get, set
     
-    override this.Render() =
+    member private this.Update(withChange: LocalDeviation -> LocalDeviation) =
+        this.Deviation <-
+            this.Deviation
+            |> Option.map withChange
     
-        let withNewInspiration (newUrl: string) =
-            this.Deviation <- { this.Deviation with Inspiration = Some { Id = Guid.NewGuid().ToString(); Url = Uri newUrl } }
+    member private this.Save() =
+        match this.Deviation with
+        | None -> ()
+        | Some v -> this.OnSave v
         
+    member private this.Stash() =
+        match this.Deviation with
+        | None -> ()
+        | Some v -> this.OnStash v
+    
+    override this.Render() =
+            
+        let withNewInspiration (newUrl: string) =
+            this.Update(fun x -> { x with Origin = DeviationOrigin.Inspiration { Url = Uri newUrl; ImageUrl = None } })
+            
         let withNewTitle (newTitle: string) =
-            this.Deviation <- { this.Deviation with Title = newTitle }
+            this.Update(fun x -> { x with LocalDeviation.Metadata.Title = newTitle })
             
         let withNewIsMature (newIsMature: bool) =
-            this.Deviation <- { this.Deviation with IsMature = newIsMature }
-        
-        let withNewGallery (newGallery: string) =
+            this.Update(fun x -> { x with LocalDeviation.Metadata.IsMature = newIsMature })
             
-            this.Deviation <- {
-                this.Deviation with
-                    Gallery = newGallery
-                    IsMature =
+        let withNewGallery (newGallery: string) =
+            this.Update(fun x -> {
+                x with
+                    LocalDeviation.Metadata.Gallery = newGallery
+                    LocalDeviation.Metadata.IsMature =
                         match newGallery with
                         | "Spicy" -> true
-                        | _ -> this.Deviation.IsMature
-            }
-        
+                        | _ -> x.Metadata.IsMature
+            })
+            
         comp<RadzenStack> {
             attr.style "margin: 0.25rem; padding: 0.5rem; border: 2px solid gray; border-radius: 8px; max-width: 700px;"
 
@@ -57,29 +67,30 @@ type LocalDeviationEditor() =
             "AlignItems" => AlignItems.Center
 
             comp<ImagePreview> {
-                "Image" => this.Image
+                "Image" => (this.Deviation |> Option.map _.ImageUrl)
             }
 
             comp<RadzenStack> {
                 "Orientation" => Orientation.Vertical
-
-                div { text $"{this.Deviation.Id}" }
-
-                this.Deviation.Inspiration
-                |> Option.map _.Url.ToString()
-                |> Option.defaultValue ""
+                
+                div { text $"{this.Deviation |> Option.map _.ImageUrl.ToString()}" }
+                
+                match this.Deviation |> Option.map _.Origin |> Option.defaultValue DeviationOrigin.None with
+                | DeviationOrigin.None -> ""
+                | DeviationOrigin.Prompt _ -> failwith "todo"
+                | DeviationOrigin.Inspiration inspiration -> inspiration.Url.ToString()
                 |> TextInput.render withNewInspiration "Enter inspiration URL..."
-
-                this.Deviation.Title
+                
+                this.Deviation |> Option.map _.Metadata.Title |> Option.defaultValue ""
                 |> TextInput.render withNewTitle "Enter title..."
 
                 comp<RadzenStack> {
                     "Orientation" => Orientation.Horizontal
                     
-                    this.Deviation.Gallery
+                    this.Deviation |> Option.map _.Metadata.Gallery |> Option.defaultValue ""
                     |> DropDown.render withNewGallery "Gallery" "Select gallery..." this.Galleries
                     
-                    this.Deviation.IsMature
+                    this.Deviation |> Option.map _.Metadata.IsMature |> Option.defaultValue false
                     |> CheckBox.render withNewIsMature "IsMature"
                 }
                 
@@ -88,8 +99,8 @@ type LocalDeviationEditor() =
                     "JustifyContent" => JustifyContent.Center
                     "AlignItems" => AlignItems.Center
 
-                    Button.render this (fun () -> this.OnSave this.Deviation) "Save"
-                    Button.render this (fun () -> this.OnStash this.Deviation) "Stash"
+                    Button.render this this.Save "Save"
+                    Button.render this this.Stash "Stash"
                 }
             }
         }

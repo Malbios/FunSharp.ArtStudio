@@ -1,6 +1,7 @@
 ﻿namespace FunSharp.Common
 
 open System.IO
+open System.Web
 
 [<RequireQualifiedAccess>]
 module File =
@@ -10,3 +11,7 @@ module File =
         
         return! Stream.readAllBytesAsync stream
     }
+    
+    let writeAllBytesAsync (path: string) (bytes: byte array) =
+        
+        File.WriteAllBytesAsync(path, bytes) |> Async.AwaitTask

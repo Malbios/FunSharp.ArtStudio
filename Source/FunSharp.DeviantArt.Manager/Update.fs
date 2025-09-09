@@ -22,6 +22,12 @@ open Microsoft.Extensions.Logging
 
 module Update =
     
+    type private Image = {
+        Name: string
+        ContentType: string
+        Content: byte array
+    }
+    
     let private apiRoot = "http://localhost:5123/api/v1"
     
     let private ensureSuccess (task: Task<HttpResponseMessage>) =
@@ -118,14 +124,6 @@ module Update =
         (JsonSerializer.deserialize<PublishedDeviation array> >> Loadable.Loaded)
         |> loadItems client "/publish"
         
-    let private loadImage client (id: string) =
-        
-        $"{apiRoot}/image?id={id}"
-        |> get client
-        |> Async.bind contentAsString
-        |> Async.map JsonSerializer.deserialize<Image>
-        |> Async.map (fun x -> (id, x))
-        
     let private processUpload (file: IBrowserFile) = async {
         let maxSize = 1024L * 1024L * 100L // 100 MB
         
@@ -136,16 +134,20 @@ module Update =
         
         let byteArray = ms.ToArray()
         
-        return Image(file.Name, file.ContentType, byteArray)
+        return {
+            Name = file.Name
+            ContentType = file.ContentType
+            Content = byteArray
+        }
     }
     
     let private uploadImage client (file: IBrowserFile) =
         
         processUpload file
         |> Async.bind (fun image ->
-            postFile client $"{apiRoot}/local/deviation/asImages" image.Name image.MimeType image.Content
+            postFile client $"{apiRoot}/local/deviation/asImages" image.Name image.ContentType image.Content
             |> Async.bind contentAsString
-            |> Async.map (JsonSerializer.deserialize<(LocalDeviation * Image) array> >> Array.head)
+            |> Async.map (JsonSerializer.deserialize<LocalDeviation array> >> Array.head)
         )
         
     let private updateLocalDeviation client (local: LocalDeviation) =
@@ -159,7 +161,7 @@ module Update =
         |> updateLocalDeviation client
         |> Async.bind (fun _ ->
             $"{apiRoot}/stash"
-            |> post client <| new StringContent(local.Title)
+            |> post client <| new StringContent(local.ImageUrl.ToString())
             |> Async.bind contentAsString
             |> Async.map JsonSerializer.deserialize<StashedDeviation>
             |> Async.map (fun stashed -> (local, stashed))
@@ -168,7 +170,7 @@ module Update =
     let private publishDeviation client (stashed: StashedDeviation) =
         
         $"{apiRoot}/publish"
-        |> post client <| new StringContent(stashed.Metadata.Id)
+        |> post client <| new StringContent(stashed.ImageUrl.ToString())
         |> Async.bind contentAsString
         |> Async.map JsonSerializer.deserialize<PublishedDeviation>
         |> Async.map (fun published -> (stashed, published))
@@ -252,98 +254,82 @@ module Update =
         | LoadedPublishedDeviations loadable ->
             { model with PublishedDeviations = loadable }, Cmd.none
             
-        | LoadImage id ->
+        | AddInspiration (inspirationUrl, imageFile) ->
+            failwith "todo"
             
-            let load () = loadImage client id
-            let error ex = LoadImageFailed (ex, id)
+        | AddedInspiration inspiration ->
+            failwith "todo"
             
-            let model = {
-                model with
-                    Images = model.Images |> Map.add id Loadable.Loading
-            }
+        | AddInspirationFailed (error, inspirationUrl, imageFile) ->
             
-            model, Cmd.OfAsync.either load () LoadedImage error
-        
-        | LoadedImage (id, image) ->
+            printfn $"adding inspiration failed for: {inspirationUrl}"
+            printfn $"error: {error}"
             
-            let model = {
-                model with
-                    Images = model.Images |> Map.add id (Loadable.Loaded image)
-            }
+            model, Cmd.none
+            
+        | AddPrompt promptText ->
+            failwith "todo"
+            
+        | AddedPrompt prompt ->
+            failwith "todo"
+            
+        | AddPromptFailed (error, promptText) ->
+            
+            printfn $"adding prompt failed for: {promptText}"
+            printfn $"error: {error}"
             
             model, Cmd.none
         
-        | LoadImageFailed (error, id) ->
+        | Inspiration2Prompt (inspiration, promptText) ->
+            failwith "todo"
             
-            printfn $"loading image failed for: {id}"
+        | Inspiration2PromptDone prompt ->
+            failwith "todo"
+            
+        | Inspiration2PromptFailed (error, inspiration, promptText) ->
+            
+            printfn $"inspiration2prompt failed for: {inspiration.Url}"
             printfn $"error: {error}"
             
             model, Cmd.none
 
-        | AddInspiration inspiration ->
+        | Prompt2LocalDeviation (prompt, imageFile) ->
             failwith "todo"
-            
-        | AddInspirationFailed (error, inspiration) ->
-            
-            printfn $"adding inspiration failed for: {inspiration.Url}"
-            printfn $"error: {error}"
-            
-            model, Cmd.none
         
-        | Inspiration2Prompt (inspiration, prompt) ->
+        | Prompt2LocalDeviationDone localDeviation ->
             failwith "todo"
             
-        | Inspiration2PromptFailed (error, inspiration, prompt) ->
+        | Prompt2LocalDeviationFailed (error, prompt, imageFile) ->
             
-            printfn $"inspiration2prompt failed for: {inspiration.Url} -> {prompt.Text}"
-            printfn $"error: {error}"
-            
-            model, Cmd.none
-        
-        | Prompt2LocalDeviation (prompt, local) ->
-            failwith "todo"
-            
-        | Prompt2LocalDeviationFailed (error, prompt, local) ->
-            
-            printfn $"prompt2local failed for: {prompt.Text} -> {local.Title}"
+            printfn $"prompt2local failed for: {prompt.Id} -> {imageFile.Name}"
             printfn $"error: {error}"
             
             model, Cmd.none
             
-        | ProcessImages files ->
+        | AddLocalDeviation imageFile ->
             
-            let upload = uploadImage client
-            let error ex file = ProcessImageFailed (ex, file)
+            let upload file = uploadImage client file
+            let error ex = AddLocalDeviationFailed (ex, imageFile)
             
-            let batch =
-                files
-                |> Array.map (fun file ->
-                    Cmd.OfAsync.either upload file ProcessedImage (fun ex -> error ex file)
-                )
-                |> Cmd.batch
+            model, Cmd.OfAsync.either upload imageFile AddedLocalDeviation error
             
-            model, batch
+        | AddLocalDeviations imageFiles ->
             
-        | ProcessedImage (local, image) ->
+            model, imageFiles |> Array.map (fun x -> Cmd.ofMsg (AddLocalDeviation x)) |> Cmd.batch
             
-            let localDeviations =
+        | AddedLocalDeviation local ->
+            
+            let deviations =
                 match model.LocalDeviations with
-                | Loaded deviations -> [|local|] |> Array.append deviations |> Loadable.Loaded
-                | _ -> failwith $"Could not add local deviation because model.LocalDeviations is not loaded"
-                
-            let images = model.Images |> Map.add local.Id (Loadable.Loaded image) 
+                | Loaded deviations ->
+                    [|local|] |> Array.append deviations |> Loadable.Loaded
+                | x -> x 
             
-            let model = {
-                model with
-                    LocalDeviations = localDeviations
-                    Images = images
-            }
+            { model with LocalDeviations = deviations }, Cmd.none
             
-            model, Cmd.none
-
-        | ProcessImageFailed (error, file) ->
+        | AddLocalDeviationFailed (error, imageFile) ->
             
-            printfn $"image processing failed for: {file.Name}"
+            printfn $"adding local deviation failed for: {imageFile.Name}"
             printfn $"error: {error}"
             
             model, Cmd.none
@@ -355,10 +341,13 @@ module Update =
             let error ex = UpdateLocalDeviationFailed (ex, local)
             
             { model with LocalDeviations = Loading }, Cmd.OfAsync.either update local success error
+            
+        | UpdatedLocalDeviation local ->
+            failwith "todo"
 
         | UpdateLocalDeviationFailed (error, local) ->
             
-            printfn $"updating local deviation failed for: {local.Id}"
+            printfn $"updating local deviation failed for: {local.ImageUrl}"
             printfn $"error: {error}"
             
             model, Cmd.none
@@ -387,7 +376,7 @@ module Update =
             
         | StashDeviationFailed (error, local) ->
             
-            printfn $"stashing failed for: {local.Id}"
+            printfn $"stashing failed for: {local.ImageUrl}"
             printfn $"error: {error}"
             
             model, Cmd.none
@@ -416,7 +405,7 @@ module Update =
             
         | PublishStashedFailed (error, stashed) ->
             
-            printfn $"publishing failed for: {stashed.Metadata.Id}"
+            printfn $"publishing failed for: {stashed.ImageUrl}"
             printfn $"error: {error}"
             
             model, Cmd.none

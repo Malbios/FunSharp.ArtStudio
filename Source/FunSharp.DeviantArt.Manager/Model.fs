@@ -1,5 +1,6 @@
 ﻿namespace FunSharp.DeviantArt.Manager
 
+open System
 open FunSharp.DeviantArt.Api.Model
 open FunSharp.DeviantArt.Manager
 open Microsoft.AspNetCore.Components.Forms
@@ -26,7 +27,6 @@ module Model =
         LocalDeviations: Loadable<LocalDeviation array>
         StashedDeviations: Loadable<StashedDeviation array>
         PublishedDeviations: Loadable<PublishedDeviation array>
-        Images: Map<string, Loadable<Image>>
     }
 
     [<RequireQualifiedAccess>]
@@ -42,7 +42,6 @@ module Model =
             LocalDeviations = Loadable.NotLoaded
             StashedDeviations = Loadable.NotLoaded
             PublishedDeviations = Loadable.NotLoaded
-            Images = Map.empty
         }
         
     type Message =
@@ -68,30 +67,35 @@ module Model =
         | LoadPublishedDeviations
         | LoadedPublishedDeviations of Loadable<PublishedDeviation array>
         
-        | LoadImage of id: string
-        | LoadedImage of id: string * Image
-        | LoadImageFailed of error: exn * id: string
+        | AddInspiration of inspirationUrl: Uri * imageFile: IBrowserFile
+        | AddedInspiration of Inspiration
+        | AddInspirationFailed of error: exn * inspirationUrl: Uri * imageFile: IBrowserFile
         
-        | AddInspiration of Inspiration
-        | AddInspirationFailed of error: exn * inspiration: Inspiration
+        | AddPrompt of promptText: string
+        | AddedPrompt of Prompt
+        | AddPromptFailed of error: exn * promptText: string
         
-        | Inspiration2Prompt of inspiration: Inspiration * prompt: Prompt
-        | Inspiration2PromptFailed of error: exn * inspiration: Inspiration * prompt: Prompt
+        | Inspiration2Prompt of Inspiration * promptText: string
+        | Inspiration2PromptDone of Prompt
+        | Inspiration2PromptFailed of error: exn * Inspiration * promptText: string
         
-        | Prompt2LocalDeviation of prompt: Prompt * local: LocalDeviation
-        | Prompt2LocalDeviationFailed of error: exn * prompt: Prompt * local: LocalDeviation
+        | Prompt2LocalDeviation of prompt: Prompt * imageFile: IBrowserFile
+        | Prompt2LocalDeviationDone of local: LocalDeviation
+        | Prompt2LocalDeviationFailed of error: exn * prompt: Prompt * imageFile: IBrowserFile
         
-        | ProcessImages of IBrowserFile[]
-        | ProcessedImage of local: LocalDeviation * image: Image
-        | ProcessImageFailed of error: exn * file: IBrowserFile
+        | AddLocalDeviation of imageFile: IBrowserFile
+        | AddLocalDeviations of imageFiles: IBrowserFile[]
+        | AddedLocalDeviation of local: LocalDeviation
+        | AddLocalDeviationFailed of error: exn * imageFile: IBrowserFile
         
-        | UpdateLocalDeviation of LocalDeviation
+        | UpdateLocalDeviation of local: LocalDeviation
+        | UpdatedLocalDeviation of local: LocalDeviation
         | UpdateLocalDeviationFailed of error: exn * local: LocalDeviation
         
-        | StashDeviation of LocalDeviation
+        | StashDeviation of local: LocalDeviation
         | StashedDeviation of local: LocalDeviation * stashed: StashedDeviation
         | StashDeviationFailed of error: exn * local: LocalDeviation
         
-        | PublishStashed of StashedDeviation
+        | PublishStashed of stashed: StashedDeviation
         | PublishedStashed of stashed: StashedDeviation * published: PublishedDeviation
         | PublishStashedFailed of error: exn * stashed: StashedDeviation

@@ -3,6 +3,7 @@
 open System
 open System.Threading
 open Suave
+open Suave.Files
 open Suave.Filters
 open Suave.Operators
 open Suave.Successful
@@ -16,7 +17,10 @@ open FunSharp.DeviantArt.Api.Model
 open FunSharp.DeviantArt.Server.Helpers
 
 module ServerStartup =
-
+    
+    let serverAddress = "127.0.0.1"
+    let serverPort = 5123
+    
     let secrets = Secrets.load ()
     let authPersistence = Persistence.AuthenticationPersistence()
     let dataPersistence = new PickledPersistence(@"C:\Files\FunSharp.DeviantArt\persistence.db") :> IPersistence
@@ -86,20 +90,28 @@ module ServerStartup =
             return! dataPersistence.FindAll<PublishedDeviation>(dbKey_PublishedDeviations)
                     |> asOkJsonResponse <| ctx
         }
-            
-    // match ctx.request.queryParam "id" with
-    // | Choice1Of2 id -> 
-    //     return! Successful.OK (sprintf "Got id = %s" id) ctxOpt
-    // | Choice2Of2 msg -> 
-    //     return! RequestErrors.BAD_REQUEST (sprintf "Missing param: %s" msg) ctxOpt
         
-    let downloadImage: WebPart =
+    let uploadImages: WebPart =
         fun ctx -> async {
-            match ctx.request.queryParam "id" with
-            | Choice2Of2 _ ->
-                return! BAD_REQUEST "No files uploaded" ctx
-            | Choice1Of2 id ->
-                return! dataPersistence.Find<string, Image>(dbKey_Images, id) |> asOkJsonResponse <| ctx
+            match ctx.request.files with
+            | [] -> return! BAD_REQUEST "No files uploaded" ctx
+            | files ->
+                try
+                    let mutable items = []
+                    
+                    for file in files do
+                        let key = file.fileName
+                        
+                        let! content = File.readAllBytesAsync file.tempFilePath
+                        do! File.writeAllBytesAsync $"{imagesLocation}\\{key}" content
+                        
+                        let imageUrl = Uri $"http://{serverAddress}:{serverPort}/images/{key}"
+                        
+                        items <- items @ [imageUrl]
+
+                    return! items |> asOkJsonResponse <| ctx
+                with ex ->
+                    return! BAD_REQUEST ex.Message ctx
         }
         
     let uploadLocalDeviations: WebPart =
@@ -112,14 +124,17 @@ module ServerStartup =
                     
                     for file in files do
                         let key = file.fileName
-                        let! content = file.tempFilePath |> File.readAllBytesAsync
-                        let deviation = { LocalDeviation.empty with Id = key }
-                        let image = Image(key, file.mimeType, content)
+                        
+                        let! content = File.readAllBytesAsync file.tempFilePath
+                        do! File.writeAllBytesAsync $"{imagesLocation}\\{key}" content
+
+                        let imageUrl = Uri $"http://{serverAddress}:{serverPort}/images/{key}"
+                        
+                        let deviation = LocalDeviation.defaults imageUrl
                         
                         do dataPersistence.Insert(dbKey_LocalDeviations, key, deviation)
-                        do dataPersistence.Insert(dbKey_Images, key, image)
                         
-                        items <- items @ [(deviation, image)]
+                        items <- items @ [deviation]
 
                     return! items |> asOkJsonResponse <| ctx
                 with ex ->
@@ -130,9 +145,9 @@ module ServerStartup =
         fun ctx -> async {
             try
                 let deviation = ctx.request |> asJson<LocalDeviation>
-                let key = deviation.Id
+                let key = deviation.ImageUrl
                 
-                match dataPersistence.Find<string, LocalDeviation>(dbKey_LocalDeviations, key) with
+                match dataPersistence.Find<Uri, LocalDeviation>(dbKey_LocalDeviations, key) with
                 | None -> return! BAD_REQUEST $"local deviation '{key}' not found" ctx
                 | Some _ ->
                     printfn $"Updating '{key}'..."
@@ -153,15 +168,17 @@ module ServerStartup =
                 let key = ctx.request |> asString
                 
                 let deviation = dataPersistence.Find<string, LocalDeviation>(dbKey_LocalDeviations, key)
-                let image = dataPersistence.Find<string, Image>(dbKey_Images, key)
                 
-                match deviation, image with
-                | None, _ -> return! BAD_REQUEST $"Local deviation '{key}' not found" ctx
-                | _, None -> return! BAD_REQUEST $"Image for local deviation '{key}' not found" ctx
-                | Some local, Some image ->
+                match deviation with
+                | None -> return! BAD_REQUEST $"Local deviation '{key}' not found" ctx
+                | Some local ->
+                    let imagePath = $"{imagesLocation}\\{key}"
+                    let mimeType = Helpers.mimeType imagePath
+                    let! imageContent = File.readAllBytesAsync imagePath
+                    
                     printfn $"Submitting '{key}' to stash..."
                     
-                    let! stashedDeviation = submitToStash apiClient local image
+                    let! stashedDeviation = submitToStash apiClient imageContent mimeType local
                     
                     do dataPersistence.Delete(dbKey_LocalDeviations, key) |> ignore
                     do dataPersistence.Insert(dbKey_StashedDeviations, key, stashedDeviation)
@@ -204,7 +221,7 @@ module ServerStartup =
     let serverConfiguration = {
         defaultConfig with
             cancellationToken = cts.Token
-            bindings = [ HttpBinding.createSimple HTTP "127.0.0.1" 5123 ] 
+            bindings = [ HttpBinding.createSimple HTTP serverAddress serverPort ] 
     }
         
     let serverApp =
@@ -222,8 +239,8 @@ module ServerStartup =
             GET >=> path $"{apiBase}/local/deviations" >=> downloadLocalDeviations
             GET >=> path $"{apiBase}/stash" >=> downloadStashedDeviations
             GET >=> path $"{apiBase}/publish" >=> downloadPublishedDeviations
-            GET >=> path $"{apiBase}/image" >=> downloadImage
             
+            POST >=> path $"{apiBase}/images" >=> uploadImages
             POST >=> path $"{apiBase}/local/inspiration" >=> BAD_REQUEST "not implemented yet"
             POST >=> path $"{apiBase}/local/prompt" >=> BAD_REQUEST "not implemented yet"
             POST >=> path $"{apiBase}/local/deviation" >=> BAD_REQUEST "not implemented yet"
@@ -234,7 +251,10 @@ module ServerStartup =
             
             PATCH >=> path $"{apiBase}/local/deviation" >=> updateLocalDeviation
             
-            NOT_FOUND "Unknown route"
+            pathScan "/images/%s" (fun filename ->
+                let filepath = System.IO.Path.Combine(imagesLocation, filename)
+                file filepath
+            )
         ]
         
     let tryStartServer () =

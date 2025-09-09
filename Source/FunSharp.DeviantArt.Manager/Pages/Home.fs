@@ -6,21 +6,11 @@ open Bolero.Html.attr
 open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Components.Forms
 open Microsoft.JSInterop
-open Radzen
-open Radzen.Blazor
 open FunSharp.DeviantArt.Manager.Components
 open FunSharp.DeviantArt.Manager.Model
 
-type HomeTabs =
-    | UploadFiles
-    | LocalDeviations
-    | StashedDeviations
-    | PublishedDeviations
-
 type Home() =
     inherit ElmishComponent<State, Message>()
-    
-    let mutable currentTab = HomeTabs.LocalDeviations
     
     override _.CssScope = CssScopes.Home
     
@@ -29,64 +19,54 @@ type Home() =
     
     override this.View model dispatch =
             
-        let loadImage imageId =
-            dispatch (Message.LoadImage imageId)
-        
         let galleries =
             match model.Settings with
             | Loaded settings -> settings.Galleries |> Array.map _.name
             | _ -> Array.empty
-    
+            
         let uploadFiles (args: InputFileChangeEventArgs) =
             args.GetMultipleFiles ()
             |> Array.ofSeq
-            |> Message.ProcessImages
+            |> Message.AddLocalDeviations
             |> dispatch
             
         let publish deviation =
             dispatch (Message.PublishStashed deviation)
+            
+        let accordionItem label renderAction : Accordion.Item = {
+            Label = label
+            RenderAction = renderAction
+        }
         
         div {
             attr.``class`` "center-wrapper"
             
-            comp<RadzenStack> {
+            div {
                 style "height: 100%"
-            
-                "Orientation" => Orientation.Vertical
-                "JustifyContent" => JustifyContent.Center
-                "AlignItems" => AlignItems.Center
                 
-                comp<RadzenStack> {
-                    "Orientation" => Orientation.Horizontal
-                    "JustifyContent" => JustifyContent.Center
-                    "AlignItems" => AlignItems.Center
+                [|
+                    accordionItem "Upload Images" (fun () ->
+                        FileInput.render true uploadFiles
+                    )
                     
-                    Button.render this (fun () -> currentTab <- HomeTabs.UploadFiles) "Upload Files"
-                    Button.render this (fun () -> currentTab <- HomeTabs.LocalDeviations) "Local Deviations"
-                    Button.render this (fun () -> currentTab <- HomeTabs.StashedDeviations) "Stashed Deviations"
-                    Button.render this (fun () -> currentTab <- HomeTabs.PublishedDeviations) "Published Deviations"
-                }
-                
-                match currentTab with
-                | UploadFiles ->
-                    FileInput.render true uploadFiles
+                    accordionItem "Local Deviations" (fun () ->
+                        comp<LocalDeviations> {
+                            "Galleries" => galleries
+                            "Items" => model.LocalDeviations
+                            "OnSave" => (fun deviation -> dispatch (Message.UpdateLocalDeviation deviation))
+                            "OnStash" => (fun deviation -> dispatch (Message.StashDeviation deviation))
+                        }
+                    )
                     
-                | LocalDeviations ->
-                    comp<LocalDeviations> {
-                        "LoadImage" => loadImage
-                        "Galleries" => galleries
-                        "Images" => model.Images
-                        "Items" => model.LocalDeviations
-                        "OnSave" => (fun deviation -> dispatch (Message.UpdateLocalDeviation deviation))
-                        "OnStash" => (fun deviation -> dispatch (Message.StashDeviation deviation))
-                    }
-                    
-                | StashedDeviations ->
-                    model.StashedDeviations
-                    |> StashedDeviations.render this this.JSRuntime publish loadImage model.Images
-                    
-                | PublishedDeviations ->
-                    model.PublishedDeviations
-                    |> PublishedDeviations.render loadImage model.Images
+                    accordionItem "Stashed Deviations" (fun () ->
+                        model.StashedDeviations
+                        |> StashedDeviations.render this this.JSRuntime publish
+                    )
+                    accordionItem "Published Deviations" (fun () ->
+                        model.PublishedDeviations
+                        |> PublishedDeviations.render
+                    )
+                |]
+                |> Accordion.render
             }
         }

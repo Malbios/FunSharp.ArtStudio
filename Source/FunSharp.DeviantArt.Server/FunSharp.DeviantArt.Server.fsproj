@@ -21,6 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Include="Microsoft.AspNetCore.StaticFiles" Version="2.3.0" />
       <PackageReference Include="Suave" Version="2.6.2" />
     </ItemGroup>
 

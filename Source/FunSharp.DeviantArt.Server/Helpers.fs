@@ -2,6 +2,7 @@
 
 open System
 open System.Text
+open Microsoft.AspNetCore.StaticFiles
 open Suave
 open Suave.Operators
 open Suave.Successful
@@ -29,44 +30,48 @@ module Helpers =
     
     [<Literal>]
     let dbKey_PublishedDeviations = "PublishedDeviations"
-    
-    [<Literal>]
-    let dbKey_Images = "Images"
 
     [<Literal>]
     let dbName = "FunSharp.DeviantArt.Manager"
+    
+    [<Literal>]
+    let imagesLocation = @"C:\Files\FunSharp.DeviantArt\images"
         
     let private asStashed (local: LocalDeviation) (response: StashSubmissionResponse) =
         
         match response.status with
         | "success" ->
             {
+                ImageUrl = local.ImageUrl
                 StashId = response.item_id
-                Metadata = local
+                Origin = local.Origin
+                Metadata = local.Metadata
             }
         | _ ->
-            failwith $"Failed to stash {local.Title}"
+            failwith $"Failed to stash {local.ImageUrl}"
         
     let private asPublished (stashed: StashedDeviation) (response: PublicationResponse) =
         
         match response.status with
         | "success" ->
             {
+                ImageUrl = stashed.ImageUrl
                 Url = Uri response.url
+                Origin = stashed.Origin
                 Metadata = stashed.Metadata
             }
         | _ ->
-            failwith $"Failed to publish {stashed.Metadata.Title}"
+            failwith $"Failed to publish {stashed.ImageUrl}"
 
-    let submitToStash (client: Client) (local: LocalDeviation) (image: Image) =
-
-        let submission = { StashSubmission.defaults with Title = local.Title }
-
+    let submitToStash (client: Client) imageContent mimeType (local: LocalDeviation) =
+        
+        let submission = { StashSubmission.defaults with Title = local.Metadata.Title }
+        
         let httpFile: Http.File = {
-            MediaType = Some image.MimeType
-            Content = image.Content
+            MediaType = Some mimeType
+            Content = imageContent
         }
-
+        
         client.SubmitToStash(submission, httpFile)
         |> AsyncResult.getOrFail
         |> Async.map (asStashed local)
@@ -101,3 +106,10 @@ module Helpers =
         request
         |> asString
         |> JsonSerializer.deserialize<'T>
+
+    let mimeType filePath =
+        let provider = FileExtensionContentTypeProvider()
+        
+        match provider.TryGetContentType(filePath) with
+        | true, mime -> mime
+        | false, _ -> "application/octet-stream"

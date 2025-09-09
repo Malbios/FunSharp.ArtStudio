@@ -11,16 +11,12 @@ open FunSharp.DeviantArt.Api.Model
 [<RequireQualifiedAccess>]
 module StashedDeviations =
     
-    let render parent (jsRuntime: IJSRuntime) (publish: StashedDeviation -> unit) (loadImage: string -> unit) (images: Map<string, Loadable<Image>>) (deviations: Loadable<StashedDeviation array>) =
+    let render parent (jsRuntime: IJSRuntime) (publish: StashedDeviation -> unit) (deviations: Loadable<StashedDeviation array>) =
         
         match deviations with
         | Loaded deviations ->
             deviations
             |> Array.map (fun deviation ->
-                match images |> Map.tryFind deviation.Metadata.Id with
-                | None -> loadImage deviation.Metadata.Id
-                | _ -> ()
-                
                 comp<RadzenStack> {
                     attr.style "margin: 0.25rem; padding: 0.5rem; border: 2px solid gray; border-radius: 8px; max-width: 700px;"
                     
@@ -29,13 +25,13 @@ module StashedDeviations =
                     "AlignItems" => AlignItems.Center
             
                     comp<ImagePreview> {
-                        "Image" => (images |> Map.tryFind deviation.Metadata.Id)
+                        "Image" => Some deviation.ImageUrl
                     }
                     
                     comp<RadzenStack> {
                         "Orientation" => Orientation.Vertical
                         
-                        div { text $"{deviation.Metadata.Id}" }
+                        div { text $"{deviation.ImageUrl.ToString()}" }
                         
                         comp<RadzenStack> {
                             "Orientation" => Orientation.Horizontal
@@ -46,11 +42,12 @@ module StashedDeviations =
                                 "Open in Sta.sh"
                             }
                             
-                            match deviation.Metadata.Inspiration with
-                            | None -> ()
-                            | Some inspiration ->
-                                IconButton.render "Copy inspiration to clipboard"
-                                <| Helpers.copyToClipboard jsRuntime $"Inspired by {inspiration.Url}"
+                            match deviation.Origin with
+                            | DeviationOrigin.None -> ()
+                            | DeviationOrigin.Prompt _ -> failwith "todo"
+                            | DeviationOrigin.Inspiration inspiration ->
+                                Helpers.copyToClipboard jsRuntime $"Inspired by {inspiration.Url}"
+                                |> IconButton.render "Copy inspiration to clipboard"
                         }
             
                         Button.render parent (fun () -> publish deviation) "Publish"

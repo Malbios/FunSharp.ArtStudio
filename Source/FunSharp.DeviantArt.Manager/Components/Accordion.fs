@@ -2,14 +2,15 @@
 
 open Bolero
 open Bolero.Html
+open FunSharp.DeviantArt.Manager
 open Radzen.Blazor
 
 [<RequireQualifiedAccess>]
 module Accordion =
     
     type Item = {
-        Text: string
-        Render: unit -> Node
+        Label: string
+        RenderAction: unit -> Node
     }
     
     let render (items: Item array) =
@@ -18,12 +19,12 @@ module Accordion =
             [|
                 for item in items do
                     yield comp<RadzenAccordionItem> {
-                        "Text" => item.Text
-                        
-                        item.Render ()
+                        "Text" => item.Label
+                        attr.fragment "ChildContent" (item.RenderAction ())
                     }
             |]
+            |> Helpers.renderArray
         
         comp<RadzenAccordion> {
-            "Items" => accordionItems
+            attr.fragment "Items" accordionItems
         }

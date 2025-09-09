@@ -61,12 +61,12 @@ module StashSubmission =
         IsAiGenerated = true
         IsDirty = false
     }
-            
+    
     let toProperties (submission: StashSubmission) =
         submission
         |> Record.toKeyValueTypes
         |> KeyValueType.splitArrays
-
+        
 type MatureLevel =
     | Strict
     | Moderate
@@ -272,38 +272,19 @@ module AuthenticationData =
         AccessToken = response.access_token
         RefreshToken = response.refresh_token
     }
-    
-type Image(name: string, mimeType: string, content: byte array) =
-    
-    member val Name = name with get
-    member val MimeType = mimeType with get
-    member val Content = content with get
-    
-    member _.AsUrl() =
-        match mimeType, content with
-        | mime, content when mime = "" || content.Length = 0 -> ""
-        | mime, content -> $"data:{mime};base64,{Convert.ToBase64String(content)}"
-        
-[<RequireQualifiedAccess>]
-module Image =
-    
-    let empty =
-        Image("", "", Array.empty)
 
 type Inspiration = {
-    Id: string
     Url: Uri
+    ImageUrl: Uri option
 }
 
 type Prompt = {
-    Id: string
+    Id: Guid
     Text: string
     Inspiration: Inspiration option
 }
 
 type Metadata = {
-    Id: string
-    Inspiration: Inspiration option
     Title: string
     Gallery: string
     IsMature: bool
@@ -313,27 +294,42 @@ type Metadata = {
 module Metadata =
     
     let empty = {
-        Id = ""
-        Inspiration = None
         Title = ""
         Gallery = ""
         IsMature = false
     }
 
-type LocalDeviation = Metadata
+[<RequireQualifiedAccess>]
+type DeviationOrigin =
+    | None
+    | Prompt of Prompt
+    | Inspiration of Inspiration
+
+type LocalDeviation = {
+    ImageUrl: Uri
+    Origin: DeviationOrigin
+    Metadata: Metadata
+}
 
 [<RequireQualifiedAccess>]
 module LocalDeviation =
     
-    let empty : LocalDeviation =
-        Metadata.empty
+    let defaults imageUrl = {
+        ImageUrl = imageUrl
+        Origin = DeviationOrigin.None
+        Metadata = Metadata.empty
+    }
 
 type StashedDeviation = {
+    ImageUrl: Uri
     StashId: int64
+    Origin: DeviationOrigin
     Metadata: Metadata
 }
 
 type PublishedDeviation = {
+    ImageUrl: Uri
     Url: Uri
+    Origin: DeviationOrigin
     Metadata: Metadata
 }
