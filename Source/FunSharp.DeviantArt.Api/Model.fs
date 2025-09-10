@@ -227,7 +227,16 @@ type WhoAmIResponse = {
     username: string
 }
 
+type ImageResponse = {
+    src: string
+}
+
 type DeviationResponse = {
+    deviationid: string
+    preview: ImageResponse
+}
+
+type GalleryDeviationResponse = {
     [<JsonProperty("deviationid")>]
     id: string
     
@@ -237,7 +246,7 @@ type DeviationResponse = {
 type GalleryResponse = {
     has_more: bool
     next_offset: int option
-    results: DeviationResponse array
+    results: GalleryDeviationResponse array
 }
 
 type MetadataResponse = {
@@ -246,7 +255,7 @@ type MetadataResponse = {
 }
 
 type DeviationWithMetadata =
-    DeviationResponse * MetadataResponse
+    GalleryDeviationResponse * MetadataResponse
     
 type StashSubmissionResponse = {
     [<JsonProperty("itemid")>]

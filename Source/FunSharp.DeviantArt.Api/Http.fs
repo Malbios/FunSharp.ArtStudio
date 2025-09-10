@@ -97,6 +97,11 @@ module Http =
         
         client.DefaultRequestHeaders.Authorization <- AuthenticationHeaderValue("Bearer", accessToken)
         
+    let downloadFile (url: string) =
+        
+        client.GetByteArrayAsync(url)
+        |> Async.AwaitTask
+        
     let private apiError content =
         
         try

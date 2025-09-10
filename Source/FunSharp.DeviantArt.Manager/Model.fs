@@ -62,9 +62,9 @@ module Model =
         | LoadPublishedDeviations
         | LoadedPublishedDeviations of Loadable<PublishedDeviation array>
         
-        | AddInspiration of inspirationUrl: Uri * imageFile: IBrowserFile
+        | AddInspiration of inspirationUrl: Uri
         | AddedInspiration of Inspiration
-        | AddInspirationFailed of error: exn * inspirationUrl: Uri * imageFile: IBrowserFile
+        | AddInspirationFailed of error: exn * inspirationUrl: Uri
         
         | AddPrompt of promptText: string
         | AddedPrompt of Prompt

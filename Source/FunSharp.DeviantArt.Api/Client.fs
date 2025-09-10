@@ -1,6 +1,7 @@
 ﻿namespace FunSharp.DeviantArt.Api
 
 open System
+open System.Text.RegularExpressions
 open FunSharp.Data.Abstraction
 open Newtonsoft.Json
 open Newtonsoft.Json.Linq
@@ -30,6 +31,9 @@ module Endpoints =
         
     let galleryFolders (limit: int) =
         $"{common}/gallery/folders?limit={limit}"
+        
+    let deviation id =
+        $"{common}/deviation/{id}"
         
 type Client(persistence: IAuthPersistence<AuthenticationData>, clientId: string, clientSecret: string) =
 
@@ -100,7 +104,7 @@ type Client(persistence: IAuthPersistence<AuthenticationData>, clientId: string,
 
         let results =
             jsonObject["results"] :?> JArray
-            |> Seq.map (fun j -> JsonConvert.DeserializeObject<DeviationResponse>(j.ToString()))
+            |> Seq.map (fun j -> JsonConvert.DeserializeObject<GalleryDeviationResponse>(j.ToString()))
             |> Seq.toArray
 
         let hasMore = jsonObject["has_more"].ToObject<bool>()
@@ -270,3 +274,31 @@ type Client(persistence: IAuthPersistence<AuthenticationData>, clientId: string,
             |> Http.RequestPayload.Get
             |> request
         )
+        
+    member _.GetDeviationId(url: string) =
+        
+        url
+        |> Http.RequestPayload.Get
+        |> request
+        |> AsyncResult.map(fun content ->
+            let pattern = "<meta property=\"da:appurl\" content=\"DeviantArt://deviation/([0-9A-Fa-f\\-]+)\""
+            let m = Regex.Match(content, pattern)
+            
+            if m.Success then
+               m.Groups[1].Value
+            else
+                failwith "Could not find deviation UUID!"
+        )
+
+    member _.GetDeviation(id: string) =
+        
+        $"{config.RootUrl}{Endpoints.deviation id}"
+        |> Http.RequestPayload.Get
+        |> request
+        // |> AsyncResult.map (fun content ->
+        //     printfn "Deviation Response:"
+        //     printfn $"{content}"
+        //     
+        //     content
+        // )
+        |> AsyncResult.map JsonSerializer.deserialize<DeviationResponse>

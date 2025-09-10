@@ -30,6 +30,9 @@ module ServerStartup =
     let galleryId galleryName =
         secrets.galleries |> Array.find(fun x -> x.name = galleryName) |> _.id
         
+    let imageUrl fileName =
+        Uri $"http://{serverAddress}:{serverPort}/images/{fileName}"
+        
     let allowCors: WebPart =
         setHeader "Access-Control-Allow-Origin" "*"
         >=> setHeader "Access-Control-Allow-Headers" "Content-Type"
@@ -152,6 +155,90 @@ module ServerStartup =
                 return! badRequestException ctx "updateLocalDeviation()" ex
         }
         
+    let addInspiration: WebPart =
+        fun ctx -> async {
+            try
+                let url = ctx.request |> asString |> HttpUtility.HtmlDecode
+                
+                let! id = apiClient.GetDeviationId url |> AsyncResult.getOrFail
+                let! deviation = apiClient.GetDeviation id |> AsyncResult.getOrFail
+                
+                let fileName = $"{id}.jpg"
+                
+                let! imageContent = Http.downloadFile deviation.preview.src
+                do! File.writeAllBytesAsync $"{imagesLocation}/{fileName}" imageContent
+                
+                let imageUrl = imageUrl fileName
+                
+                let inspiration = {
+                    Url = Uri url
+                    ImageUrl = Some imageUrl
+                }
+                
+                do dataPersistence.Insert(dbKey_Inspirations, url, inspiration)
+                
+                return! inspiration |> asOkJsonResponse <| ctx
+                
+            with ex ->
+                return! badRequestException ctx "addInspiration()" ex
+        }
+        
+    let inspiration2Prompt: WebPart =
+        fun ctx -> async {
+            try
+                let url = ctx.request |> asString |> HttpUtility.HtmlDecode
+                
+                let! id = apiClient.GetDeviationId url |> AsyncResult.getOrFail
+                let! deviation = apiClient.GetDeviation id |> AsyncResult.getOrFail
+                
+                let fileName = $"{id}.jpg"
+                
+                let! imageContent = Http.downloadFile deviation.preview.src
+                do! File.writeAllBytesAsync $"{imagesLocation}/{fileName}" imageContent
+                
+                let imageUrl = imageUrl fileName
+                
+                let inspiration = {
+                    Url = Uri url
+                    ImageUrl = Some imageUrl
+                }
+                
+                do dataPersistence.Insert(dbKey_Inspirations, url, inspiration)
+                
+                return! inspiration |> asOkJsonResponse <| ctx
+                
+            with ex ->
+                return! badRequestException ctx "addInspiration()" ex
+        }
+        
+    let prompt2Deviation: WebPart =
+        fun ctx -> async {
+            try
+                let url = ctx.request |> asString |> HttpUtility.HtmlDecode
+                
+                let! id = apiClient.GetDeviationId url |> AsyncResult.getOrFail
+                let! deviation = apiClient.GetDeviation id |> AsyncResult.getOrFail
+                
+                let fileName = $"{id}.jpg"
+                
+                let! imageContent = Http.downloadFile deviation.preview.src
+                do! File.writeAllBytesAsync $"{imagesLocation}/{fileName}" imageContent
+                
+                let imageUrl = imageUrl fileName
+                
+                let inspiration = {
+                    Url = Uri url
+                    ImageUrl = Some imageUrl
+                }
+                
+                do dataPersistence.Insert(dbKey_Inspirations, url, inspiration)
+                
+                return! inspiration |> asOkJsonResponse <| ctx
+                
+            with ex ->
+                return! badRequestException ctx "addInspiration()" ex
+        }
+        
     let stash: WebPart =
         fun ctx -> async {
             try
@@ -231,9 +318,9 @@ module ServerStartup =
             GET >=> path $"{apiBase}/stash" >=> downloadStashedDeviations
             GET >=> path $"{apiBase}/publish" >=> downloadPublishedDeviations
             
-            POST >=> path $"{apiBase}/local/inspiration" >=> BAD_REQUEST "not implemented yet"
-            POST >=> path $"{apiBase}/local/prompt" >=> BAD_REQUEST "not implemented yet"
-            POST >=> path $"{apiBase}/local/deviation" >=> BAD_REQUEST "not implemented yet"
+            POST >=> path $"{apiBase}/local/inspiration" >=> addInspiration
+            POST >=> path $"{apiBase}/local/prompt" >=> inspiration2Prompt
+            POST >=> path $"{apiBase}/local/deviation" >=> prompt2Deviation
             POST >=> path $"{apiBase}/stash" >=> stash
             POST >=> path $"{apiBase}/publish" >=> publish
             

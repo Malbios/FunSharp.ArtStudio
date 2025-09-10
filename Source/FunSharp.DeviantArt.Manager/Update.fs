@@ -5,6 +5,7 @@ open System.Net.Http
 open System.Net.Http.Headers
 open System.Text
 open System.Threading.Tasks
+open System.Web
 open Microsoft.AspNetCore.Components.Forms
 open Microsoft.Extensions.Logging
 open Elmish
@@ -60,6 +61,11 @@ module Update =
         |> Async.AwaitTask
         |> Async.catch
         |> AsyncResult.getOrFail
+        
+    let private postString client url text =
+        
+        new StringContent(text)
+        |> post client url
         
     let private postObject client url object =
         
@@ -124,6 +130,14 @@ module Update =
         
         (JsonSerializer.deserialize<PublishedDeviation array> >> Loadable.Loaded)
         |> loadItems client "/publish"
+        
+    let private addInspiration client inspirationUrl =
+        
+        inspirationUrl.ToString()
+        |> HttpUtility.HtmlEncode
+        |> postString client $"{apiRoot}/local/inspiration"
+        |> Async.bind contentAsString
+        |> Async.map JsonSerializer.deserialize<Inspiration>
         
     let private processUpload (file: IBrowserFile) = async {
         let maxSize = 1024L * 1024L * 100L // 100 MB
@@ -255,13 +269,25 @@ module Update =
         | LoadedPublishedDeviations loadable ->
             { model with PublishedDeviations = loadable }, Cmd.none
             
-        | AddInspiration (inspirationUrl, imageFile) ->
-            failwith "todo"
+        | AddInspiration inspirationUrl ->
+            
+            let add = addInspiration client
+            let failed ex = AddInspirationFailed (ex, inspirationUrl)
+            
+            model, Cmd.OfAsync.either add inspirationUrl AddedInspiration failed
             
         | AddedInspiration inspiration ->
-            failwith "todo"
             
-        | AddInspirationFailed (error, inspirationUrl, imageFile) ->
+            let inspirations =
+                match model.Inspirations with
+                | Loaded inspirations ->
+                    [|inspiration|] |> Array.append inspirations |> Loadable.Loaded
+                | x -> x 
+            
+            { model with Inspirations = inspirations }, Cmd.none
+            
+        // TODO: actually return Loadable.LoadFailed
+        | AddInspirationFailed (error, inspirationUrl) ->
             
             printfn $"adding inspiration failed for: {inspirationUrl}"
             printfn $"error: {error}"

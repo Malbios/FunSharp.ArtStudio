@@ -53,6 +53,12 @@ type Home() =
             match model.PublishedDeviations with
             | Loaded deviations -> deviations.Length
             | _ -> -1
+            
+        let addInspiration url =
+            Message.AddInspiration url |> dispatch
+            
+        let inspiration2Prompt (inspiration, prompt) =
+            Message.Inspiration2Prompt (inspiration, prompt) |> dispatch
         
         div {
             attr.``class`` "center-wrapper"
@@ -61,6 +67,10 @@ type Home() =
                 style "height: 100%"
                 
                 [|
+                    tab "Inspirations" (fun () ->
+                        Inspirations.render this addInspiration inspiration2Prompt model.Inspirations
+                    )
+                    
                     tab "Upload Images" (fun () ->
                         FileInput.render true uploadFiles
                     )
