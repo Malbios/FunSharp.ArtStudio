@@ -18,6 +18,7 @@
         <Compile Include="Model.fs"/>
         <Compile Include="Helpers.fs"/>
         <Compile Include="Components\Deviation.fs"/>
+        <Compile Include="Components\Deviations.fs" />
         <Compile Include="Components\LocalDeviationEditor.fs"/>
         <Compile Include="Components\LocalDeviations.fs"/>
         <Compile Include="Components\StashedDeviations.fs"/>

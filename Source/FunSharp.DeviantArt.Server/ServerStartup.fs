@@ -30,12 +30,6 @@ module ServerStartup =
     let galleryId galleryName =
         secrets.galleries |> Array.find(fun x -> x.name = galleryName) |> _.id
         
-    let galleryName galleryId =
-        secrets.galleries |> Array.find(fun x -> x.id = galleryId) |> _.name
-        
-    let withGalleryName publishedDeviation =
-        { publishedDeviation with PublishedDeviation.Metadata.Gallery = galleryName publishedDeviation.Metadata.Gallery }
-        
     let allowCors: WebPart =
         setHeader "Access-Control-Allow-Origin" "*"
         >=> setHeader "Access-Control-Allow-Headers" "Content-Type"
@@ -207,7 +201,9 @@ module ServerStartup =
                     
                     printfn "Publishing done!"
                     
-                    return! publishedDeviation |> withGalleryName |> asOkJsonResponse <| ctx
+                    printfn $"{publishedDeviation |> JsonSerializer.serialize}"
+                    
+                    return! publishedDeviation |> asOkJsonResponse <| ctx
                     
             with ex ->
                 return! badRequestException ctx "publish()" ex

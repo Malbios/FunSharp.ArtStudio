@@ -27,12 +27,8 @@ type LocalDeviations() =
         
         Loadable.render this.Items
         <| fun deviations ->
-            comp<RadzenStack> {
-                "Orientation" => Orientation.Horizontal
-                "JustifyContent" => JustifyContent.Center
-                "AlignItems" => AlignItems.Center
-                "Wrap" => FlexWrap.Wrap
-                
+            Deviations.render
+            <| concat {
                 for deviation in deviations do
                     comp<LocalDeviationEditor> {
                         "Galleries" => this.Galleries

@@ -26,7 +26,7 @@ module StashedDeviations =
                         "Orientation" => Orientation.Horizontal
                         
                         comp<RadzenLink> {
-                            "Path" => $"{Helpers.stashUrl deviation.StashId}"
+                            "Path" => $"{Helpers.stashEditUrl deviation.StashId}"
                             "Text" => "Open in Sta.sh"
                             "Target" => "_blank"
                         }
@@ -44,3 +44,4 @@ module StashedDeviations =
                 |> Deviation.render (Some deviation.ImageUrl)
             )
             |> Helpers.renderArray
+            |> Deviations.render

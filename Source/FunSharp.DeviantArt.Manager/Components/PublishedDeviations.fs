@@ -28,3 +28,4 @@ module PublishedDeviations =
                 |> Deviation.render (Some deviation.ImageUrl)
             )
             |> Helpers.renderArray
+            |> Deviations.render
