@@ -34,11 +34,25 @@ type Home() =
         let publish deviation =
             dispatch (Message.PublishStashed deviation)
             
-        let accordionItem label expanded renderAction : Accordion.Item = {
+        let tab label renderAction : Tabs.Item = {
             Label = label
-            Expanded = expanded
             RenderAction = renderAction
         }
+        
+        let localDeviationsCount =
+            match model.LocalDeviations with
+            | Loaded deviations -> deviations.Length
+            | _ -> -1
+            
+        let stashedDeviationsCount =
+            match model.StashedDeviations with
+            | Loaded deviations -> deviations.Length
+            | _ -> -1
+            
+        let publishedDeviationsCount =
+            match model.PublishedDeviations with
+            | Loaded deviations -> deviations.Length
+            | _ -> -1
         
         div {
             attr.``class`` "center-wrapper"
@@ -47,29 +61,38 @@ type Home() =
                 style "height: 100%"
                 
                 [|
-                    accordionItem "Upload Images" true (fun () ->
+                    tab "Upload Images" (fun () ->
                         FileInput.render true uploadFiles
                     )
                     
-                    accordionItem "Local Deviations" true (fun () ->
-                        comp<LocalDeviations> {
-                            "Galleries" => galleries
-                            "Items" => model.LocalDeviations
-                            "OnSave" => (fun deviation -> dispatch (Message.UpdateLocalDeviation deviation))
-                            "OnStash" => (fun deviation -> dispatch (Message.StashDeviation deviation))
-                        }
+                    tab $"Local Deviations ({localDeviationsCount})" (fun () ->
+                        match localDeviationsCount with
+                        | 0 -> text "No items."
+                        | _ ->
+                            comp<LocalDeviations> {
+                                "Galleries" => galleries
+                                "Items" => model.LocalDeviations
+                                "OnSave" => (fun deviation -> dispatch (Message.UpdateLocalDeviation deviation))
+                                "OnStash" => (fun deviation -> dispatch (Message.StashDeviation deviation))
+                            }
                     )
                     
-                    accordionItem "Stashed Deviations" true (fun () ->
-                        model.StashedDeviations
-                        |> StashedDeviations.render this this.JSRuntime publish
+                    tab $"Stashed Deviations ({stashedDeviationsCount})" (fun () ->
+                        match stashedDeviationsCount with
+                        | 0 -> text "No items."
+                        | _ ->
+                            model.StashedDeviations
+                            |> StashedDeviations.render this this.JSRuntime publish
                     )
                     
-                    accordionItem "Published Deviations" false (fun () ->
-                        model.PublishedDeviations
-                        |> PublishedDeviations.render
+                    tab $"Published Deviations ({publishedDeviationsCount})" (fun () ->
+                        match publishedDeviationsCount with
+                        | 0 -> text "No items."
+                        | _ ->
+                            model.PublishedDeviations
+                            |> PublishedDeviations.render
                     )
                 |]
-                |> Accordion.render true
+                |> Tabs.render
             }
         }
