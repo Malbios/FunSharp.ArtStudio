@@ -34,8 +34,9 @@ type Home() =
         let publish deviation =
             dispatch (Message.PublishStashed deviation)
             
-        let accordionItem label renderAction : Accordion.Item = {
+        let accordionItem label expanded renderAction : Accordion.Item = {
             Label = label
+            Expanded = expanded
             RenderAction = renderAction
         }
         
@@ -46,11 +47,11 @@ type Home() =
                 style "height: 100%"
                 
                 [|
-                    accordionItem "Upload Images" (fun () ->
+                    accordionItem "Upload Images" true (fun () ->
                         FileInput.render true uploadFiles
                     )
                     
-                    accordionItem "Local Deviations" (fun () ->
+                    accordionItem "Local Deviations" true (fun () ->
                         comp<LocalDeviations> {
                             "Galleries" => galleries
                             "Items" => model.LocalDeviations
@@ -59,15 +60,16 @@ type Home() =
                         }
                     )
                     
-                    accordionItem "Stashed Deviations" (fun () ->
+                    accordionItem "Stashed Deviations" true (fun () ->
                         model.StashedDeviations
                         |> StashedDeviations.render this this.JSRuntime publish
                     )
-                    accordionItem "Published Deviations" (fun () ->
+                    
+                    accordionItem "Published Deviations" false (fun () ->
                         model.PublishedDeviations
                         |> PublishedDeviations.render
                     )
                 |]
-                |> Accordion.render true true
+                |> Accordion.render true
             }
         }
