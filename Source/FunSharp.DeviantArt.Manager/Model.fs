@@ -1,17 +1,12 @@
 ﻿namespace FunSharp.DeviantArt.Manager
 
 open System
+open Microsoft.AspNetCore.Components.Forms
+open FunSharp.Blazor.Components
 open FunSharp.DeviantArt.Api.Model
 open FunSharp.DeviantArt.Manager
-open Microsoft.AspNetCore.Components.Forms
 
 module Model =
-    
-    type Loadable<'T> =
-        | NotLoaded
-        | Loading
-        | Loaded of 'T
-        | LoadingFailed of exn
         
     type Settings = {
         Galleries: Gallery array

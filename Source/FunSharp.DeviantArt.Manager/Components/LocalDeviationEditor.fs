@@ -1,12 +1,12 @@
 ﻿namespace FunSharp.DeviantArt.Manager.Components
 
 open System
-open System.Web
 open Bolero
 open Bolero.Html
 open Microsoft.AspNetCore.Components
 open Radzen
 open Radzen.Blazor
+open FunSharp.Blazor.Components
 open FunSharp.DeviantArt.Api.Model
 
 type LocalDeviationEditor() =

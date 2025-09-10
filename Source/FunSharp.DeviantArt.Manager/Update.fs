@@ -5,12 +5,13 @@ open System.Net.Http
 open System.Net.Http.Headers
 open System.Text
 open System.Threading.Tasks
-open Elmish
-open FunSharp.Common
-open FunSharp.DeviantArt.Api.Model
-open FunSharp.DeviantArt.Manager.Model
 open Microsoft.AspNetCore.Components.Forms
 open Microsoft.Extensions.Logging
+open Elmish
+open FunSharp.Common
+open FunSharp.Blazor.Components
+open FunSharp.DeviantArt.Api.Model
+open FunSharp.DeviantArt.Manager.Model
 
 // for some reason the following causes non-sequential calls:
 

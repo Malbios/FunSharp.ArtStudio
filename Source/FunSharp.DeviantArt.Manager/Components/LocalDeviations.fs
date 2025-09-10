@@ -5,8 +5,8 @@ open Bolero.Html
 open Microsoft.AspNetCore.Components
 open Radzen
 open Radzen.Blazor
+open FunSharp.Blazor.Components
 open FunSharp.DeviantArt.Api.Model
-open FunSharp.DeviantArt.Manager.Model
 
 type LocalDeviations() =
     inherit Component()

@@ -1,10 +1,8 @@
 ﻿namespace FunSharp.DeviantArt.Manager.Components
 
 open Bolero.Html
-open FunSharp.DeviantArt.Manager
-open FunSharp.DeviantArt.Manager.Model
-open Radzen
 open Radzen.Blazor
+open FunSharp.Blazor.Components
 open FunSharp.DeviantArt.Api.Model
 
 [<RequireQualifiedAccess>]

@@ -1,12 +1,12 @@
 ﻿namespace FunSharp.DeviantArt.Manager.Components
 
 open Bolero.Html
-open FunSharp.DeviantArt.Manager
-open FunSharp.DeviantArt.Manager.Model
 open Microsoft.JSInterop
 open Radzen
 open Radzen.Blazor
+open FunSharp.Blazor.Components
 open FunSharp.DeviantArt.Api.Model
+open FunSharp.DeviantArt.Manager
 
 [<RequireQualifiedAccess>]
 module StashedDeviations =

@@ -6,8 +6,9 @@ open Bolero.Html.attr
 open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Components.Forms
 open Microsoft.JSInterop
-open FunSharp.DeviantArt.Manager.Components
+open FunSharp.Blazor.Components
 open FunSharp.DeviantArt.Manager.Model
+open FunSharp.DeviantArt.Manager.Components
 
 type Home() =
     inherit ElmishComponent<State, Message>()

@@ -5,6 +5,7 @@ open Bolero
 open Bolero.Html
 open Radzen
 open Radzen.Blazor
+open FunSharp.Blazor.Components
 
 [<RequireQualifiedAccess>]
 module Deviation =
