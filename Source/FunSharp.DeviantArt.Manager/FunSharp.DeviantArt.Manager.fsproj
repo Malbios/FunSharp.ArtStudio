@@ -9,10 +9,10 @@
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="Bolero" Version="0.*"/>
-        <PackageReference Include="Bolero.Build" Version="0.*"/>
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.*"/>
-        <PackageReference Include="Radzen.Blazor" Version="7.3.2" />
-        <PackageReference Include="System.Net.Http.Json" Version="8.0.*"/>
+        <PackageReference Include="Bolero.Build" Version="0.24.39" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.9" />
+        <PackageReference Include="Radzen.Blazor" Version="7.3.3" />
+        <PackageReference Include="System.Net.Http.Json" Version="9.0.9" />
         <PackageReference Include="Toolbelt.Blazor.FileDropZone" Version="3.0.1" />
     </ItemGroup>
     <ItemGroup>

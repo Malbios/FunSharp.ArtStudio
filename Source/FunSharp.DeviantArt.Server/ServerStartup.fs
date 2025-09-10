@@ -2,6 +2,7 @@
 
 open System
 open System.Threading
+open System.Web
 open Suave
 open Suave.Files
 open Suave.Filters
@@ -94,7 +95,7 @@ module ServerStartup =
     let uploadImages: WebPart =
         fun ctx -> async {
             match ctx.request.files with
-            | [] -> return! BAD_REQUEST "No files uploaded" ctx
+            | [] -> return! badRequestMessage ctx "uploadImages()" "No files uploaded"
             | files ->
                 try
                     let mutable items = []
@@ -111,44 +112,42 @@ module ServerStartup =
 
                     return! items |> asOkJsonResponse <| ctx
                 with ex ->
-                    return! BAD_REQUEST ex.Message ctx
+                    return! badRequestException ctx "uploadImages()" ex
         }
         
     let uploadLocalDeviations: WebPart =
         fun ctx -> async {
             match ctx.request.files with
-            | [] -> return! BAD_REQUEST "No files uploaded" ctx
+            | [] -> return! badRequestMessage ctx "uploadLocalDeviations()" "No files uploaded"
             | files ->
                 try
                     let mutable items = []
                     
                     for file in files do
-                        let key = file.fileName
-                        
                         let! content = File.readAllBytesAsync file.tempFilePath
-                        do! File.writeAllBytesAsync $"{imagesLocation}\\{key}" content
+                        do! File.writeAllBytesAsync $"{imagesLocation}\\{file.fileName}" content
 
-                        let imageUrl = Uri $"http://{serverAddress}:{serverPort}/images/{key}"
+                        let imageUrl = Uri $"http://{serverAddress}:{serverPort}/images/{file.fileName}"
                         
                         let deviation = LocalDeviation.defaults imageUrl
                         
-                        do dataPersistence.Insert(dbKey_LocalDeviations, key, deviation)
+                        do dataPersistence.Insert(dbKey_LocalDeviations, imageUrl.ToString(), deviation)
                         
                         items <- items @ [deviation]
 
                     return! items |> asOkJsonResponse <| ctx
                 with ex ->
-                    return! BAD_REQUEST ex.Message ctx
+                    return! badRequestException ctx "uploadLocalDeviations()" ex
         }
         
     let updateLocalDeviation: WebPart =
         fun ctx -> async {
             try
                 let deviation = ctx.request |> asJson<LocalDeviation>
-                let key = deviation.ImageUrl
+                let key = deviation.ImageUrl.ToString()
                 
-                match dataPersistence.Find<Uri, LocalDeviation>(dbKey_LocalDeviations, key) with
-                | None -> return! BAD_REQUEST $"local deviation '{key}' not found" ctx
+                match dataPersistence.Find<string, LocalDeviation>(dbKey_LocalDeviations, key) with
+                | None -> return! badRequestMessage ctx "updateLocalDeviation()" $"local deviation '{key}' not found"
                 | Some _ ->
                     printfn $"Updating '{key}'..."
                     
@@ -159,7 +158,7 @@ module ServerStartup =
                     return! "ok" |> asOkJsonResponse <| ctx
                 
             with ex ->
-                return! BAD_REQUEST ex.Message ctx
+                return! badRequestException ctx "updateLocalDeviation()" ex
         }
         
     let stash: WebPart =
@@ -170,9 +169,10 @@ module ServerStartup =
                 let deviation = dataPersistence.Find<string, LocalDeviation>(dbKey_LocalDeviations, key)
                 
                 match deviation with
-                | None -> return! BAD_REQUEST $"Local deviation '{key}' not found" ctx
+                | None -> return! badRequestMessage ctx "stash()" $"Local deviation '{key}' not found"
                 | Some local ->
-                    let imagePath = $"{imagesLocation}\\{key}"
+                    let fileName = Uri key |> FunSharp.Common.Uri.lastSegment |> HttpUtility.UrlDecode
+                    let imagePath = $"{imagesLocation}\\{fileName}"
                     let mimeType = Helpers.mimeType imagePath
                     let! imageContent = File.readAllBytesAsync imagePath
                     
@@ -188,7 +188,7 @@ module ServerStartup =
                     return! stashedDeviation |> asOkJsonResponse <| ctx
                 
             with ex ->
-                return! BAD_REQUEST ex.Message ctx
+                return! badRequestException ctx "stash()" ex
         }
         
     let publish: WebPart =
@@ -197,7 +197,7 @@ module ServerStartup =
                 let key = ctx.request |> asString
                 
                 match dataPersistence.Find<string, StashedDeviation>(dbKey_StashedDeviations, key) with
-                | None -> return! BAD_REQUEST $"stashed deviation '{key}' not found" ctx
+                | None -> return! badRequestMessage ctx "publish()" $"stashed deviation '{key}' not found"
                 | Some stashedDeviation ->
                     printfn $"Publishing '{key}' from stash..."
                     
@@ -213,7 +213,7 @@ module ServerStartup =
                     return! publishedDeviation |> withGalleryName |> asOkJsonResponse <| ctx
                 
             with ex ->
-                return! BAD_REQUEST ex.Message ctx
+                return! badRequestException ctx "publish()" ex
         }
 
     let cts = new CancellationTokenSource()
@@ -240,7 +240,6 @@ module ServerStartup =
             GET >=> path $"{apiBase}/stash" >=> downloadStashedDeviations
             GET >=> path $"{apiBase}/publish" >=> downloadPublishedDeviations
             
-            POST >=> path $"{apiBase}/images" >=> uploadImages
             POST >=> path $"{apiBase}/local/inspiration" >=> BAD_REQUEST "not implemented yet"
             POST >=> path $"{apiBase}/local/prompt" >=> BAD_REQUEST "not implemented yet"
             POST >=> path $"{apiBase}/local/deviation" >=> BAD_REQUEST "not implemented yet"

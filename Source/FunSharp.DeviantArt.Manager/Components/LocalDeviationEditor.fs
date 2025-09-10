@@ -1,6 +1,7 @@
 ﻿namespace FunSharp.DeviantArt.Manager.Components
 
 open System
+open System.Web
 open Bolero
 open Bolero.Html
 open Microsoft.AspNetCore.Components
@@ -66,14 +67,26 @@ type LocalDeviationEditor() =
             "JustifyContent" => JustifyContent.Center
             "AlignItems" => AlignItems.Center
 
-            comp<ImagePreview> {
-                "Image" => (this.Deviation |> Option.map _.ImageUrl)
+            div {
+                attr.style "margin-left: 0.5rem;"
+                
+                comp<ImagePreview> {
+                    "Image" => (this.Deviation |> Option.map _.ImageUrl)
+                }
             }
 
             comp<RadzenStack> {
+                attr.style "margin: 0.5rem 0.5rem 0.5rem 0;"
+                
                 "Orientation" => Orientation.Vertical
                 
-                div { text $"{this.Deviation |> Option.map _.ImageUrl.ToString()}" }
+                div {
+                    attr.style "white-space: normal; overflow-wrap: anywhere;"
+                    
+                    this.Deviation
+                    |> Option.map (fun x -> x.ImageUrl |> FunSharp.Common.Uri.lastSegment |> HttpUtility.UrlDecode)
+                    |> Option.defaultValue ""
+                }
                 
                 match this.Deviation |> Option.map _.Origin |> Option.defaultValue DeviationOrigin.None with
                 | DeviationOrigin.None -> ""

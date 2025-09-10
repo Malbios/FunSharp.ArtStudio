@@ -13,7 +13,7 @@ module Accordion =
         RenderAction: unit -> Node
     }
     
-    let render (items: Item array) =
+    let render (multiple: bool) (items: Item array) =
         
         let accordionItems =
             [|
@@ -26,5 +26,6 @@ module Accordion =
             |> Helpers.renderArray
         
         comp<RadzenAccordion> {
+            "Multiple" => multiple
             attr.fragment "Items" accordionItems
         }

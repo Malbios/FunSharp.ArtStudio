@@ -67,6 +67,6 @@ type Home() =
                         |> PublishedDeviations.render
                     )
                 |]
-                |> Accordion.render
+                |> Accordion.render true
             }
         }

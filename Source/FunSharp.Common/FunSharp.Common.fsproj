@@ -16,6 +16,7 @@
         <Compile Include="Base36.fs" />
         <Compile Include="Stream.fs" />
         <Compile Include="File.fs" />
+        <Compile Include="Uri.fs" />
     </ItemGroup>
 
     <ItemGroup>

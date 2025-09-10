@@ -5,6 +5,7 @@ open System.Text
 open Microsoft.AspNetCore.StaticFiles
 open Suave
 open Suave.Operators
+open Suave.RequestErrors
 open Suave.Successful
 open Suave.Writers
 open FunSharp.Common
@@ -113,3 +114,30 @@ module Helpers =
         match provider.TryGetContentType(filePath) with
         | true, mime -> mime
         | false, _ -> "application/octet-stream"
+        
+    let private badRequest (ctx: HttpContext) (id: string) (message: string option) (ex: exn option) =
+        printfn $"ERROR ({id}):"
+        
+        match message with
+        | None -> ()
+        | Some message -> printfn $"{message}"
+        
+        match ex with
+        | None -> ()
+        | Some ex ->
+            printfn $"{ex.Message}"
+            printfn $"{ex.StackTrace}"
+            
+        let responseMessage =
+            match message, ex with
+            | Some message, _ -> message
+            | _, Some ex -> ex.Message
+            | _ -> ""
+            
+        BAD_REQUEST responseMessage ctx
+
+    let badRequestMessage (ctx: HttpContext) (id: string) (message: string) =
+        badRequest ctx id (Some message) None
+
+    let badRequestException (ctx: HttpContext) (id: string) (ex: exn) =
+        badRequest ctx id None (Some ex)

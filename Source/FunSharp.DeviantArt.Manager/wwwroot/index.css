@@ -1,0 +1,14 @@
+html, body {
+  height: 100%;
+  color: var(--rz-text-body2-color);
+  background-color: var(--rz-body-background-color);
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+#main {
+  flex: 1;
+}
