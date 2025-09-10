@@ -20,6 +20,7 @@
       <Compile Include="Model.fs" />
       <Compile Include="Helpers.fs" />
       <Compile Include="Components\LoadingWidget.fs" />
+      <Compile Include="Components\ImageUrl.fs" />
       <Compile Include="Components\ImagePreview.fs" />
       <Compile Include="Components\CheckBox.fs" />
       <Compile Include="Components\TextInput.fs" />
@@ -28,6 +29,8 @@
       <Compile Include="Components\Button.fs" />
       <Compile Include="Components\IconButton.fs" />
       <Compile Include="Components\Accordion.fs" />
+      <Compile Include="Components\Loadable.fs" />
+      <Compile Include="Components\Deviation.fs" />
       <Compile Include="Components\LocalDeviationEditor.fs" />
       <Compile Include="Components\LocalDeviations.fs" />
       <Compile Include="Components\StashedDeviations.fs" />

@@ -16,17 +16,17 @@ type LocalDeviations() =
     
     [<Parameter>]
     member val Items : Loadable<LocalDeviation array> = Loadable.NotLoaded with get, set
-
+    
     [<Parameter>]
     member val OnSave : LocalDeviation -> unit = ignore with get, set
-
+    
     [<Parameter>]
     member val OnStash : LocalDeviation -> unit = ignore with get, set
-        
+    
     override this.Render() =
         
-        match this.Items with
-        | Loaded deviations ->
+        Loadable.render this.Items
+        <| fun deviations ->
             comp<RadzenStack> {
                 "Orientation" => Orientation.Horizontal
                 "JustifyContent" => JustifyContent.Center
@@ -41,6 +41,3 @@ type LocalDeviations() =
                         "OnStash" => this.OnStash
                     }
             }
-            
-        | _ ->
-            LoadingWidget.render ()

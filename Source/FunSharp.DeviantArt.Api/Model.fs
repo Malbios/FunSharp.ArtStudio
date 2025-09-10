@@ -91,7 +91,7 @@ type LicenseOptions = {
     Commercial: bool
     
     [<JsonProperty("modify")>]
-    Modify: string
+    Modify: LicenseOptionsModify
 }
 
 type DisplayResolution =
@@ -167,22 +167,16 @@ type PublishSubmission = {
 [<RequireQualifiedAccess>]
 module PublishSubmission =
     
-    let private modifyToString modify =
-        match modify with
-        | Yes -> "yes"
-        | No -> "no"
-        | Share -> "share"
-    
     let defaults = {
         IsMature = false
         Feature = false
         AllowComments = true
         DisplayResolution = DisplayResolution.Original |> int
-        LicenseOptions = { CreativeCommons = true; Commercial = true; Modify = (modifyToString LicenseOptionsModify.Share) }
+        LicenseOptions = { CreativeCommons = true; Commercial = true; Modify = LicenseOptionsModify.Share }
         Galleries = Array.empty
         AllowFreeDownload = true
         AddWatermark = false
-        Tags = [ "digital_art"; "made_with_ai" ] |> Array.ofList
+        Tags = [| "digital_art"; "made_with_ai" |]
         IsAiGenerated = true
         NoAi = false
         ItemId = -1L
@@ -191,6 +185,24 @@ module PublishSubmission =
     let toProperties (publication: PublishSubmission) =
         publication
         |> Record.toKeyValueTypes
+        |> List.collect (fun x ->
+            if x.Key = "license_options" then
+                let licenseOptions = publication.LicenseOptions
+                let modify = (Union.toString licenseOptions.Modify).ToLower()
+                
+                [
+                    KeyValueType.get typeof<string> "license_options[]" "creative_commons"
+                    KeyValueType.get typeof<string> "creative_commons" (licenseOptions.CreativeCommons.ToString().ToLower())
+                    
+                    KeyValueType.get typeof<string> "license_options[]" "commercial"
+                    KeyValueType.get typeof<string> "commercial" (licenseOptions.Commercial.ToString().ToLower())
+                    
+                    KeyValueType.get typeof<string> "license_options[]" "modify"
+                    KeyValueType.get typeof<string> "modify" modify
+                ]
+            else
+                [x]
+        )
         |> KeyValueType.splitArrays
         
 type TokenResponse = {

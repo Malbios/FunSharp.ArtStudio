@@ -9,14 +9,12 @@
         <Content Include="secrets.json">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
-        <Compile Include="Persistence.fs" />
         <Compile Include="Helpers.fs" />
+        <Compile Include="Persistence.fs" />
         <Compile Include="ServerStartup.fs" />
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\FunSharp.Data\FunSharp.Data.fsproj" />
-      <ProjectReference Include="..\FunSharp.DeviantArt.Api\FunSharp.DeviantArt.Api.fsproj" />
       <ProjectReference Include="..\FunSharp.DeviantArt.Manager\FunSharp.DeviantArt.Manager.fsproj" />
     </ItemGroup>
 

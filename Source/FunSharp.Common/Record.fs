@@ -48,6 +48,12 @@ module Record =
 [<RequireQualifiedAccess>]
 module KeyValueType =
     
+    let get valueType key value : Record.KeyValueType = {
+        Key = key
+        Value = value
+        Type = valueType
+    }
+    
     let splitArrays (values: Record.KeyValueType list) =
         values
         |> Seq.collect (fun kvt ->

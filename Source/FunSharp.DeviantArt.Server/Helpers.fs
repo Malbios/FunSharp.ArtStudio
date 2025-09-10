@@ -66,7 +66,10 @@ module Helpers =
 
     let submitToStash (client: Client) imageContent mimeType (local: LocalDeviation) =
         
-        let submission = { StashSubmission.defaults with Title = local.Metadata.Title }
+        let submission = {
+            StashSubmission.defaults with
+                Title = local.Metadata.Title
+        }
         
         let httpFile: Http.File = {
             MediaType = Some mimeType
@@ -77,15 +80,15 @@ module Helpers =
         |> AsyncResult.getOrFail
         |> Async.map (asStashed local)
         
-    let publishFromStash (client: Client) (stashed: StashedDeviation) =
+    let publishFromStash (client: Client) (galleryId: string) (stashed: StashedDeviation) =
         
         let submission = {
             PublishSubmission.defaults with
+                IsMature = stashed.Metadata.IsMature
+                Galleries = [| galleryId |]
                 ItemId = stashed.StashId
         }
         
-        printfn $"Publishing '{stashed.Metadata.Title}' from stash..."
-
         client.PublishFromStash(submission)
         |> AsyncResult.getOrFail
         |> Async.map (asPublished stashed)

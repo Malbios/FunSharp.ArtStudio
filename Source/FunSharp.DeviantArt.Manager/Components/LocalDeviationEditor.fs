@@ -60,60 +60,37 @@ type LocalDeviationEditor() =
                         | _ -> x.Metadata.IsMature
             })
             
-        comp<RadzenStack> {
-            attr.style "margin: 0.25rem; padding: 0.5rem; border: 2px solid gray; border-radius: 8px; max-width: 700px;"
-
-            "Orientation" => Orientation.Horizontal
-            "JustifyContent" => JustifyContent.Center
-            "AlignItems" => AlignItems.Center
-
-            div {
-                attr.style "margin-left: 0.5rem;"
-                
-                comp<ImagePreview> {
-                    "Image" => (this.Deviation |> Option.map _.ImageUrl)
-                }
-            }
+        concat {
+            this.Deviation
+            |> Option.map _.ImageUrl
+            |> ImageUrl.render
+            
+            match this.Deviation |> Option.map _.Origin |> Option.defaultValue DeviationOrigin.None with
+            | DeviationOrigin.None -> ""
+            | DeviationOrigin.Prompt _ -> failwith "todo"
+            | DeviationOrigin.Inspiration inspiration -> inspiration.Url.ToString()
+            |> TextInput.render withNewInspiration "Enter inspiration URL..."
+            
+            this.Deviation |> Option.map _.Metadata.Title |> Option.defaultValue ""
+            |> TextInput.render withNewTitle "Enter title..."
 
             comp<RadzenStack> {
-                attr.style "margin: 0.5rem 0.5rem 0.5rem 0;"
+                "Orientation" => Orientation.Horizontal
                 
-                "Orientation" => Orientation.Vertical
+                this.Deviation |> Option.map _.Metadata.Gallery |> Option.defaultValue ""
+                |> DropDown.render withNewGallery "Gallery" "Select gallery..." this.Galleries
                 
-                div {
-                    attr.style "white-space: normal; overflow-wrap: anywhere;"
-                    
-                    this.Deviation
-                    |> Option.map (fun x -> x.ImageUrl |> FunSharp.Common.Uri.lastSegment |> HttpUtility.UrlDecode)
-                    |> Option.defaultValue ""
-                }
-                
-                match this.Deviation |> Option.map _.Origin |> Option.defaultValue DeviationOrigin.None with
-                | DeviationOrigin.None -> ""
-                | DeviationOrigin.Prompt _ -> failwith "todo"
-                | DeviationOrigin.Inspiration inspiration -> inspiration.Url.ToString()
-                |> TextInput.render withNewInspiration "Enter inspiration URL..."
-                
-                this.Deviation |> Option.map _.Metadata.Title |> Option.defaultValue ""
-                |> TextInput.render withNewTitle "Enter title..."
+                this.Deviation |> Option.map _.Metadata.IsMature |> Option.defaultValue false
+                |> CheckBox.render withNewIsMature "IsMature"
+            }
+            
+            comp<RadzenStack> {
+                "Orientation" => Orientation.Horizontal
+                "JustifyContent" => JustifyContent.Center
+                "AlignItems" => AlignItems.Center
 
-                comp<RadzenStack> {
-                    "Orientation" => Orientation.Horizontal
-                    
-                    this.Deviation |> Option.map _.Metadata.Gallery |> Option.defaultValue ""
-                    |> DropDown.render withNewGallery "Gallery" "Select gallery..." this.Galleries
-                    
-                    this.Deviation |> Option.map _.Metadata.IsMature |> Option.defaultValue false
-                    |> CheckBox.render withNewIsMature "IsMature"
-                }
-                
-                comp<RadzenStack> {
-                    "Orientation" => Orientation.Horizontal
-                    "JustifyContent" => JustifyContent.Center
-                    "AlignItems" => AlignItems.Center
-
-                    Button.render this this.Save "Save"
-                    Button.render this this.Stash "Stash"
-                }
+                Button.render this this.Save "Save"
+                Button.render this this.Stash "Stash"
             }
         }
+        |> Deviation.render (this.Deviation |> Option.map _.ImageUrl)

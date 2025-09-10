@@ -36,9 +36,6 @@ module ServerStartup =
     let withGalleryName publishedDeviation =
         { publishedDeviation with PublishedDeviation.Metadata.Gallery = galleryName publishedDeviation.Metadata.Gallery }
         
-    let withGalleryId stashedDeviation =
-        { stashedDeviation with StashedDeviation.Metadata.Gallery = galleryId stashedDeviation.Metadata.Gallery }
-
     let allowCors: WebPart =
         setHeader "Access-Control-Allow-Origin" "*"
         >=> setHeader "Access-Control-Allow-Headers" "Content-Type"
@@ -201,9 +198,9 @@ module ServerStartup =
                 | Some stashedDeviation ->
                     printfn $"Publishing '{key}' from stash..."
                     
-                    let stashedDeviation = stashedDeviation |> withGalleryId
+                    let galleryId = galleryId stashedDeviation.Metadata.Gallery
                     
-                    let! publishedDeviation = publishFromStash apiClient stashedDeviation
+                    let! publishedDeviation = publishFromStash apiClient galleryId stashedDeviation
                     
                     do dataPersistence.Delete(dbKey_StashedDeviations, key) |> ignore
                     do dataPersistence.Insert(dbKey_PublishedDeviations, key, publishedDeviation)
@@ -211,11 +208,11 @@ module ServerStartup =
                     printfn "Publishing done!"
                     
                     return! publishedDeviation |> withGalleryName |> asOkJsonResponse <| ctx
-                
+                    
             with ex ->
                 return! badRequestException ctx "publish()" ex
         }
-
+        
     let cts = new CancellationTokenSource()
     
     let serverConfiguration = {

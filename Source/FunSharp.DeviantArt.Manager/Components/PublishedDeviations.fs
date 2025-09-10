@@ -12,38 +12,21 @@ module PublishedDeviations =
     
     let render (deviations: Loadable<PublishedDeviation array>) =
         
-        match deviations with
-        | Loaded deviations ->
+        Loadable.render deviations
+        <| fun deviations ->
             deviations
             |> Array.map (fun deviation ->
-                comp<RadzenStack> {
-                    attr.style "margin: 0.25rem; padding: 0.5rem; border: 2px solid gray; border-radius: 8px; max-width: 700px;"
+                concat {
+                    deviation.ImageUrl
+                    |> Some
+                    |> ImageUrl.render
                     
-                    "Orientation" => Orientation.Horizontal
-                    "JustifyContent" => JustifyContent.Center
-                    "AlignItems" => AlignItems.Center
-                    
-                    comp<ImagePreview> {
-                        "Image" => Some deviation.ImageUrl
-                    }
-                    
-                    comp<RadzenStack> {
-                        "Orientation" => Orientation.Vertical
-                        
-                        div { text $"{deviation.ImageUrl.ToString()}" }
-                        
-                        div { text $"{deviation.Metadata.Title}" }
-                        
-                        a {
-                            attr.href deviation.Url
-                            attr.target "_blank"
-                            
-                            $"{deviation.Url}"
-                        }
+                    comp<RadzenLink> {
+                        "Path" => $"{deviation.Url}"
+                        "Text" => $"{deviation.Metadata.Title}"
+                        "Target" => "_blank"
                     }
                 }
+                |> Deviation.render (Some deviation.ImageUrl)
             )
             |> Helpers.renderArray
-            
-        | _ ->
-            LoadingWidget.render ()
