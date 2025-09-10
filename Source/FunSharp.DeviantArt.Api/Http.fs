@@ -62,6 +62,8 @@ module Http =
                 
             | RequestPayload.PostWithProperties (url, properties) ->
                 let properties = properties |> Seq.map (fun (k, v) -> KeyValuePair(k, v))
+                // printfn "FormUrlEncodedContent"
+                // printfn $"{properties |> JsonSerializer.serialize}"
                 InternalPayload.PostWithForm (url, new FormUrlEncodedContent(properties))
                 
             | RequestPayload.PostWithFileAndProperties (url, file, properties) ->
@@ -83,26 +85,6 @@ module Http =
                     content.Add(new StringContent(snd kvp), fst kvp)
                 
                 InternalPayload.PostWithMultipart (url, content)
-                
-    // TODO: get rid of this
-    let private log message =
-        // printfn $"{message}"
-        ()
-        
-    let private logResponse (response: HttpResponseMessage) content (payload: RequestPayload) =
-        [
-            ""
-            $"StatusCode: {response.StatusCode}"
-            ""
-            "Response Content:"
-            content
-            ""
-            "Payload:"
-            $"{payload}"
-            ""
-        ]
-        |> String.concat "\n"
-        |> log
 
     let private client =
         let handler = new HttpClientHandler()
@@ -148,8 +130,8 @@ module Http =
         
         match response.StatusCode with
         | HttpStatusCode.TooManyRequests ->
-            log $"DEBUG: {response.Headers}"
-            log "  Too many requests - waiting 30s..."
+            // printfn $"DEBUG: {response.Headers}"
+            // printfn "  Too many requests - waiting 30s..."
             
             Task.Delay 30000
             |> Async.AwaitTask
@@ -167,8 +149,6 @@ module Http =
             |> Async.map (fun content -> response, content)
         )
         |> Async.map (fun (response, content) ->
-            logResponse response content payload
-            
             response.EnsureSuccessStatusCode() |> ignore
             
             if content.Trim() = "" then

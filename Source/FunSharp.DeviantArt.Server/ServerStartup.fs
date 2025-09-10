@@ -201,8 +201,6 @@ module ServerStartup =
                     
                     printfn "Publishing done!"
                     
-                    printfn $"{publishedDeviation |> JsonSerializer.serialize}"
-                    
                     return! publishedDeviation |> asOkJsonResponse <| ctx
                     
             with ex ->
