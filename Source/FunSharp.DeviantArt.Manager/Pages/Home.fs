@@ -4,7 +4,6 @@ open Bolero
 open Bolero.Html
 open Bolero.Html.attr
 open Microsoft.AspNetCore.Components
-open Microsoft.AspNetCore.Components.Forms
 open Microsoft.JSInterop
 open FunSharp.Blazor.Components
 open FunSharp.DeviantArt.Manager.Model
@@ -19,15 +18,6 @@ type Home() =
     member val JSRuntime = Unchecked.defaultof<IJSRuntime> with get, set
     
     override this.View model dispatch =
-            
-        let uploadFiles (args: InputFileChangeEventArgs) =
-            args.GetMultipleFiles ()
-            |> Array.ofSeq
-            |> Message.AddLocalDeviations
-            |> dispatch
-            
-        let publish deviation =
-            dispatch (Message.PublishStashed deviation)
             
         let tab label renderAction : Tabs.Item = {
             Label = label
@@ -91,10 +81,6 @@ type Home() =
                         Prompts.render this this.JSRuntime addPrompt prompt2Deviation model.Prompts
                     )
                     
-                    tab "Upload Images" (fun () ->
-                        FileInput.render true uploadFiles
-                    )
-                    
                     tab $"Local Deviations ({localDeviationsCount})" (fun () ->
                         match localDeviationsCount with
                         | 0 -> text "No items."
@@ -112,7 +98,8 @@ type Home() =
                         | 0 -> text "No items."
                         | _ ->
                             model.StashedDeviations
-                            |> StashedDeviations.render this this.JSRuntime publish
+                            |> StashedDeviations.render this this.JSRuntime
+                                (fun deviation -> dispatch (Message.PublishStashed deviation))
                     )
                     
                     tab $"Published Deviations ({publishedDeviationsCount})" (fun () ->

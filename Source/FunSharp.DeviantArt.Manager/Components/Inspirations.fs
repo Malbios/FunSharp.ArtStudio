@@ -8,29 +8,19 @@ open FunSharp.Blazor.Components
 open FunSharp.DeviantArt.Api.Model
 
 [<RequireQualifiedAccess>]
-module Inspirations =
+module Inspirations = // TODO: turn into Component because of statefulness
     
     let render parent (addInspiration: Uri -> unit) (inspiration2Prompt: Inspiration -> string -> unit) (inspirations: Loadable<Inspiration array>) =
         
         let mutable newInspirationUrl = ""
         let mutable prompts: Map<string, string> = Map.empty
         
+        let add () =
+            newInspirationUrl |> Uri |> addInspiration
+        
         comp<RadzenStack> {
             "Orientation" => Orientation.Vertical
             "Gap" => "2rem"
-            
-            comp<RadzenStack> {
-                attr.style "padding: 2rem; border: 2px solid gray; border-radius: 8px;"
-                
-                "Orientation" => Orientation.Horizontal
-                
-                div {
-                    attr.style "width: 100%"
-                    TextInput.render (fun newValue -> newInspirationUrl <- newValue) "Enter inspiration url..." newInspirationUrl
-                }
-                
-                Button.render parent (fun () -> addInspiration (Uri newInspirationUrl)) "Add"
-            }
             
             Loadable.render inspirations
             <| fun inspirations ->
@@ -43,8 +33,8 @@ module Inspirations =
                         |> Map.tryFind key
                         |> Option.defaultValue ""
                         
-                    let updatePrompt newPrompt =
-                        prompts <- prompts |> Map.add key newPrompt
+                    let updatePrompt (newPrompt: string) =
+                        prompts <- prompts |> Map.add key (newPrompt.Trim())
                         
                     let inspiration2Prompt =
                         inspiration2Prompt inspiration
@@ -60,8 +50,21 @@ module Inspirations =
                         
                         Button.render parent (fun () -> inspiration2Prompt prompts[key]) "To Prompt"
                     }
-                    |> Deviation.render inspiration.ImageUrl
+                    |> Deviation.renderWithContent inspiration.ImageUrl
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
+            
+            comp<RadzenStack> {
+                attr.style "padding: 2rem; border: 2px solid gray; border-radius: 8px;"
+                
+                "Orientation" => Orientation.Horizontal
+                
+                div {
+                    attr.style "width: 100%"
+                    TextInput.render (fun newValue -> newInspirationUrl <- newValue) (fun newValue -> newInspirationUrl <- newValue; add ()) "Enter inspiration url..." newInspirationUrl
+                }
+                
+                Button.render parent add "Add"
+            }
         }

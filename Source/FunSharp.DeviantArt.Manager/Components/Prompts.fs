@@ -9,7 +9,7 @@ open FunSharp.Blazor.Components
 open FunSharp.DeviantArt.Api.Model
 
 [<RequireQualifiedAccess>]
-module Prompts =
+module Prompts = // TODO: turn into Component because of statefulness
     
     let render parent jsRuntime addPrompt prompt2Deviation prompts =
         
@@ -67,7 +67,7 @@ module Prompts =
                         
                         Button.render parent (fun () -> prompt2Deviation files[prompt.Id]) "To Deviation"
                     }
-                    |> Deviation.render (prompt.Inspiration |> Option.bind _.ImageUrl)
+                    |> Deviation.renderWithContent (prompt.Inspiration |> Option.bind _.ImageUrl)
                 )
                 |> Helpers.renderArray
                 |> Deviations.render

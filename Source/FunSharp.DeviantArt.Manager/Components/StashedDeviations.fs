@@ -46,7 +46,7 @@ module StashedDeviations =
                     
                     Button.render parent (fun () -> publish deviation) "Publish"
                 }
-                |> Deviation.render (Some deviation.ImageUrl)
+                |> Deviation.renderWithContent (Some deviation.ImageUrl)
             )
             |> Helpers.renderArray
             |> Deviations.render
