@@ -88,7 +88,7 @@ type Home() =
                     )
                     
                     tab $"Prompts ({promptsCount})" (fun () ->
-                        Prompts.render this addPrompt prompt2Deviation model.Prompts
+                        Prompts.render this this.JSRuntime addPrompt prompt2Deviation model.Prompts
                     )
                     
                     tab "Upload Images" (fun () ->

@@ -66,10 +66,12 @@ type LocalDeviationEditor() =
             |> ImageUrl.render
             
             match this.Deviation |> Option.map _.Origin |> Option.defaultValue DeviationOrigin.None with
-            | DeviationOrigin.None -> ""
-            | DeviationOrigin.Prompt _ -> failwith "todo"
-            | DeviationOrigin.Inspiration inspiration -> inspiration.Url.ToString()
-            |> TextInput.render withNewInspiration "Enter inspiration URL..."
+            | DeviationOrigin.None ->
+                "" |> TextInput.render withNewInspiration "Enter inspiration URL..."
+            | DeviationOrigin.Inspiration inspiration ->
+                inspiration.Url.ToString() |> TextInput.render withNewInspiration "Enter inspiration URL..."
+            | DeviationOrigin.Prompt prompt ->
+                p { $"Origin: prompt ({prompt.Id})" }
             
             this.Deviation |> Option.map _.Metadata.Title |> Option.defaultValue ""
             |> TextInput.render withNewTitle "Enter title..."

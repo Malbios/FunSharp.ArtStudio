@@ -11,7 +11,7 @@ open FunSharp.DeviantArt.Api.Model
 [<RequireQualifiedAccess>]
 module Prompts =
     
-    let render parent (addPrompt: string -> unit) (prompt2Deviation: Prompt -> IBrowserFile -> unit) (prompts: Loadable<Prompt array>) =
+    let render parent jsRuntime addPrompt prompt2Deviation prompts =
         
         let mutable newPromptText = ""
         let mutable files: Map<Guid, IBrowserFile> = Map.empty
@@ -26,8 +26,8 @@ module Prompts =
                 "Orientation" => Orientation.Horizontal
                 
                 div {
-                    attr.style "width: 100%"
-                    TextInput.render (fun newValue -> newPromptText <- newValue) "Enter prompt text..." newPromptText
+                    attr.style "width: 100%;"
+                    TextAreaInput.render (fun newValue -> newPromptText <- newValue) "Enter prompt text..." newPromptText
                 }
                 
                 Button.render parent (fun () -> addPrompt newPromptText) "Add"
@@ -52,8 +52,16 @@ module Prompts =
                         | None -> ()
                         | Some inspiration ->
                             inspiration.Url |> Link.render None
+                        
+                        div {
+                            Helpers.copyToClipboard jsRuntime prompt.Text
+                            |> IconButton.render "Copy prompt to clipboard"
                             
-                        p { prompt.Text }
+                            p {
+                                attr.style "white-space: pre-line"
+                                prompt.Text
+                            }
+                        }
                         
                         FileInput.render false uploadImageFile
                         

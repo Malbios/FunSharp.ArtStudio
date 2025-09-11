@@ -33,10 +33,15 @@ module StashedDeviations =
                         
                         match deviation.Origin with
                         | DeviationOrigin.None -> ()
-                        | DeviationOrigin.Prompt _ -> failwith "todo"
                         | DeviationOrigin.Inspiration inspiration ->
                             Helpers.copyToClipboard jsRuntime $"Inspired by {inspiration.Url}"
                             |> IconButton.render "Copy inspiration to clipboard"
+                        | DeviationOrigin.Prompt prompt ->
+                            match prompt.Inspiration with
+                            | None -> ()
+                            | Some inspiration ->
+                                Helpers.copyToClipboard jsRuntime $"Inspired by {inspiration.Url}"
+                                |> IconButton.render "Copy inspiration to clipboard"
                     }
                     
                     Button.render parent (fun () -> publish deviation) "Publish"

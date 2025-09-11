@@ -185,7 +185,7 @@ module WebParts =
             try
                 let payload = ctx.request |> asJson<Inspiration2Prompt>
                 
-                let inspiration = dataPersistence.Find(dbKey_Inspirations, payload.Inspiration) |> Option.get
+                let inspiration = dataPersistence.Find(dbKey_Inspirations, payload.Inspiration.ToString()) |> Option.get
                 
                 let prompt: Prompt = {
                     Id = Guid.NewGuid()
@@ -193,8 +193,8 @@ module WebParts =
                     Text = payload.Text
                 }
                 
-                do dataPersistence.Delete(dbKey_Inspirations, inspiration.Url) |> ignore
-                do dataPersistence.Insert(dbKey_Prompts, prompt.Id, prompt)
+                do dataPersistence.Delete(dbKey_Inspirations, inspiration.Url.ToString()) |> ignore
+                do dataPersistence.Insert(dbKey_Prompts, prompt.Id.ToString(), prompt)
                 
                 return! prompt |> asOkJsonResponse <| ctx
                 
@@ -208,7 +208,7 @@ module WebParts =
             try
                 let payload = ctx.request |> asJson<Prompt2LocalDeviation>
                 
-                let prompt = dataPersistence.Find(dbKey_Prompts, payload.Prompt) |> Option.get
+                let prompt = dataPersistence.Find(dbKey_Prompts, payload.Prompt.ToString()) |> Option.get
                 
                 let deviation : LocalDeviation = {
                     ImageUrl = payload.ImageUrl
@@ -216,8 +216,8 @@ module WebParts =
                     Origin = DeviationOrigin.Prompt prompt
                 }
                 
-                do dataPersistence.Delete(dbKey_Prompts, prompt.Id) |> ignore
-                do dataPersistence.Insert(dbKey_LocalDeviations, deviation.ImageUrl, deviation)
+                do dataPersistence.Delete(dbKey_Prompts, prompt.Id.ToString()) |> ignore
+                do dataPersistence.Insert(dbKey_LocalDeviations, deviation.ImageUrl.ToString(), deviation)
                 
                 return! deviation |> asOkJsonResponse <| ctx
                 
