@@ -56,7 +56,7 @@ module Inspirations =
                         inspiration.Url
                         |> Link.render None
                         
-                        TextInput.render updatePrompt "Enter prompt..." prompt
+                        TextAreaInput.render updatePrompt "Enter prompt..." prompt
                         
                         Button.render parent (fun () -> inspiration2Prompt prompts[key]) "To Prompt"
                     }
