@@ -112,6 +112,7 @@ module Helpers =
         |> JsonSerializer.deserialize<'T>
 
     let mimeType filePath =
+        
         let provider = FileExtensionContentTypeProvider()
         
         match provider.TryGetContentType(filePath) with
@@ -119,6 +120,7 @@ module Helpers =
         | false, _ -> "application/octet-stream"
         
     let private badRequest (ctx: HttpContext) (id: string) (message: string option) (ex: exn option) =
+        
         printfn $"ERROR ({id}):"
         
         match message with
@@ -140,7 +142,19 @@ module Helpers =
         BAD_REQUEST responseMessage ctx
 
     let badRequestMessage (ctx: HttpContext) (id: string) (message: string) =
+        
         badRequest ctx id (Some message) None
 
     let badRequestException (ctx: HttpContext) (id: string) (ex: exn) =
+        
         badRequest ctx id None (Some ex)
+        
+    let imageUrl serverAddress serverPort fileName =
+        
+        Uri $"http://{serverAddress}:{serverPort}/images/{fileName}"
+        
+    let galleryId secrets galleryName =
+        
+        secrets.galleries
+        |> Array.find(fun x -> x.name = galleryName)
+        |> _.id

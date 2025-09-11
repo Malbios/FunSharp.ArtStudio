@@ -10,7 +10,7 @@ open FunSharp.DeviantArt.Api.Model
 [<RequireQualifiedAccess>]
 module Inspirations =
     
-    let render parent (addInspiration: Uri -> unit) (inspiration2Prompt: Inspiration * string -> unit) (inspirations: Loadable<Inspiration array>) =
+    let render parent (addInspiration: Uri -> unit) (inspiration2Prompt: Inspiration -> string -> unit) (inspirations: Loadable<Inspiration array>) =
         
         let mutable newInspirationUrl = ""
         let mutable prompts: Map<string, string> = Map.empty
@@ -46,6 +46,9 @@ module Inspirations =
                     let updatePrompt newPrompt =
                         prompts <- prompts |> Map.add key newPrompt
                         
+                    let inspiration2Prompt =
+                        inspiration2Prompt inspiration
+                        
                     concat {
                         inspiration.ImageUrl
                         |> ImageUrl.render
@@ -55,7 +58,7 @@ module Inspirations =
                         
                         TextInput.render updatePrompt "Enter prompt..." prompt
                         
-                        Button.render parent (fun () -> inspiration2Prompt (inspiration, prompts[key])) "To Prompt"
+                        Button.render parent (fun () -> inspiration2Prompt prompts[key]) "To Prompt"
                     }
                     |> Deviation.render inspiration.ImageUrl
                 )

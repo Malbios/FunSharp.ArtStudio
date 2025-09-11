@@ -11,6 +11,7 @@
         </Content>
         <Compile Include="Helpers.fs" />
         <Compile Include="Persistence.fs" />
+        <Compile Include="WebParts.fs" />
         <Compile Include="ServerStartup.fs" />
     </ItemGroup>
 

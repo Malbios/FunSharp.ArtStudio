@@ -20,11 +20,6 @@ type Home() =
     
     override this.View model dispatch =
             
-        let galleries =
-            match model.Settings with
-            | Loaded settings -> settings.Galleries |> Array.map _.name
-            | _ -> Array.empty
-            
         let uploadFiles (args: InputFileChangeEventArgs) =
             args.GetMultipleFiles ()
             |> Array.ofSeq
@@ -38,6 +33,33 @@ type Home() =
             Label = label
             RenderAction = renderAction
         }
+            
+        let addInspiration url =
+            Message.AddInspiration url |> dispatch
+            
+        let inspiration2Prompt inspiration prompt =
+            Message.Inspiration2Prompt (inspiration, prompt) |> dispatch
+            
+        let addPrompt text =
+            Message.AddPrompt text |> dispatch
+            
+        let prompt2Deviation prompt file =
+            Message.Prompt2LocalDeviation (prompt, file) |> dispatch
+            
+        let galleries =
+            match model.Settings with
+            | Loaded settings -> settings.Galleries |> Array.map _.name
+            | _ -> Array.empty
+        
+        let inspirationsCount =
+            match model.Inspirations with
+            | Loaded inspirations -> inspirations.Length
+            | _ -> -1
+        
+        let promptsCount =
+            match model.Prompts with
+            | Loaded prompts -> prompts.Length
+            | _ -> -1
         
         let localDeviationsCount =
             match model.LocalDeviations with
@@ -53,12 +75,6 @@ type Home() =
             match model.PublishedDeviations with
             | Loaded deviations -> deviations.Length
             | _ -> -1
-            
-        let addInspiration url =
-            Message.AddInspiration url |> dispatch
-            
-        let inspiration2Prompt (inspiration, prompt) =
-            Message.Inspiration2Prompt (inspiration, prompt) |> dispatch
         
         div {
             attr.``class`` "center-wrapper"
@@ -67,8 +83,12 @@ type Home() =
                 style "height: 100%"
                 
                 [|
-                    tab "Inspirations" (fun () ->
+                    tab $"Inspirations ({inspirationsCount})" (fun () ->
                         Inspirations.render this addInspiration inspiration2Prompt model.Inspirations
+                    )
+                    
+                    tab $"Prompts ({promptsCount})" (fun () ->
+                        Prompts.render this addPrompt prompt2Deviation model.Prompts
                     )
                     
                     tab "Upload Images" (fun () ->
