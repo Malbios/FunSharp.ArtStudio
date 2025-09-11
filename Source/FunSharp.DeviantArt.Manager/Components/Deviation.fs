@@ -18,9 +18,13 @@ module Deviation =
             "Orientation" => Orientation.Horizontal
             "JustifyContent" => JustifyContent.Center
             "AlignItems" => AlignItems.Center
-
-            comp<ImagePreview> {
-                "Image" => imageUrl
+            
+            div {
+                attr.style "margin: 0.5rem;"
+                
+                comp<ImagePreview> {
+                    "Image" => imageUrl
+                }
             }
 
             match content with

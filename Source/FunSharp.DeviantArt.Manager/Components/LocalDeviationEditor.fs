@@ -71,7 +71,10 @@ type LocalDeviationEditor() =
             | DeviationOrigin.Inspiration inspiration ->
                 inspiration.Url.ToString() |> TextInput.render withNewInspiration (fun _ -> ()) "Enter inspiration URL..."
             | DeviationOrigin.Prompt prompt ->
-                p { $"Origin: prompt ({prompt.Id})" }
+                match prompt.Inspiration with
+                | None -> ()
+                | Some inspiration ->
+                    inspiration.Url |> Link.render None
             
             this.Deviation |> Option.map _.Metadata.Title |> Option.defaultValue ""
             |> TextInput.render withNewTitle (fun _ -> ()) "Enter title..."

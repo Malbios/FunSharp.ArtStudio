@@ -11,7 +11,7 @@ open FunSharp.DeviantArt.Api.Model
 [<RequireQualifiedAccess>]
 module Prompts = // TODO: turn into Component because of statefulness
     
-    let render parent jsRuntime addPrompt prompt2Deviation prompts =
+    let render parent jsRuntime addPrompt prompt2Deviation forgetPrompt prompts =
         
         let mutable newPromptText = ""
         let mutable files: Map<Guid, IBrowserFile> = Map.empty
@@ -19,19 +19,6 @@ module Prompts = // TODO: turn into Component because of statefulness
         comp<RadzenStack> {
             "Orientation" => Orientation.Vertical
             "Gap" => "2rem"
-            
-            comp<RadzenStack> {
-                attr.style "padding: 2rem; border: 2px solid gray; border-radius: 8px;"
-                
-                "Orientation" => Orientation.Horizontal
-                
-                div {
-                    attr.style "width: 100%;"
-                    TextAreaInput.render (fun newValue -> newPromptText <- newValue) "Enter prompt text..." newPromptText
-                }
-                
-                Button.render parent (fun () -> addPrompt newPromptText) "Add"
-            }
             
             Loadable.render prompts
             <| fun prompts ->
@@ -53,22 +40,37 @@ module Prompts = // TODO: turn into Component because of statefulness
                         | Some inspiration ->
                             inspiration.Url |> Link.render None
                         
-                        div {
+                        comp<RadzenStack> {
+                            "Orientation" => Orientation.Horizontal
+                            "JustifyContent" => JustifyContent.Left
+                            "AlignItems" => AlignItems.Center
+                            
                             Helpers.copyToClipboard jsRuntime prompt.Text
                             |> IconButton.render "Copy prompt to clipboard"
                             
-                            p {
-                                attr.style "white-space: pre-line"
-                                prompt.Text
-                            }
+                            text "Copy prompt to clipboard"
                         }
                         
                         FileInput.render false uploadImageFile
                         
                         Button.render parent (fun () -> prompt2Deviation files[prompt.Id]) "To Deviation"
+                        Button.render parent (fun () -> forgetPrompt prompt) "Forget"
                     }
                     |> Deviation.renderWithContent (prompt.Inspiration |> Option.bind _.ImageUrl)
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
+            
+            comp<RadzenStack> {
+                attr.style "padding: 2rem; border: 2px solid gray; border-radius: 8px;"
+                
+                "Orientation" => Orientation.Horizontal
+                
+                div {
+                    attr.style "width: 100%;"
+                    TextAreaInput.render (fun newValue -> newPromptText <- newValue) "Enter prompt text..." newPromptText
+                }
+                
+                Button.render parent (fun () -> addPrompt newPromptText) "Add"
+            }
         }

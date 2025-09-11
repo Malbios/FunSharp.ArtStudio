@@ -48,7 +48,7 @@ module Inspirations = // TODO: turn into Component because of statefulness
                         
                         TextAreaInput.render updatePrompt "Enter prompt..." prompt
                         
-                        Button.render parent (fun () -> inspiration2Prompt prompts[key]) "To Prompt"
+                        Button.render parent (fun () -> prompts[key].Trim() |> inspiration2Prompt) "To Prompt"
                     }
                     |> Deviation.renderWithContent inspiration.ImageUrl
                 )

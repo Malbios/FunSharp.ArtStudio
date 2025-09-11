@@ -281,3 +281,19 @@ module WebParts =
             with ex ->
                 return! badRequestException ctx "publish()" ex
         }
+
+    let forgetPrompt (dataPersistence: IPersistence) : WebPart =
+        
+        fun ctx -> async {
+            try
+                match ctx.request.queryParam "id" with
+                | Choice2Of2 _ ->
+                    return! badRequestMessage ctx "forgetPrompt()" "could not identify prompt"
+                | Choice1Of2 key ->
+                    do dataPersistence.Delete(dbKey_Prompts, key) |> ignore
+                    
+                    return! "ok" |> asOkJsonResponse <| ctx
+                
+            with ex ->
+                return! badRequestException ctx "forgetPrompt()" ex
+        }

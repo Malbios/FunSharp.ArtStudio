@@ -36,6 +36,9 @@ type Home() =
         let prompt2Deviation prompt file =
             Message.Prompt2LocalDeviation (prompt, file) |> dispatch
             
+        let forgetPrompt prompt =
+            Message.ForgetPrompt prompt |> dispatch
+            
         let galleries =
             match model.Settings with
             | Loaded settings -> settings.Galleries |> Array.map _.name
@@ -78,7 +81,7 @@ type Home() =
                     )
                     
                     tab $"Prompts ({promptsCount})" (fun () ->
-                        Prompts.render this this.JSRuntime addPrompt prompt2Deviation model.Prompts
+                        Prompts.render this this.JSRuntime addPrompt prompt2Deviation forgetPrompt model.Prompts
                     )
                     
                     tab $"Local Deviations ({localDeviationsCount})" (fun () ->

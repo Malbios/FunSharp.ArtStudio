@@ -56,6 +56,11 @@ module Update =
         client.PatchAsync(url, content)
         |> ensureSuccess
         
+    let private delete (client: HttpClient) (url: string) =
+        
+        client.DeleteAsync(url)
+        |> ensureSuccess
+        
     let private contentAsString (response: HttpResponseMessage) =
         
         response.Content.ReadAsStringAsync()
@@ -63,9 +68,9 @@ module Update =
         |> Async.catch
         |> AsyncResult.getOrFail
         
-    let private postString client url text =
+    let private postString client url value =
         
-        new StringContent(text)
+        new StringContent(value)
         |> post client url
         
     let private postObject client url object =
@@ -74,13 +79,6 @@ module Update =
         |> JsonSerializer.serialize
         |> fun x -> new StringContent(x, Encoding.UTF8, "application/json")
         |> post client url
-        
-    let private patchObject client url object =
-        
-        object
-        |> JsonSerializer.serialize
-        |> fun x -> new StringContent(x, Encoding.UTF8, "application/json")
-        |> patch client url
         
     let private postFile client url name mimeType content=
         
@@ -94,6 +92,13 @@ module Update =
         
         content
         |> post client url
+        
+    let private patchObject client url object =
+        
+        object
+        |> JsonSerializer.serialize
+        |> fun x -> new StringContent(x, Encoding.UTF8, "application/json")
+        |> patch client url
     
     let private loadItems<'T> client endpoint (asLoadable: string -> Loadable<'T>) =
         
@@ -147,6 +152,11 @@ module Update =
         |> postString client $"{apiRoot}/local/prompt"
         |> Async.bind contentAsString
         |> Async.map JsonSerializer.deserialize<Prompt>
+        
+    let private forgetPrompt client prompt =
+        
+        delete client $"{apiRoot}/local/prompt?id={prompt.Id.ToString()}"
+        |> Async.bind (fun _ -> prompt |> Async.returnM)
         
     let private processUpload (file: IBrowserFile) = async {
         let maxSize = 1024L * 1024L * 100L // 100 MB
@@ -393,6 +403,13 @@ module Update =
                 | x -> x
                 
             { model with Prompts = prompts }, Cmd.none
+            
+        | ForgetPrompt prompt ->
+            
+            let action =
+                forgetPrompt client
+            
+            model, Cmd.OfAsync.perform action prompt RemovePrompt
             
         | Prompt2LocalDeviation (prompt, imageFile) ->
             

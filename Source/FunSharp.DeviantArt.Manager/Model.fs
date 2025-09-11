@@ -87,6 +87,7 @@ module Model =
         | AddPromptFailed of error: exn * promptText: string
         
         | RemovePrompt of Prompt
+        | ForgetPrompt of Prompt
         
         | Prompt2LocalDeviation of Prompt * imageFile: IBrowserFile
         | Prompt2LocalDeviationDone of Prompt * local: LocalDeviation
