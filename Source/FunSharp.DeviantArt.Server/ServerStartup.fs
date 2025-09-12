@@ -1,11 +1,13 @@
 ﻿namespace FunSharp.DeviantArt.Server
 
 open System
+open System.IO
 open System.Threading
 open Suave
 open Suave.Files
 open Suave.Filters
 open Suave.Operators
+open Suave.RequestErrors
 open FunSharp.Common
 open FunSharp.Data
 open FunSharp.Data.Abstraction
@@ -63,9 +65,11 @@ module ServerStartup =
             DELETE >=> path $"{apiBase}/local/prompt" >=> forgetPrompt dataPersistence
             
             pathScan "/images/%s" (fun filename ->
-                let filepath = System.IO.Path.Combine(imagesLocation, filename)
+                let filepath = Path.Combine(imagesLocation, filename)
                 file filepath
             )
+            
+            NOT_FOUND "unknown path"
         ]
         
     let tryStartServer () =

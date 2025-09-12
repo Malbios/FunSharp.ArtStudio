@@ -102,11 +102,46 @@ module WebParts =
                     return! badRequestException ctx "uploadImages()" ex
         }
         
+    let addInspiration (serverAddress: string) (serverPort: int) (dataPersistence: IPersistence) (apiClient: Client) : WebPart =
+        
+        fun ctx -> async {
+            try
+                let url = ctx.request |> asString |> HttpUtility.HtmlDecode
+                
+                match inspirationUrlAlreadyExists dataPersistence url with
+                | true ->
+                    return! badRequestMessage ctx "addInspiration()" "This inspiration url already has a published deviation."
+                    
+                | false ->
+                    let! id = apiClient.GetDeviationId url |> AsyncResult.getOrFail
+                    let! deviation = apiClient.GetDeviation id |> AsyncResult.getOrFail
+                    
+                    let fileName = $"{id}.jpg"
+                    
+                    let! imageContent = Http.downloadFile deviation.preview.src
+                    do! File.writeAllBytesAsync $"{imagesLocation}/{fileName}" imageContent
+                    
+                    let imageUrl = imageUrl serverAddress serverPort fileName
+                    
+                    let inspiration = {
+                        Url = Uri url
+                        ImageUrl = Some imageUrl
+                    }
+                    
+                    do dataPersistence.Insert(dbKey_Inspirations, url, inspiration)
+                    
+                    return! inspiration |> asOkJsonResponse <| ctx
+                
+            with ex ->
+                return! badRequestException ctx "addInspiration()" ex
+        }
+        
     let uploadLocalDeviations (serverAddress: string) (serverPort: int) (dataPersistence: IPersistence) : WebPart =
         
         fun ctx -> async {
             match ctx.request.files with
-            | [] -> return! badRequestMessage ctx "uploadLocalDeviations()" "No files uploaded"
+            | [] ->
+                return! badRequestMessage ctx "uploadLocalDeviations()" "No files uploaded"
             | files ->
                 try
                     let mutable items = []
@@ -128,6 +163,15 @@ module WebParts =
                     return! badRequestException ctx "uploadLocalDeviations()" ex
         }
         
+    let updateLocalInDatabase (ctx: HttpContext) (dataPersistence: IPersistence) (key: string) (deviation: LocalDeviation) =
+        printfn $"Updating '{key}'..."
+                        
+        do dataPersistence.Update(dbKey_LocalDeviations, key, deviation) |> ignore
+        
+        printfn "Update done!"
+        
+        deviation |> asOkJsonResponse <| ctx
+        
     let updateLocalDeviation (dataPersistence: IPersistence) : WebPart =
         
         fun ctx -> async {
@@ -136,47 +180,21 @@ module WebParts =
                 let key = deviation.ImageUrl.ToString()
                 
                 match dataPersistence.Find<string, LocalDeviation>(dbKey_LocalDeviations, key) with
-                | None -> return! badRequestMessage ctx "updateLocalDeviation()" $"local deviation '{key}' not found"
+                | None ->
+                    return! badRequestMessage ctx "updateLocalDeviation()" $"local deviation '{key}' not found"
                 | Some _ ->
-                    printfn $"Updating '{key}'..."
-                    
-                    do dataPersistence.Update(dbKey_LocalDeviations, key, deviation) |> ignore
-                    
-                    printfn "Update done!"
-                    
-                    return! deviation |> asOkJsonResponse <| ctx
+                    match deviation.Origin with
+                    | DeviationOrigin.Inspiration inspiration ->
+                        match inspiration.Url.ToString() |> inspirationUrlAlreadyExists dataPersistence with
+                        | true ->
+                            return! badRequestMessage ctx "addInspiration()" "This inspiration url already has a published deviation."
+                        | false ->
+                            return! updateLocalInDatabase ctx dataPersistence key deviation
+                    | _ ->
+                        return! updateLocalInDatabase ctx dataPersistence key deviation
                 
             with ex ->
                 return! badRequestException ctx "updateLocalDeviation()" ex
-        }
-        
-    let addInspiration (serverAddress: string) (serverPort: int) (dataPersistence: IPersistence) (apiClient: Client) : WebPart =
-        
-        fun ctx -> async {
-            try
-                let url = ctx.request |> asString |> HttpUtility.HtmlDecode
-                
-                let! id = apiClient.GetDeviationId url |> AsyncResult.getOrFail
-                let! deviation = apiClient.GetDeviation id |> AsyncResult.getOrFail
-                
-                let fileName = $"{id}.jpg"
-                
-                let! imageContent = Http.downloadFile deviation.preview.src
-                do! File.writeAllBytesAsync $"{imagesLocation}/{fileName}" imageContent
-                
-                let imageUrl = imageUrl serverAddress serverPort fileName
-                
-                let inspiration = {
-                    Url = Uri url
-                    ImageUrl = Some imageUrl
-                }
-                
-                do dataPersistence.Insert(dbKey_Inspirations, url, inspiration)
-                
-                return! inspiration |> asOkJsonResponse <| ctx
-                
-            with ex ->
-                return! badRequestException ctx "addInspiration()" ex
         }
         
     let inspiration2Prompt (dataPersistence: IPersistence) : WebPart =

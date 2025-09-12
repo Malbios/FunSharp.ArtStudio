@@ -5,6 +5,7 @@ open System.Collections.Generic
 open System.Net
 open System.Net.Http
 open System.Net.Http.Headers
+open System.Threading
 open System.Threading.Tasks
 open Newtonsoft.Json
 open Suave
@@ -203,28 +204,28 @@ module Http =
         |> Async.bind (reAuthenticateAndRetryOnUnauthorized payload reAuthenticate)
 
     let getAuthorizationCode (config: CallbackConfiguration) =
-
+        
+        let cts = new CancellationTokenSource()
+        
         let mutable authCode = None
+        
+        let requestHandler (request: HttpRequest) =
+            match request.queryParam "code" with
+            | Choice1Of2 code ->
+                authCode <- Some code
+                OK "Authorization code received. You can close this window."
+            | Choice2Of2 err -> BAD_REQUEST err
 
-        let webPart =
-            path config.Endpoint
-            >=> Http.request (fun r ->
-                match r.queryParam "code" with
-                | Choice1Of2 code ->
-                    authCode <- Some code
-                    OK "Authorization code received. You can close this window."
-                | Choice2Of2 err -> BAD_REQUEST err
-            )
+        let routing = path config.Endpoint >=> Http.request requestHandler
 
-        let server =
-            startWebServerAsync
-                { defaultConfig with
-                    bindings = [ HttpBinding.createSimple HTTP config.Address config.Port ] }
-                webPart
-
-        Async.Start(server |> snd)
+        let server = routing |> startWebServerAsync
+                        { defaultConfig with bindings = [ HttpBinding.createSimple HTTP config.Address config.Port ] }
+        
+        Async.Start(server |> snd, cts.Token)
 
         while authCode.IsNone do
-            System.Threading.Thread.Sleep 100
-
+            Thread.Sleep 100
+            
+        cts.Cancel()
+            
         authCode.Value

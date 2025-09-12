@@ -2,6 +2,7 @@
 
 open System
 open System.Text
+open FunSharp.Data.Abstraction
 open Microsoft.AspNetCore.StaticFiles
 open Suave
 open Suave.Operators
@@ -158,3 +159,42 @@ module Helpers =
         secrets.galleries
         |> Array.find(fun x -> x.name = galleryName)
         |> _.id
+        
+    let inspirationUrlAlreadyExists (dataPersistence: IPersistence) (url: string) =
+        
+        let existingInspirations =
+            dataPersistence.FindAny<Inspiration>(dbKey_Inspirations, (fun x -> x.Url.ToString() = url))
+        let existingPrompts =
+            dataPersistence.FindAny<Prompt>(dbKey_Prompts, (fun x ->
+                x.Inspiration
+                |> Option.map _.Url.ToString()
+                |> Option.defaultValue ""
+                |> fun x -> x = url
+            ))
+        let existingLocalDeviations =
+            dataPersistence.FindAny<LocalDeviation>(dbKey_LocalDeviations, (fun x ->
+                match x.Origin with
+                | DeviationOrigin.Inspiration inspiration ->
+                    inspiration.Url.ToString() = url
+                | _ -> false
+            ))
+        let existingStashedDeviations =
+            dataPersistence.FindAny<StashedDeviation>(dbKey_StashedDeviations, (fun x ->
+                match x.Origin with
+                | DeviationOrigin.Inspiration inspiration ->
+                    inspiration.Url.ToString() = url
+                | _ -> false
+            ))
+        let existingPublishedDeviations =
+            dataPersistence.FindAny<PublishedDeviation>(dbKey_PublishedDeviations, (fun x ->
+                match x.Origin with
+                | DeviationOrigin.Inspiration inspiration ->
+                    inspiration.Url.ToString() = url
+                | _ -> false
+            ))
+
+        existingInspirations.Length > 0
+        || existingPrompts.Length > 0
+        || existingLocalDeviations.Length > 0
+        || existingStashedDeviations.Length > 0
+        || existingPublishedDeviations.Length > 0
