@@ -17,6 +17,9 @@ type Home() =
     [<Inject>]
     member val JSRuntime = Unchecked.defaultof<IJSRuntime> with get, set
     
+    [<Inject>]
+    member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
+    
     override this.View model dispatch =
             
         let tab label renderAction : Tabs.Item = {
@@ -93,6 +96,7 @@ type Home() =
                                 "Items" => model.LocalDeviations
                                 "OnSave" => (fun deviation -> dispatch (Message.UpdateLocalDeviation deviation))
                                 "OnStash" => (fun deviation -> dispatch (Message.StashDeviation deviation))
+                                "OnDelete" => (fun deviation -> dispatch (Message.DeleteLocalDeviation deviation))
                             }
                     )
                     

@@ -23,6 +23,9 @@ type LocalDeviationEditor() =
 
     [<Parameter>]
     member val OnStash : LocalDeviation -> unit = ignore with get, set
+
+    [<Parameter>]
+    member val OnDelete : LocalDeviation -> unit = ignore with get, set
     
     member private this.Update(withChange: LocalDeviation -> LocalDeviation) =
         this.Deviation <-
@@ -38,6 +41,11 @@ type LocalDeviationEditor() =
         match this.Deviation with
         | None -> ()
         | Some v -> this.OnStash v
+        
+    member private this.Delete() =
+        match this.Deviation with
+        | None -> ()
+        | Some v -> this.OnDelete v
     
     override this.Render() =
             
@@ -96,6 +104,7 @@ type LocalDeviationEditor() =
 
                 Button.render this this.Save "Save"
                 Button.render this this.Stash "Stash"
+                Button.render this this.Stash "Delete"
             }
         }
         |> Deviation.renderWithContent (this.Deviation |> Option.map _.ImageUrl)

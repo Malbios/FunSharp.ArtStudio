@@ -103,6 +103,7 @@ module Model =
         | UpdateLocalDeviationFailed of error: exn * local: LocalDeviation
         
         | RemoveLocalDeviation of local: LocalDeviation
+        | DeleteLocalDeviation of local: LocalDeviation
         
         | StashDeviation of local: LocalDeviation
         | StashedDeviation of local: LocalDeviation * stashed: StashedDeviation

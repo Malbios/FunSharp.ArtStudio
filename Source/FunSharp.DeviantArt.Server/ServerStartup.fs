@@ -63,6 +63,7 @@ module ServerStartup =
             PATCH >=> path $"{apiBase}/local/deviation" >=> updateLocalDeviation dataPersistence
             
             DELETE >=> path $"{apiBase}/local/prompt" >=> forgetPrompt dataPersistence
+            DELETE >=> path $"{apiBase}/local/deviation" >=> deleteLocalDeviation dataPersistence
             
             pathScan "/images/%s" (fun filename ->
                 let filepath = Path.Combine(imagesLocation, filename)

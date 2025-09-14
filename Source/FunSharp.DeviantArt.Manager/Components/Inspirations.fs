@@ -22,6 +22,19 @@ module Inspirations = // TODO: turn into Component because of statefulness
             "Orientation" => Orientation.Vertical
             "Gap" => "2rem"
             
+            comp<RadzenStack> {
+                attr.style "padding: 2rem; border: 2px solid gray; border-radius: 8px;"
+                
+                "Orientation" => Orientation.Horizontal
+                
+                div {
+                    attr.style "width: 100%"
+                    TextInput.render (fun newValue -> newInspirationUrl <- newValue) (fun newValue -> newInspirationUrl <- newValue; add ()) "Enter inspiration url..." newInspirationUrl
+                }
+                
+                Button.render parent add "Add"
+            }
+            
             Loadable.render inspirations
             <| fun inspirations ->
                 inspirations
@@ -54,17 +67,4 @@ module Inspirations = // TODO: turn into Component because of statefulness
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
-            
-            comp<RadzenStack> {
-                attr.style "padding: 2rem; border: 2px solid gray; border-radius: 8px;"
-                
-                "Orientation" => Orientation.Horizontal
-                
-                div {
-                    attr.style "width: 100%"
-                    TextInput.render (fun newValue -> newInspirationUrl <- newValue) (fun newValue -> newInspirationUrl <- newValue; add ()) "Enter inspiration url..." newInspirationUrl
-                }
-                
-                Button.render parent add "Add"
-            }
         }

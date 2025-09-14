@@ -21,6 +21,9 @@ type LocalDeviations() =
     [<Parameter>]
     member val OnStash : LocalDeviation -> unit = ignore with get, set
     
+    [<Parameter>]
+    member val OnDelete : LocalDeviation -> unit = ignore with get, set
+    
     override this.Render() =
         
         Loadable.render this.Items
@@ -33,5 +36,6 @@ type LocalDeviations() =
                         "Deviation" => Some deviation
                         "OnSave" => this.OnSave
                         "OnStash" => this.OnStash
+                        "OnDelete" => this.OnDelete
                     }
             }

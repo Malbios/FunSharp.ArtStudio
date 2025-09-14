@@ -2,6 +2,7 @@
 
 open System
 open Bolero.Html
+open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Components.Forms
 open Radzen
 open Radzen.Blazor
@@ -40,16 +41,7 @@ module Prompts = // TODO: turn into Component because of statefulness
                         | Some inspiration ->
                             inspiration.Url |> Link.render None
                         
-                        comp<RadzenStack> {
-                            "Orientation" => Orientation.Horizontal
-                            "JustifyContent" => JustifyContent.Left
-                            "AlignItems" => AlignItems.Center
-                            
-                            Helpers.copyToClipboard jsRuntime prompt.Text
-                            |> IconButton.render "Copy prompt to clipboard"
-                            
-                            text "Copy prompt to clipboard"
-                        }
+                        Button.render parent (Helpers.copyToClipboard jsRuntime prompt.Text) "Copy Prompt"
                         
                         FileInput.render false uploadImageFile
                         

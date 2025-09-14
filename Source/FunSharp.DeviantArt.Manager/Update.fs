@@ -158,6 +158,11 @@ module Update =
         delete client $"{apiRoot}/local/prompt?id={prompt.Id.ToString()}"
         |> Async.bind (fun _ -> prompt |> Async.returnM)
         
+    let private deleteLocalDeviation client (local: LocalDeviation) =
+        
+        delete client $"{apiRoot}/local/deviation?url={local.ImageUrl.ToString() |> HttpUtility.UrlEncode}"
+        |> Async.bind (fun _ -> local |> Async.returnM)
+        
     let private processUpload (file: IBrowserFile) = async {
         let maxSize = 1024L * 1024L * 100L // 100 MB
         
@@ -500,6 +505,12 @@ module Update =
                 | x -> x
                 
             { model with LocalDeviations = deviations }, Cmd.none
+            
+        | DeleteLocalDeviation local ->
+            
+            let action = deleteLocalDeviation client
+            
+            model, Cmd.OfAsync.perform action local RemoveLocalDeviation
         
         | StashDeviation local ->
             

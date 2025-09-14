@@ -315,3 +315,21 @@ module WebParts =
             with ex ->
                 return! badRequestException ctx "forgetPrompt()" ex
         }
+
+    let deleteLocalDeviation (dataPersistence: IPersistence) : WebPart =
+        
+        fun ctx -> async {
+            try
+                match ctx.request.queryParam "url" with
+                | Choice2Of2 _ ->
+                    return! badRequestMessage ctx "deleteLocalDeviation()" "could not identify deviation"
+                | Choice1Of2 url ->
+                    let url = url |> HttpUtility.UrlDecode
+                    
+                    do dataPersistence.Delete(dbKey_LocalDeviations, url) |> ignore
+                    
+                    return! "ok" |> asOkJsonResponse <| ctx
+                
+            with ex ->
+                return! badRequestException ctx "deleteLocalDeviation()" ex
+        }
