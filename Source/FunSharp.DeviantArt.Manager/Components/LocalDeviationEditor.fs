@@ -50,7 +50,9 @@ type LocalDeviationEditor() =
     override this.Render() =
             
         let withNewInspiration (newUrl: string) =
-            this.Update(fun x -> { x with Origin = DeviationOrigin.Inspiration { Url = Uri newUrl; ImageUrl = None } })
+            // let newInspiration = { Url = Uri newUrl; Timestamp = DateTimeOffset.Now; ImageUrl = None }
+            let newInspiration = { Url = Uri newUrl; ImageUrl = None }
+            this.Update(fun x -> { x with Origin = DeviationOrigin.Inspiration newInspiration })
             
         let withNewTitle (newTitle: string) =
             this.Update(fun x -> { x with LocalDeviation.Metadata.Title = newTitle })
@@ -102,9 +104,9 @@ type LocalDeviationEditor() =
                 "JustifyContent" => JustifyContent.Center
                 "AlignItems" => AlignItems.Center
 
+                Button.render this this.Delete "Delete"
                 Button.render this this.Save "Save"
                 Button.render this this.Stash "Stash"
-                Button.render this this.Stash "Delete"
             }
         }
         |> Deviation.renderWithContent (this.Deviation |> Option.map _.ImageUrl)

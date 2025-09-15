@@ -32,9 +32,6 @@ module Helpers =
     
     [<Literal>]
     let dbKey_PublishedDeviations = "PublishedDeviations"
-
-    [<Literal>]
-    let dbName = "FunSharp.DeviantArt.Manager"
     
     [<Literal>]
     let imagesLocation = @"C:\Files\FunSharp.DeviantArt\images"
@@ -45,6 +42,7 @@ module Helpers =
         | "success" ->
             {
                 ImageUrl = local.ImageUrl
+                // Timestamp = DateTimeOffset.Now
                 StashId = response.item_id
                 Origin = local.Origin
                 Metadata = local.Metadata
@@ -58,6 +56,7 @@ module Helpers =
         | "success" ->
             {
                 ImageUrl = stashed.ImageUrl
+                // Timestamp = DateTimeOffset.Now
                 Url = Uri response.url
                 Origin = stashed.Origin
                 Metadata = stashed.Metadata

@@ -40,13 +40,13 @@ module ServerStartup =
             corsPreflight
             
             GET >=> path $"{apiBase}/user/name" >=> username apiClient
-            GET >=> path $"{apiBase}/settings" >=> settings secrets
+            GET >=> path $"{apiBase}/settings" >=> getSettings secrets
             
-            GET >=> path $"{apiBase}/local/inspirations" >=> downloadInspirations dataPersistence
-            GET >=> path $"{apiBase}/local/prompts" >=> downloadPrompts dataPersistence
-            GET >=> path $"{apiBase}/local/deviations" >=> downloadLocalDeviations dataPersistence
-            GET >=> path $"{apiBase}/stash" >=> downloadStashedDeviations dataPersistence
-            GET >=> path $"{apiBase}/publish" >=> downloadPublishedDeviations dataPersistence
+            GET >=> path $"{apiBase}/local/inspirations" >=> getInspirations dataPersistence
+            GET >=> path $"{apiBase}/local/prompts" >=> getPrompts dataPersistence
+            GET >=> path $"{apiBase}/local/deviations" >=> getLocalDeviations dataPersistence
+            GET >=> path $"{apiBase}/stash" >=> getStashedDeviations dataPersistence
+            GET >=> path $"{apiBase}/publish" >=> getPublishedDeviations dataPersistence
             
             POST >=> path $"{apiBase}/local/images" >=> uploadImages serverAddress serverPort
             POST >=> path $"{apiBase}/local/inspiration" >=> addInspiration serverAddress serverPort dataPersistence apiClient

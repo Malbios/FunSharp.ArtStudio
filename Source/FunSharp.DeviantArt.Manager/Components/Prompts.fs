@@ -2,7 +2,6 @@
 
 open System
 open Bolero.Html
-open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Components.Forms
 open Radzen
 open Radzen.Blazor

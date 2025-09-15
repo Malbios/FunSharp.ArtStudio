@@ -37,41 +37,41 @@ module WebParts =
             return! {| username = username |} |> asOkJsonResponse <| ctx
         }
 
-    let settings (secrets: Secrets) : WebPart =
+    let getSettings (secrets: Secrets) : WebPart =
         
         fun ctx ->
             {| Galleries = secrets.galleries |}
             |> asOkJsonResponse <| ctx
         
-    let downloadInspirations (dataPersistence: IPersistence) : WebPart =
+    let getInspirations (dataPersistence: IPersistence) : WebPart =
         
         fun ctx -> async {
             return! dataPersistence.FindAll<Inspiration>(dbKey_Inspirations)
                     |> asOkJsonResponse <| ctx
         }
         
-    let downloadPrompts (dataPersistence: IPersistence) : WebPart =
+    let getPrompts (dataPersistence: IPersistence) : WebPart =
         
         fun ctx -> async {
             return! dataPersistence.FindAll<Prompt>(dbKey_Prompts)
                     |> asOkJsonResponse <| ctx
         }
         
-    let downloadLocalDeviations (dataPersistence: IPersistence) : WebPart =
+    let getLocalDeviations (dataPersistence: IPersistence) : WebPart =
         
         fun ctx -> async {
             return! dataPersistence.FindAll<LocalDeviation>(dbKey_LocalDeviations)
                     |> asOkJsonResponse <| ctx
         }
         
-    let downloadStashedDeviations (dataPersistence: IPersistence) : WebPart =
+    let getStashedDeviations (dataPersistence: IPersistence) : WebPart =
         
         fun ctx -> async {
             return! dataPersistence.FindAll<StashedDeviation>(dbKey_StashedDeviations)
                     |> asOkJsonResponse <| ctx
         }
         
-    let downloadPublishedDeviations (dataPersistence: IPersistence) : WebPart =
+    let getPublishedDeviations (dataPersistence: IPersistence) : WebPart =
         
         fun ctx -> async {
             return! dataPersistence.FindAll<PublishedDeviation>(dbKey_PublishedDeviations)
@@ -125,6 +125,7 @@ module WebParts =
                     
                     let inspiration = {
                         Url = Uri url
+                        // Timestamp = DateTimeOffset.Now
                         ImageUrl = Some imageUrl
                     }
                     
@@ -207,6 +208,7 @@ module WebParts =
                 
                 let prompt: Prompt = {
                     Id = Guid.NewGuid()
+                    // Timestamp = DateTimeOffset.Now
                     Inspiration = Some inspiration
                     Text = payload.Text
                 }
@@ -230,6 +232,7 @@ module WebParts =
                 
                 let deviation : LocalDeviation = {
                     ImageUrl = payload.ImageUrl
+                    // Timestamp = DateTimeOffset.Now
                     Metadata = Metadata.empty
                     Origin = DeviationOrigin.Prompt prompt
                 }
