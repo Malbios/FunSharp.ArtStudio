@@ -163,7 +163,7 @@ module Update =
         delete client $"{apiRoot}/local/inspiration?url={inspiration.Url.ToString()}"
         |> Async.bind (fun _ -> inspiration |> Async.returnM)
         
-    let private forgetLocalDeviation client (local: LocalDeviation) =
+    let private deleteLocalDeviation client (local: LocalDeviation) =
         
         delete client $"{apiRoot}/local/deviation?url={local.ImageUrl.ToString() |> HttpUtility.UrlEncode}"
         |> Async.bind (fun _ -> local |> Async.returnM)
@@ -295,12 +295,17 @@ module Update =
 
         | LoadLocalDeviations ->
             
+            printfn "Loading local deviations"
+            
             let load () = loadLocalDeviations client
             let failed ex = LoadedLocalDeviations (LoadingFailed ex)
             
             { model with LocalDeviations = Loading }, Cmd.OfAsync.either load () LoadedLocalDeviations failed
 
         | LoadedLocalDeviations loadable ->
+            
+            printfn "Loaded local deviations"
+            
             { model with LocalDeviations = loadable }, Cmd.none
 
         | LoadStashedDeviations ->
@@ -489,17 +494,17 @@ module Update =
             let update = updateLocalDeviation client
             let error ex = UpdateLocalDeviationFailed (ex, local)
             
-            { model with LocalDeviations = Loading }, Cmd.OfAsync.either update local UpdatedLocalDeviation error
+            { model with LocalDeviations = Loadable.Loading }, Cmd.OfAsync.either update local UpdatedLocalDeviation error
             
-        | UpdatedLocalDeviation local ->
+        | UpdatedLocalDeviation _ ->
             
-            match model.LocalDeviations with
-            | Loaded deviations ->
-                let index = deviations |> Array.findIndex (fun x -> x.ImageUrl = local.ImageUrl)
-                deviations[index] <- local
-            | _ -> ()
+            // match model.LocalDeviations with
+            // | Loaded deviations ->
+            //     let index = deviations |> Array.findIndex (fun x -> x.ImageUrl = local.ImageUrl)
+            //     deviations[index] <- local
+            // | _ -> ()
             
-            model, Cmd.none
+            model, Cmd.ofMsg LoadLocalDeviations
 
         | UpdateLocalDeviationFailed (error, local) ->
             
@@ -520,7 +525,7 @@ module Update =
             
         | ForgetLocalDeviation local ->
             
-            let action = forgetLocalDeviation client
+            let action = deleteLocalDeviation client
             
             model, Cmd.OfAsync.perform action local RemoveLocalDeviation
         

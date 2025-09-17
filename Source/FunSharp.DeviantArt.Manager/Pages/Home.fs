@@ -21,6 +21,8 @@ type Home() =
     member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
     
     override this.View model dispatch =
+        
+        printfn "rendering Home view"
             
         let tab label renderAction : Tabs.Item = {
             Label = label
