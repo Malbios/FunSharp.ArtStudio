@@ -303,6 +303,25 @@ module WebParts =
                 return! badRequestException ctx "publish()" ex
         }
 
+    let forgetInspiration (dataPersistence: IPersistence) : WebPart =
+        
+        fun ctx -> async {
+            try
+                match ctx.request.queryParam "url" with
+                | Choice2Of2 _ ->
+                    return! badRequestMessage ctx "forgetInspiration()" "could not identify inspiration"
+                | Choice1Of2 url ->
+                    let url = url |> HttpUtility.UrlDecode
+                    printfn $"forgetInspiration(): {url}"
+                    
+                    do dataPersistence.Delete(dbKey_Inspirations, url) |> ignore
+                    
+                    return! "ok" |> asOkJsonResponse <| ctx
+                
+            with ex ->
+                return! badRequestException ctx "forgetInspiration()" ex
+        }
+
     let forgetPrompt (dataPersistence: IPersistence) : WebPart =
         
         fun ctx -> async {
@@ -319,20 +338,21 @@ module WebParts =
                 return! badRequestException ctx "forgetPrompt()" ex
         }
 
-    let deleteLocalDeviation (dataPersistence: IPersistence) : WebPart =
+    let forgetLocalDeviation (dataPersistence: IPersistence) : WebPart =
         
         fun ctx -> async {
             try
                 match ctx.request.queryParam "url" with
                 | Choice2Of2 _ ->
-                    return! badRequestMessage ctx "deleteLocalDeviation()" "could not identify deviation"
+                    return! badRequestMessage ctx "forgetLocalDeviation()" "could not identify deviation"
                 | Choice1Of2 url ->
                     let url = url |> HttpUtility.UrlDecode
+                    printfn $"forgetLocalDeviation(): {url}"
                     
                     do dataPersistence.Delete(dbKey_LocalDeviations, url) |> ignore
                     
                     return! "ok" |> asOkJsonResponse <| ctx
                 
             with ex ->
-                return! badRequestException ctx "deleteLocalDeviation()" ex
+                return! badRequestException ctx "forgetLocalDeviation()" ex
         }

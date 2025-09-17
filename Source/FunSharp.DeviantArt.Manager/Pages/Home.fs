@@ -39,6 +39,9 @@ type Home() =
         let prompt2Deviation prompt file =
             Message.Prompt2LocalDeviation (prompt, file) |> dispatch
             
+        let forgetInspiration inspiration =
+            Message.ForgetInspiration inspiration |> dispatch
+            
         let forgetPrompt prompt =
             Message.ForgetPrompt prompt |> dispatch
             
@@ -80,7 +83,7 @@ type Home() =
                 
                 [|
                     tab $"Inspirations ({inspirationsCount})" (fun () ->
-                        Inspirations.render this addInspiration inspiration2Prompt model.Inspirations
+                        Inspirations.render this this.JSRuntime addInspiration inspiration2Prompt forgetInspiration model.Inspirations
                     )
                     
                     tab $"Prompts ({promptsCount})" (fun () ->
@@ -96,7 +99,7 @@ type Home() =
                                 "Items" => model.LocalDeviations
                                 "OnSave" => (fun deviation -> dispatch (Message.UpdateLocalDeviation deviation))
                                 "OnStash" => (fun deviation -> dispatch (Message.StashDeviation deviation))
-                                "OnDelete" => (fun deviation -> dispatch (Message.DeleteLocalDeviation deviation))
+                                "OnForget" => (fun deviation -> dispatch (Message.ForgetLocalDeviation deviation))
                             }
                     )
                     

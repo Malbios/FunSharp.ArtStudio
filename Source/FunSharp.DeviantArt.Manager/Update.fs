@@ -158,7 +158,12 @@ module Update =
         delete client $"{apiRoot}/local/prompt?id={prompt.Id.ToString()}"
         |> Async.bind (fun _ -> prompt |> Async.returnM)
         
-    let private deleteLocalDeviation client (local: LocalDeviation) =
+    let private forgetInspiration client (inspiration: Inspiration) =
+        
+        delete client $"{apiRoot}/local/inspiration?url={inspiration.Url.ToString()}"
+        |> Async.bind (fun _ -> inspiration |> Async.returnM)
+        
+    let private forgetLocalDeviation client (local: LocalDeviation) =
         
         delete client $"{apiRoot}/local/deviation?url={local.ImageUrl.ToString() |> HttpUtility.UrlEncode}"
         |> Async.bind (fun _ -> local |> Async.returnM)
@@ -352,6 +357,13 @@ module Update =
             
             { model with Inspirations = inspirations }, Cmd.none
             
+        | ForgetInspiration inspiration ->
+            
+            let action =
+                forgetInspiration client
+            
+            model, Cmd.OfAsync.perform action inspiration RemoveInspiration
+            
         | Inspiration2Prompt (inspiration, promptText) ->
             
             let inspiration2Prompt = inspiration2Prompt client
@@ -506,9 +518,9 @@ module Update =
                 
             { model with LocalDeviations = deviations }, Cmd.none
             
-        | DeleteLocalDeviation local ->
+        | ForgetLocalDeviation local ->
             
-            let action = deleteLocalDeviation client
+            let action = forgetLocalDeviation client
             
             model, Cmd.OfAsync.perform action local RemoveLocalDeviation
         

@@ -77,6 +77,7 @@ module Model =
         | AddInspirationFailed of error: exn * inspirationUrl: Uri
         
         | RemoveInspiration of Inspiration
+        | ForgetInspiration of Inspiration
         
         | Inspiration2Prompt of Inspiration * promptText: string
         | Inspiration2PromptDone of Inspiration * Prompt
@@ -103,7 +104,7 @@ module Model =
         | UpdateLocalDeviationFailed of error: exn * local: LocalDeviation
         
         | RemoveLocalDeviation of local: LocalDeviation
-        | DeleteLocalDeviation of local: LocalDeviation
+        | ForgetLocalDeviation of local: LocalDeviation
         
         | StashDeviation of local: LocalDeviation
         | StashedDeviation of local: LocalDeviation * stashed: StashedDeviation

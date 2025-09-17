@@ -25,7 +25,7 @@ type LocalDeviationEditor() =
     member val OnStash : LocalDeviation -> unit = ignore with get, set
 
     [<Parameter>]
-    member val OnDelete : LocalDeviation -> unit = ignore with get, set
+    member val OnForget: LocalDeviation -> unit = ignore with get, set
     
     member private this.Update(withChange: LocalDeviation -> LocalDeviation) =
         this.Deviation <-
@@ -45,7 +45,7 @@ type LocalDeviationEditor() =
     member private this.Delete() =
         match this.Deviation with
         | None -> ()
-        | Some v -> this.OnDelete v
+        | Some v -> this.OnForget v
     
     override this.Render() =
             
@@ -104,7 +104,7 @@ type LocalDeviationEditor() =
                 "JustifyContent" => JustifyContent.Center
                 "AlignItems" => AlignItems.Center
 
-                Button.render this this.Delete "Delete"
+                Button.render this this.Delete "Forget"
                 Button.render this this.Save "Save"
                 Button.render this this.Stash "Stash"
             }

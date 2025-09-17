@@ -19,6 +19,8 @@
         <Compile Include="Routes.fs"/>
         <Compile Include="Model.fs"/>
         <Compile Include="Helpers.fs"/>
+        <Compile Include="Components\ItemEditor.fs" />
+        <Compile Include="Components\ClipboardSnippets.fs" />
         <Compile Include="Components\Deviation.fs"/>
         <Compile Include="Components\Deviations.fs" />
         <Compile Include="Components\Inspirations.fs" />

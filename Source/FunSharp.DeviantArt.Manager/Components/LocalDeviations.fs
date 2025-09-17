@@ -22,7 +22,7 @@ type LocalDeviations() =
     member val OnStash : LocalDeviation -> unit = ignore with get, set
     
     [<Parameter>]
-    member val OnDelete : LocalDeviation -> unit = ignore with get, set
+    member val OnForget : LocalDeviation -> unit = ignore with get, set
     
     override this.Render() =
         
@@ -36,6 +36,6 @@ type LocalDeviations() =
                         "Deviation" => Some deviation
                         "OnSave" => this.OnSave
                         "OnStash" => this.OnStash
-                        "OnDelete" => this.OnDelete
+                        "OnForget" => this.OnForget
                     }
             }
