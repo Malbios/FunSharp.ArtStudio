@@ -16,7 +16,12 @@ module View =
                 
                 cond model.Page
                 <| function
-                    | Page.Home -> ecomp<Pages.Home,_,_> model dispatch { attr.empty() }
+                    | Page.Home
+                    | Page.Inspirations -> ecomp<Pages.Inspirations,_,_> model dispatch { attr.empty() }
+                    | Page.Prompts -> ecomp<Pages.Prompts,_,_> model dispatch { attr.empty() }
+                    | Page.LocalDeviations -> ecomp<Pages.LocalDeviations,_,_> model dispatch { attr.empty() }
+                    | Page.StashedDeviations -> ecomp<Pages.StashedDeviations,_,_> model dispatch { attr.empty() }
+                    | Page.PublishedDeviations -> ecomp<Pages.PublishedDeviations,_,_> model dispatch { attr.empty() }
                     | Page.NotFound -> comp<Pages.NotFound> { attr.empty() }
             }
         }

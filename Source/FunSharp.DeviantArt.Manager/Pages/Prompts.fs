@@ -1,26 +1,46 @@
-﻿namespace FunSharp.DeviantArt.Manager.Components
+﻿namespace FunSharp.DeviantArt.Manager.Pages
 
 open System
+open Bolero
 open Bolero.Html
+open FunSharp.Blazor.Components
+open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Components.Forms
+open FunSharp.DeviantArt.Manager.Model
+open FunSharp.DeviantArt.Manager.Components
 open Radzen
 open Radzen.Blazor
-open FunSharp.Blazor.Components
-open FunSharp.DeviantArt.Api.Model
 
-[<RequireQualifiedAccess>]
-module Prompts = // TODO: turn into Component because of statefulness
+type Prompts() =
+    inherit ElmishComponent<State, Message>()
     
-    let render parent jsRuntime addPrompt prompt2Deviation forgetPrompt prompts =
-        
+    override _.CssScope = CssScopes.Prompts
+    
+    [<Inject>]
+    member val JSRuntime = Unchecked.defaultof<_> with get, set
+    
+    [<Inject>]
+    member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
+    
+    override this.View model dispatch =
+
         let mutable newPromptText = ""
         let mutable files: Map<Guid, IBrowserFile> = Map.empty
+            
+        let addPrompt text =
+            Message.AddPrompt text |> dispatch
+            
+        let prompt2Deviation prompt file =
+            Message.Prompt2LocalDeviation (prompt, file) |> dispatch
+            
+        let forgetPrompt prompt =
+            Message.ForgetPrompt prompt |> dispatch
         
         comp<RadzenStack> {
             "Orientation" => Orientation.Vertical
             "Gap" => "2rem"
             
-            Loadable.render prompts
+            Loadable.render model.Prompts
             <| fun prompts ->
                 prompts
                 |> Array.map (fun prompt ->
@@ -40,18 +60,18 @@ module Prompts = // TODO: turn into Component because of statefulness
                         | Some inspiration ->
                             inspiration.Url |> Link.render None
                         
-                        Button.render parent (Helpers.copyToClipboard jsRuntime prompt.Text) "Copy Prompt"
+                        Button.render this (Helpers.copyToClipboard this.JSRuntime prompt.Text) false "Copy Prompt"
                         
                         FileInput.render false uploadImageFile
                         
-                        Button.render parent (fun () -> prompt2Deviation files[prompt.Id]) "To Deviation"
-                        Button.render parent (fun () -> forgetPrompt prompt) "Forget"
+                        Button.render this (fun () -> prompt2Deviation files[prompt.Id]) false "To Deviation"
+                        Button.render this (fun () -> forgetPrompt prompt) false "Forget"
                     }
                     |> Deviation.renderWithContent (prompt.Inspiration |> Option.bind _.ImageUrl)
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
-            
+                
             comp<RadzenStack> {
                 attr.style "padding: 2rem; border: 2px solid gray; border-radius: 8px;"
                 
@@ -62,6 +82,7 @@ module Prompts = // TODO: turn into Component because of statefulness
                     TextAreaInput.render (fun newValue -> newPromptText <- newValue) "Enter prompt text..." newPromptText
                 }
                 
-                Button.render parent (fun () -> addPrompt newPromptText) "Add"
+                Button.render this (fun () -> addPrompt newPromptText) false "Add"
             }
         }
+        |> Page.render this this.NavManager

@@ -295,16 +295,12 @@ module Update =
 
         | LoadLocalDeviations ->
             
-            printfn "Loading local deviations"
-            
             let load () = loadLocalDeviations client
             let failed ex = LoadedLocalDeviations (LoadingFailed ex)
             
             { model with LocalDeviations = Loading }, Cmd.OfAsync.either load () LoadedLocalDeviations failed
 
         | LoadedLocalDeviations loadable ->
-            
-            printfn "Loaded local deviations"
             
             { model with LocalDeviations = loadable }, Cmd.none
 
@@ -494,7 +490,7 @@ module Update =
             let update = updateLocalDeviation client
             let error ex = UpdateLocalDeviationFailed (ex, local)
             
-            { model with LocalDeviations = Loadable.Loading }, Cmd.OfAsync.either update local UpdatedLocalDeviation error
+            { model with LocalDeviations = Loading }, Cmd.OfAsync.either update local UpdatedLocalDeviation error
             
         | UpdatedLocalDeviation _ ->
             
