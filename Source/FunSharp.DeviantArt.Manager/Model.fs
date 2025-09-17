@@ -7,6 +7,12 @@ open FunSharp.DeviantArt.Api.Model
 open FunSharp.DeviantArt.Manager
 
 module Model =
+    
+    type Image = {
+        Name: string
+        ContentType: string
+        Content: byte array
+    }
         
     type Settings = {
         Galleries: Gallery array
@@ -22,13 +28,18 @@ module Model =
         ImageUrl: Uri
     }
     
+    type StatefulItem<'T> =
+        | Default of 'T
+        | IsBusy of 'T
+        | HasError of 'T * exn
+    
     type State = {
         Page: Page
         
         Settings: Loadable<Settings>
         
         Inspirations: Loadable<Inspiration array>
-        Prompts: Loadable<Prompt array>
+        Prompts: Loadable<StatefulItem<Prompt> array>
         LocalDeviations: Loadable<LocalDeviation array>
         StashedDeviations: Loadable<StashedDeviation array>
         PublishedDeviations: Loadable<PublishedDeviation array>
@@ -48,6 +59,110 @@ module Model =
             StashedDeviations = NotLoaded
             PublishedDeviations = NotLoaded
         }
+    
+        let isBusy (identifier: 'T -> bool) (collection: Loadable<StatefulItem<'T> array>) =
+            
+            match collection with
+            | Loaded items ->
+                items
+                |> Array.map (fun item ->
+                    match item with
+                    | Default item ->
+                        if identifier item then
+                            IsBusy item
+                        else
+                            Default item
+                    | IsBusy item -> IsBusy item
+                    | HasError (item, error) ->
+                        if identifier item then
+                            IsBusy item
+                        else
+                            HasError (item, error)
+                )
+                |> Loadable.Loaded
+            | other -> other
+        
+        let isDefault (identifier: 'T -> bool) (collection: Loadable<StatefulItem<'T> array>) =
+            
+            match collection with
+            | Loaded items ->
+                items
+                |> Array.map (fun item ->
+                    match item with
+                    | Default item -> Default item
+                    | IsBusy item ->
+                        if identifier item then
+                            Default item
+                        else
+                            IsBusy item
+                    | HasError (item, error) ->
+                        if identifier item then
+                            Default item
+                        else
+                            HasError (item, error)
+                )
+                |> Loadable.Loaded
+            | other -> other
+        
+        let hasError (identifier: 'T -> bool) (error: exn) (collection: Loadable<StatefulItem<'T> array>) =
+            
+            match collection with
+            | Loaded items ->
+                items
+                |> Array.map (fun item ->
+                    match item with
+                    | Default item ->
+                        if identifier item then
+                            HasError (item, error)
+                        else
+                            Default item
+                    | IsBusy item ->
+                        if identifier item then
+                            HasError (item, error)
+                        else
+                            IsBusy item
+                    | HasError (item, oldError) -> 
+                        if identifier item then
+                            HasError (item, error)
+                        else
+                            HasError (item, oldError)
+                )
+                |> Loadable.Loaded
+            | other -> other
+            
+        let without (identifier: 'T -> bool) (collection: Loadable<StatefulItem<'T> array>) =
+            
+            match collection with
+            | Loaded items ->
+                items
+                |> Array.filter (fun item ->
+                    match item with
+                    | Default item -> identifier item |> not
+                    | IsBusy item -> identifier item |> not
+                    | HasError (item, _) -> identifier item |> not
+                )
+                |> Loadable.Loaded
+            | other -> other
+            
+        let withUpdated (identifier: 'T -> bool) (newValue: 'T) (collection: Loadable<StatefulItem<'T> array>) =
+            
+            match collection with
+            | Loaded items ->
+                items
+                |> Array.map (fun item ->
+                    match item with
+                    | Default item ->
+                        if identifier item then newValue else item
+                        |> Default
+                    | IsBusy item ->
+                        if identifier item then newValue else item
+                        |> IsBusy
+                    | HasError (item, error) ->
+                        if identifier item then (newValue, error) else (item, error)
+                        |> HasError
+                )
+                |> Loadable.Loaded
+            | other -> other
         
     type Message =
         | SetPage of Page
@@ -61,7 +176,7 @@ module Model =
         | LoadedInspirations of Loadable<Inspiration array>
         
         | LoadPrompts
-        | LoadedPrompts of Loadable<Prompt array>
+        | LoadedPrompts of Loadable<StatefulItem<Prompt> array>
         
         | LoadLocalDeviations
         | LoadedLocalDeviations of Loadable<LocalDeviation array>
@@ -90,9 +205,13 @@ module Model =
         | RemovePrompt of Prompt
         | ForgetPrompt of Prompt
         
+        | ProcessUpload of Prompt * imageFile: IBrowserFile
+        | ProcessedUpload of Prompt * Image
+        | ProcessUploadFailed of error: exn * Prompt * imageFile: IBrowserFile
+        
         | Prompt2LocalDeviation of Prompt * imageFile: IBrowserFile
         | Prompt2LocalDeviationDone of Prompt * local: LocalDeviation
-        | Prompt2LocalDeviationFailed of error: exn * Prompt * imageFile: IBrowserFile
+        | Prompt2LocalDeviationFailed of error: exn * Prompt * Image
         
         | AddLocalDeviation of imageFile: IBrowserFile
         | AddLocalDeviations of imageFiles: IBrowserFile[]

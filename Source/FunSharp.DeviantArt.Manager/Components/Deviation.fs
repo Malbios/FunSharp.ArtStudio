@@ -10,7 +10,7 @@ open FunSharp.Blazor.Components
 [<RequireQualifiedAccess>]
 module Deviation =
     
-    let private render (imageUrl: Uri option) (content: Node option) =
+    let private render (inspirationImageUrl: Uri option) (imageUrl: Uri option) (content: Node option) =
         
         comp<RadzenStack> {
             attr.style "margin: 0.25rem; padding: 0.5rem; border: 2px solid gray; border-radius: 8px; max-width: 700px;"
@@ -19,12 +19,32 @@ module Deviation =
             "JustifyContent" => JustifyContent.Center
             "AlignItems" => AlignItems.Center
             
-            div {
-                attr.style "margin: 0.5rem;"
+            comp<RadzenStack> {
+                "Orientation" => Orientation.Vertical
                 
-                comp<ImagePreview> {
-                    "Image" => imageUrl
-                }
+                match inspirationImageUrl with
+                | None -> ()
+                | Some v ->
+                    div {
+                        attr.style "margin: 0.5rem;"
+                        
+                        comp<ImagePreview> {
+                            "Image" => Some v
+                            "Clickable" => true
+                        }
+                    }
+                
+                match imageUrl with
+                | None -> ()
+                | Some v ->
+                    div {
+                        attr.style "margin: 0.5rem;"
+                        
+                        comp<ImagePreview> {
+                            "Image" => Some v
+                            "Clickable" => true
+                        }
+                    }
             }
 
             match content with
@@ -39,8 +59,8 @@ module Deviation =
                 }
         }
     
-    let renderWithContent (imageUrl: Uri option) (content: Node) =
-        render imageUrl (Some content)
+    let renderWithContent (inspirationImageUrl: Uri option) (imageUrl: Uri option) (content: Node) =
+        render inspirationImageUrl imageUrl (Some content)
     
     let renderWithoutContent (imageUrl: Uri option) =
-        render imageUrl None
+        render None imageUrl None

@@ -44,30 +44,39 @@ type Prompts() =
             <| fun prompts ->
                 prompts
                 |> Array.map (fun prompt ->
-                    let uploadImageFile (args: InputFileChangeEventArgs) =
-                        files <- files |> Map.add prompt.Id args.File
-                    
-                    let prompt2Deviation =
-                        prompt2Deviation prompt
-                    
-                    concat {
-                        prompt.Inspiration
-                        |> Option.bind _.ImageUrl
-                        |> ImageUrl.render
+                    match prompt with
+                    | Default prompt ->
+                        let uploadImageFile (args: InputFileChangeEventArgs) =
+                            files <- files |> Map.add prompt.Id args.File
                         
-                        match prompt.Inspiration with
-                        | None -> ()
-                        | Some inspiration ->
-                            inspiration.Url |> Link.render None
+                        let prompt2Deviation =
+                            prompt2Deviation prompt
                         
-                        Button.render this (Helpers.copyToClipboard this.JSRuntime prompt.Text) false "Copy Prompt"
-                        
-                        FileInput.render false uploadImageFile
-                        
-                        Button.render this (fun () -> prompt2Deviation files[prompt.Id]) false "To Deviation"
-                        Button.render this (fun () -> forgetPrompt prompt) false "Forget"
-                    }
-                    |> Deviation.renderWithContent (prompt.Inspiration |> Option.bind _.ImageUrl)
+                        concat {
+                            prompt.Inspiration
+                            |> Option.bind _.ImageUrl
+                            |> ImageUrl.render
+                            
+                            match prompt.Inspiration with
+                            | None -> ()
+                            | Some inspiration ->
+                                inspiration.Url |> Link.render None
+                            
+                            Button.render this (Helpers.copyToClipboard this.JSRuntime prompt.Text) false "Copy Prompt"
+                            
+                            FileInput.render false uploadImageFile
+                            
+                            Button.render this (fun () -> prompt2Deviation files[prompt.Id]) false "To Deviation"
+                            Button.render this (fun () -> forgetPrompt prompt) false "Forget"
+                        }
+                        |> Deviation.renderWithContent (prompt.Inspiration |> Option.bind _.ImageUrl) None
+                    | IsBusy _ ->
+                        LoadingWidget.render ()
+                    | HasError (prompt, error) ->
+                        concat {
+                            text $"prompt: {prompt.Id}"
+                            text $"error: {error}"
+                        }
                 )
                 |> Helpers.renderArray
                 |> Deviations.render

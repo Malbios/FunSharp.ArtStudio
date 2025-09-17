@@ -25,12 +25,6 @@ open FunSharp.DeviantArt.Manager.Model
 
 module Update =
     
-    type private Image = {
-        Name: string
-        ContentType: string
-        Content: byte array
-    }
-    
     let private apiRoot = "http://localhost:5123/api/v1"
     
     let private ensureSuccess (task: Task<HttpResponseMessage>) =
@@ -119,7 +113,13 @@ module Update =
     
     let private loadPrompts client =
         
-        (JsonSerializer.deserialize<Prompt array> >> Loaded)
+        let pipe (data: string) =
+            data
+            |> JsonSerializer.deserialize<Prompt array>
+            |> Array.map StatefulItem.Default
+            |> Loadable.Loaded
+            
+        pipe
         |> loadItems client "/local/prompts"
     
     let private loadLocalDeviations client =
@@ -208,20 +208,17 @@ module Update =
         |> Async.map JsonSerializer.deserialize<Prompt>
         |> Async.map (fun prompt -> inspiration, prompt)
         
-    let private prompt2LocalDeviation client (prompt: Prompt, imageFile: IBrowserFile) =
+    let private prompt2LocalDeviation client (prompt: Prompt, image: Image) =
         
-        processUpload imageFile
-        |> Async.bind (fun image ->
-            postFile client $"{apiRoot}/local/images" image.Name image.ContentType image.Content
+        postFile client $"{apiRoot}/local/images" image.Name image.ContentType image.Content
+        |> Async.bind contentAsString
+        |> Async.map (JsonSerializer.deserialize<Uri array> >> Array.head)
+        |> Async.bind (fun imageUrl ->
+            { Prompt = prompt.Id; ImageUrl = imageUrl }
+            |> postObject client $"{apiRoot}/prompt2deviation"
             |> Async.bind contentAsString
-            |> Async.map (JsonSerializer.deserialize<Uri array> >> Array.head)
-            |> Async.bind (fun imageUrl ->
-                { Prompt = prompt.Id; ImageUrl = imageUrl }
-                |> postObject client $"{apiRoot}/prompt2deviation"
-                |> Async.bind contentAsString
-                |> Async.map JsonSerializer.deserialize<LocalDeviation>
-                |> Async.map (fun local -> prompt, local)
-            )
+            |> Async.map JsonSerializer.deserialize<LocalDeviation>
+            |> Async.map (fun local -> prompt, local)
         )
         
     let private stashDeviation client (local: LocalDeviation) =
@@ -400,7 +397,7 @@ module Update =
             let prompts =
                 match model.Prompts with
                 | Loaded prompts ->
-                    [|prompt|] |> Array.append prompts |> Loaded
+                    [|StatefulItem.Default prompt|] |> Array.append prompts |> Loaded
                 | x -> x 
             
             { model with Prompts = prompts }, Cmd.none
@@ -414,13 +411,14 @@ module Update =
             
         | RemovePrompt prompt ->
             
-            let prompts =
-                match model.Prompts with
-                | Loaded prompts ->
-                    prompts |> Array.filter (fun x -> x.Id <> prompt.Id) |> Loaded
-                | x -> x
-                
-            { model with Prompts = prompts }, Cmd.none
+            let model = {
+                model with
+                    Prompts =
+                        model.Prompts
+                        |> State.without (fun x -> x.Id = prompt.Id)
+            }
+            
+            model, Cmd.none
             
         | ForgetPrompt prompt ->
             
@@ -429,12 +427,35 @@ module Update =
             
             model, Cmd.OfAsync.perform action prompt RemovePrompt
             
-        | Prompt2LocalDeviation (prompt, imageFile) ->
+        | ProcessUpload (prompt, imageFile) ->
+            
+            let act imageFile =
+                processUpload imageFile
+                |> Async.map (fun x -> (prompt, x))
+                
+            let failed ex = ProcessUploadFailed (ex, prompt, imageFile)
+            
+            model, Cmd.OfAsync.either act imageFile ProcessedUpload failed
+            
+        | ProcessedUpload (prompt, image) ->
             
             let prompt2LocalDeviation = prompt2LocalDeviation client
-            let failed ex = Prompt2LocalDeviationFailed (ex, prompt, imageFile)
+            let failed ex = Prompt2LocalDeviationFailed (ex, prompt, image)
             
-            model, Cmd.OfAsync.either prompt2LocalDeviation (prompt, imageFile) Prompt2LocalDeviationDone failed
+            let model = { model with Prompts = model.Prompts |> State.isBusy (fun x ->  x.Id = prompt.Id) }
+            
+            model, Cmd.OfAsync.either prompt2LocalDeviation (prompt, image) Prompt2LocalDeviationDone failed
+            
+        | ProcessUploadFailed (error, prompt, imageFile) ->
+            
+            printfn $"prompt2local failed for: {prompt.Id} -> {imageFile.Name}"
+            printfn $"error: {error}"
+            
+            model, Cmd.none
+            
+        | Prompt2LocalDeviation (prompt, imageFile) ->
+        
+            model, (prompt, imageFile) |> ProcessUpload |> Cmd.ofMsg
             
         | Prompt2LocalDeviationDone (prompt, local) ->
                 

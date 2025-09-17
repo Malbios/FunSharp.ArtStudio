@@ -86,6 +86,12 @@ type LocalDeviations() =
                 Deviations.render
                 <| concat {
                     for deviation in deviations do
+                        let inspirationUrl =
+                            match deviation.Origin with
+                            | DeviationOrigin.None -> None
+                            | DeviationOrigin.Prompt prompt -> prompt.Inspiration |> Option.bind _.ImageUrl
+                            | DeviationOrigin.Inspiration inspiration -> inspiration.ImageUrl
+
                         comp<RadzenStack> {
                             "Orientation" => Orientation.Vertical
                             "JustifyContent" => JustifyContent.Left
@@ -111,6 +117,6 @@ type LocalDeviations() =
                                 "OnForget" => forgetDeviation
                             }
                         }
-                        |> Deviation.renderWithContent (Some deviation.ImageUrl)
+                        |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
                 }
         |> Page.render this this.NavManager

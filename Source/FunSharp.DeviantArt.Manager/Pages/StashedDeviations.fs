@@ -39,6 +39,12 @@ type StashedDeviations() =
             <| fun deviations ->
                 deviations
                 |> Array.map (fun deviation ->
+                    let inspirationUrl =
+                        match deviation.Origin with
+                        | DeviationOrigin.None -> None
+                        | DeviationOrigin.Prompt prompt -> prompt.Inspiration |> Option.bind _.ImageUrl
+                        | DeviationOrigin.Inspiration inspiration -> inspiration.ImageUrl
+                            
                     concat {
                         deviation.ImageUrl
                         |> Some
@@ -68,7 +74,7 @@ type StashedDeviations() =
                         
                         Button.render this (fun () -> publish deviation) false "Publish"
                     }
-                    |> Deviation.renderWithContent (Some deviation.ImageUrl)
+                    |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
                 )
                 |> Helpers.renderArray
                 |> Deviations.render

@@ -81,7 +81,7 @@ type Inspirations() =
                         Button.render this (fun () -> prompts[key].Trim() |> inspiration2Prompt) false "To Prompt"
                         Button.render this (fun () -> forgetInspiration inspiration) false "Forget"
                     }
-                    |> Deviation.renderWithContent inspiration.ImageUrl
+                    |> Deviation.renderWithContent inspiration.ImageUrl None
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
