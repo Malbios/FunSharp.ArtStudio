@@ -10,8 +10,6 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.Manager
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Libraries", "Libraries", "{2FA43C04-97AA-4910-ADD0-53173AB4F9C2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plk.Blazor.DragDrop", "External\blazor-dragdrop\Plk.Blazor.DragDrop\Plk.Blazor.DragDrop.csproj", "{9CE6DB66-2BC3-46CE-8647-A0700A0E634A}"
-EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.Server", "Source\FunSharp.DeviantArt.Server\FunSharp.DeviantArt.Server.fsproj", "{F247836B-00D5-4E3C-BBD8-CC62908915D0}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.Common", "External\FunSharp.Common\Source\FunSharp.Common\FunSharp.Common.fsproj", "{9A6A4987-E2AD-4856-9E88-FBB5025EBB5E}"
@@ -23,8 +21,6 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.Common.Test", "External\FunSharp.Common\Source\FunSharp.Common.Test\FunSharp.Common.Test.fsproj", "{1448E70A-7406-4DC6-9BE3-6F07E2FE2CA9}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.Blazor.Components", "External\FunSharp.Blazor.Components\Source\FunSharp.Blazor.Components\FunSharp.Blazor.Components.fsproj", "{E5181273-C8BD-46F6-B2FB-E3C937F459CF}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Plk.Blazor.DragDrop.Test", "External\blazor-dragdrop\Plk.Blazor.DragDrop.Test\Plk.Blazor.DragDrop.Test.csproj", "{DE49A50E-9A32-4628-B0FE-722E2C105A73}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.Utilities", "Source\FunSharp.DeviantArt.Utilities\FunSharp.DeviantArt.Utilities.fsproj", "{613E254C-61F4-4F29-9169-0716B82E1534}"
 EndProject
@@ -45,10 +41,6 @@ Global
 		{CFC1EEC3-0237-431E-BE17-661BB74FA5F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CFC1EEC3-0237-431E-BE17-661BB74FA5F5}.Release|Any CPU.Build.0 = Release|Any CPU
 		{CFC1EEC3-0237-431E-BE17-661BB74FA5F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9CE6DB66-2BC3-46CE-8647-A0700A0E634A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9CE6DB66-2BC3-46CE-8647-A0700A0E634A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9CE6DB66-2BC3-46CE-8647-A0700A0E634A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9CE6DB66-2BC3-46CE-8647-A0700A0E634A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F247836B-00D5-4E3C-BBD8-CC62908915D0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F247836B-00D5-4E3C-BBD8-CC62908915D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F247836B-00D5-4E3C-BBD8-CC62908915D0}.Release|Any CPU.Build.0 = Release|Any CPU
@@ -73,10 +65,6 @@ Global
 		{E5181273-C8BD-46F6-B2FB-E3C937F459CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E5181273-C8BD-46F6-B2FB-E3C937F459CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E5181273-C8BD-46F6-B2FB-E3C937F459CF}.Release|Any CPU.Build.0 = Release|Any CPU
-		{DE49A50E-9A32-4628-B0FE-722E2C105A73}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{DE49A50E-9A32-4628-B0FE-722E2C105A73}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{DE49A50E-9A32-4628-B0FE-722E2C105A73}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{DE49A50E-9A32-4628-B0FE-722E2C105A73}.Release|Any CPU.Build.0 = Release|Any CPU
 		{613E254C-61F4-4F29-9169-0716B82E1534}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{613E254C-61F4-4F29-9169-0716B82E1534}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{613E254C-61F4-4F29-9169-0716B82E1534}.Release|Any CPU.Build.0 = Release|Any CPU
@@ -84,12 +72,10 @@ Global
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{3151693C-42C5-4446-9C80-EBB97DF2C5A6} = {B97A3DD6-0A9B-4019-B642-C8F4AF623C69}
-		{9CE6DB66-2BC3-46CE-8647-A0700A0E634A} = {2FA43C04-97AA-4910-ADD0-53173AB4F9C2}
 		{9A6A4987-E2AD-4856-9E88-FBB5025EBB5E} = {2FA43C04-97AA-4910-ADD0-53173AB4F9C2}
 		{76E6051C-36A7-4096-AC2D-62171A77BFE2} = {2FA43C04-97AA-4910-ADD0-53173AB4F9C2}
 		{607F0FCE-124E-4145-8E42-04F22A1545F0} = {B97A3DD6-0A9B-4019-B642-C8F4AF623C69}
 		{1448E70A-7406-4DC6-9BE3-6F07E2FE2CA9} = {B97A3DD6-0A9B-4019-B642-C8F4AF623C69}
 		{E5181273-C8BD-46F6-B2FB-E3C937F459CF} = {2FA43C04-97AA-4910-ADD0-53173AB4F9C2}
-		{DE49A50E-9A32-4628-B0FE-722E2C105A73} = {B97A3DD6-0A9B-4019-B642-C8F4AF623C69}
 	EndGlobalSection
 EndGlobal
