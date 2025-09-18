@@ -71,7 +71,7 @@ type Prompts() =
                         }
                         |> Deviation.renderWithContent (prompt.Inspiration |> Option.bind _.ImageUrl) None
                     | IsBusy _ ->
-                        LoadingWidget.render ()
+                        LoadingWidget.render () // TODO: make only the "To Deviation" button busy (Radzen has something there)
                     | HasError (prompt, error) ->
                         concat {
                             text $"prompt: {prompt.Id}"
