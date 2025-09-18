@@ -16,9 +16,6 @@ open FunSharp.DeviantArt.Api.Model
 module Helpers =
     
     [<Literal>]
-    let dbKey_Settings = "Settings"
-    
-    [<Literal>]
     let dbKey_Inspirations = "Inspirations"
     
     [<Literal>]
@@ -42,7 +39,7 @@ module Helpers =
         | "success" ->
             {
                 ImageUrl = local.ImageUrl
-                // Timestamp = DateTimeOffset.Now
+                Timestamp = DateTimeOffset.Now
                 StashId = response.item_id
                 Origin = local.Origin
                 Metadata = local.Metadata
@@ -56,7 +53,7 @@ module Helpers =
         | "success" ->
             {
                 ImageUrl = stashed.ImageUrl
-                // Timestamp = DateTimeOffset.Now
+                Timestamp = DateTimeOffset.Now
                 Url = Uri response.url
                 Origin = stashed.Origin
                 Metadata = stashed.Metadata

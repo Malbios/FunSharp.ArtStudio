@@ -24,7 +24,7 @@ module ServerStartup =
     
     let secrets = Secrets.load ()
     let authPersistence = Persistence.AuthenticationPersistence()
-    let dataPersistence = new PickledPersistence(@"C:\Files\FunSharp.DeviantArt\persistence.db") :> IPersistence
+    let dataPersistence = new NewLiteDbPersistence(@"C:\Files\FunSharp.DeviantArt\persistence.db") :> IPersistence
     let apiClient = Client(authPersistence, secrets.client_id, secrets.client_secret)
     let cts = new CancellationTokenSource()
     

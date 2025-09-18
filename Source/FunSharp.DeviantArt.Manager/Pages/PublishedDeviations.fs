@@ -32,4 +32,4 @@ type PublishedDeviations() =
                 |> Array.map (fun deviation -> Some deviation.ImageUrl |> Deviation.renderWithoutContent)
                 |> Helpers.renderArray
                 |> Deviations.render
-        |> Page.render this this.NavManager
+        |> Page.render this this.NavManager model

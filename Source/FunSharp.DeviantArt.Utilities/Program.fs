@@ -1,9 +1,8 @@
 ﻿open System
 open System.IO
 open FunSharp.Data
+open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.Api.Model
-open LiteDB
-open MBrace.FsPickler
 
 [<Literal>]
 let dbKey_Settings = "Settings"
@@ -23,328 +22,222 @@ let dbKey_StashedDeviations = "StashedDeviations"
 [<Literal>]
 let dbKey_PublishedDeviations = "PublishedDeviations"
 
-// Helper to resolve picklers correctly
-let private resolve<'T> (r: IPicklerResolver) : Pickler<'T> =
-    r.Resolve(typeof<'T>) :?> Pickler<'T>
-
-// Graceful fallback for legacy/malformed DateTimeOffset values
-let private safeReadDateTimeOffset (p: Pickler<DateTimeOffset>) (rs: ReadState) (tag: string) =
-    try p.Read rs tag
-    with _ -> DateTimeOffset.MinValue
-
-// // Inspiration
-// let makeInspirationPickler (r: IPicklerResolver) : Pickler<Inspiration> =
-//     let uri = resolve<Uri> r
-//     let dto = resolve<DateTimeOffset> r
-//     let uriOpt = resolve<Option<Uri>> r
-//
-//     let writer (ws: WriteState) (x: Inspiration) =
-//         uri.Write ws "url" x.Url
-//         dto.Write ws "timestamp" x.Timestamp
-//         uriOpt.Write ws "imageUrl" x.ImageUrl
-//
-//     let reader (rs: ReadState) =
-//         let url = uri.Read rs "url"
-//         let timestamp = safeReadDateTimeOffset dto rs "timestamp"
-//         let imageUrl = uriOpt.Read rs "imageUrl"
-//         { Url = url; Timestamp = timestamp; ImageUrl = imageUrl }
-//
-//     Pickler.FromPrimitives(reader, writer)
-//
-// // Prompt
-// let makePromptPickler (r: IPicklerResolver) : Pickler<Prompt> =
-//     let guid = resolve<Guid> r
-//     let dto = resolve<DateTimeOffset> r
-//     let str = resolve<string> r
-//     let inspirationOpt = resolve<Option<Inspiration>> r
-//
-//     let writer (ws: WriteState) (x: Prompt) =
-//         guid.Write ws "id" x.Id
-//         dto.Write ws "timestamp" x.Timestamp
-//         str.Write ws "text" x.Text
-//         inspirationOpt.Write ws "inspiration" x.Inspiration
-//
-//     let reader (rs: ReadState) =
-//         let id = guid.Read rs "id"
-//         let timestamp = safeReadDateTimeOffset dto rs "timestamp"
-//         let text = str.Read rs "text"
-//         let inspiration = inspirationOpt.Read rs "inspiration"
-//         { Id = id; Timestamp = timestamp; Text = text; Inspiration = inspiration }
-//
-//     Pickler.FromPrimitives(reader, writer)
-//
-// // LocalDeviation
-// let makeLocalDeviationPickler (r: IPicklerResolver) : Pickler<LocalDeviation> =
-//     let uri = resolve<Uri> r
-//     let dto = resolve<DateTimeOffset> r
-//     let origin = resolve<DeviationOrigin> r
-//     let metadata = resolve<Metadata> r
-//
-//     let writer (ws: WriteState) (x: LocalDeviation) =
-//         uri.Write ws "imageUrl" x.ImageUrl
-//         dto.Write ws "timestamp" x.Timestamp
-//         origin.Write ws "origin" x.Origin
-//         metadata.Write ws "metadata" x.Metadata
-//
-//     let reader (rs: ReadState) =
-//         let imageUrl = uri.Read rs "imageUrl"
-//         let timestamp = safeReadDateTimeOffset dto rs "timestamp"
-//         let origin = origin.Read rs "origin"
-//         let metadata = metadata.Read rs "metadata"
-//         { ImageUrl = imageUrl; Timestamp = timestamp; Origin = origin; Metadata = metadata }
-//
-//     Pickler.FromPrimitives(reader, writer)
-//
-// // StashedDeviation
-// let makeStashedDeviationPickler (r: IPicklerResolver) : Pickler<StashedDeviation> =
-//     let uri = resolve<Uri> r
-//     let dto = resolve<DateTimeOffset> r
-//     let i64 = resolve<int64> r
-//     let origin = resolve<DeviationOrigin> r
-//     let metadata = resolve<Metadata> r
-//
-//     let writer (ws: WriteState) (x: StashedDeviation) =
-//         uri.Write ws "imageUrl" x.ImageUrl
-//         dto.Write ws "timestamp" x.Timestamp
-//         i64.Write ws "stashId" x.StashId
-//         origin.Write ws "origin" x.Origin
-//         metadata.Write ws "metadata" x.Metadata
-//
-//     let reader (rs: ReadState) =
-//         let imageUrl = uri.Read rs "imageUrl"
-//         let timestamp = safeReadDateTimeOffset dto rs "timestamp"
-//         let stashId = i64.Read rs "stashId"
-//         let origin = origin.Read rs "origin"
-//         let metadata = metadata.Read rs "metadata"
-//         { ImageUrl = imageUrl; Timestamp = timestamp; StashId = stashId; Origin = origin; Metadata = metadata }
-//
-//     Pickler.FromPrimitives(reader, writer)
-
 type NewInspiration = {
     Url: Uri
-    Timestamp: DateTime
+    Timestamp: DateTimeOffset
     ImageUrl: Uri option
 }
 
 type NewPrompt = {
     Id: Guid
-    Timestamp: DateTime
+    Timestamp: DateTimeOffset
     Text: string
-    Inspiration: Inspiration option
+    Inspiration: NewInspiration option
 }
+
+[<RequireQualifiedAccess>]
+type NewDeviationOrigin =
+    | None
+    | Prompt of NewPrompt
+    | Inspiration of NewInspiration
 
 type NewLocalDeviation = {
     ImageUrl: Uri
-    Timestamp: DateTime
-    Origin: DeviationOrigin
+    Timestamp: DateTimeOffset
+    Origin: NewDeviationOrigin
     Metadata: Metadata
 }
 
 type NewStashedDeviation = {
     ImageUrl: Uri
-    Timestamp: DateTime
+    Timestamp: DateTimeOffset
     StashId: int64
-    Origin: DeviationOrigin
+    Origin: NewDeviationOrigin
     Metadata: Metadata
 }
 
 type NewPublishedDeviation = {
     ImageUrl: Uri
-    Timestamp: DateTime
+    Timestamp: DateTimeOffset
     Url: Uri
-    Origin: DeviationOrigin
+    Origin: NewDeviationOrigin
     Metadata: Metadata
 }
 
-// PublishedDeviation
-// let makePublishedDeviationPickler (r: IPicklerResolver) : Pickler<PublishedDeviation> =
-//     let uri = resolve<Uri> r
-//     let dto = resolve<DateTimeOffset> r
-//     let origin = resolve<DeviationOrigin> r
-//     let metadata = resolve<Metadata> r
-//
-//     let writer (ws: WriteState) (x: PublishedDeviation) =
-//         uri.Write ws "imageUrl" x.ImageUrl
-//         dto.Write ws "timestamp" x.Timestamp
-//         uri.Write ws "url" x.Url
-//         origin.Write ws "origin" x.Origin
-//         metadata.Write ws "metadata" x.Metadata
-//
-//     let reader (rs: ReadState) =
-//         let imageUrl = uri.Read rs "imageUrl"
-//         let timestamp = safeReadDateTimeOffset dto rs "timestamp"
-//         let url = uri.Read rs "url"
-//         let origin = origin.Read rs "origin"
-//         let metadata = metadata.Read rs "metadata"
-//         { ImageUrl = imageUrl; Timestamp = timestamp; Url = url; Origin = origin; Metadata = metadata }
-//
-//     Pickler.FromPrimitives(reader, writer)
+type NewSettings = {
+    Galleries: Gallery array
+}
 
-[<EntryPoint>]
-let main _ =
+let migrateToTimestamps () =
 
     let realDatabasePath = @"C:\Files\FunSharp.DeviantArt\persistence.db"
-    let copyDatabasePath = @"C:\Files\FunSharp.DeviantArt\persistence_backup.db"
     
-    // if File.Exists(copyDatabasePath) then File.Delete(copyDatabasePath)
-    // File.Copy(realDatabasePath, copyDatabasePath)
-    if File.Exists(copyDatabasePath) |> not then File.Copy(realDatabasePath, copyDatabasePath)
+    let copyDatabasePath = @"C:\Files\FunSharp.DeviantArt\persistence_copy.db"
+    let newDatabasePath = @"C:\Files\FunSharp.DeviantArt\persistence_new.db"
     
-    let persistence = LiteDbPersistence(copyDatabasePath)
-
-    let serializer = FsPickler.CreateBinarySerializer()
-    // let publishedPickler = makePublishedDeviationPickler serializer.Resolver
-    // let stashedPickler = makeStashedDeviationPickler serializer.Resolver
-    // let localPickler = makeLocalDeviationPickler serializer.Resolver
-    // let promptPickler = makePromptPickler serializer.Resolver
-    // let inspirationPickler = makeInspirationPickler serializer.Resolver
+    if not <| File.Exists(copyDatabasePath) then
+        File.Copy(realDatabasePath, copyDatabasePath)
+    
+    use oldPersistence = new PickledPersistence(copyDatabasePath) :> IPersistence
+    use newPersistence = new NewLiteDbPersistence(newDatabasePath) :> IPersistence
     
     printfn "Migration started!"
     
-    // printfn "Migrating published deviations..."
-    // persistence.FindAll<BsonDocument>(dbKey_PublishedDeviations)
-    // |> Array.iter (fun doc ->
-    //     let oldItem = serializer.UnPickle<PublishedDeviation>(doc["data"])
-    //     persistence.Delete(dbKey_PublishedDeviations, oldItem.ImageUrl.ToString()) |> ignore
-    //     let newItem : NewPublishedDeviation =
-    //         { ImageUrl = oldItem.ImageUrl; Timestamp = DateTime.MinValue; Url = oldItem.Url; Origin = oldItem.Origin; Metadata = oldItem.Metadata }
-    //     doc["data"] <- serializer.Pickle(newItem)
-    //     persistence.Insert(dbKey_PublishedDeviations, newItem.ImageUrl.ToString(), doc)
-    // )
-    //
-    // printfn "Migrating stashed deviations..."
-    // persistence.FindAll<BsonDocument>(dbKey_StashedDeviations)
-    // |> Array.iter (fun doc ->
-    //     let oldItem = serializer.UnPickle<StashedDeviation>(doc["data"])
-    //     persistence.Delete(dbKey_StashedDeviations, oldItem.ImageUrl.ToString()) |> ignore
-    //     let newItem : NewStashedDeviation =
-    //         { ImageUrl = oldItem.ImageUrl; Timestamp = DateTime.MinValue; StashId = oldItem.StashId; Origin = oldItem.Origin; Metadata = oldItem.Metadata }
-    //     doc["data"] <- serializer.Pickle(newItem)
-    //     persistence.Insert(dbKey_StashedDeviations, newItem.ImageUrl.ToString(), doc)
-    // )
-    //
-    // printfn "Migrating local deviations..."
-    // persistence.FindAll<BsonDocument>(dbKey_LocalDeviations)
-    // |> Array.iter (fun doc ->
-    //     let oldItem = serializer.UnPickle<LocalDeviation>(doc["data"])
-    //     persistence.Delete(dbKey_LocalDeviations, oldItem.ImageUrl.ToString()) |> ignore
-    //     let newItem : NewLocalDeviation =
-    //         { ImageUrl = oldItem.ImageUrl; Timestamp = DateTime.MinValue; Origin = oldItem.Origin; Metadata = oldItem.Metadata }
-    //     doc["data"] <- serializer.Pickle(newItem)
-    //     persistence.Insert(dbKey_LocalDeviations, newItem.ImageUrl.ToString(), doc)
-    // )
-    //
-    // printfn "Migrating prompts..."
-    // persistence.FindAll<BsonDocument>(dbKey_Prompts)
-    // |> Array.iter (fun doc ->
-    //     let oldItem = serializer.UnPickle<Prompt>(doc["data"])
-    //     persistence.Delete(dbKey_Prompts, oldItem.Id.ToString()) |> ignore
-    //     let newItem : NewPrompt =
-    //         { Id = oldItem.Id; Timestamp = DateTime.MinValue; Inspiration = oldItem.Inspiration; Text = oldItem.Text }
-    //     doc["data"] <- serializer.Pickle(newItem)
-    //     persistence.Insert(dbKey_Prompts, newItem.Id.ToString(), doc)
-    // )
-    //
-    // printfn "Migrating inspirations..."
-    // persistence.FindAll<BsonDocument>(dbKey_Inspirations)
-    // |> Array.iter (fun doc ->
-    //     let oldItem = serializer.UnPickle<Inspiration>(doc["data"])
-    //     persistence.Delete(dbKey_Inspirations, oldItem.ImageUrl.ToString()) |> ignore
-    //     let newItem : NewInspiration =
-    //         { Url = oldItem.Url; Timestamp = DateTime.MinValue; ImageUrl = oldItem.ImageUrl }
-    //     doc["data"] <- serializer.Pickle(newItem)
-    //     persistence.Insert(dbKey_Inspirations, newItem.ImageUrl.ToString(), doc)
-    // )
+    printfn "Migrating published deviations..."
+    oldPersistence.FindAll<PublishedDeviation>(dbKey_PublishedDeviations)
+    |> fun x ->
+        printfn $"items: {x.Length}"
+        x
+    |> Array.iter (fun oldItem ->
+        let newItem : NewPublishedDeviation = {
+            ImageUrl = oldItem.ImageUrl
+            Timestamp = DateTimeOffset.MinValue
+            Url = oldItem.Url
+            Origin =
+                match oldItem.Origin with
+                | DeviationOrigin.None -> NewDeviationOrigin.None
+                | DeviationOrigin.Inspiration inspiration ->
+                    NewDeviationOrigin.Inspiration {
+                        ImageUrl = inspiration.ImageUrl
+                        Timestamp = DateTimeOffset.MinValue
+                        Url = inspiration.Url
+                    }
+                | DeviationOrigin.Prompt prompt ->
+                    NewDeviationOrigin.Prompt {
+                        Id = prompt.Id
+                        Timestamp = DateTimeOffset.MinValue
+                        Text = prompt.Text
+                        Inspiration = prompt.Inspiration |> Option.map (fun x -> {
+                            ImageUrl = x.ImageUrl
+                            Timestamp = DateTimeOffset.MinValue
+                            Url = x.Url
+                        })
+                    }
+            Metadata = oldItem.Metadata
+        }
+        
+        newPersistence.Insert(dbKey_PublishedDeviations, newItem.ImageUrl, newItem)
+    )
     
-    // persistence.FindAll<BsonDocument>(dbKey_PublishedDeviations)
-    // |> Array.iter (fun doc ->
-    //     let oldItem = serializer.UnPickle<PublishedDeviation>(doc["data"])
-    //     // let oldItem = serializer.UnPickle<PublishedDeviation>(doc["data"], pickler = publishedPickler)
-    //     persistence.Delete(dbKey_PublishedDeviations, oldItem.ImageUrl.ToString()) |> ignore
-    //     let newItem : NewPublishedDeviation = { ImageUrl = oldItem.ImageUrl; Timestamp = DateTime.MinValue; Url = oldItem.Url; Origin = oldItem.Origin; Metadata = oldItem.Metadata }
-    //     doc["data"] <- serializer.Pickle(newItem)
-    //     // doc["data"] <- serializer.Pickle(newItem, pickler = publishedPickler)
-    //     persistence.Insert(dbKey_PublishedDeviations, newItem.ImageUrl.ToString(), doc)
-    // )
-    //
-    // persistence.FindAll<BsonDocument>(dbKey_PublishedDeviations)
-    // |> Array.iter (fun doc ->
-    //     let item = serializer.UnPickle<NewPublishedDeviation>(doc["data"])
-    //     printfn $"{item.ImageUrl}"
-    //     printfn $"{item.Timestamp}"
-    // )
-    //
-    // persistence.FindAll<BsonDocument>(dbKey_PublishedDeviations)
-    // |> Array.iter (fun doc ->
-    //     let oldItem = serializer.UnPickle<NewPublishedDeviation>(doc["data"])
-    //     // let oldItem = serializer.UnPickle<PublishedDeviation>(doc["data"], pickler = publishedPickler)
-    //     persistence.Delete(dbKey_PublishedDeviations, oldItem.ImageUrl.ToString()) |> ignore
-    //     let newItem : PublishedDeviation = { ImageUrl = oldItem.ImageUrl; Timestamp = oldItem.Timestamp; Url = oldItem.Url; Origin = oldItem.Origin; Metadata = oldItem.Metadata }
-    //     doc["data"] <- serializer.Pickle(newItem)
-    //     persistence.Insert(dbKey_PublishedDeviations, newItem.ImageUrl.ToString(), doc)
-    // )
-    //
-    // persistence.FindAll<BsonDocument>(dbKey_PublishedDeviations)
-    // |> Array.iter (fun doc ->
-    //     let item = serializer.UnPickle<PublishedDeviation>(doc["data"])
-    //     printfn $"{item.ImageUrl}"
-    // )
+    printfn "Migrating stashed deviations..."
+    oldPersistence.FindAll<StashedDeviation>(dbKey_StashedDeviations)
+    |> fun x ->
+        printfn $"items: {x.Length}"
+        x
+    |> Array.iter (fun oldItem ->
+        let newItem : NewStashedDeviation = {
+            ImageUrl = oldItem.ImageUrl
+            Timestamp = DateTimeOffset.MinValue
+            StashId = oldItem.StashId
+            Origin =
+                match oldItem.Origin with
+                | DeviationOrigin.None -> NewDeviationOrigin.None
+                | DeviationOrigin.Inspiration inspiration ->
+                    NewDeviationOrigin.Inspiration {
+                        ImageUrl = inspiration.ImageUrl
+                        Timestamp = DateTimeOffset.MinValue
+                        Url = inspiration.Url
+                    }
+                | DeviationOrigin.Prompt prompt ->
+                    NewDeviationOrigin.Prompt {
+                        Id = prompt.Id
+                        Timestamp = DateTimeOffset.MinValue
+                        Text = prompt.Text
+                        Inspiration = prompt.Inspiration |> Option.map (fun x -> {
+                            ImageUrl = x.ImageUrl
+                            Timestamp = DateTimeOffset.MinValue
+                            Url = x.Url
+                        })
+                    }
+            Metadata = oldItem.Metadata
+        }
+        
+        newPersistence.Insert(dbKey_StashedDeviations, newItem.ImageUrl, newItem)
+    )
     
-    // printfn "Migrating published deviations..."
-    // persistence.FindAll<BsonDocument>(dbKey_PublishedDeviations)
-    // |> Array.iter (fun doc ->
-    //     let oldItem = serializer.UnPickle<NewPublishedDeviation>(doc["data"])
-    //     persistence.Delete(dbKey_PublishedDeviations, oldItem.ImageUrl.ToString()) |> ignore
-    //     let newItem : PublishedDeviation =
-    //         { ImageUrl = oldItem.ImageUrl; Timestamp = oldItem.Timestamp; Url = oldItem.Url; Origin = oldItem.Origin; Metadata = oldItem.Metadata }
-    //     doc["data"] <- serializer.Pickle(newItem)
-    //     persistence.Insert(dbKey_PublishedDeviations, newItem.ImageUrl.ToString(), doc)
-    // )
-    //
-    // printfn "Migrating stashed deviations..."
-    // persistence.FindAll<BsonDocument>(dbKey_StashedDeviations)
-    // |> Array.iter (fun doc ->
-    //     let oldItem = serializer.UnPickle<NewStashedDeviation>(doc["data"])
-    //     persistence.Delete(dbKey_StashedDeviations, oldItem.ImageUrl.ToString()) |> ignore
-    //     let newItem : StashedDeviation =
-    //         { ImageUrl = oldItem.ImageUrl; Timestamp = oldItem.Timestamp; StashId = oldItem.StashId; Origin = oldItem.Origin; Metadata = oldItem.Metadata }
-    //     doc["data"] <- serializer.Pickle(newItem)
-    //     persistence.Insert(dbKey_StashedDeviations, newItem.ImageUrl.ToString(), doc)
-    // )
-    //
-    // printfn "Migrating local deviations..."
-    // persistence.FindAll<BsonDocument>(dbKey_LocalDeviations)
-    // |> Array.iter (fun doc ->
-    //     let oldItem = serializer.UnPickle<NewLocalDeviation>(doc["data"])
-    //     persistence.Delete(dbKey_LocalDeviations, oldItem.ImageUrl.ToString()) |> ignore
-    //     let newItem : LocalDeviation =
-    //         { ImageUrl = oldItem.ImageUrl; Timestamp = oldItem.Timestamp; Origin = oldItem.Origin; Metadata = oldItem.Metadata }
-    //     doc["data"] <- serializer.Pickle(newItem)
-    //     persistence.Insert(dbKey_LocalDeviations, newItem.ImageUrl.ToString(), doc)
-    // )
-    //
-    // printfn "Migrating prompts..."
-    // persistence.FindAll<BsonDocument>(dbKey_Prompts)
-    // |> Array.iter (fun doc ->
-    //     let oldItem = serializer.UnPickle<NewPrompt>(doc["data"])
-    //     persistence.Delete(dbKey_Prompts, oldItem.Id.ToString()) |> ignore
-    //     let newItem : Prompt =
-    //         { Id = oldItem.Id; Timestamp = oldItem.Timestamp; Inspiration = oldItem.Inspiration; Text = oldItem.Text }
-    //     doc["data"] <- serializer.Pickle(newItem)
-    //     persistence.Insert(dbKey_Prompts, newItem.Id.ToString(), doc)
-    // )
-    //
-    // printfn "Migrating inspirations..."
-    // persistence.FindAll<BsonDocument>(dbKey_Inspirations)
-    // |> Array.iter (fun doc ->
-    //     let oldItem = serializer.UnPickle<NewInspiration>(doc["data"])
-    //     persistence.Delete(dbKey_Inspirations, oldItem.ImageUrl.ToString()) |> ignore
-    //     let newItem : Inspiration =
-    //         { Url = oldItem.Url; Timestamp = oldItem.Timestamp; ImageUrl = oldItem.ImageUrl }
-    //     doc["data"] <- serializer.Pickle(newItem)
-    //     persistence.Insert(dbKey_Inspirations, newItem.ImageUrl.ToString(), doc)
-    // )
+    printfn "Migrating local deviations..."
+    oldPersistence.FindAll<LocalDeviation>(dbKey_LocalDeviations)
+    |> fun x ->
+        printfn $"items: {x.Length}"
+        x
+    |> Array.iter (fun oldItem ->
+        let newItem : NewLocalDeviation = {
+            ImageUrl = oldItem.ImageUrl
+            Timestamp = DateTimeOffset.MinValue
+            Origin =
+                match oldItem.Origin with
+                | DeviationOrigin.None -> NewDeviationOrigin.None
+                | DeviationOrigin.Inspiration inspiration ->
+                    NewDeviationOrigin.Inspiration {
+                        ImageUrl = inspiration.ImageUrl
+                        Timestamp = DateTimeOffset.MinValue
+                        Url = inspiration.Url
+                    }
+                | DeviationOrigin.Prompt prompt ->
+                    NewDeviationOrigin.Prompt {
+                        Id = prompt.Id
+                        Timestamp = DateTimeOffset.MinValue
+                        Text = prompt.Text
+                        Inspiration = prompt.Inspiration |> Option.map (fun x -> {
+                            ImageUrl = x.ImageUrl
+                            Timestamp = DateTimeOffset.MinValue
+                            Url = x.Url
+                        })
+                    }
+            Metadata = oldItem.Metadata
+        }
+        
+        newPersistence.Insert(dbKey_LocalDeviations, newItem.ImageUrl, newItem)
+    )
+    
+    printfn "Migrating prompts..."
+    oldPersistence.FindAll<Prompt>(dbKey_Prompts)
+    |> fun x ->
+        printfn $"items: {x.Length}"
+        x
+    |> Array.iter (fun oldItem ->
+        let newItem : NewPrompt = {
+            Id = oldItem.Id
+            Timestamp = DateTimeOffset.MinValue
+            Text = oldItem.Text
+            Inspiration = oldItem.Inspiration |> Option.map (fun x -> {
+                ImageUrl = x.ImageUrl
+                Timestamp = DateTimeOffset.MinValue
+                Url = x.Url
+            })
+        }
+        
+        newPersistence.Insert(dbKey_Prompts, newItem.Id, newItem)
+    )
+    
+    printfn "Migrating inspirations..."
+    oldPersistence.FindAll<Inspiration>(dbKey_Inspirations)
+    |> fun x ->
+        printfn $"items: {x.Length}"
+        x
+    |> Array.iter (fun oldItem ->
+        let newItem : NewInspiration = {
+            Url = oldItem.Url
+            Timestamp = DateTimeOffset.MinValue
+            ImageUrl = oldItem.ImageUrl
+        }
+        
+        newPersistence.Insert(dbKey_Inspirations, newItem.Url, newItem)
+    )
     
     printfn "Migration done!"
+    
+let testNewDb () =
+    
+    use persistence = new NewLiteDbPersistence(@"C:\Files\FunSharp.DeviantArt\persistence.db") :> IPersistence
+    
+    persistence.FindAll<LocalDeviation>(dbKey_LocalDeviations)
+    |> fun x -> printfn $"items: {x.Length}"
+
+[<EntryPoint>]
+let main _ =
+    
+    // migrateToTimestamps ()
+    testNewDb ()
     
     0

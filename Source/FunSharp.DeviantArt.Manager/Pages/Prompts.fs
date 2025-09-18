@@ -94,4 +94,4 @@ type Prompts() =
                 Button.render this (fun () -> addPrompt newPromptText) false "Add"
             }
         }
-        |> Page.render this this.NavManager
+        |> Page.render this this.NavManager model

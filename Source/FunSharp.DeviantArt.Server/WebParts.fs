@@ -125,7 +125,7 @@ module WebParts =
                     
                     let inspiration = {
                         Url = Uri url
-                        // Timestamp = DateTimeOffset.Now
+                        Timestamp = DateTimeOffset.Now
                         ImageUrl = Some imageUrl
                     }
                     
@@ -208,7 +208,7 @@ module WebParts =
                 
                 let prompt: Prompt = {
                     Id = Guid.NewGuid()
-                    // Timestamp = DateTimeOffset.Now
+                    Timestamp = DateTimeOffset.Now
                     Inspiration = Some inspiration
                     Text = payload.Text
                 }
@@ -232,7 +232,7 @@ module WebParts =
                 
                 let deviation : LocalDeviation = {
                     ImageUrl = payload.ImageUrl
-                    // Timestamp = DateTimeOffset.Now
+                    Timestamp = DateTimeOffset.Now
                     Metadata = Metadata.empty
                     Origin = DeviationOrigin.Prompt prompt
                 }

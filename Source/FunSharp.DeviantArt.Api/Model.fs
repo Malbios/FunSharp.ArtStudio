@@ -296,11 +296,13 @@ module AuthenticationData =
 
 type Inspiration = {
     Url: Uri
+    Timestamp: DateTimeOffset
     ImageUrl: Uri option
 }
 
 type Prompt = {
     Id: Guid
+    Timestamp: DateTimeOffset
     Text: string
     Inspiration: Inspiration option
 }
@@ -328,6 +330,7 @@ type DeviationOrigin =
 
 type LocalDeviation = {
     ImageUrl: Uri
+    Timestamp: DateTimeOffset
     Origin: DeviationOrigin
     Metadata: Metadata
 }
@@ -337,12 +340,14 @@ module LocalDeviation =
     
     let defaults imageUrl = {
         ImageUrl = imageUrl
+        Timestamp = DateTimeOffset.Now
         Origin = DeviationOrigin.None
         Metadata = Metadata.empty
     }
 
 type StashedDeviation = {
     ImageUrl: Uri
+    Timestamp: DateTimeOffset
     StashId: int64
     Origin: DeviationOrigin
     Metadata: Metadata
@@ -350,6 +355,7 @@ type StashedDeviation = {
 
 type PublishedDeviation = {
     ImageUrl: Uri
+    Timestamp: DateTimeOffset
     Url: Uri
     Origin: DeviationOrigin
     Metadata: Metadata

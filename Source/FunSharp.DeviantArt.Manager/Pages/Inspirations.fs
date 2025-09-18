@@ -48,7 +48,7 @@ type Inspirations() =
             "Gap" => "2rem"
             
             div {
-                style "padding: 2rem; border: 2px solid gray; border-radius: 8px;"
+                style "padding: 0.5rem; border: 2px solid gray; border-radius: 8px;"
                 ClipboardSnippets.render this this.JSRuntime
             }
             
@@ -103,4 +103,4 @@ type Inspirations() =
                 }
             }
         }
-        |> Page.render this this.NavManager
+        |> Page.render this this.NavManager model

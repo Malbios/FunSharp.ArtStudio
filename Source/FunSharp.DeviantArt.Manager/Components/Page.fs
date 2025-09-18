@@ -2,6 +2,7 @@
 
 open Bolero
 open Bolero.Html
+open FunSharp.DeviantArt.Manager.Model
 open Microsoft.AspNetCore.Components
 open Radzen
 open Radzen.Blazor
@@ -9,7 +10,7 @@ open Radzen.Blazor
 [<RequireQualifiedAccess>]
 module Page =
     
-    let render parent (nav: NavigationManager) (content: Node) =
+    let render parent (nav: NavigationManager) (model: State) (content: Node) =
         
         div {
             attr.``class`` "center-wrapper"
@@ -20,7 +21,7 @@ module Page =
                 comp<RadzenStack> {
                     "Orientation" => Orientation.Vertical
                     
-                    Navigation.render parent nav
+                    Navigation.render parent nav model
                 
                     content
                 }

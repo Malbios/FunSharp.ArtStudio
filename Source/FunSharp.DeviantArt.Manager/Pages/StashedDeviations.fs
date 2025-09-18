@@ -78,4 +78,4 @@ type StashedDeviations() =
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
-        |> Page.render this this.NavManager
+        |> Page.render this this.NavManager model

@@ -119,4 +119,4 @@ type LocalDeviations() =
                         }
                         |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
                 }
-        |> Page.render this this.NavManager
+        |> Page.render this this.NavManager model
