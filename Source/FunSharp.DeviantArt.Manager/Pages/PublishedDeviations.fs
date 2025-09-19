@@ -15,7 +15,7 @@ type PublishedDeviations() =
     [<Inject>]
     member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
     
-    override this.View model _ =
+    override this.View model dispatch =
             
         let publishedDeviationsCount =
             match model.PublishedDeviations with
@@ -32,4 +32,4 @@ type PublishedDeviations() =
                 |> Array.map (fun deviation -> Some deviation.ImageUrl |> Deviation.renderWithoutContent)
                 |> Helpers.renderArray
                 |> Deviations.render
-        |> Page.render this this.NavManager model
+        |> Page.render this model dispatch this.NavManager

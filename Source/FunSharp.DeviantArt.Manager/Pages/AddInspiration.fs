@@ -57,17 +57,8 @@ type AddInspiration() =
             <| fun inspirations ->
                 inspirations
                 |> Array.sortByDescending _.Timestamp
-                |> Array.map (fun inspiration ->
-                    concat {
-                        inspiration.ImageUrl
-                        |> ImageUrl.render
-                        
-                        inspiration.Url
-                        |> Link.render None
-                    }
-                    |> Deviation.renderWithContent inspiration.ImageUrl None
-                )
+                |> Array.map (fun inspiration -> Deviation.renderWithoutContent inspiration.ImageUrl)
                 |> Helpers.renderArray
                 |> Deviations.render
         }
-        |> Page.render this this.NavManager model
+        |> Page.render this model dispatch this.NavManager

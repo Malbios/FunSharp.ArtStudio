@@ -43,6 +43,12 @@ type Prompts() =
             Loadable.render model.Prompts
             <| fun prompts ->
                 prompts
+                |> Array.sortBy (fun x ->
+                    match x with
+                    | Default prompt -> prompt.Timestamp
+                    | IsBusy prompt -> prompt.Timestamp
+                    | HasError (prompt, _) -> prompt.Timestamp
+                )
                 |> Array.map (fun prompt ->
                     match prompt with
                     | Default prompt ->
@@ -94,4 +100,4 @@ type Prompts() =
                 Button.render this (fun () -> addPrompt newPromptText) false "Add"
             }
         }
-        |> Page.render this this.NavManager model
+        |> Page.render this model dispatch this.NavManager

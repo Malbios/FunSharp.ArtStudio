@@ -10,7 +10,7 @@ open Radzen.Blazor
 [<RequireQualifiedAccess>]
 module Page =
     
-    let render parent (nav: NavigationManager) (model: State) (content: Node) =
+    let render parent (model: State) dispatch (nav: NavigationManager) (content: Node) =
         
         div {
             attr.``class`` "center-wrapper"
@@ -21,7 +21,7 @@ module Page =
                 comp<RadzenStack> {
                     "Orientation" => Orientation.Vertical
                     
-                    Navigation.render parent nav model
+                    Navigation.render parent model dispatch nav
                 
                     content
                 }

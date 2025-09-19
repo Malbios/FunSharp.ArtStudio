@@ -38,6 +38,7 @@ type StashedDeviations() =
             Loadable.render model.StashedDeviations
             <| fun deviations ->
                 deviations
+                |> Array.sortBy _.Timestamp
                 |> Array.map (fun deviation ->
                     let inspirationUrl =
                         match deviation.Origin with
@@ -78,4 +79,4 @@ type StashedDeviations() =
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
-        |> Page.render this this.NavManager model
+        |> Page.render this model dispatch this.NavManager

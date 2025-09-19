@@ -85,6 +85,7 @@ type LocalDeviations() =
             <| fun deviations ->
                 Deviations.render
                 <| concat {
+                    let deviations = deviations |> Array.sortBy _.Timestamp
                     for deviation in deviations do
                         let inspirationUrl =
                             match deviation.Origin with
@@ -119,4 +120,4 @@ type LocalDeviations() =
                         }
                         |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
                 }
-        |> Page.render this this.NavManager model
+        |> Page.render this model dispatch this.NavManager

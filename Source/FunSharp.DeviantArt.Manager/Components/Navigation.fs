@@ -11,7 +11,7 @@ open Radzen.Blazor
 [<RequireQualifiedAccess>]
 module Navigation =
     
-    let render parent (nav: NavigationManager) (model: State) =
+    let render parent (model: State) dispatch (nav: NavigationManager) =
         
         let inspirationsCount =
             match model.Inspirations with
@@ -61,4 +61,9 @@ module Navigation =
                 Button.render parent (fun () -> navigateTo(endpoint)) disabled label
             )
             |> Helpers.renderList
+            
+            div {
+                attr.style "margin-left: 1rem;"
+                Button.render parent (fun () -> dispatch LoadAll) false "Reload All"
+            }
         }

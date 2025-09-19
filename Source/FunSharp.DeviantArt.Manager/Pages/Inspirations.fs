@@ -75,4 +75,4 @@ type Inspirations() =
                 |> Helpers.renderArray
                 |> Deviations.render
         }
-        |> Page.render this this.NavManager model
+        |> Page.render this model dispatch this.NavManager

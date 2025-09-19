@@ -250,9 +250,9 @@ module Update =
 
         | LoadAll ->
             
-            let sleep seconds = async {
-                do! Async.Sleep (1000 * seconds)
-            }
+            // let sleep seconds = async {
+            //     do! Async.Sleep (1000 * seconds)
+            // }
             
             let batch = Cmd.batch [
                 Cmd.ofMsg LoadSettings
@@ -261,7 +261,7 @@ module Update =
                 Cmd.ofMsg LoadLocalDeviations
                 Cmd.ofMsg LoadStashedDeviations
                 Cmd.ofMsg LoadPublishedDeviations
-                Cmd.OfAsync.perform sleep 30 (fun () -> LoadAll)
+                // Cmd.OfAsync.perform sleep 30 (fun () -> LoadAll)
             ]
             
             model, batch
