@@ -1,6 +1,5 @@
 ﻿namespace FunSharp.DeviantArt.Manager.Pages
 
-open System
 open Bolero
 open Bolero.Html
 open Bolero.Html.attr
@@ -23,25 +22,14 @@ type Inspirations() =
     member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
     
     override this.View model dispatch =
-                    
-        let mutable newInspirationUrl = ""
+        
         let mutable prompts: Map<string, string> = Map.empty
-            
-        let addInspiration () =
-            newInspirationUrl |> Uri |> Message.AddInspiration |> dispatch
             
         let inspiration2Prompt inspiration prompt =
             Message.Inspiration2Prompt (inspiration, prompt) |> dispatch
             
         let forgetInspiration inspiration =
             Message.ForgetInspiration inspiration |> dispatch
-            
-        let onChange_NewInspirationUrl newValue =
-            newInspirationUrl <- newValue
-            
-        let onEnter_NewInspirationUrl newValue =
-            onChange_NewInspirationUrl newValue
-            addInspiration ()
 
         comp<RadzenStack> {
             "Orientation" => Orientation.Vertical
@@ -55,6 +43,7 @@ type Inspirations() =
             Loadable.render model.Inspirations
             <| fun inspirations ->
                 inspirations
+                |> Array.sortBy _.Timestamp
                 |> Array.map (fun inspiration ->
                     let key = inspiration.Url.ToString()
                     
@@ -85,22 +74,5 @@ type Inspirations() =
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
-            
-            comp<RadzenStack> {
-                style "padding: 2rem; border: 2px solid gray; border-radius: 8px;"
-                
-                "Orientation" => Orientation.Horizontal
-                
-                div {
-                    style "width: 100%"
-                    TextInput.render onChange_NewInspirationUrl onEnter_NewInspirationUrl "Enter inspiration url..." newInspirationUrl
-                }
-                
-                comp<RadzenStack> {
-                    "Orientation" => Orientation.Horizontal
-                    
-                    Button.render this addInspiration false "Add"
-                }
-            }
         }
         |> Page.render this this.NavManager model

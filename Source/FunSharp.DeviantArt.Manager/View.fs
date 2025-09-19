@@ -17,6 +17,7 @@ module View =
                 cond model.Page
                 <| function
                     | Page.Home
+                    | Page.AddInspiration -> ecomp<Pages.AddInspiration,_,_> model dispatch { attr.empty() }
                     | Page.Inspirations -> ecomp<Pages.Inspirations,_,_> model dispatch { attr.empty() }
                     | Page.Prompts -> ecomp<Pages.Prompts,_,_> model dispatch { attr.empty() }
                     | Page.LocalDeviations -> ecomp<Pages.LocalDeviations,_,_> model dispatch { attr.empty() }

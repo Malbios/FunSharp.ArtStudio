@@ -47,6 +47,7 @@ module Navigation =
             "Orientation" => Orientation.Horizontal
             
             [
+                ("/add-inspiration", $"Add Inspiration")
                 ("/inspirations", $"Inspirations ({inspirationsCount})")
                 ("/prompts", $"Prompts ({promptsCount})")
                 ("/local-deviations", $"Local Deviations ({localDeviationsCount})")

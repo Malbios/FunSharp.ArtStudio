@@ -5,6 +5,7 @@ open Bolero
 [<RequireQualifiedAccess>]
 type Page =
     | [<EndPoint "/">] Home
+    | [<EndPoint "/add-inspiration">] AddInspiration
     | [<EndPoint "/inspirations">] Inspirations
     | [<EndPoint "/prompts">] Prompts
     | [<EndPoint "/local-deviations">] LocalDeviations
