@@ -37,7 +37,13 @@ type Inspirations() =
             
             div {
                 style "padding: 0.5rem; border: 2px solid gray; border-radius: 8px;"
-                ClipboardSnippets.render this this.JSRuntime
+                
+                let snippets =
+                    match model.Settings with
+                    | Loaded settings -> Some settings.Snippets
+                    | _ -> None
+
+                ClipboardSnippets.render this this.JSRuntime snippets
             }
             
             Loadable.render model.Inspirations

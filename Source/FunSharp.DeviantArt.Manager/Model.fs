@@ -1,6 +1,7 @@
 ﻿namespace FunSharp.DeviantArt.Manager
 
 open System
+open FunSharp.DeviantArt.Api
 open Microsoft.AspNetCore.Components.Forms
 open FunSharp.Blazor.Components
 open FunSharp.DeviantArt.Api.Model
@@ -16,6 +17,7 @@ module Model =
         
     type Settings = {
         Galleries: Gallery array
+        Snippets: ClipboardSnippet array
     }
     
     type Inspiration2Prompt = {

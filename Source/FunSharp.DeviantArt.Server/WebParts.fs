@@ -40,7 +40,7 @@ module WebParts =
     let getSettings (secrets: Secrets) : WebPart =
         
         fun ctx ->
-            {| Galleries = secrets.galleries |}
+            {| Galleries = secrets.galleries; Snippets = secrets.snippets |}
             |> asOkJsonResponse <| ctx
         
     let getInspirations (dataPersistence: IPersistence) : WebPart =
