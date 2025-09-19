@@ -27,13 +27,13 @@ type ClientApplication() =
 
     override this.Program =
         
-        let initialState _ = State.empty, Cmd.ofMsg Message.Initialize
-        
+        let initialState _ = State.empty, Cmd.ofMsg LoadAll
+
         let update = Update.update this.Logger this.HttpClient
         
         let page (model: Model.State) = model.Page
 
-        let router = Router.infer Message.SetPage page |> Router.withNotFound Page.NotFound
+        let router = Router.infer SetPage page |> Router.withNotFound Page.NotFound
             
         this.Logger.LogInformation $"Serving client application from '{this.NavigationManager.BaseUri.TrimEnd('/')}'"
         

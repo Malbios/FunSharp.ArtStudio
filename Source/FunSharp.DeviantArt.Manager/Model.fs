@@ -167,8 +167,8 @@ module Model =
     type Message =
         | SetPage of Page
         
-        | Initialize
-        
+        | LoadAll
+
         | LoadSettings
         | LoadedSettings of Loadable<Settings>
         

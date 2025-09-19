@@ -248,7 +248,11 @@ module Update =
         | SetPage page ->
             { model with Page = page }, Cmd.none
 
-        | Initialize ->
+        | LoadAll ->
+            
+            let sleep seconds = async {
+                do! Async.Sleep (1000 * seconds)
+            }
             
             let batch = Cmd.batch [
                 Cmd.ofMsg LoadSettings
@@ -257,6 +261,7 @@ module Update =
                 Cmd.ofMsg LoadLocalDeviations
                 Cmd.ofMsg LoadStashedDeviations
                 Cmd.ofMsg LoadPublishedDeviations
+                Cmd.OfAsync.perform sleep 30 (fun () -> LoadAll)
             ]
             
             model, batch

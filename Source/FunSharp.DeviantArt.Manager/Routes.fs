@@ -2,6 +2,7 @@
 
 open Bolero
 
+[<RequireQualifiedAccess>]
 type Page =
     | [<EndPoint "/">] Home
     | [<EndPoint "/inspirations">] Inspirations
