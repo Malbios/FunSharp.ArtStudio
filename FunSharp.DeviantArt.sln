@@ -24,6 +24,12 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.Blazor.Components"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.Utilities", "Source\FunSharp.DeviantArt.Utilities\FunSharp.DeviantArt.Utilities.fsproj", "{613E254C-61F4-4F29-9169-0716B82E1534}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.NewApi", "Source\FunSharp.DeviantArt.NewApi\FunSharp.DeviantArt.NewApi.fsproj", "{B0FD4CD9-65E5-410A-B654-5DF8FF491592}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.NewApi.Test", "Source\FunSharp.DeviantArt.NewApi.Test\FunSharp.DeviantArt.NewApi.Test.fsproj", "{91555F1D-F0D0-43FE-AFF8-539A2FDCCA3C}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.Model", "Source\FunSharp.DeviantArt.Model\FunSharp.DeviantArt.Model.fsproj", "{DCA3C166-0672-4232-A09C-EDDAF26605A0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +75,18 @@ Global
 		{613E254C-61F4-4F29-9169-0716B82E1534}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{613E254C-61F4-4F29-9169-0716B82E1534}.Release|Any CPU.Build.0 = Release|Any CPU
 		{613E254C-61F4-4F29-9169-0716B82E1534}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B0FD4CD9-65E5-410A-B654-5DF8FF491592}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B0FD4CD9-65E5-410A-B654-5DF8FF491592}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B0FD4CD9-65E5-410A-B654-5DF8FF491592}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B0FD4CD9-65E5-410A-B654-5DF8FF491592}.Release|Any CPU.Build.0 = Release|Any CPU
+		{91555F1D-F0D0-43FE-AFF8-539A2FDCCA3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{91555F1D-F0D0-43FE-AFF8-539A2FDCCA3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{91555F1D-F0D0-43FE-AFF8-539A2FDCCA3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{91555F1D-F0D0-43FE-AFF8-539A2FDCCA3C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DCA3C166-0672-4232-A09C-EDDAF26605A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DCA3C166-0672-4232-A09C-EDDAF26605A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DCA3C166-0672-4232-A09C-EDDAF26605A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DCA3C166-0672-4232-A09C-EDDAF26605A0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{3151693C-42C5-4446-9C80-EBB97DF2C5A6} = {B97A3DD6-0A9B-4019-B642-C8F4AF623C69}
@@ -77,5 +95,6 @@ Global
 		{607F0FCE-124E-4145-8E42-04F22A1545F0} = {B97A3DD6-0A9B-4019-B642-C8F4AF623C69}
 		{1448E70A-7406-4DC6-9BE3-6F07E2FE2CA9} = {B97A3DD6-0A9B-4019-B642-C8F4AF623C69}
 		{E5181273-C8BD-46F6-B2FB-E3C937F459CF} = {2FA43C04-97AA-4910-ADD0-53173AB4F9C2}
+		{91555F1D-F0D0-43FE-AFF8-539A2FDCCA3C} = {B97A3DD6-0A9B-4019-B642-C8F4AF623C69}
 	EndGlobalSection
 EndGlobal

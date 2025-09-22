@@ -233,6 +233,10 @@ let testNewDb () =
     
     persistence.FindAll<LocalDeviation>(dbKey_LocalDeviations)
     |> fun x -> printfn $"items: {x.Length}"
+    
+let testNewApiClient () =
+    
+    let client = new FunSharp.DeviantArt.NewApi.Client(persistence, sender, clientId, clientSecret)
 
 [<EntryPoint>]
 let main _ =

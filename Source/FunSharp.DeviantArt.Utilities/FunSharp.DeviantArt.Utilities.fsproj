@@ -11,6 +11,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\FunSharp.DeviantArt.Api\FunSharp.DeviantArt.Api.fsproj" />
+      <ProjectReference Include="..\FunSharp.DeviantArt.NewApi\FunSharp.DeviantArt.NewApi.fsproj" />
     </ItemGroup>
 
 </Project>
