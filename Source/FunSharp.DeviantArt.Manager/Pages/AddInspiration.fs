@@ -56,8 +56,13 @@ type AddInspiration() =
             Loadable.render model.Inspirations
             <| fun inspirations ->
                 inspirations
-                |> Array.sortByDescending _.Timestamp
-                |> Array.map (fun inspiration -> Deviation.renderWithoutContent inspiration.ImageUrl)
+                |> StatefulItemArray.sortByDescending _.Timestamp
+                |> Array.map (fun inspiration ->
+                    inspiration
+                    |> StatefulItem.valueOf
+                    |> _.ImageUrl
+                    |> Deviation.renderWithoutContent
+                )
                 |> Helpers.renderArray
                 |> Deviations.render
         }

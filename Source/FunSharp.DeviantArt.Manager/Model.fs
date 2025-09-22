@@ -14,7 +14,7 @@ module Model =
         ContentType: string
         Content: byte array
     }
-        
+    
     type Settings = {
         Galleries: Gallery array
         Snippets: ClipboardSnippet array
@@ -34,19 +34,62 @@ module Model =
         | Default of 'T
         | IsBusy of 'T
         | HasError of 'T * exn
-    
+        
+    [<RequireQualifiedAccess>]
+    module StatefulItem =
+        
+        let valueOf =
+            function
+            | Default item -> item
+            | IsBusy item -> item
+            | HasError (item, _) -> item
+        
+    [<RequireQualifiedAccess>]
+    module StatefulItemArray =
+
+        let sortBy projection items =
+            items |> Array.sortBy (StatefulItem.valueOf >> projection)
+
+        let sortByDescending projection items =
+            items |> Array.sortByDescending (StatefulItem.valueOf >> projection)
+        
+    [<RequireQualifiedAccess>]
+    module LoadableStatefulItemArray =
+        
+        let withNew<'T> (newItem: 'T) (items: Loadable<StatefulItem<'T> array>) =
+            
+            match items with
+            | Loaded items -> [|StatefulItem.Default newItem|] |> Array.append items |> Loaded
+            | x -> x
+            
+        let without<'T> (condition: 'T -> bool) (items: Loadable<StatefulItem<'T> array>) =
+            
+            match items with
+            | Loaded items ->
+                items
+                |> Array.filter (fun item ->
+                    match item with
+                    | Default item
+                    | IsBusy item
+                    | HasError (item, _) ->
+                        condition item
+                )
+                |> Loadable.Loaded
+                
+            | x -> x
+            
     type State = {
         Page: Page
         
         Settings: Loadable<Settings>
         
-        Inspirations: Loadable<Inspiration array>
+        Inspirations: Loadable<StatefulItem<Inspiration> array>
         Prompts: Loadable<StatefulItem<Prompt> array>
-        LocalDeviations: Loadable<LocalDeviation array>
-        StashedDeviations: Loadable<StashedDeviation array>
-        PublishedDeviations: Loadable<PublishedDeviation array>
+        LocalDeviations: Loadable<StatefulItem<LocalDeviation> array>
+        StashedDeviations: Loadable<StatefulItem<StashedDeviation> array>
+        PublishedDeviations: Loadable<StatefulItem<PublishedDeviation> array>
     }
-
+    
     [<RequireQualifiedAccess>]
     module State =
         
@@ -61,7 +104,7 @@ module Model =
             StashedDeviations = NotLoaded
             PublishedDeviations = NotLoaded
         }
-    
+        
         let isBusy (identifier: 'T -> bool) (collection: Loadable<StatefulItem<'T> array>) =
             
             match collection with
@@ -175,19 +218,19 @@ module Model =
         | LoadedSettings of Loadable<Settings>
         
         | LoadInspirations
-        | LoadedInspirations of Loadable<Inspiration array>
+        | LoadedInspirations of Loadable<StatefulItem<Inspiration> array>
         
         | LoadPrompts
         | LoadedPrompts of Loadable<StatefulItem<Prompt> array>
         
         | LoadLocalDeviations
-        | LoadedLocalDeviations of Loadable<LocalDeviation array>
+        | LoadedLocalDeviations of Loadable<StatefulItem<LocalDeviation> array>
         
         | LoadStashedDeviations
-        | LoadedStashedDeviations of Loadable<StashedDeviation array>
+        | LoadedStashedDeviations of Loadable<StatefulItem<StashedDeviation> array>
         
         | LoadPublishedDeviations
-        | LoadedPublishedDeviations of Loadable<PublishedDeviation array>
+        | LoadedPublishedDeviations of Loadable<StatefulItem<PublishedDeviation> array>
         
         | AddInspiration of inspirationUrl: Uri
         | AddedInspiration of Inspiration

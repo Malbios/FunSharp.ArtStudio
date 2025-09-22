@@ -85,8 +85,9 @@ type LocalDeviations() =
             <| fun deviations ->
                 Deviations.render
                 <| concat {
-                    let deviations = deviations |> Array.sortBy _.Timestamp
-                    for deviation in deviations do
+                    for deviation in deviations |> StatefulItemArray.sortBy _.Timestamp do
+                        let deviation = StatefulItem.valueOf deviation
+                        
                         let inspirationUrl =
                             match deviation.Origin with
                             | DeviationOrigin.None -> None
@@ -96,6 +97,8 @@ type LocalDeviations() =
                         comp<RadzenStack> {
                             "Orientation" => Orientation.Vertical
                             "JustifyContent" => JustifyContent.Left
+                            
+                            deviation.Timestamp.ToString() |> text
                             
                             ImageUrl.render (Some deviation.ImageUrl)
                             

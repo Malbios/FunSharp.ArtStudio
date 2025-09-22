@@ -38,8 +38,10 @@ type StashedDeviations() =
             Loadable.render model.StashedDeviations
             <| fun deviations ->
                 deviations
-                |> Array.sortBy _.Timestamp
+                |> StatefulItemArray.sortBy _.Timestamp
                 |> Array.map (fun deviation ->
+                    let deviation = StatefulItem.valueOf deviation
+                    
                     let inspirationUrl =
                         match deviation.Origin with
                         | DeviationOrigin.None -> None
@@ -47,9 +49,7 @@ type StashedDeviations() =
                         | DeviationOrigin.Inspiration inspiration -> inspiration.ImageUrl
                             
                     concat {
-                        deviation.ImageUrl
-                        |> Some
-                        |> ImageUrl.render
+                        deviation.Timestamp.ToString() |> text
                         
                         comp<RadzenStack> {
                             "Orientation" => Orientation.Horizontal

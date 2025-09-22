@@ -49,8 +49,9 @@ type Inspirations() =
             Loadable.render model.Inspirations
             <| fun inspirations ->
                 inspirations
-                |> Array.sortBy _.Timestamp
+                |> StatefulItemArray.sortBy _.Timestamp
                 |> Array.map (fun inspiration ->
+                    let inspiration = StatefulItem.valueOf inspiration
                     let key = inspiration.Url.ToString()
                     
                     let prompt =
@@ -61,19 +62,12 @@ type Inspirations() =
                     let updatePrompt (newPrompt: string) =
                         prompts <- prompts |> Map.add key (newPrompt.Trim())
                         
-                    let inspiration2Prompt =
-                        inspiration2Prompt inspiration
-                        
                     concat {
-                        inspiration.ImageUrl
-                        |> ImageUrl.render
-                        
-                        inspiration.Url
-                        |> Link.render None
+                        inspiration.Timestamp.ToString() |> text
                         
                         TextAreaInput.render updatePrompt "Enter prompt..." prompt
                         
-                        Button.render this (fun () -> prompts[key].Trim() |> inspiration2Prompt) false "To Prompt"
+                        Button.render this (fun () -> prompts[key].Trim() |> inspiration2Prompt inspiration) false "To Prompt"
                         Button.render this (fun () -> forgetInspiration inspiration) false "Forget"
                     }
                     |> Deviation.renderWithContent inspiration.ImageUrl None

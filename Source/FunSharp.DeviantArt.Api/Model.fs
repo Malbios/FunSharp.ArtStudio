@@ -300,12 +300,26 @@ type Inspiration = {
     ImageUrl: Uri option
 }
 
+[<RequireQualifiedAccess>]
+module Inspiration =
+    
+    let key (inspiration: Inspiration) =
+        
+        inspiration.Url
+
 type Prompt = {
     Id: Guid
     Timestamp: DateTimeOffset
     Text: string
     Inspiration: Inspiration option
 }
+
+[<RequireQualifiedAccess>]
+module Prompt =
+    
+    let key (prompt: Prompt) =
+        
+        prompt.Id
 
 type Metadata = {
     Title: string
@@ -344,6 +358,10 @@ module LocalDeviation =
         Origin = DeviationOrigin.None
         Metadata = Metadata.empty
     }
+    
+    let key (deviation: LocalDeviation) =
+        
+        deviation.ImageUrl
 
 type StashedDeviation = {
     ImageUrl: Uri
@@ -353,6 +371,13 @@ type StashedDeviation = {
     Metadata: Metadata
 }
 
+[<RequireQualifiedAccess>]
+module StashedDeviation =
+    
+    let key (deviation: StashedDeviation) =
+        
+        deviation.ImageUrl
+
 type PublishedDeviation = {
     ImageUrl: Uri
     Timestamp: DateTimeOffset
@@ -360,3 +385,10 @@ type PublishedDeviation = {
     Origin: DeviationOrigin
     Metadata: Metadata
 }
+
+[<RequireQualifiedAccess>]
+module PublishedDeviation =
+    
+    let key (deviation: PublishedDeviation) =
+        
+        deviation.ImageUrl

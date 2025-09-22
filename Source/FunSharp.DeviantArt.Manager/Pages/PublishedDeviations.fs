@@ -28,8 +28,14 @@ type PublishedDeviations() =
             Loadable.render model.PublishedDeviations
             <| fun deviations ->
                 deviations
-                |> Array.sortByDescending _.ImageUrl.ToString()
-                |> Array.map (fun deviation -> Some deviation.ImageUrl |> Deviation.renderWithoutContent)
+                |> StatefulItemArray.sortByDescending _.ImageUrl.ToString()
+                |> Array.map (fun deviation ->
+                    deviation
+                    |> StatefulItem.valueOf
+                    |> _.ImageUrl
+                    |> Some
+                    |> Deviation.renderWithoutContent
+                )
                 |> Helpers.renderArray
                 |> Deviations.render
         |> Page.render this model dispatch this.NavManager

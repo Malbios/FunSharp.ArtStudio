@@ -43,39 +43,9 @@ type Prompts() =
             Loadable.render model.Prompts
             <| fun prompts ->
                 prompts
-                |> Array.sortBy (fun x ->
-                    match x with
-                    | Default prompt -> prompt.Timestamp
-                    | IsBusy prompt -> prompt.Timestamp
-                    | HasError (prompt, _) -> prompt.Timestamp
-                )
+                |> StatefulItemArray.sortBy _.Timestamp
                 |> Array.map (fun prompt ->
                     match prompt with
-                    | Default prompt ->
-                        let uploadImageFile (args: InputFileChangeEventArgs) =
-                            files <- files |> Map.add prompt.Id args.File
-                        
-                        let prompt2Deviation =
-                            prompt2Deviation prompt
-                        
-                        concat {
-                            prompt.Inspiration
-                            |> Option.bind _.ImageUrl
-                            |> ImageUrl.render
-                            
-                            match prompt.Inspiration with
-                            | None -> ()
-                            | Some inspiration ->
-                                inspiration.Url |> Link.render None
-                            
-                            Button.render this (Helpers.copyToClipboard this.JSRuntime prompt.Text) false "Copy Prompt"
-                            
-                            FileInput.render false uploadImageFile
-                            
-                            Button.render this (fun () -> prompt2Deviation files[prompt.Id]) false "To Deviation"
-                            Button.render this (fun () -> forgetPrompt prompt) false "Forget"
-                        }
-                        |> Deviation.renderWithContent (prompt.Inspiration |> Option.bind _.ImageUrl) None
                     | IsBusy _ ->
                         LoadingWidget.render () // TODO: make only the "To Deviation" button busy (Radzen has something there)
                     | HasError (prompt, error) ->
@@ -83,6 +53,22 @@ type Prompts() =
                             text $"prompt: {prompt.Id}"
                             text $"error: {error}"
                         }
+                    | Default prompt ->
+                        concat {
+                            prompt.Inspiration
+                            |> Option.map _.Timestamp.ToString()
+                            |> Option.defaultValue "?"
+                            |> text
+                            
+                            Button.render this (Helpers.copyToClipboard this.JSRuntime prompt.Text) false "Copy Prompt"
+                            
+                            FileInput.render false
+                                (fun (args: InputFileChangeEventArgs) -> files <- files |> Map.add prompt.Id args.File)
+                            
+                            Button.render this (fun () -> prompt2Deviation prompt files[prompt.Id]) false "To Deviation"
+                            Button.render this (fun () -> forgetPrompt prompt) false "Forget"
+                        }
+                        |> Deviation.renderWithContent (prompt.Inspiration |> Option.bind _.ImageUrl) None
                 )
                 |> Helpers.renderArray
                 |> Deviations.render

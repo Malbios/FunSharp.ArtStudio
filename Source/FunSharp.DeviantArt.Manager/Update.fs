@@ -94,48 +94,39 @@ module Update =
         |> fun x -> new StringContent(x, Encoding.UTF8, "application/json")
         |> patch client url
     
-    let private loadItems<'T> client endpoint (asLoadable: string -> Loadable<'T>) =
+    let private loadStatefulItems<'T> client endpoint =
         
         $"{apiRoot}{endpoint}"
         |> get client
         |> Async.bind contentAsString
-        |> Async.map asLoadable
+        |> Async.map (JsonSerializer.deserialize<'T array> >> Array.map StatefulItem.Default >> Loadable.Loaded)
         
     let private loadSettings (client: HttpClient) =
         
-        (JsonSerializer.deserialize<Settings> >> Loaded)
-        |> loadItems client "/settings"
+        $"{apiRoot}/settings"
+        |> get client
+        |> Async.bind contentAsString
+        |> Async.map (JsonSerializer.deserialize<Settings> >> Loadable.Loaded)
     
     let private loadInspirations client =
         
-        (JsonSerializer.deserialize<Inspiration array> >> Loaded)
-        |> loadItems client "/local/inspirations"
+        loadStatefulItems<Inspiration> client "/local/inspirations"
     
     let private loadPrompts client =
         
-        let pipe (data: string) =
-            data
-            |> JsonSerializer.deserialize<Prompt array>
-            |> Array.map StatefulItem.Default
-            |> Loadable.Loaded
-            
-        pipe
-        |> loadItems client "/local/prompts"
-    
+        loadStatefulItems<Prompt> client "/local/prompts"
+        
     let private loadLocalDeviations client =
         
-        (JsonSerializer.deserialize<LocalDeviation array> >> Loaded)
-        |> loadItems client "/local/deviations"
-    
+        loadStatefulItems<LocalDeviation> client "/local/deviations"
+        
     let private loadStashedDeviations client =
         
-        (JsonSerializer.deserialize<StashedDeviation array> >> Loaded)
-        |> loadItems client "/stash"
-    
+        loadStatefulItems<StashedDeviation> client "/stash"
+        
     let private loadPublishedDeviations client =
         
-        (JsonSerializer.deserialize<PublishedDeviation array> >> Loaded)
-        |> loadItems client "/publish"
+        loadStatefulItems<PublishedDeviation> client "/publish"
         
     let private addInspiration client inspirationUrl =
         
@@ -240,19 +231,16 @@ module Update =
         |> Async.bind contentAsString
         |> Async.map JsonSerializer.deserialize<PublishedDeviation>
         |> Async.map (fun published -> (stashed, published))
-    
+        
     let update (_: ILogger) client message model =
-    
+        
         match message with
         
         | SetPage page ->
-            { model with Page = page }, Cmd.none
-
-        | LoadAll ->
             
-            // let sleep seconds = async {
-            //     do! Async.Sleep (1000 * seconds)
-            // }
+            { model with Page = page }, Cmd.none
+            
+        | LoadAll ->
             
             let batch = Cmd.batch [
                 Cmd.ofMsg LoadSettings
@@ -261,20 +249,21 @@ module Update =
                 Cmd.ofMsg LoadLocalDeviations
                 Cmd.ofMsg LoadStashedDeviations
                 Cmd.ofMsg LoadPublishedDeviations
-                // Cmd.OfAsync.perform sleep 30 (fun () -> LoadAll)
             ]
             
             model, batch
-
+            
         | LoadSettings ->
+            
             let load () = loadSettings client
             let failed ex = LoadedSettings (LoadingFailed ex)
             
             { model with Settings = Loading }, Cmd.OfAsync.either load () LoadedSettings failed
-        
+            
         | LoadedSettings loadable ->
+           
            { model with Settings = loadable }, Cmd.none
-        
+           
         | LoadInspirations ->
             
             let load () = loadInspirations client
@@ -283,47 +272,51 @@ module Update =
             { model with Inspirations = Loading }, Cmd.OfAsync.either load () LoadedInspirations failed
             
         | LoadedInspirations loadable ->
+            
             { model with Inspirations = loadable }, Cmd.none
-
+            
         | LoadPrompts ->
             
             let load () = loadPrompts client
             let failed ex = LoadedPrompts (LoadingFailed ex)
             
             { model with Prompts = Loading }, Cmd.OfAsync.either load () LoadedPrompts failed
-
+            
         | LoadedPrompts loadable ->
+            
             { model with Prompts = loadable }, Cmd.none
-
+            
         | LoadLocalDeviations ->
             
             let load () = loadLocalDeviations client
             let failed ex = LoadedLocalDeviations (LoadingFailed ex)
             
             { model with LocalDeviations = Loading }, Cmd.OfAsync.either load () LoadedLocalDeviations failed
-
+            
         | LoadedLocalDeviations loadable ->
             
             { model with LocalDeviations = loadable }, Cmd.none
-
+            
         | LoadStashedDeviations ->
             
             let load () = loadStashedDeviations client
             let failed ex = LoadedStashedDeviations (LoadingFailed ex)
             
             { model with StashedDeviations = Loading }, Cmd.OfAsync.either load () LoadedStashedDeviations failed
-
+            
         | LoadedStashedDeviations loadable ->
+            
             { model with StashedDeviations = loadable }, Cmd.none
-
+            
         | LoadPublishedDeviations ->
             
             let load () = loadPublishedDeviations client
             let failed ex = LoadedPublishedDeviations (LoadingFailed ex)
             
             { model with PublishedDeviations = Loading }, Cmd.OfAsync.either load () LoadedPublishedDeviations failed
-
+            
         | LoadedPublishedDeviations loadable ->
+            
             { model with PublishedDeviations = loadable }, Cmd.none
             
         | AddInspiration inspirationUrl ->
@@ -335,11 +328,7 @@ module Update =
             
         | AddedInspiration inspiration ->
             
-            let inspirations =
-                match model.Inspirations with
-                | Loaded inspirations ->
-                    [|inspiration|] |> Array.append inspirations |> Loaded
-                | x -> x 
+            let inspirations = model.Inspirations |> LoadableStatefulItemArray.withNew inspiration
             
             { model with Inspirations = inspirations }, Cmd.none
             
@@ -353,17 +342,16 @@ module Update =
         | RemoveInspiration inspiration ->
             
             let inspirations =
-                match model.Inspirations with
-                | Loaded inspirations ->
-                    inspirations |> Array.filter (fun x -> x.Url <> inspiration.Url) |> Loaded
-                | x -> x
-            
+                model.Inspirations
+                |> LoadableStatefulItemArray.without (fun x ->
+                    Inspiration.key x <> Inspiration.key inspiration
+                )
+                
             { model with Inspirations = inspirations }, Cmd.none
             
         | ForgetInspiration inspiration ->
             
-            let action =
-                forgetInspiration client
+            let action = forgetInspiration client
             
             model, Cmd.OfAsync.perform action inspiration RemoveInspiration
             
@@ -375,7 +363,7 @@ module Update =
             model, Cmd.OfAsync.either inspiration2Prompt (inspiration, promptText) Inspiration2PromptDone failed
             
         | Inspiration2PromptDone (inspiration, prompt) ->
-                
+            
             let batch = Cmd.batch [
                 RemoveInspiration inspiration |> Cmd.ofMsg
                 AddedPrompt prompt |> Cmd.ofMsg
@@ -399,11 +387,7 @@ module Update =
             
         | AddedPrompt prompt ->
             
-            let prompts =
-                match model.Prompts with
-                | Loaded prompts ->
-                    [|StatefulItem.Default prompt|] |> Array.append prompts |> Loaded
-                | x -> x 
+            let prompts = model.Prompts |> LoadableStatefulItemArray.withNew prompt
             
             { model with Prompts = prompts }, Cmd.none
             
@@ -416,31 +400,29 @@ module Update =
             
         | RemovePrompt prompt ->
             
-            let model = {
-                model with
-                    Prompts =
-                        model.Prompts
-                        |> State.without (fun x -> x.Id = prompt.Id)
-            }
-            
-            model, Cmd.none
+            let prompts =
+                model.Prompts
+                |> LoadableStatefulItemArray.without (fun x ->
+                    Prompt.key x <> Prompt.key prompt
+                )
+                
+            { model with Prompts = prompts }, Cmd.none
             
         | ForgetPrompt prompt ->
             
-            let action =
-                forgetPrompt client
-            
+            let action = forgetPrompt client
+                
             model, Cmd.OfAsync.perform action prompt RemovePrompt
             
         | ProcessUpload (prompt, imageFile) ->
             
-            let act imageFile =
+            let upload imageFile =
                 processUpload imageFile
                 |> Async.map (fun x -> (prompt, x))
                 
             let failed ex = ProcessUploadFailed (ex, prompt, imageFile)
             
-            model, Cmd.OfAsync.either act imageFile ProcessedUpload failed
+            model, Cmd.OfAsync.either upload imageFile ProcessedUpload failed
             
         | ProcessedUpload (prompt, image) ->
             
@@ -463,7 +445,7 @@ module Update =
             model, (prompt, imageFile) |> ProcessUpload |> Cmd.ofMsg
             
         | Prompt2LocalDeviationDone (prompt, local) ->
-                
+            
             let batch = Cmd.batch [
                 RemovePrompt prompt |> Cmd.ofMsg
                 AddedLocalDeviation local |> Cmd.ofMsg
@@ -496,11 +478,7 @@ module Update =
             
         | AddedLocalDeviation local ->
             
-            let deviations =
-                match model.LocalDeviations with
-                | Loaded deviations ->
-                    [|local|] |> Array.append deviations |> Loaded
-                | x -> x 
+            let deviations = model.LocalDeviations |> LoadableStatefulItemArray.withNew local
             
             { model with LocalDeviations = deviations }, Cmd.none
             
@@ -510,7 +488,7 @@ module Update =
             printfn $"error: {error}"
             
             model, Cmd.none
-
+            
         | UpdateLocalDeviation local ->
             
             let update = updateLocalDeviation client
@@ -520,14 +498,8 @@ module Update =
             
         | UpdatedLocalDeviation _ ->
             
-            // match model.LocalDeviations with
-            // | Loaded deviations ->
-            //     let index = deviations |> Array.findIndex (fun x -> x.ImageUrl = local.ImageUrl)
-            //     deviations[index] <- local
-            // | _ -> ()
-            
             model, Cmd.ofMsg LoadLocalDeviations
-
+            
         | UpdateLocalDeviationFailed (error, local) ->
             
             printfn $"updating local deviation failed for: {local.ImageUrl}"
@@ -538,10 +510,10 @@ module Update =
         | RemoveLocalDeviation local ->
             
             let deviations =
-                match model.LocalDeviations with
-                | Loaded deviations ->
-                    deviations |> Array.filter (fun x -> x.ImageUrl <> local.ImageUrl) |> Loaded
-                | x -> x
+                model.LocalDeviations
+                |> LoadableStatefulItemArray.without (fun x ->
+                    LocalDeviation.key x <> LocalDeviation.key local
+                )
                 
             { model with LocalDeviations = deviations }, Cmd.none
             
@@ -550,7 +522,7 @@ module Update =
             let action = deleteLocalDeviation client
             
             model, Cmd.OfAsync.perform action local RemoveLocalDeviation
-        
+            
         | StashDeviation local ->
             
             let stash = stashDeviation client
@@ -576,21 +548,17 @@ module Update =
             
         | AddedStashedDeviation stashed ->
             
-            let deviations =
-                match model.StashedDeviations with
-                | Loaded deviations ->
-                    [|stashed|] |> Array.append deviations |> Loaded
-                | x -> x 
+            let deviations = model.StashedDeviations |> LoadableStatefulItemArray.withNew stashed
             
             { model with StashedDeviations = deviations }, Cmd.none
             
         | RemoveStashedDeviation stashed ->
             
             let deviations =
-                match model.StashedDeviations with
-                | Loaded deviations ->
-                    deviations |> Array.filter (fun x -> x.ImageUrl <> stashed.ImageUrl) |> Loaded
-                | x -> x
+                model.StashedDeviations
+                |> LoadableStatefulItemArray.without (fun x ->
+                    StashedDeviation.key x <> StashedDeviation.key stashed
+                )
                 
             { model with StashedDeviations = deviations }, Cmd.none
         
@@ -603,19 +571,12 @@ module Update =
             
         | PublishedStashed (stashed, published) ->
             
-            let stashed =
-                match model.StashedDeviations with
-                | Loaded deviations ->
-                    deviations |> Array.filter (fun x -> x.ImageUrl <> stashed.ImageUrl) |> Loaded
-                | x -> x
-                
-            let published =
-                match model.PublishedDeviations with
-                | Loaded deviations ->
-                    [|published|] |> Array.append deviations |> Loaded
-                | x -> x
+            let batch = Cmd.batch [
+                RemoveStashedDeviation stashed |> Cmd.ofMsg
+                AddedPublishedDeviation published |> Cmd.ofMsg
+            ]
             
-            { model with StashedDeviations = stashed; PublishedDeviations = published }, Cmd.none
+            model, batch
             
         | PublishStashedFailed (error, stashed) ->
             
@@ -626,10 +587,6 @@ module Update =
             
         | AddedPublishedDeviation published ->
             
-            let deviations =
-                match model.PublishedDeviations with
-                | Loaded deviations ->
-                    [|published|] |> Array.append deviations |> Loaded
-                | x -> x 
+            let deviations = model.PublishedDeviations |> LoadableStatefulItemArray.withNew published
             
             { model with PublishedDeviations = deviations }, Cmd.none
