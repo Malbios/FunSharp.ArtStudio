@@ -4,6 +4,7 @@ open System
 open System.Diagnostics
 open System.Net.Http
 open System.Net.Http.Headers
+open System.Text.RegularExpressions
 open System.Threading
 open Suave
 open Suave.Successful
@@ -13,12 +14,6 @@ open Suave.RequestErrors
 open FunSharp.Common
 open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.NewApi.Model
-
-[<RequireQualifiedAccess>]
-type RequestPayload =
-    | Get of url: string
-    | PostForm of url: string * properties: (string * string) list
-    | PostMultipart of url: string * file: File * properties: (string * string) list
 
 type Client(persistence: IPersistence, sender: HttpClient, clientId: string, clientSecret: string) =
     
@@ -59,6 +54,16 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
                 content.Add(new StringContent(v), k)
                 
             new HttpRequestMessage(HttpMethod.Post, url, Content = content)
+            
+    let ensureSuccess (response: HttpResponseMessage) =
+        
+        response.EnsureSuccessStatusCode() |> ignore
+        response
+        
+    let responseContentAsString (response: HttpResponseMessage) =
+        
+        response.Content.ReadAsStringAsync()
+        |> Async.AwaitTask
     
     member private this.RequestToken(parameters) =
         
@@ -120,6 +125,43 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
         this.EnsureAccessToken()
         |> Async.bind (fun () -> sender.SendAsync(request) |> Async.AwaitTask)
         
+    member private this.ToRecord<'T>(response: HttpResponseMessage) =
+        
+        response
+        |> responseContentAsString
+        |> Async.map JsonSerializer.deserialize<'T>
+        
+    member private this.SubmitToStash(destination: SubmitDestination, file: File, submission: StashSubmission) =
+        
+        let stack =
+            match destination with
+            | RootStack -> []
+            | Replace id -> [ "itemid", $"{id}" ]
+            | Stack id -> [ "stackid", $"{id}" ]
+            | StackWithName name -> [ "stack", name ]
+            
+        let properties =
+            submission
+            |> StashSubmission.toProperties
+            |> List.map (fun (key, value) ->
+                let value =
+                    if key = "title" then
+                        value |> String.truncate 50
+                    else
+                        value
+                        
+                (key, value)
+            )
+            |> fun p -> p @ stack 
+        
+        (Endpoints.submitToStash, file, properties)
+        |> RequestPayload.PostMultipart
+        |> this.Send
+        |> Async.map ensureSuccess
+        |> Async.map this.ToRecord<StashSubmissionResponse>
+        
+    member _.NeedsInteraction = authData.IsNone
+    
     member this.StartInteractiveLogin() = async {
         let authorizeEndpoint = "https://www.deviantart.com/oauth2/authorize"
         let redirectUri = Uri.EscapeDataString "http://localhost:8080/callback"
@@ -127,51 +169,95 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
         
         let authUrl = $"{authorizeEndpoint}?response_type=code&client_id={clientId}&redirect_uri={redirectUri}&scope={scope}"
 
-        let psi = ProcessStartInfo(FileName = authUrl, UseShellExecute = true)
-        Process.Start(psi) |> ignore
+        let codeAsync =
+            Async.FromContinuations(fun (cont, _, _) ->
+                let app =
+                    path "/callback" >=> request (fun r ->
+                        match r.queryParam "code" with
+                        | Choice1Of2 code ->
+                            fun ctx -> async {
+                                let! res = OK "Authentication successful. You can close this tab." ctx
+                                cont code
+                                return res
+                            }
+                        | Choice2Of2 err ->
+                            BAD_REQUEST err
+                    )
 
-        let mutable codeReceived : string option = None
+                let cts = new CancellationTokenSource()
+                let config = { defaultConfig with bindings = [ HttpBinding.createSimple HTTP "127.0.0.1" 8080 ] }
+                let _, server = startWebServerAsync config app
+                Async.Start(server, cts.Token)
 
-        let app =
-            path "/callback" >=> request (fun r ->
-                match r.queryParam "code" with
-                | Choice1Of2 code ->
-                    codeReceived <- Some code
-                    OK "Authentication successful. You can close this tab."
-                | Choice2Of2 err ->
-                    BAD_REQUEST err
+                try
+                    let psi = ProcessStartInfo(FileName = authUrl, UseShellExecute = true)
+                    Process.Start(psi) |> ignore
+                with ex ->
+                    cont (failwith $"Failed to open browser: {ex.Message}")
             )
 
-        let cts = new CancellationTokenSource()
-
-        let listening, server =
-            startWebServerAsync { defaultConfig with bindings = [ HttpBinding.createSimple HTTP "127.0.0.1" 8085 ] } app
-
-        let! _ = listening
-
-        Async.Start(server, cts.Token)
-
-        while codeReceived.IsNone do
-            do! Async.Sleep 200
-
-        cts.Cancel()
-
-        match codeReceived with
-        | None ->
-            failwith "No auth code received"
-        | Some code ->
-            do! this.Authenticate(code)
+        let! code = codeAsync
+        do! Async.Sleep 1000
+        do! this.Authenticate(code)
     }
     
     member this.WhoAmI() =
         
-        RequestPayload.Get $"https://www.deviantart.com/{Endpoints.whoAmI}"
+        RequestPayload.Get Endpoints.whoAmI
         |> this.Send
-        |> Async.bind (fun response ->
-            response.EnsureSuccessStatusCode() |> ignore
-            response.Content.ReadAsStringAsync() |> Async.AwaitTask
+        |> Async.map ensureSuccess
+        |> Async.bind this.ToRecord<WhoAmIResponse>
+        
+    member this.SubmitToStash(submission: StashSubmission, file: File) =
+        
+        this.SubmitToStash(SubmitDestination.RootStack, file, submission)
+        
+    member this.SubmitToStash(submission: StashSubmission, file: File, stackId: int64) =
+        
+        this.SubmitToStash(SubmitDestination.Stack stackId, file, submission)
+        
+    member this.SubmitToStash(submission: StashSubmission, file: File, stackName: string) =
+        
+        this.SubmitToStash(SubmitDestination.StackWithName stackName, file, submission)
+        
+    member this.ReplaceInStash(submission: StashSubmission, file: File, id: int64) =
+        
+        this.SubmitToStash(SubmitDestination.Replace id, file, submission)
+        
+    member this.PublishFromStash(submission: PublishSubmission)  =
+        
+        let properties = submission |> PublishSubmission.toProperties
+        
+        ($"{Endpoints.publishFromStash}", properties)
+        |> RequestPayload.PostForm
+        |> this.Send
+        |> Async.map ensureSuccess
+        |> Async.bind this.ToRecord<PublishResponse>
+        
+    member this.GetDeviationId(url: string) =
+        
+        url
+        |> RequestPayload.Get
+        |> this.Send
+        |> Async.map ensureSuccess
+        |> Async.bind responseContentAsString
+        |> Async.map (fun content ->
+            let pattern = "<meta property=\"da:appurl\" content=\"DeviantArt://deviation/([0-9A-Fa-f\\-]+)\""
+            let m = Regex.Match(content, pattern)
+            
+            if m.Success then
+               m.Groups[1].Value
+            else
+                failwith "Could not find deviation UUID!"
         )
-        |> Async.map JsonSerializer.deserialize<WhoAmIResponse>
+
+    member this.GetDeviation(id: string) =
+        
+        Endpoints.deviation id
+        |> RequestPayload.Get
+        |> this.Send
+        |> Async.map ensureSuccess
+        |> Async.map this.ToRecord<DeviationResponse>
     
     interface IDisposable with
         

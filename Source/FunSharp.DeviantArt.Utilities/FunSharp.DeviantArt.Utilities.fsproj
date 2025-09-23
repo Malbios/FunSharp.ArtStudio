@@ -6,11 +6,14 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Content Include="secrets.json">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <Compile Include="Secrets.fs" />
         <Compile Include="Program.fs"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\FunSharp.DeviantArt.Api\FunSharp.DeviantArt.Api.fsproj" />
       <ProjectReference Include="..\FunSharp.DeviantArt.NewApi\FunSharp.DeviantArt.NewApi.fsproj" />
     </ItemGroup>
 

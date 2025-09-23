@@ -65,6 +65,5 @@
     <ItemGroup>
         <ProjectReference Include="..\..\External\FunSharp.Blazor.Components\Source\FunSharp.Blazor.Components\FunSharp.Blazor.Components.fsproj" />
         <ProjectReference Include="..\..\External\FunSharp.Common\Source\FunSharp.Common\FunSharp.Common.fsproj" />
-        <ProjectReference Include="..\FunSharp.DeviantArt.Api\FunSharp.DeviantArt.Api.fsproj"/>
     </ItemGroup>
 </Project>

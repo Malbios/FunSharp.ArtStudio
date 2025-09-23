@@ -2,10 +2,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "UnitTests", "UnitTests", "{B97A3DD6-0A9B-4019-B642-C8F4AF623C69}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.Api.Test", "Source\FunSharp.DeviantArt.Api.Test\FunSharp.DeviantArt.Api.Test.fsproj", "{3151693C-42C5-4446-9C80-EBB97DF2C5A6}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.Api", "Source\FunSharp.DeviantArt.Api\FunSharp.DeviantArt.Api.fsproj", "{0115275A-76F7-43F3-B292-EB52DB9325F5}"
-EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.Manager", "Source\FunSharp.DeviantArt.Manager\FunSharp.DeviantArt.Manager.fsproj", "{CFC1EEC3-0237-431E-BE17-661BB74FA5F5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Libraries", "Libraries", "{2FA43C04-97AA-4910-ADD0-53173AB4F9C2}"
@@ -36,13 +32,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{3151693C-42C5-4446-9C80-EBB97DF2C5A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3151693C-42C5-4446-9C80-EBB97DF2C5A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3151693C-42C5-4446-9C80-EBB97DF2C5A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0115275A-76F7-43F3-B292-EB52DB9325F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{0115275A-76F7-43F3-B292-EB52DB9325F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{0115275A-76F7-43F3-B292-EB52DB9325F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{0115275A-76F7-43F3-B292-EB52DB9325F5}.Release|Any CPU.Build.0 = Release|Any CPU
 		{CFC1EEC3-0237-431E-BE17-661BB74FA5F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{CFC1EEC3-0237-431E-BE17-661BB74FA5F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CFC1EEC3-0237-431E-BE17-661BB74FA5F5}.Release|Any CPU.Build.0 = Release|Any CPU
@@ -89,7 +78,6 @@ Global
 		{DCA3C166-0672-4232-A09C-EDDAF26605A0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{3151693C-42C5-4446-9C80-EBB97DF2C5A6} = {B97A3DD6-0A9B-4019-B642-C8F4AF623C69}
 		{9A6A4987-E2AD-4856-9E88-FBB5025EBB5E} = {2FA43C04-97AA-4910-ADD0-53173AB4F9C2}
 		{76E6051C-36A7-4096-AC2D-62171A77BFE2} = {2FA43C04-97AA-4910-ADD0-53173AB4F9C2}
 		{607F0FCE-124E-4145-8E42-04F22A1545F0} = {B97A3DD6-0A9B-4019-B642-C8F4AF623C69}

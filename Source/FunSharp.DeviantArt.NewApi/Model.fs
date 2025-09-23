@@ -170,7 +170,7 @@ type StashSubmissionResponse = {
     stack: string
 }
 
-type PublicationResponse = {
+type PublishResponse = {
     deviationid: string
     status: string
     url: string
@@ -213,3 +213,9 @@ type FileStream = {
 type File =
     | File of FileWithContent
     | Stream of FileStream
+
+[<RequireQualifiedAccess>]
+type RequestPayload =
+    | Get of url: string
+    | PostForm of url: string * properties: (string * string) list
+    | PostMultipart of url: string * file: File * properties: (string * string) list

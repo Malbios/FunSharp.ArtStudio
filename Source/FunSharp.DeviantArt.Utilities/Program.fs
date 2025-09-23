@@ -1,8 +1,10 @@
 ﻿open System
 open System.IO
+open System.Net.Http
 open FunSharp.Data
 open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.Api.Model
+open FunSharp.DeviantArt.Utilities
 
 [<Literal>]
 let dbKey_Settings = "Settings"
@@ -236,12 +238,31 @@ let testNewDb () =
     
 let testNewApiClient () =
     
-    let client = new FunSharp.DeviantArt.NewApi.Client(persistence, sender, clientId, clientSecret)
+    let realDatabasePath = @"C:\Files\FunSharp.DeviantArt\persistence.db"
+    let copyDatabasePath = @"C:\Files\FunSharp.DeviantArt\persistence_copy.db"
+    
+    if not <| File.Exists(copyDatabasePath) then File.Copy(realDatabasePath, copyDatabasePath)
+    
+    use persistence = new NewLiteDbPersistence(copyDatabasePath) :> IPersistence
+    use httpClient = new HttpClient()
+    
+    let secrets = Secrets.load()
+    
+    use client = new FunSharp.DeviantArt.NewApi.Client(persistence, httpClient, secrets.client_id, secrets.client_secret)
+    
+    if client.NeedsInteraction then
+        client.StartInteractiveLogin() |> Async.RunSynchronously
+    
+    let userInfo = client.WhoAmI() |> Async.RunSynchronously
+    
+    printfn $"Hello, {userInfo.username}!"
 
 [<EntryPoint>]
 let main _ =
     
     // migrateToTimestamps ()
-    testNewDb ()
+    //testNewDb ()
+    
+    testNewApiClient()
     
     0

@@ -4,7 +4,7 @@
 module Endpoints =
     
     [<Literal>]
-    let private common = "/api/v1/oauth2"
+    let private common = "https://www.deviantart.com/api/v1/oauth2"
     
     let submitToStash =
         $"{common}/stash/submit"
