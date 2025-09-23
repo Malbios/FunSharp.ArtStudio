@@ -1,6 +1,5 @@
 ﻿namespace FunSharp.DeviantArt.Manager.Pages
 
-open System
 open Bolero
 open Bolero.Html
 open Bolero.Html.attr
@@ -20,18 +19,19 @@ type AddInspiration() =
     member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
     
     override this.View model dispatch =
-                    
-        let mutable newInspirationUrl = ""
-            
+        
         let addInspiration () =
-            newInspirationUrl |> Uri |> Message.AddInspiration |> dispatch
+            dispatch Message.AddInspiration
             
         let onChange_NewInspirationUrl newValue =
-            newInspirationUrl <- newValue
+            Message.ChangeNewInspirationUrl newValue |> dispatch
             
         let onEnter_NewInspirationUrl newValue =
             onChange_NewInspirationUrl newValue
             addInspiration ()
+            
+        let currentValue = model.AddInspirationState.Url |> Option.map _.ToString() |> Option.defaultValue ""
+        let isBusy = model.AddInspirationState.IsBusy
 
         comp<RadzenStack> {
             "Orientation" => Orientation.Vertical
@@ -42,14 +42,19 @@ type AddInspiration() =
                 
                 "Orientation" => Orientation.Horizontal
                 
-                div {
-                    TextInput.render onChange_NewInspirationUrl onEnter_NewInspirationUrl "Enter inspiration url..." newInspirationUrl
-                }
+                TextInput.render onChange_NewInspirationUrl onEnter_NewInspirationUrl isBusy "Enter inspiration url..." currentValue
                 
-                comp<RadzenStack> {
-                    "Orientation" => Orientation.Horizontal
-                    
-                    Button.render this addInspiration false "Add"
+                Button.render this addInspiration isBusy "Add"
+                
+                div {
+                    match model.AddInspirationState.Error with
+                    | None ->
+                        style "color: red; visibility: hidden;"
+                        text "placeholder"
+                        
+                    | Some error ->
+                        style "color: red; visibility: visible;"
+                        text error.Message
                 }
             }
             

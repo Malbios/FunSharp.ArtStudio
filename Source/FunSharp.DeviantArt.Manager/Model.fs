@@ -19,6 +19,23 @@ module Model =
         Snippets: ClipboardSnippet array
     }
     
+    module AddInspiration =
+        
+        type State = {
+            IsBusy: bool
+            Url: Uri option
+            Error: exn option
+        }
+        
+        [<RequireQualifiedAccess>]
+        module State =
+            
+            let empty = {
+                IsBusy = false
+                Url = None
+                Error = None
+            }
+            
     type Inspiration2Prompt = {
         Inspiration: Uri
         Text: string
@@ -79,8 +96,9 @@ module Model =
             
     type State = {
         Page: Page
-        
         Settings: Loadable<Settings>
+        
+        AddInspirationState: AddInspiration.State
         
         Inspirations: Loadable<StatefulItem<Inspiration> array>
         Prompts: Loadable<StatefulItem<Prompt> array>
@@ -94,8 +112,9 @@ module Model =
         
         let empty = {
             Page = Page.Home
-            
             Settings = NotLoaded
+            
+            AddInspirationState = AddInspiration.State.empty
             
             Inspirations = NotLoaded
             Prompts = NotLoaded
@@ -231,9 +250,11 @@ module Model =
         | LoadPublishedDeviations
         | LoadedPublishedDeviations of Loadable<StatefulItem<PublishedDeviation> array>
         
-        | AddInspiration of inspirationUrl: Uri
+        | ChangeNewInspirationUrl of url: string
+        
+        | AddInspiration
         | AddedInspiration of Inspiration
-        | AddInspirationFailed of error: exn * inspirationUrl: Uri
+        | AddInspirationFailed of error: exn
         
         | RemoveInspiration of Inspiration
         | ForgetInspiration of Inspiration

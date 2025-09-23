@@ -48,7 +48,7 @@ type LocalDeviations() =
                 comp<RadzenStack> {
                     "Orientation" => Orientation.Vertical
                     
-                    TextInput.render onNewTitle (fun _ -> ()) "Enter title..." currentMetadata.Title
+                    TextInput.render onNewTitle (fun _ -> ()) false "Enter title..." currentMetadata.Title
                     
                     comp<RadzenStack> {
                         "Orientation" => Orientation.Horizontal

@@ -7,6 +7,7 @@ open System.Net.Http.Headers
 open System.Text
 open System.Threading.Tasks
 open System.Web
+open FunSharp.DeviantArt.Manager.Model.AddInspiration
 open Microsoft.AspNetCore.Components.Forms
 open Microsoft.Extensions.Logging
 open Elmish
@@ -31,7 +32,14 @@ module Update =
         
         task
         |> Async.AwaitTask
-        |> Async.map _.EnsureSuccessStatusCode()
+        |> Async.bind (fun response ->
+            if response.IsSuccessStatusCode then
+                response |> Async.returnM
+            else
+                response.Content.ReadAsStringAsync()
+                |> Async.AwaitTask
+                |> Async.map failwith
+        )
         |> Async.getOrFail
     
     let private get (client: HttpClient) (url: string) =
@@ -317,23 +325,42 @@ module Update =
             
             { model with PublishedDeviations = loadable }, Cmd.none
             
-        | AddInspiration inspirationUrl ->
+        | ChangeNewInspirationUrl url ->
+            
+            match Uri.tryParse url with
+            | Some uri ->
+                { model with AddInspirationState.Url = Some uri; AddInspirationState.Error = None }, Cmd.none
+            | None ->
+                let error = InvalidOperationException($"could not parse url: '{url}'")
+                let model = { model with AddInspirationState.Error = Some error }
+                    
+                model, Cmd.none
+
+        | AddInspiration ->
             
             let add = addInspiration client
-            let failed ex = AddInspirationFailed (ex, inspirationUrl)
+            let failed ex = AddInspirationFailed ex
             
-            model, Cmd.OfAsync.either add inspirationUrl AddedInspiration failed
+            let model = { model with AddInspirationState.IsBusy = true }
+            
+            match model.AddInspirationState.Url with
+            | None ->
+                model, InvalidOperationException("no url set") |> failed |> Cmd.ofMsg
+            | Some url ->
+                model, Cmd.OfAsync.either add url AddedInspiration failed
             
         | AddedInspiration inspiration ->
             
+            let subState = { model.AddInspirationState with IsBusy = false; Url = None; Error = None }
             let inspirations = model.Inspirations |> LoadableStatefulItemArray.withNew inspiration
             
-            { model with Inspirations = inspirations }, Cmd.none
+            { model with Inspirations = inspirations; AddInspirationState = subState }, Cmd.none
             
-        | AddInspirationFailed (error, inspirationUrl) ->
+        | AddInspirationFailed error ->
             
-            printfn $"adding inspiration failed for: {inspirationUrl}"
-            printfn $"error: {error}"
+            printfn $"adding inspiration failed: {error}"
+            
+            let model = { model with State.AddInspirationState.Error = Some error; State.AddInspirationState.IsBusy = false }
             
             model, Cmd.none
             

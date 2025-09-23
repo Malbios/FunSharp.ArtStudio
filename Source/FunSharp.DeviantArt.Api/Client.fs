@@ -113,6 +113,7 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
             sender.DefaultRequestHeaders.Authorization <- AuthenticationHeaderValue("Bearer", v.AccessToken)
             Async.returnM ()
         | Some v ->
+            printfn "Refreshing access token..."
             this.RefreshToken(v.RefreshToken)
             |> Async.map (fun newAuthData ->
                 sender.DefaultRequestHeaders.Authorization <- AuthenticationHeaderValue("Bearer", newAuthData.AccessToken)
