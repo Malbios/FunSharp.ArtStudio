@@ -1,10 +1,9 @@
 ﻿namespace FunSharp.DeviantArt.Manager
 
 open System
-open FunSharp.DeviantArt.Api
 open Microsoft.AspNetCore.Components.Forms
 open FunSharp.Blazor.Components
-open FunSharp.DeviantArt.Api.Model
+open FunSharp.DeviantArt.Model
 open FunSharp.DeviantArt.Manager
 
 module Model =

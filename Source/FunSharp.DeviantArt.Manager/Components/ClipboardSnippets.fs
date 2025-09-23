@@ -4,11 +4,12 @@ open Bolero.Html
 open Radzen
 open Radzen.Blazor
 open FunSharp.Blazor.Components
+open FunSharp.DeviantArt.Model
 
 [<RequireQualifiedAccess>]
 module ClipboardSnippets =
     
-    let render parent jsRuntime (snippets: FunSharp.DeviantArt.Api.ClipboardSnippet array option) =
+    let render parent jsRuntime (snippets: ClipboardSnippet array option) =
         
         comp<RadzenStack> {
             "Orientation" => Orientation.Horizontal

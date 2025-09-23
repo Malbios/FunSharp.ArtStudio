@@ -2,13 +2,13 @@
 
 open Bolero
 open Bolero.Html
-open FunSharp.DeviantArt.Api.Model
-open FunSharp.DeviantArt.Manager.Components
 open Microsoft.AspNetCore.Components
-open FunSharp.Blazor.Components
-open FunSharp.DeviantArt.Manager.Model
 open Radzen
 open Radzen.Blazor
+open FunSharp.Blazor.Components
+open FunSharp.DeviantArt.Model
+open FunSharp.DeviantArt.Manager.Model
+open FunSharp.DeviantArt.Manager.Components
 
 type LocalDeviations() =
     inherit ElmishComponent<State, Message>()

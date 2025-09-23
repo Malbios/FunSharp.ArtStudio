@@ -1,4 +1,4 @@
-﻿namespace FunSharp.DeviantArt.NewApi.Model
+﻿namespace FunSharp.DeviantArt.Api.Model
 
 open System
 open System.IO
@@ -200,7 +200,7 @@ module AuthenticationData =
         ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(response.expires_in)
     }
     
-type FileWithContent = {
+type InMemoryFile = {
     Content: byte array
     MediaType: string option
 }
@@ -211,7 +211,7 @@ type FileStream = {
 }
     
 type File =
-    | File of FileWithContent
+    | InMemory of InMemoryFile
     | Stream of FileStream
 
 [<RequireQualifiedAccess>]

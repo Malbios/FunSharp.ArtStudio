@@ -80,7 +80,7 @@ type Prompts() =
                 
                 div {
                     attr.style "width: 100%;"
-                    TextAreaInput.render (fun newValue -> newPromptText <- newValue) "Enter prompt text..." newPromptText
+                    TextAreaInput.render 6 100 (fun newValue -> newPromptText <- newValue) "Enter prompt text..." newPromptText
                 }
                 
                 Button.render this (fun () -> addPrompt newPromptText) false "Add"

@@ -2,6 +2,7 @@
 
 open System
 open System.Web
+open FunSharp.DeviantArt.Model
 open Suave
 open Suave.Filters
 open Suave.Operators
@@ -15,7 +16,7 @@ open FunSharp.DeviantArt.Manager.Model
 open FunSharp.DeviantArt.Server.Helpers
 
 module WebParts =
-        
+    
     let allowCors : WebPart =
         
         setHeader "Access-Control-Allow-Origin" "*"
@@ -31,7 +32,7 @@ module WebParts =
         fun ctx -> async {
             let! username =
                 apiClient.WhoAmI()
-                |> AsyncResult.getOrFail
+                |> Async.getOrFail
                 |> Async.map _.username
                 
             return! {| username = username |} |> asOkJsonResponse <| ctx
@@ -113,12 +114,12 @@ module WebParts =
                     return! badRequestMessage ctx "addInspiration()" "This inspiration url already has a published deviation."
                     
                 | false ->
-                    let! id = apiClient.GetDeviationId url |> AsyncResult.getOrFail
-                    let! deviation = apiClient.GetDeviation id |> AsyncResult.getOrFail
+                    let! id = apiClient.GetDeviationId url |> Async.getOrFail
+                    let! deviation = apiClient.GetDeviation id |> Async.getOrFail
                     
                     let fileName = $"{id}.jpg"
                     
-                    let! imageContent = Http.downloadFile deviation.preview.src
+                    let! imageContent = apiClient.DownloadFile(deviation.preview.src)
                     do! File.writeAllBytesAsync $"{imagesLocation}/{fileName}" imageContent
                     
                     let imageUrl = imageUrl serverAddress serverPort fileName
@@ -233,7 +234,7 @@ module WebParts =
                 let deviation : LocalDeviation = {
                     ImageUrl = payload.ImageUrl
                     Timestamp = DateTimeOffset.Now
-                    Metadata = Metadata.empty
+                    Metadata = Metadata.defaults
                     Origin = DeviationOrigin.Prompt prompt
                 }
                 

@@ -1,17 +1,8 @@
 ﻿namespace FunSharp.DeviantArt.Server
 
 open System.IO
-open Newtonsoft.Json
-
-type Gallery = {
-    id: string
-    name: string
-}
-
-type ClipboardSnippet = {
-    label: string
-    value: string
-}
+open FunSharp.Common
+open FunSharp.DeviantArt.Model
 
 type Secrets = {
     client_id: string
@@ -29,4 +20,4 @@ module Secrets =
     let load () =
         
         File.ReadAllText filePath
-        |> JsonConvert.DeserializeObject<Secrets>
+        |> JsonSerializer.deserialize<Secrets>

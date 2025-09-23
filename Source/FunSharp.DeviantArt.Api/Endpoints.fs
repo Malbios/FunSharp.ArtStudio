@@ -1,4 +1,4 @@
-﻿namespace FunSharp.DeviantArt.NewApi
+﻿namespace FunSharp.DeviantArt.Api
 
 [<RequireQualifiedAccess>]
 module Endpoints =

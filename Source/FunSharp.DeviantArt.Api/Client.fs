@@ -1,4 +1,4 @@
-﻿namespace FunSharp.DeviantArt.NewApi
+﻿namespace FunSharp.DeviantArt.Api
 
 open System
 open System.Diagnostics
@@ -13,7 +13,7 @@ open Suave.Filters
 open Suave.RequestErrors
 open FunSharp.Common
 open FunSharp.Data.Abstraction
-open FunSharp.DeviantArt.NewApi.Model
+open FunSharp.DeviantArt.Api.Model
 
 type Client(persistence: IPersistence, sender: HttpClient, clientId: string, clientSecret: string) =
     
@@ -47,7 +47,7 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
                 |> Option.defaultValue ""
             
             match file with
-            | File file -> content.Add(new ByteArrayContent(file.Content), "file", title)
+            | InMemory file -> content.Add(new ByteArrayContent(file.Content), "file", title)
             | Stream file -> content.Add(new StreamContent(file.Content), "file", title)
             
             for k, v in properties do
@@ -158,7 +158,7 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
         |> RequestPayload.PostMultipart
         |> this.Send
         |> Async.map ensureSuccess
-        |> Async.map this.ToRecord<StashSubmissionResponse>
+        |> Async.bind this.ToRecord<StashSubmissionResponse>
         
     member _.NeedsInteraction = authData.IsNone
     
@@ -200,6 +200,15 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
         do! Async.Sleep 1000
         do! this.Authenticate(code)
     }
+        
+    member this.DownloadFile(url: string) =
+        
+        this.EnsureAccessToken()
+        |> Async.bind (fun () ->
+            url
+            |> sender.GetByteArrayAsync
+            |> Async.AwaitTask
+        )
     
     member this.WhoAmI() =
         
@@ -257,7 +266,7 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
         |> RequestPayload.Get
         |> this.Send
         |> Async.map ensureSuccess
-        |> Async.map this.ToRecord<DeviationResponse>
+        |> Async.bind this.ToRecord<DeviationResponse>
     
     interface IDisposable with
         

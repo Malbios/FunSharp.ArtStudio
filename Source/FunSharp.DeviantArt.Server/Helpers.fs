@@ -2,7 +2,6 @@
 
 open System
 open System.Text
-open FunSharp.Data.Abstraction
 open Microsoft.AspNetCore.StaticFiles
 open Suave
 open Suave.Operators
@@ -10,8 +9,10 @@ open Suave.RequestErrors
 open Suave.Successful
 open Suave.Writers
 open FunSharp.Common
+open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.Api
 open FunSharp.DeviantArt.Api.Model
+open FunSharp.DeviantArt.Model
 
 module Helpers =
     
@@ -40,14 +41,14 @@ module Helpers =
             {
                 ImageUrl = local.ImageUrl
                 Timestamp = DateTimeOffset.Now
-                StashId = response.item_id
+                StashId = response.itemid
                 Origin = local.Origin
                 Metadata = local.Metadata
             }
         | _ ->
             failwith $"Failed to stash {local.ImageUrl}"
         
-    let private asPublished (stashed: StashedDeviation) (response: PublicationResponse) =
+    let private asPublished (stashed: StashedDeviation) (response: PublishResponse) =
         
         match response.status with
         | "success" ->
@@ -65,29 +66,29 @@ module Helpers =
         
         let submission = {
             StashSubmission.defaults with
-                Title = local.Metadata.Title
+                title = local.Metadata.Title
         }
         
-        let httpFile: Http.File = {
+        let file = File.InMemory {
             MediaType = Some mimeType
             Content = imageContent
         }
         
-        client.SubmitToStash(submission, httpFile)
-        |> AsyncResult.getOrFail
+        client.SubmitToStash(submission, file)
+        |> Async.getOrFail
         |> Async.map (asStashed local)
         
     let publishFromStash (client: Client) (galleryId: string) (stashed: StashedDeviation) =
         
         let submission = {
             PublishSubmission.defaults with
-                IsMature = stashed.Metadata.IsMature
-                Galleries = [| galleryId |]
-                ItemId = stashed.StashId
+                itemid = stashed.StashId
+                is_mature = stashed.Metadata.IsMature
+                galleryids = [| galleryId |]
         }
         
         client.PublishFromStash(submission)
-        |> AsyncResult.getOrFail
+        |> Async.getOrFail
         |> Async.map (asPublished stashed)
         
     let asOkJsonResponse data =

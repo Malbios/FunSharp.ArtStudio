@@ -20,9 +20,9 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.Blazor.Components"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.Utilities", "Source\FunSharp.DeviantArt.Utilities\FunSharp.DeviantArt.Utilities.fsproj", "{613E254C-61F4-4F29-9169-0716B82E1534}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.NewApi", "Source\FunSharp.DeviantArt.NewApi\FunSharp.DeviantArt.NewApi.fsproj", "{B0FD4CD9-65E5-410A-B654-5DF8FF491592}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.Api", "Source\FunSharp.DeviantArt.Api\FunSharp.DeviantArt.Api.fsproj", "{B0FD4CD9-65E5-410A-B654-5DF8FF491592}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.NewApi.Test", "Source\FunSharp.DeviantArt.NewApi.Test\FunSharp.DeviantArt.NewApi.Test.fsproj", "{91555F1D-F0D0-43FE-AFF8-539A2FDCCA3C}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.Api.Test", "Source\FunSharp.DeviantArt.Api.Test\FunSharp.DeviantArt.Api.Test.fsproj", "{91555F1D-F0D0-43FE-AFF8-539A2FDCCA3C}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FunSharp.DeviantArt.Model", "Source\FunSharp.DeviantArt.Model\FunSharp.DeviantArt.Model.fsproj", "{DCA3C166-0672-4232-A09C-EDDAF26605A0}"
 EndProject

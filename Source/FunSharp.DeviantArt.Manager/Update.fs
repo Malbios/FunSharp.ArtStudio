@@ -12,7 +12,7 @@ open Microsoft.Extensions.Logging
 open Elmish
 open FunSharp.Common
 open FunSharp.Blazor.Components
-open FunSharp.DeviantArt.Api.Model
+open FunSharp.DeviantArt.Model
 open FunSharp.DeviantArt.Manager.Model
 
 // for some reason the following causes non-sequential calls:
@@ -32,8 +32,7 @@ module Update =
         task
         |> Async.AwaitTask
         |> Async.map _.EnsureSuccessStatusCode()
-        |> Async.catch
-        |> AsyncResult.getOrFail
+        |> Async.getOrFail
     
     let private get (client: HttpClient) (url: string) =
         
@@ -59,8 +58,7 @@ module Update =
         
         response.Content.ReadAsStringAsync()
         |> Async.AwaitTask
-        |> Async.catch
-        |> AsyncResult.getOrFail
+        |> Async.getOrFail
         
     let private postString client url value =
         
@@ -344,7 +342,7 @@ module Update =
             let inspirations =
                 model.Inspirations
                 |> LoadableStatefulItemArray.without (fun x ->
-                    Inspiration.key x <> Inspiration.key inspiration
+                    Inspiration.keyOf x <> Inspiration.keyOf inspiration
                 )
                 
             { model with Inspirations = inspirations }, Cmd.none
@@ -403,7 +401,7 @@ module Update =
             let prompts =
                 model.Prompts
                 |> LoadableStatefulItemArray.without (fun x ->
-                    Prompt.key x <> Prompt.key prompt
+                    Prompt.keyOf x <> Prompt.keyOf prompt
                 )
                 
             { model with Prompts = prompts }, Cmd.none
@@ -512,7 +510,7 @@ module Update =
             let deviations =
                 model.LocalDeviations
                 |> LoadableStatefulItemArray.without (fun x ->
-                    LocalDeviation.key x <> LocalDeviation.key local
+                    LocalDeviation.keyOf x <> LocalDeviation.keyOf local
                 )
                 
             { model with LocalDeviations = deviations }, Cmd.none
@@ -557,7 +555,7 @@ module Update =
             let deviations =
                 model.StashedDeviations
                 |> LoadableStatefulItemArray.without (fun x ->
-                    StashedDeviation.key x <> StashedDeviation.key stashed
+                    StashedDeviation.keyOf x <> StashedDeviation.keyOf stashed
                 )
                 
             { model with StashedDeviations = deviations }, Cmd.none

@@ -3,12 +3,12 @@
 open Bolero
 open Bolero.Html
 open Bolero.Html.attr
-open FunSharp.Blazor.Components
 open Microsoft.AspNetCore.Components
-open FunSharp.DeviantArt.Manager.Model
-open FunSharp.DeviantArt.Manager.Components
 open Radzen
 open Radzen.Blazor
+open FunSharp.Blazor.Components
+open FunSharp.DeviantArt.Manager.Model
+open FunSharp.DeviantArt.Manager.Components
 
 type Inspirations() =
     inherit ElmishComponent<State, Message>()
@@ -65,7 +65,7 @@ type Inspirations() =
                     concat {
                         inspiration.Timestamp.ToString() |> text
                         
-                        TextAreaInput.render updatePrompt "Enter prompt..." prompt
+                        TextAreaInput.render 6 100 updatePrompt "Enter prompt..." prompt
                         
                         Button.render this (fun () -> prompts[key].Trim() |> inspiration2Prompt inspiration) false "To Prompt"
                         Button.render this (fun () -> forgetInspiration inspiration) false "Forget"

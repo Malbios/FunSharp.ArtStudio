@@ -18,6 +18,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\FunSharp.DeviantArt.Manager\FunSharp.DeviantArt.Manager.fsproj" />
+      <ProjectReference Include="..\FunSharp.DeviantArt.Model\FunSharp.DeviantArt.Model.fsproj" />
     </ItemGroup>
 
     <ItemGroup>

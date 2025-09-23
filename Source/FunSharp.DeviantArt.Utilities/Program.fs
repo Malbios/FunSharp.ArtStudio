@@ -4,6 +4,7 @@ open System.Net.Http
 open FunSharp.Data
 open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.Api.Model
+open FunSharp.DeviantArt.Model
 open FunSharp.DeviantArt.Utilities
 
 [<Literal>]
@@ -64,10 +65,6 @@ type NewPublishedDeviation = {
     Url: Uri
     Origin: NewDeviationOrigin
     Metadata: Metadata
-}
-
-type NewSettings = {
-    Galleries: Gallery array
 }
 
 let migrateToTimestamps () =
@@ -248,7 +245,7 @@ let testNewApiClient () =
     
     let secrets = Secrets.load()
     
-    use client = new FunSharp.DeviantArt.NewApi.Client(persistence, httpClient, secrets.client_id, secrets.client_secret)
+    use client = new FunSharp.DeviantArt.Api.Client(persistence, httpClient, secrets.client_id, secrets.client_secret)
     
     if client.NeedsInteraction then
         client.StartInteractiveLogin() |> Async.RunSynchronously
