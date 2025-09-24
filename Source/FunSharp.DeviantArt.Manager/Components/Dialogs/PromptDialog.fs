@@ -34,7 +34,7 @@ type PromptDialog() =
                 ClipboardSnippets.render this.JSRuntime this.Snippets
             }
             
-            TextAreaInput.render 10 50 (fun s -> promptText <- s) "Enter prompt..." promptText
+            TextAreaInput.render 20 200 (fun s -> promptText <- s) "Enter prompt..." promptText
             
             comp<RadzenStack> {
                 "Orientation" => Orientation.Horizontal
