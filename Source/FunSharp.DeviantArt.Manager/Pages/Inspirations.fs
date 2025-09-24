@@ -65,7 +65,7 @@ type Inspirations() =
                     concat {
                         inspiration.Timestamp.ToString() |> text
                         
-                        TextAreaInput.render 6 50 updatePrompt "Enter prompt..." prompt
+                        TextAreaInput.render 10 50 updatePrompt "Enter prompt..." prompt
                         
                         Button.render this (fun () -> prompts[key].Trim() |> inspiration2Prompt inspiration) false "To Prompt"
                         Button.render this (fun () -> forgetInspiration inspiration) false "Forget"

@@ -341,13 +341,16 @@ module Update =
             let add = addInspiration client
             let failed ex = AddInspirationFailed ex
             
-            let model = { model with AddInspirationState.IsBusy = true }
+            let cmd = 
+                match model.AddInspirationState.Url with
+                | None ->
+                    InvalidOperationException("no url set") |> failed |> Cmd.ofMsg
+                | Some url ->
+                    Cmd.OfAsync.either add url AddedInspiration failed
             
-            match model.AddInspirationState.Url with
-            | None ->
-                model, InvalidOperationException("no url set") |> failed |> Cmd.ofMsg
-            | Some url ->
-                model, Cmd.OfAsync.either add url AddedInspiration failed
+            let model = { model with AddInspirationState.IsBusy = true; AddInspirationState.Url = None }
+            
+            model, cmd
             
         | AddedInspiration inspiration ->
             
