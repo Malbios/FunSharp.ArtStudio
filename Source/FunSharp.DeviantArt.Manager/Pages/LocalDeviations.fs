@@ -86,41 +86,50 @@ type LocalDeviations() =
                 Deviations.render
                 <| concat {
                     for deviation in deviations |> StatefulItemArray.sortBy _.Timestamp do
-                        let deviation = StatefulItem.valueOf deviation
-                        
-                        let inspirationUrl =
-                            match deviation.Origin with
-                            | DeviationOrigin.None -> None
-                            | DeviationOrigin.Prompt prompt -> prompt.Inspiration |> Option.bind _.ImageUrl
-                            | DeviationOrigin.Inspiration inspiration -> inspiration.ImageUrl
-
-                        comp<RadzenStack> {
-                            "Orientation" => Orientation.Vertical
-                            "JustifyContent" => JustifyContent.Left
+                        match deviation with
+                        | IsBusy _ ->
+                            LoadingWidget.render ()
                             
-                            deviation.Timestamp.ToString() |> text
-                            
-                            ImageUrl.render (Some deviation.ImageUrl)
-                            
-                            match deviation.Origin with
-                            | DeviationOrigin.None -> ()
-                            | DeviationOrigin.Inspiration inspiration ->
-                                Link.render None inspiration.Url
-                            | DeviationOrigin.Prompt prompt ->
-                                match prompt.Inspiration with
-                                | None -> ()
-                                | Some inspiration ->
-                                    Link.render None inspiration.Url
-                                    
-                            comp<ItemEditor<LocalDeviation>> {
-                                "Fields" => fieldConfigurations
-                                "Item" => Some deviation
-                                "OnSave" => updateLocalDeviation
-                                "FinishLabel" => "Stash"
-                                "OnFinish" => stashDeviation
-                                "OnForget" => forgetDeviation
+                        | HasError (deviation, error) ->
+                            concat {
+                                text $"deviation: {LocalDeviation.keyOf deviation}"
+                                text $"error: {error}"
                             }
-                        }
-                        |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
+                            
+                        | Default deviation ->
+                            let inspirationUrl =
+                                match deviation.Origin with
+                                | DeviationOrigin.None -> None
+                                | DeviationOrigin.Prompt prompt -> prompt.Inspiration |> Option.bind _.ImageUrl
+                                | DeviationOrigin.Inspiration inspiration -> inspiration.ImageUrl
+
+                            comp<RadzenStack> {
+                                "Orientation" => Orientation.Vertical
+                                "JustifyContent" => JustifyContent.Left
+                                
+                                deviation.Timestamp.ToString() |> text
+                                
+                                ImageUrl.render (Some deviation.ImageUrl)
+                                
+                                match deviation.Origin with
+                                | DeviationOrigin.None -> ()
+                                | DeviationOrigin.Inspiration inspiration ->
+                                    Link.render None inspiration.Url
+                                | DeviationOrigin.Prompt prompt ->
+                                    match prompt.Inspiration with
+                                    | None -> ()
+                                    | Some inspiration ->
+                                        Link.render None inspiration.Url
+                                        
+                                comp<ItemEditor<LocalDeviation>> {
+                                    "Fields" => fieldConfigurations
+                                    "Item" => Some deviation
+                                    "OnSave" => updateLocalDeviation
+                                    "FinishLabel" => "Stash"
+                                    "OnFinish" => stashDeviation
+                                    "OnForget" => forgetDeviation
+                                }
+                            }
+                            |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
                 }
         |> Page.render model dispatch this.NavManager

@@ -490,6 +490,15 @@ module Update =
             let stash = stashDeviation client
             let failed ex = StashDeviationFailed (ex, local)
             
+            let model = {
+                model with
+                    LocalDeviations =
+                        model.LocalDeviations
+                        |> State.isBusy (fun x ->
+                            LocalDeviation.keyOf x = LocalDeviation.keyOf local
+                        )
+            }
+            
             model, Cmd.OfAsync.either stash local StashedDeviation failed
             
         | StashedDeviation (local, stashed) ->
@@ -528,6 +537,15 @@ module Update =
             
             let publish = publishDeviation client
             let failed ex = PublishStashedFailed (ex, stashed)
+            
+            let model = {
+                model with
+                    StashedDeviations =
+                        model.StashedDeviations
+                        |> State.isBusy (fun x ->
+                            StashedDeviation.keyOf x = StashedDeviation.keyOf stashed
+                        )
+            }
             
             model, Cmd.OfAsync.either publish stashed PublishedStashed failed
             

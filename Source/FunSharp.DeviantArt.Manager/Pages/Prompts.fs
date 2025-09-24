@@ -76,12 +76,14 @@ type Prompts() =
                 |> Array.map (fun prompt ->
                     match prompt with
                     | IsBusy _ ->
-                        LoadingWidget.render () // TODO: make only the "To Deviation" button busy (Radzen has something there)
+                        LoadingWidget.render ()
+                        
                     | HasError (prompt, error) ->
                         concat {
                             text $"prompt: {prompt.Id}"
                             text $"error: {error}"
                         }
+                        
                     | Default prompt ->
                         let isBusy = busy |> Map.tryFind prompt.Id |> Option.defaultValue false
                         
