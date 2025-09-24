@@ -38,4 +38,4 @@ type PublishedDeviations() =
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
-        |> Page.render this model dispatch this.NavManager
+        |> Page.render model dispatch this.NavManager

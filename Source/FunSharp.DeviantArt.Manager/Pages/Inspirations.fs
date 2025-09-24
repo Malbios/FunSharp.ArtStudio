@@ -1,8 +1,8 @@
 ﻿namespace FunSharp.DeviantArt.Manager.Pages
 
+open System.Collections.Generic
 open Bolero
 open Bolero.Html
-open Bolero.Html.attr
 open Microsoft.AspNetCore.Components
 open Radzen
 open Radzen.Blazor
@@ -16,35 +16,37 @@ type Inspirations() =
     override _.CssScope = CssScopes.Inspirations
     
     [<Inject>]
-    member val JSRuntime = Unchecked.defaultof<_> with get, set
-    
-    [<Inject>]
     member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
     
+    [<Inject>]
+    member val DialogService = Unchecked.defaultof<DialogService> with get, set
+    
     override this.View model dispatch =
-        
-        let mutable prompts: Map<string, string> = Map.empty
             
         let inspiration2Prompt inspiration prompt =
             Message.Inspiration2Prompt (inspiration, prompt) |> dispatch
             
         let forgetInspiration inspiration =
             Message.ForgetInspiration inspiration |> dispatch
+            
+        let openDialog inspiration = task {
+            let snippets =
+                match model.Settings with
+                | Loaded settings -> settings.Snippets
+                | _ -> Array.empty
+            
+            let parameters = Dictionary<string, obj>(dict [ "Snippets", box snippets ])
+            
+            let! result = this.DialogService.OpenAsync<Inspiration2PromptDialog>("Inspiration2Prompt", parameters)
+            
+            match result with
+            | :? string as promptText -> inspiration2Prompt inspiration promptText
+            | _ -> ()
+        }
 
         comp<RadzenStack> {
             "Orientation" => Orientation.Vertical
             "Gap" => "2rem"
-            
-            div {
-                style "padding: 0.5rem; border: 2px solid gray; border-radius: 8px;"
-                
-                let snippets =
-                    match model.Settings with
-                    | Loaded settings -> Some settings.Snippets
-                    | _ -> None
-
-                ClipboardSnippets.render this this.JSRuntime snippets
-            }
             
             Loadable.render model.Inspirations
             <| fun inspirations ->
@@ -52,27 +54,16 @@ type Inspirations() =
                 |> StatefulItemArray.sortBy _.Timestamp
                 |> Array.map (fun inspiration ->
                     let inspiration = StatefulItem.valueOf inspiration
-                    let key = inspiration.Url.ToString()
                     
-                    let prompt =
-                        prompts
-                        |> Map.tryFind key
-                        |> Option.defaultValue ""
-                        
-                    let updatePrompt (newPrompt: string) =
-                        prompts <- prompts |> Map.add key (newPrompt.Trim())
-                        
                     concat {
                         inspiration.Timestamp.ToString() |> text
                         
-                        TextAreaInput.render 10 50 updatePrompt "Enter prompt..." prompt
-                        
-                        Button.render this (fun () -> prompts[key].Trim() |> inspiration2Prompt inspiration) false "To Prompt"
-                        Button.render this (fun () -> forgetInspiration inspiration) false "Forget"
+                        Button.renderAsync "To Prompt" (fun () -> openDialog inspiration) false
+                        Button.render "Forget" (fun () -> forgetInspiration inspiration) false
                     }
                     |> Deviation.renderWithContent inspiration.ImageUrl None
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
         }
-        |> Page.render this model dispatch this.NavManager
+        |> Page.render model dispatch this.NavManager

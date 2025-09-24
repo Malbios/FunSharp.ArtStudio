@@ -73,10 +73,10 @@ type StashedDeviations() =
                                     |> IconButton.render "Copy inspiration to clipboard"
                         }
                         
-                        Button.render this (fun () -> publish deviation) false "Publish"
+                        Button.render "Publish" (fun () -> publish deviation) false
                     }
                     |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
-        |> Page.render this model dispatch this.NavManager
+        |> Page.render model dispatch this.NavManager

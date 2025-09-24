@@ -60,13 +60,13 @@ type Prompts() =
                             |> Option.defaultValue "?"
                             |> text
                             
-                            Button.render this (Helpers.copyToClipboard this.JSRuntime prompt.Text) false "Copy Prompt"
+                            Button.render "Copy Prompt" (Helpers.copyToClipboard this.JSRuntime prompt.Text) false
                             
                             FileInput.render false
                                 (fun (args: InputFileChangeEventArgs) -> files <- files |> Map.add prompt.Id args.File)
                             
-                            Button.render this (fun () -> prompt2Deviation prompt files[prompt.Id]) false "To Deviation"
-                            Button.render this (fun () -> forgetPrompt prompt) false "Forget"
+                            Button.render "To Deviation" (fun () -> prompt2Deviation prompt files[prompt.Id]) false
+                            Button.render "Forget" (fun () -> forgetPrompt prompt) false
                         }
                         |> Deviation.renderWithContent (prompt.Inspiration |> Option.bind _.ImageUrl) None
                 )
@@ -83,7 +83,7 @@ type Prompts() =
                     TextAreaInput.render 6 50 (fun newValue -> newPromptText <- newValue) "Enter prompt text..." newPromptText
                 }
                 
-                Button.render this (fun () -> addPrompt newPromptText) false "Add"
+                Button.render "Add" (fun () -> addPrompt newPromptText) false
             }
         }
-        |> Page.render this model dispatch this.NavManager
+        |> Page.render model dispatch this.NavManager

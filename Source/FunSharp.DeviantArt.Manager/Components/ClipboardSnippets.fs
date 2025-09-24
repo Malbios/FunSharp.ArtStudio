@@ -9,17 +9,14 @@ open FunSharp.DeviantArt.Model
 [<RequireQualifiedAccess>]
 module ClipboardSnippets =
     
-    let render parent jsRuntime (snippets: ClipboardSnippet array option) =
+    let render jsRuntime (snippets: ClipboardSnippet array) =
         
         comp<RadzenStack> {
             "Orientation" => Orientation.Horizontal
             
-            match snippets with
-            | None -> ()
-            | Some snippets ->
-                snippets
-                |> Array.map (fun snippet ->
-                    Button.render parent (Helpers.copyToClipboard jsRuntime snippet.value) false snippet.label
-                )
-                |> Helpers.renderArray
+            snippets
+            |> Array.map (fun snippet ->
+                Button.render snippet.label (Helpers.copyToClipboard jsRuntime snippet.value) false
+            )
+            |> Helpers.renderArray
         }

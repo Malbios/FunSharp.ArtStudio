@@ -10,6 +10,9 @@ module View =
         
         concat {
             comp<RadzenComponents>
+            comp<RadzenDialog>
+            comp<RadzenNotification>
+            comp<RadzenTooltip>
     
             div {
                 attr.style "margin: 1rem;"

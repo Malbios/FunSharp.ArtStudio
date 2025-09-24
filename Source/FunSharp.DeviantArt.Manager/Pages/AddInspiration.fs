@@ -44,7 +44,7 @@ type AddInspiration() =
                 
                 TextInput.render onChange_NewInspirationUrl onEnter_NewInspirationUrl isBusy "Enter inspiration url..." currentValue
                 
-                Button.render this addInspiration isBusy "Add"
+                Button.render "Add" addInspiration isBusy
                 
                 div {
                     match model.AddInspirationState.Error with
@@ -71,4 +71,4 @@ type AddInspiration() =
                 |> Helpers.renderArray
                 |> Deviations.render
         }
-        |> Page.render this model dispatch this.NavManager
+        |> Page.render model dispatch this.NavManager

@@ -43,6 +43,7 @@
         <Compile Include="Components\ClipboardSnippets.fs" />
         <Compile Include="Components\Deviation.fs"/>
         <Compile Include="Components\Deviations.fs" />
+        <Compile Include="Components\Dialogs\Inspiration2PromptDialog.fs" />
         <Compile Include="Pages\AddInspiration.fs" />
         <Content Include="Pages\AddInspiration.bolero.css" />
         <Compile Include="Pages\Inspirations.fs" />

@@ -123,4 +123,4 @@ type LocalDeviations() =
                         }
                         |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
                 }
-        |> Page.render this model dispatch this.NavManager
+        |> Page.render model dispatch this.NavManager

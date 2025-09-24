@@ -100,8 +100,8 @@ type ItemEditor<'T when 'T : not struct and 'T : equality>() =
                         "JustifyContent" => JustifyContent.Center
                         "AlignItems" => AlignItems.Center
 
-                        Button.render this this.Forget false this.ForgetLabel
-                        Button.render this this.Save false this.SaveLabel
-                        Button.render this this.Finish false this.FinishLabel
+                        Button.render this.ForgetLabel this.Forget false
+                        Button.render this.SaveLabel this.Save false
+                        Button.render this.FinishLabel this.Finish false
                     }
                 }
