@@ -1,6 +1,7 @@
 ﻿namespace FunSharp.DeviantArt.Api
 
 open System
+open System.Collections.Generic
 open System.Diagnostics
 open System.Net.Http
 open System.Net.Http.Headers
@@ -34,7 +35,8 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
             new HttpRequestMessage(HttpMethod.Get, url)
             
         | RequestPayload.PostForm (url, properties) ->
-            let content = new FormUrlEncodedContent(dict properties)
+            let properties = properties |> Seq.map (fun (k, v) -> KeyValuePair(k, v))
+            let content = new FormUrlEncodedContent(properties)
             new HttpRequestMessage(HttpMethod.Post, url, Content = content)
             
         | RequestPayload.PostMultipart (url, file, properties) ->
@@ -45,6 +47,14 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
                 |> List.tryFind (fun x -> fst x = "title")
                 |> Option.map snd
                 |> Option.defaultValue ""
+                
+            let mediaType =
+                match file with
+                | InMemory file -> file.MediaType
+                | Stream file -> file.MediaType
+                |> Option.defaultValue "application/octet-stream"
+                
+            content.Headers.ContentType <- MediaTypeHeaderValue.Parse(mediaType)
             
             match file with
             | InMemory file -> content.Add(new ByteArrayContent(file.Content), "file", title)
@@ -153,7 +163,7 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
                         
                 (key, value)
             )
-            |> fun p -> p @ stack 
+            |> fun p -> p @ stack
         
         (Endpoints.submitToStash, file, properties)
         |> RequestPayload.PostMultipart

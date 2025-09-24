@@ -116,16 +116,16 @@ module PublishSubmission =
         galleryids = Array.empty
         allow_free_download = true
         add_watermark = false
-        tags = [| "digital_art"; "made_with_ai" |]
+        tags = [ "digital_art"; "made_with_ai" ] |> Array.ofList
         is_ai_generated = true
         noai = false
     }
-            
+    
     let toProperties (submission: PublishSubmission) =
         submission
         |> Record.toKeyValueTypes
         |> KeyValueType.splitArrays
-
+        
 type WhoAmIResponse = {
     userid: string
     usericon: Uri

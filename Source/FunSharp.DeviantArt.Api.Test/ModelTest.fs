@@ -14,7 +14,7 @@ module ``Model Tests`` =
         %(snd tuple).Should().Be(expectedB)
     
     [<Fact>]
-    let ``StashPublication.toProperties() should split arrays`` () =
+    let ``toProperties should split arrays`` () =
     
         // Arrange
         let publication : PublishSubmission = {
