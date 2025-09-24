@@ -1,8 +1,8 @@
 ﻿namespace FunSharp.DeviantArt.Manager.Pages
 
-open System.Collections.Generic
 open Bolero
 open Bolero.Html
+open FunSharp.Common
 open Microsoft.AspNetCore.Components
 open Radzen
 open Radzen.Blazor
@@ -23,26 +23,16 @@ type Inspirations() =
     
     override this.View model dispatch =
             
-        let inspiration2Prompt inspiration prompt =
-            Message.Inspiration2Prompt (inspiration, prompt) |> dispatch
-            
         let forgetInspiration inspiration =
             Message.ForgetInspiration inspiration |> dispatch
             
-        let openDialog inspiration = task {
-            let snippets =
-                match model.Settings with
-                | Loaded settings -> settings.Snippets
-                | _ -> Array.empty
-            
-            let parameters = Dictionary<string, obj>(dict [ "Snippets", box snippets ])
-            
-            let! result = this.DialogService.OpenAsync<Inspiration2PromptDialog>("Inspiration2Prompt", parameters)
-            
-            match result with
-            | :? string as promptText -> inspiration2Prompt inspiration promptText
-            | _ -> ()
-        }
+        let openPromptDialog inspiration =
+            PromptDialog.OpenAsync(this.DialogService, model.Settings, "Inspiration2Prompt")
+            |> Task.map (
+                function
+                | :? string as promptText -> Message.Inspiration2Prompt (inspiration, promptText) |> dispatch
+                | _ -> ()
+            )
 
         comp<RadzenStack> {
             "Orientation" => Orientation.Vertical
@@ -58,7 +48,7 @@ type Inspirations() =
                     concat {
                         inspiration.Timestamp.ToString() |> text
                         
-                        Button.renderAsync "To Prompt" (fun () -> openDialog inspiration) false
+                        Button.renderAsync "To Prompt" (fun () -> openPromptDialog inspiration) false
                         Button.render "Forget" (fun () -> forgetInspiration inspiration) false
                     }
                     |> Deviation.renderWithContent inspiration.ImageUrl None

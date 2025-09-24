@@ -1,18 +1,26 @@
 ﻿namespace FunSharp.DeviantArt.Manager.Pages
 
 open System
+open System.IO
+open System.Threading.Tasks
 open Bolero
 open Bolero.Html
-open FunSharp.Blazor.Components
+open FunSharp.DeviantArt.Model
 open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Components.Forms
-open FunSharp.DeviantArt.Manager.Model
-open FunSharp.DeviantArt.Manager.Components
 open Radzen
 open Radzen.Blazor
+open FunSharp.Common
+open FunSharp.Blazor.Components
+open FunSharp.DeviantArt.Manager.Model
+open FunSharp.DeviantArt.Manager.Components
 
 type Prompts() =
     inherit ElmishComponent<State, Message>()
+        
+    let maxSize = 1024L * 1024L * 100L // 100 MB
+    
+    let mutable busy: Map<Guid, bool> = Map.empty
     
     override _.CssScope = CssScopes.Prompts
     
@@ -22,19 +30,40 @@ type Prompts() =
     [<Inject>]
     member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
     
+    [<Inject>]
+    member val DialogService = Unchecked.defaultof<DialogService> with get, set
+    
     override this.View model dispatch =
-
-        let mutable newPromptText = ""
-        let mutable files: Map<Guid, IBrowserFile> = Map.empty
-            
-        let addPrompt text =
-            Message.AddPrompt text |> dispatch
-            
-        let prompt2Deviation prompt file =
-            Message.Prompt2LocalDeviation (prompt, file) |> dispatch
             
         let forgetPrompt prompt =
             Message.ForgetPrompt prompt |> dispatch
+    
+        let processUploadedFile (prompt: Prompt) (file: IBrowserFile) = task {
+            busy <- busy |> Map.add prompt.Id true
+            
+            use stream = file.OpenReadStream(maxAllowedSize = maxSize)
+            use ms = new MemoryStream()
+            
+            do! stream.CopyToAsync(ms)
+            
+            let image = {
+                Name = file.Name
+                ContentType = file.ContentType
+                Content = ms.ToArray()
+            }
+            
+            Message.Prompt2LocalDeviation (prompt, image) |> dispatch
+            
+            busy <- busy |> Map.remove prompt.Id
+        }
+            
+        let openPromptDialog () =
+            PromptDialog.OpenAsync(this.DialogService, model.Settings, "New Prompt")
+            |> Task.map (
+                function
+                | :? string as promptText -> Message.AddPrompt promptText |> dispatch
+                | _ -> ()
+            )
         
         comp<RadzenStack> {
             "Orientation" => Orientation.Vertical
@@ -54,6 +83,11 @@ type Prompts() =
                             text $"error: {error}"
                         }
                     | Default prompt ->
+                        let isBusy = busy |> Map.tryFind prompt.Id |> Option.defaultValue false
+                        
+                        let processUpload : InputFileChangeEventArgs -> Task =
+                            fun (args: InputFileChangeEventArgs) -> processUploadedFile prompt args.File
+                        
                         concat {
                             prompt.Inspiration
                             |> Option.map _.Timestamp.ToString()
@@ -62,10 +96,8 @@ type Prompts() =
                             
                             Button.render "Copy Prompt" (Helpers.copyToClipboard this.JSRuntime prompt.Text) false
                             
-                            FileInput.render false
-                                (fun (args: InputFileChangeEventArgs) -> files <- files |> Map.add prompt.Id args.File)
+                            FileInput.renderAsync false processUpload isBusy
                             
-                            Button.render "To Deviation" (fun () -> prompt2Deviation prompt files[prompt.Id]) false
                             Button.render "Forget" (fun () -> forgetPrompt prompt) false
                         }
                         |> Deviation.renderWithContent (prompt.Inspiration |> Option.bind _.ImageUrl) None
@@ -73,17 +105,9 @@ type Prompts() =
                 |> Helpers.renderArray
                 |> Deviations.render
                 
-            comp<RadzenStack> {
+            div {
                 attr.style "padding: 2rem; border: 2px solid gray; border-radius: 8px;"
-                
-                "Orientation" => Orientation.Horizontal
-                
-                div {
-                    attr.style "width: 100%;"
-                    TextAreaInput.render 6 50 (fun newValue -> newPromptText <- newValue) "Enter prompt text..." newPromptText
-                }
-                
-                Button.render "Add" (fun () -> addPrompt newPromptText) false
+                Button.renderAsync "Add new prompt" (fun () -> openPromptDialog ()) false
             }
         }
         |> Page.render model dispatch this.NavManager

@@ -111,7 +111,7 @@ type LocalDeviations() =
                                 | None -> ()
                                 | Some inspiration ->
                                     Link.render None inspiration.Url
-
+                                    
                             comp<ItemEditor<LocalDeviation>> {
                                 "Fields" => fieldConfigurations
                                 "Item" => Some deviation

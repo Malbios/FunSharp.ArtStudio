@@ -1,7 +1,6 @@
 ﻿namespace FunSharp.DeviantArt.Manager
 
 open System
-open Microsoft.AspNetCore.Components.Forms
 open FunSharp.Blazor.Components
 open FunSharp.DeviantArt.Model
 open FunSharp.DeviantArt.Manager
@@ -270,18 +269,11 @@ module Model =
         | RemovePrompt of Prompt
         | ForgetPrompt of Prompt
         
-        | ProcessUpload of Prompt * imageFile: IBrowserFile
-        | ProcessedUpload of Prompt * Image
-        | ProcessUploadFailed of error: exn * Prompt * imageFile: IBrowserFile
-        
-        | Prompt2LocalDeviation of Prompt * imageFile: IBrowserFile
+        | Prompt2LocalDeviation of Prompt * Image
         | Prompt2LocalDeviationDone of Prompt * local: LocalDeviation
         | Prompt2LocalDeviationFailed of error: exn * Prompt * Image
         
-        | AddLocalDeviation of imageFile: IBrowserFile
-        | AddLocalDeviations of imageFiles: IBrowserFile[]
         | AddedLocalDeviation of local: LocalDeviation
-        | AddLocalDeviationFailed of error: exn * imageFile: IBrowserFile
         
         | UpdateLocalDeviation of local: LocalDeviation
         | UpdatedLocalDeviation of local: LocalDeviation

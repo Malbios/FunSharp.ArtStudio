@@ -1,6 +1,8 @@
 ﻿namespace FunSharp.DeviantArt.Manager.Components
 
+open System.Collections.Generic
 open FunSharp.Blazor.Components
+open FunSharp.DeviantArt.Manager.Model
 open FunSharp.DeviantArt.Model
 open Microsoft.AspNetCore.Components
 open Bolero
@@ -8,7 +10,7 @@ open Bolero.Html
 open Radzen
 open Radzen.Blazor
 
-type Inspiration2PromptDialog() =
+type PromptDialog() =
     inherit Component()
     
     let mutable promptText = ""
@@ -28,7 +30,7 @@ type Inspiration2PromptDialog() =
             "Orientation" => Orientation.Vertical
             
             div {
-                attr.style "padding: 0.5rem; border: 2px solid gray; border-radius: 8px;"
+                attr.style "padding: 0.5rem;"
                 ClipboardSnippets.render this.JSRuntime this.Snippets
             }
             
@@ -41,3 +43,14 @@ type Inspiration2PromptDialog() =
                 Button.render "Cancel" (fun () -> this.DialogService.Close(null)) false
             }
         }
+
+    static member OpenAsync(dialogService: DialogService, settings: Loadable<Settings>, title: string) =
+        
+        let snippets =
+            match settings with
+            | Loaded settings -> settings.Snippets
+            | _ -> Array.empty
+        
+        let parameters = Dictionary<string, obj>(dict [ "Snippets", box snippets ])
+        
+        dialogService.OpenAsync<PromptDialog>(title, parameters)

@@ -1,14 +1,12 @@
 ﻿namespace FunSharp.DeviantArt.Manager
 
 open System
-open System.IO
 open System.Net.Http
 open System.Net.Http.Headers
 open System.Text
 open System.Threading.Tasks
 open System.Web
 open FunSharp.DeviantArt.Manager.Model.AddInspiration
-open Microsoft.AspNetCore.Components.Forms
 open Microsoft.Extensions.Logging
 open Elmish
 open FunSharp.Common
@@ -164,32 +162,12 @@ module Update =
         
         delete client $"{apiRoot}/local/deviation?url={local.ImageUrl.ToString() |> HttpUtility.UrlEncode}"
         |> Async.bind (fun _ -> local |> Async.returnM)
-        
-    let private processUpload (file: IBrowserFile) = async {
-        let maxSize = 1024L * 1024L * 100L // 100 MB
-        
-        use stream = file.OpenReadStream(maxAllowedSize = maxSize)
-        use ms = new MemoryStream()
-        
-        do! stream.CopyToAsync(ms)
-        
-        let byteArray = ms.ToArray()
-        
-        return {
-            Name = file.Name
-            ContentType = file.ContentType
-            Content = byteArray
-        }
-    }
     
-    let private uploadImage client (file: IBrowserFile) =
+    let private uploadImage client (image: Image) =
         
-        processUpload file
-        |> Async.bind (fun image ->
-            postFile client $"{apiRoot}/local/deviation/asImages" image.Name image.ContentType image.Content
-            |> Async.bind contentAsString
-            |> Async.map (JsonSerializer.deserialize<LocalDeviation array> >> Array.head)
-        )
+        postFile client $"{apiRoot}/local/deviation/asImages" image.Name image.ContentType image.Content
+        |> Async.bind contentAsString
+        |> Async.map (JsonSerializer.deserialize<LocalDeviation array> >> Array.head)
         
     let private updateLocalDeviation client (local: LocalDeviation) =
         
@@ -442,35 +420,14 @@ module Update =
                 
             model, Cmd.OfAsync.perform action prompt RemovePrompt
             
-        | ProcessUpload (prompt, imageFile) ->
-            
-            let upload imageFile =
-                processUpload imageFile
-                |> Async.map (fun x -> (prompt, x))
-                
-            let failed ex = ProcessUploadFailed (ex, prompt, imageFile)
-            
-            model, Cmd.OfAsync.either upload imageFile ProcessedUpload failed
-            
-        | ProcessedUpload (prompt, image) ->
-            
+        | Prompt2LocalDeviation (prompt, image) ->
+        
             let prompt2LocalDeviation = prompt2LocalDeviation client
             let failed ex = Prompt2LocalDeviationFailed (ex, prompt, image)
             
             let model = { model with Prompts = model.Prompts |> State.isBusy (fun x ->  x.Id = prompt.Id) }
             
             model, Cmd.OfAsync.either prompt2LocalDeviation (prompt, image) Prompt2LocalDeviationDone failed
-            
-        | ProcessUploadFailed (error, prompt, imageFile) ->
-            
-            printfn $"prompt2local failed for: {prompt.Id} -> {imageFile.Name}"
-            printfn $"error: {error}"
-            
-            model, Cmd.none
-            
-        | Prompt2LocalDeviation (prompt, imageFile) ->
-        
-            model, (prompt, imageFile) |> ProcessUpload |> Cmd.ofMsg
             
         | Prompt2LocalDeviationDone (prompt, local) ->
             
@@ -488,34 +445,11 @@ module Update =
             
             model, Cmd.none
             
-        | AddLocalDeviation imageFile ->
-            
-            let upload file = uploadImage client file
-            let error ex = AddLocalDeviationFailed (ex, imageFile)
-            
-            model, Cmd.OfAsync.either upload imageFile AddedLocalDeviation error
-            
-        | AddLocalDeviations imageFiles ->
-            
-            let batch = Cmd.batch (
-                imageFiles
-                |> Array.map (AddLocalDeviation >> Cmd.ofMsg)
-            )
-            
-            model, batch
-            
         | AddedLocalDeviation local ->
             
             let deviations = model.LocalDeviations |> LoadableStatefulItemArray.withNew local
             
             { model with LocalDeviations = deviations }, Cmd.none
-            
-        | AddLocalDeviationFailed (error, imageFile) ->
-            
-            printfn $"adding local deviation failed for: {imageFile.Name}"
-            printfn $"error: {error}"
-            
-            model, Cmd.none
             
         | UpdateLocalDeviation local ->
             

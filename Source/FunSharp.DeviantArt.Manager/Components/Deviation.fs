@@ -13,7 +13,7 @@ module Deviation =
     let private render (inspirationImageUrl: Uri option) (imageUrl: Uri option) (content: Node option) =
         
         comp<RadzenStack> {
-            attr.style "margin: 0.25rem; padding: 0.5rem; border: 2px solid gray; border-radius: 8px; max-width: 700px;"
+            attr.style "margin: 0.25rem; padding: 0.5rem; max-width: 700px;"
 
             "Orientation" => Orientation.Horizontal
             "JustifyContent" => JustifyContent.Center
