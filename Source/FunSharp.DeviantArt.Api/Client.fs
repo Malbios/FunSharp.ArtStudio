@@ -16,17 +16,8 @@ open FunSharp.Common
 open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.Api.Model
 
-type Client(persistence: IPersistence, sender: HttpClient, clientId: string, clientSecret: string) =
-    
-    [<Literal>]
-    let dbKey_AuthenticationData = "authenticationData"
-    
-    let mutable authData =
-        persistence.Find<string, AuthenticationData>(dbKey_AuthenticationData, dbKey_AuthenticationData)
-        
-    let updateAuthData newAuthData =
-        persistence.Upsert(dbKey_AuthenticationData, dbKey_AuthenticationData, newAuthData) |> ignore
-        authData <- Some newAuthData
+[<RequireQualifiedAccess>]
+module Helpers =
         
     let toHttpRequestMessage (payload: RequestPayload) =
         
@@ -44,21 +35,23 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
             
             let title =
                 properties
-                |> List.tryFind (fun x -> fst x = "title")
+                |> List.tryFind (fun (k, _) -> k = "title")
                 |> Option.map snd
                 |> Option.defaultValue ""
                 
             let mediaType =
                 match file with
-                | InMemory file -> file.MediaType
-                | Stream file -> file.MediaType
+                | InMemory f -> f.MediaType
+                | Stream f   -> f.MediaType
                 |> Option.defaultValue "application/octet-stream"
                 
-            content.Headers.ContentType <- MediaTypeHeaderValue.Parse(mediaType)
-            
-            match file with
-            | InMemory file -> content.Add(new ByteArrayContent(file.Content), "file", title)
-            | Stream file -> content.Add(new StreamContent(file.Content), "file", title)
+            let fileContent =
+                match file with
+                | InMemory f -> new ByteArrayContent(f.Content) :> System.Net.Http.HttpContent
+                | Stream f   -> new StreamContent(f.Content)   :> System.Net.Http.HttpContent
+                
+            fileContent.Headers.ContentType <- MediaTypeHeaderValue.Parse(mediaType)
+            content.Add(fileContent, "file", title)
             
             for k, v in properties do
                 content.Add(new StringContent(v), k)
@@ -67,29 +60,42 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
             
     let ensureSuccess (response: HttpResponseMessage) =
         
-        response.EnsureSuccessStatusCode() |> ignore
-        response
+        if response.IsSuccessStatusCode then
+            response |> Async.returnM
+        else
+            response.Content.ReadAsStringAsync()
+            |> Async.AwaitTask
+            |> Async.map failwith
         
     let responseContentAsString (response: HttpResponseMessage) =
         
         response.Content.ReadAsStringAsync()
         |> Async.AwaitTask
     
-    member private this.RequestToken(parameters) =
+    let toRecord<'T> (response: HttpResponseMessage) =
+        response
+        |> responseContentAsString
+        |> Async.map JsonSerializer.deserialize<'T>
+
+type Client(persistence: IPersistence, sender: HttpClient, clientId: string, clientSecret: string) =
+    
+    [<Literal>]
+    let dbKey_AuthenticationData = "authenticationData"
+    
+    let mutable authData =
+        persistence.Find<string, AuthenticationData>(dbKey_AuthenticationData, dbKey_AuthenticationData)
+        
+    let updateAuthData newAuthData =
+        persistence.Upsert(dbKey_AuthenticationData, dbKey_AuthenticationData, newAuthData) |> ignore
+        authData <- Some newAuthData
+    
+    member private this.RequestToken(parameters) : Async<AuthenticationData> =
         
         sender.PostAsync("https://www.deviantart.com/oauth2/token", new FormUrlEncodedContent(dict parameters))
         |> Async.AwaitTask
-        |> Async.bind (fun response ->
-            response.EnsureSuccessStatusCode() |> ignore
-            
-            response.Content.ReadAsStringAsync()
-            |> Async.AwaitTask
-            |> Async.map (fun content ->
-                content
-                |> JsonSerializer.deserialize<TokenResponse>
-                |> AuthenticationData.fromTokenResponse
-            )
-        )
+        |> Async.bind Helpers.ensureSuccess
+        |> Async.bind Helpers.toRecord<TokenResponse>
+        |> Async.map AuthenticationData.fromTokenResponse
     
     member private this.RefreshToken(refreshToken) =
         this.RequestToken [
@@ -131,16 +137,10 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
         
     member private this.Send(payload: RequestPayload) =
         
-        let request = payload |> toHttpRequestMessage
+        let request = payload |> Helpers.toHttpRequestMessage
         
         this.EnsureAccessToken()
         |> Async.bind (fun () -> sender.SendAsync(request) |> Async.AwaitTask)
-        
-    member private this.ToRecord<'T>(response: HttpResponseMessage) =
-        
-        response
-        |> responseContentAsString
-        |> Async.map JsonSerializer.deserialize<'T>
         
     member private this.SubmitToStash(destination: SubmitDestination, file: File, submission: StashSubmission) =
         
@@ -168,8 +168,8 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
         (Endpoints.submitToStash, file, properties)
         |> RequestPayload.PostMultipart
         |> this.Send
-        |> Async.map ensureSuccess
-        |> Async.bind this.ToRecord<StashSubmissionResponse>
+        |> Async.bind Helpers.ensureSuccess
+        |> Async.bind Helpers.toRecord<StashSubmissionResponse>
         
     member _.NeedsInteraction = authData.IsNone
     
@@ -225,8 +225,8 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
         
         RequestPayload.Get Endpoints.whoAmI
         |> this.Send
-        |> Async.map ensureSuccess
-        |> Async.bind this.ToRecord<WhoAmIResponse>
+        |> Async.bind Helpers.ensureSuccess
+        |> Async.bind Helpers.toRecord<WhoAmIResponse>
         
     member this.SubmitToStash(submission: StashSubmission, file: File) =
         
@@ -251,16 +251,16 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
         ($"{Endpoints.publishFromStash}", properties)
         |> RequestPayload.PostForm
         |> this.Send
-        |> Async.map ensureSuccess
-        |> Async.bind this.ToRecord<PublishResponse>
+        |> Async.bind Helpers.ensureSuccess
+        |> Async.bind Helpers.toRecord<PublishResponse>
         
     member this.GetDeviationId(url: string) =
         
         url
         |> RequestPayload.Get
         |> this.Send
-        |> Async.map ensureSuccess
-        |> Async.bind responseContentAsString
+        |> Async.bind Helpers.ensureSuccess
+        |> Async.bind Helpers.responseContentAsString
         |> Async.map (fun content ->
             let pattern = "<meta property=\"da:appurl\" content=\"DeviantArt://deviation/([0-9A-Fa-f\\-]+)\""
             let m = Regex.Match(content, pattern)
@@ -276,8 +276,8 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
         Endpoints.deviation id
         |> RequestPayload.Get
         |> this.Send
-        |> Async.map ensureSuccess
-        |> Async.bind this.ToRecord<DeviationResponse>
+        |> Async.bind Helpers.ensureSuccess
+        |> Async.bind Helpers.toRecord<DeviationResponse>
     
     interface IDisposable with
         
