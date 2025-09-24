@@ -61,17 +61,6 @@ module StashSubmission =
         |> Record.toKeyValueTypes
         |> KeyValueType.splitArrays
         
-// type MatureLevel =
-//     | Strict
-//     | Moderate
-//     
-// type MatureClassification =
-//     | Nudity
-//     | Sexual
-//     | Gore
-//     | Language
-//     | Ideology
-
 type DisplayResolution =
     | Original = 0
     | Width_400px = 1
@@ -83,23 +72,45 @@ type DisplayResolution =
     | Width_1600px = 7
     | Width_1920px = 8
 
+type LicenseOptionsModify =
+    | Yes
+    | No
+    | Share
+    
+type LicenseOptions = {
+    creative_commons: bool
+    commercial: bool
+    modify: LicenseOptionsModify
+}
+
+[<RequireQualifiedAccess>]
+module LicenseOptions =
+    
+    let defaults = {
+        creative_commons = true
+        commercial = true
+        modify = LicenseOptionsModify.Share
+    }
+    
+    let toProperties (options: LicenseOptions) =
+        
+        [
+            "license_options[creative_commons]", JsonSerializer.serialize options.creative_commons
+            "license_options[commercial]", JsonSerializer.serialize options.commercial
+            "license_options[modify]", (Union.toString options.modify).ToLower()
+        ]
+
 type PublishSubmission = {
     itemid: int64
     is_mature: bool
-    // mature_level: MatureLevel
-    // mature_classification: MatureClassification array
     feature: bool
     allow_comments: bool
     display_resolution: int
+    license_options: LicenseOptions
     galleryids: string array
     allow_free_download: bool
     add_watermark: bool
     tags: string array
-    // subject_tags: string array
-    // subject_tag_types: string array
-    // location_tag: string
-    // groups: string array
-    // group_folders: string array
     is_ai_generated: bool
     noai: bool
 }
@@ -113,6 +124,7 @@ module PublishSubmission =
         feature = false
         allow_comments = true
         display_resolution = DisplayResolution.Original |> int
+        license_options = LicenseOptions.defaults
         galleryids = Array.empty
         allow_free_download = true
         add_watermark = false
@@ -125,6 +137,12 @@ module PublishSubmission =
         submission
         |> Record.toKeyValueTypes
         |> KeyValueType.splitArrays
+        |> List.collect (fun (key, value) ->
+            if key = "license_options" then
+                LicenseOptions.toProperties submission.license_options
+            else
+                List.singleton (key, value)
+        )
         
 type WhoAmIResponse = {
     userid: string

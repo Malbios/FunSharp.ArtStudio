@@ -14,7 +14,7 @@ module ``Model Tests`` =
         %(snd tuple).Should().Be(expectedB)
     
     [<Fact>]
-    let ``toProperties should split arrays`` () =
+    let ``PublishSubmission.toProperties returns expected values`` () =
     
         // Arrange
         let publication : PublishSubmission = {
@@ -23,6 +23,7 @@ module ``Model Tests`` =
             feature = false
             allow_comments = true
             display_resolution = DisplayResolution.Original |> int
+            license_options = { creative_commons = true; commercial = true; modify = LicenseOptionsModify.Share }
             galleryids = ["invalid-uuid"] |> Array.ofList
             allow_free_download = true
             add_watermark = false
@@ -35,17 +36,40 @@ module ``Model Tests`` =
         let result = PublishSubmission.toProperties publication
         
         // Assert
-        %result.Should().HaveLength(12)
+        %result.Should().HaveLength(15)
         
         result[0] |> tupleShouldBe "itemid" "123"
         result[1] |> tupleShouldBe "is_mature" "true"
         result[2] |> tupleShouldBe "feature" "false"
         result[3] |> tupleShouldBe "allow_comments" "true"
         result[4] |> tupleShouldBe "display_resolution" "0"
-        result[5] |> tupleShouldBe "galleryids[]" "invalid-uuid"
-        result[6] |> tupleShouldBe "allow_free_download" "true"
-        result[7] |> tupleShouldBe "add_watermark" "false"
-        result[8] |> tupleShouldBe "tags[]" "digital_art"
-        result[9] |> tupleShouldBe "tags[]" "made_with_ai"
-        result[10] |> tupleShouldBe "is_ai_generated" "true"
-        result[11] |> tupleShouldBe "noai" "false"
+        result[5] |> tupleShouldBe "license_options[creative_commons]" "true"
+        result[6] |> tupleShouldBe "license_options[commercial]" "true"
+        result[7] |> tupleShouldBe "license_options[modify]" "share"
+        result[8] |> tupleShouldBe "galleryids[]" "invalid-uuid"
+        result[9] |> tupleShouldBe "allow_free_download" "true"
+        result[10] |> tupleShouldBe "add_watermark" "false"
+        result[11] |> tupleShouldBe "tags[]" "digital_art"
+        result[12] |> tupleShouldBe "tags[]" "made_with_ai"
+        result[13] |> tupleShouldBe "is_ai_generated" "true"
+        result[14] |> tupleShouldBe "noai" "false"
+    
+    [<Fact>]
+    let ``LicenseOptions.toProperties returns expected values`` () =
+    
+        // Arrange
+        let options : LicenseOptions = {
+            creative_commons = true
+            commercial = true
+            modify = LicenseOptionsModify.Share
+        }
+        
+        // Act
+        let result = LicenseOptions.toProperties options
+        
+        // Assert
+        %result.Should().HaveLength(3)
+        
+        result[0] |> tupleShouldBe "license_options[creative_commons]" "true"
+        result[1] |> tupleShouldBe "license_options[commercial]" "true"
+        result[2] |> tupleShouldBe "license_options[modify]" "share"
