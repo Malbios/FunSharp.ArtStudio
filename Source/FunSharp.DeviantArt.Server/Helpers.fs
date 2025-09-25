@@ -163,10 +163,10 @@ module Helpers =
         |> Array.find(fun x -> x.name = galleryName)
         |> _.id
         
-    let urlAlreadyExists (persistence: IPersistence) (url: string) =
+    let urlAlreadyExists (persistence: IPersistence) (url: Uri) =
         
         let inspirationHasUrl inspiration =
-            inspiration.Url.ToString() = url
+            inspiration.Url.ToString() = url.ToString()
             
         let promptHasUrl prompt =
             match prompt.Inspiration with
@@ -244,9 +244,63 @@ module Helpers =
             
             match persistence.Find<string, 'T>(dbKey, key) with
             | None -> ()
+            
             | Some item ->
                 persistence.Delete(dbKey, key) |> ignore
                 persistence.Insert(dbKey_DeletedItems, key, item)
                 
             NO_CONTENT ctx
         |> tryCatch id
+        
+    let inspirationIsDuplicate persistence newInspiration existingInspiration =
+        
+        let urlAlreadyExists = urlAlreadyExists persistence
+        
+        match existingInspiration with
+        | None -> urlAlreadyExists newInspiration.Url
+        
+        | Some existingInspiration ->
+            if newInspiration.Url = existingInspiration.Url then false
+            else urlAlreadyExists newInspiration.Url
+            
+    let promptHasDuplicateInspiration persistence newPrompt existingPrompt =
+        
+        match newPrompt.Inspiration with
+        | None -> false
+        
+        | Some newInspiration ->
+            let existingInspiration = existingPrompt |> Option.bind _.Inspiration
+            inspirationIsDuplicate persistence newInspiration existingInspiration
+            
+    let originHasDuplicateInspiration persistence newOrigin (existingOrigin: DeviationOrigin option) =
+        
+        match newOrigin with
+        | DeviationOrigin.None -> false
+        
+        | DeviationOrigin.Inspiration newInspiration ->
+            match existingOrigin with
+            | None -> inspirationIsDuplicate persistence newInspiration None
+            
+            | Some existingOrigin ->
+                match existingOrigin with
+                | DeviationOrigin.Inspiration existingInspiration ->
+                    inspirationIsDuplicate persistence newInspiration (Some existingInspiration)
+                    
+                | _ -> inspirationIsDuplicate persistence newInspiration None
+                
+        | DeviationOrigin.Prompt newPrompt ->
+            match existingOrigin with
+            | None -> promptHasDuplicateInspiration persistence newPrompt None
+            
+            | Some existingOrigin ->
+                match existingOrigin with
+                | DeviationOrigin.Prompt existingPrompt ->
+                    promptHasDuplicateInspiration persistence newPrompt (Some existingPrompt)
+                    
+                | _ -> promptHasDuplicateInspiration persistence newPrompt None
+                
+    let localDeviationHasDuplicateInspiration persistence newDeviation (existingDeviation: LocalDeviation option) =
+        
+        let existingOrigin = existingDeviation |> Option.map _.Origin
+        
+        originHasDuplicateInspiration persistence newDeviation.Origin existingOrigin

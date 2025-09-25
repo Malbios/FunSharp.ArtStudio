@@ -254,9 +254,9 @@ type Client(persistence: IPersistence, sender: HttpClient, clientId: string, cli
         |> Async.bind Helpers.ensureSuccess
         |> Async.bind Helpers.toRecord<PublishResponse>
         
-    member this.GetDeviationId(url: string) =
+    member this.GetDeviationId(url: Uri) =
         
-        url
+        url.ToString()
         |> RequestPayload.Get
         |> this.Send
         |> Async.bind Helpers.ensureSuccess

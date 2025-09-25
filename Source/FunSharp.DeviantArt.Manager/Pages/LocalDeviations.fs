@@ -30,7 +30,7 @@ type LocalDeviations() =
             | Some inspiration ->
                 Link.render None inspiration.Url
     
-    let editorWidget dispatch galleries deviation =
+    let editorWidget dispatch galleries isBusy deviation =
         
         let update deviation =
             
@@ -71,20 +71,21 @@ type LocalDeviations() =
         comp<RadzenStack> {
             "Orientation" => Orientation.Vertical
             
-            TextInput.render (editTitle deviation) (fun _ -> ()) false "Enter title..." deviation.Metadata.Title
+            TextInput.render (editTitle deviation) (fun _ -> ()) isBusy "Enter title..." deviation.Metadata.Title
             
             comp<RadzenStack> {
                 "Orientation" => Orientation.Horizontal
                 
-                DropDown.render (editGallery deviation) "Gallery" "Select gallery..." galleries deviation.Metadata.Gallery
-                CheckBox.render (editIsMature deviation) "IsMature" deviation.Metadata.IsMature
+                DropDown.render (editGallery deviation) "Gallery" isBusy "Select gallery..." galleries deviation.Metadata.Gallery
+                CheckBox.render (editIsMature deviation) "IsMature" isBusy deviation.Metadata.IsMature
             }
             
             comp<RadzenStack> {
                 "Orientation" => Orientation.Horizontal
+                "JustifyContent" => JustifyContent.SpaceBetween
                 
-                Button.render "Stash" (fun () -> stash deviation) false
-                Button.render "Forget" (fun () -> forget deviation) false
+                Button.render "Stash" (fun () -> stash deviation) isBusy
+                Button.render "Forget" (fun () -> forget deviation) isBusy
             }
         }
     
@@ -110,35 +111,38 @@ type LocalDeviations() =
                 Deviations.render
                 <| concat {
                     for deviation in deviations |> StatefulItemArray.sortBy _.Timestamp do
-                        match deviation with
-                        | IsBusy _ ->
-                            LoadingWidget.render ()
+                        let deviation, isBusy, error =
+                            match deviation with
+                            | Default deviation -> deviation, false, None
+                            | IsBusy deviation -> deviation, true, None
+                            | HasError (deviation, error) -> deviation, false, Some error
                             
-                        | HasError (deviation, error) ->
-                            concat {
-                                text $"deviation: {LocalDeviation.keyOf deviation}"
-                                text $"error: {error}"
-                            }
-                            
-                        | Default deviation ->
-                            let inspirationUrl =
-                                match deviation.Origin with
-                                | DeviationOrigin.None -> None
-                                | DeviationOrigin.Prompt prompt -> prompt.Inspiration |> Option.bind _.ImageUrl
-                                | DeviationOrigin.Inspiration inspiration -> inspiration.ImageUrl
+                        let inspirationUrl =
+                            match deviation.Origin with
+                            | DeviationOrigin.None -> None
+                            | DeviationOrigin.Prompt prompt -> prompt.Inspiration |> Option.bind _.ImageUrl
+                            | DeviationOrigin.Inspiration inspiration -> inspiration.ImageUrl
 
-                            comp<RadzenStack> {
-                                "Orientation" => Orientation.Vertical
-                                "JustifyContent" => JustifyContent.Left
-                                
-                                deviation.Timestamp.ToString() |> text
-                                
-                                ImageUrl.render (Some deviation.ImageUrl)
-                                
-                                originLink deviation.Origin
-                                
-                                editorWidget dispatch galleries deviation
-                            }
-                            |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
+                        comp<RadzenStack> {
+                            "Orientation" => Orientation.Vertical
+                            "JustifyContent" => JustifyContent.Left
+                            
+                            deviation.Timestamp.ToString() |> text
+                            
+                            ImageUrl.render (Some deviation.ImageUrl)
+                            
+                            originLink deviation.Origin
+                            
+                            match error with
+                            | None -> ()
+                            | Some error ->
+                                concat {
+                                    text $"deviation: {LocalDeviation.keyOf deviation}"
+                                    text $"error: {error}"
+                                }
+                            
+                            editorWidget dispatch galleries isBusy deviation
+                        }
+                        |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
                 }
         |> Page.render model dispatch this.NavManager

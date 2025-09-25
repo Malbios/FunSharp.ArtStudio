@@ -53,8 +53,6 @@ module ServerStartup =
             PUT >=> path $"{apiBase}/local/images" >=> putImages serverAddress serverPort
             PUT >=> path $"{apiBase}/local/inspiration" >=> putInspiration serverAddress serverPort persistence apiClient
             
-            PUT >=> path $"{apiBase}/local/deviation/asImages" >=> putLocalDeviations serverAddress serverPort persistence
-            
             PUT >=> path $"{apiBase}/local/prompt" >=> (fun ctx -> badRequestMessage ctx "addPrompt()" "not implemented yet")
             PUT >=> path $"{apiBase}/local/deviation" >=> (fun ctx -> badRequestMessage ctx "addDeviation()" "not implemented yet")
             

@@ -159,24 +159,18 @@ module Update =
         
     let private forgetPrompt client prompt =
         
-        delete client $"{apiRoot}/local/prompt?id={prompt.Id.ToString()}"
+        delete client $"{apiRoot}/local/prompt?key={prompt.Id.ToString()}"
         |> Async.bind (fun _ -> prompt |> Async.returnM)
         
     let private forgetInspiration client (inspiration: Inspiration) =
         
-        delete client $"{apiRoot}/local/inspiration?url={inspiration.Url.ToString()}"
+        delete client $"{apiRoot}/local/inspiration?key={inspiration.Url.ToString()}"
         |> Async.bind (fun _ -> inspiration |> Async.returnM)
         
     let private forgetLocalDeviation client (local: LocalDeviation) =
         
-        delete client $"{apiRoot}/local/deviation?url={local.ImageUrl.ToString() |> HttpUtility.UrlEncode}"
+        delete client $"{apiRoot}/local/deviation?key={local.ImageUrl.ToString() |> HttpUtility.UrlEncode}"
         |> Async.bind (fun _ -> local |> Async.returnM)
-    
-    let private uploadImage client (image: Image) =
-        
-        putFile client $"{apiRoot}/local/deviation/asImages" image.Name image.ContentType image.Content
-        |> Async.bind contentAsString
-        |> Async.map (JsonSerializer.deserialize<LocalDeviation array> >> Array.head)
         
     let private updatePrompt client (prompt: Prompt) =
         

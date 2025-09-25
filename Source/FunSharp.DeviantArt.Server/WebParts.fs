@@ -103,8 +103,8 @@ module WebParts =
     let rec putInspiration (serverAddress: string) (serverPort: int) (persistence: IPersistence) (apiClient: Client) =
         
         fun ctx ->
-            let url = ctx.request |> asString |> HttpUtility.HtmlDecode
-                
+            let url = ctx.request |> asString |> HttpUtility.HtmlDecode |> Uri
+            
             match urlAlreadyExists persistence url with
             | true ->
                 badRequestMessage ctx (nameof putInspiration) "This inspiration url already has a published deviation."
@@ -121,7 +121,7 @@ module WebParts =
                 let imageUrl = imageUrl serverAddress serverPort fileName
                 
                 let inspiration = {
-                    Url = Uri url
+                    Url = url
                     Timestamp = DateTimeOffset.Now
                     ImageUrl = Some imageUrl
                 }
@@ -132,42 +132,17 @@ module WebParts =
             }
         |> tryCatch (nameof putInspiration)
         
-    let rec putLocalDeviations (serverAddress: string) (serverPort: int) (persistence: IPersistence) =
-        
-        fun ctx ->
-            match ctx.request.files with
-            | [] ->
-                badRequestMessage ctx (nameof putLocalDeviations) "No files uploaded"
-                
-            | files -> async{
-                let mutable items = []
-                
-                for file in files do
-                    let! content = File.readAllBytesAsync file.tempFilePath
-                    do! File.writeAllBytesAsync $"{imagesLocation}\\{file.fileName}" content
-
-                    let imageUrl = Uri $"http://{serverAddress}:{serverPort}/images/{file.fileName}"
-                    
-                    let deviation = LocalDeviation.defaults imageUrl
-                    
-                    do persistence.Insert(dbKey_LocalDeviations, imageUrl, deviation)
-                    
-                    items <- items @ [deviation]
-
-                return! items |> asOkJsonResponse ctx
-            }
-        |> tryCatch (nameof putLocalDeviations)
-        
     let rec patchPrompt (persistence: IPersistence) =
         
         fun ctx ->
             let prompt = ctx.request |> asJson<Prompt>
+            let existingPrompt = persistence.Find<Guid, Prompt>(dbKey_Prompts, Prompt.keyOf prompt)
             
-            match prompt.Inspiration with
-            | Some inspiration when inspiration.Url.ToString() |> urlAlreadyExists persistence = true ->
-                badRequestMessage ctx (nameof patchPrompt) "This inspiration url already has another deviation."
-                
-            | _ ->
+            let isDuplicate = promptHasDuplicateInspiration persistence prompt existingPrompt
+            
+            if isDuplicate then
+                badRequestMessage ctx (nameof patchPrompt) "This new inspiration url already has another deviation."
+            else
                 upsertPrompt ctx persistence prompt
         |> tryCatch (nameof patchPrompt)
         
@@ -175,17 +150,13 @@ module WebParts =
         
         fun ctx ->
             let deviation = ctx.request |> asJson<LocalDeviation>
+            let existingDeviation = persistence.Find<Uri, LocalDeviation>(dbKey_LocalDeviations, LocalDeviation.keyOf deviation)
             
-            match deviation.Origin with
-            | DeviationOrigin.Inspiration inspiration ->
-                match inspiration.Url.ToString() |> urlAlreadyExists persistence with
-                | true ->
-                    badRequestMessage ctx (nameof patchLocalDeviation) "This inspiration url already has a published deviation."
-                    
-                | false ->
-                    upsertLocalDeviation ctx persistence deviation
-                    
-            | _ ->
+            let isDuplicate = localDeviationHasDuplicateInspiration persistence deviation existingDeviation
+            
+            if isDuplicate then
+                badRequestMessage ctx (nameof patchPrompt) "This new inspiration url already has another deviation."
+            else
                 upsertLocalDeviation ctx persistence deviation
         |> tryCatch (nameof patchLocalDeviation)
         
