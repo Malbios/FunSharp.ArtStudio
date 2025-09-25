@@ -363,6 +363,12 @@ module Update =
             
         | Inspiration2Prompt (inspiration, promptText) ->
             
+            let promptText =
+                promptText.Split("\n")
+                |> Array.map _.Trim()
+                |> Array.filter (fun line -> String.IsNullOrWhiteSpace(line) |> not)
+                |> String.concat "\n\n"
+            
             let inspiration2Prompt = inspiration2Prompt client
             let failed ex = Inspiration2PromptFailed (ex, inspiration, promptText)
             

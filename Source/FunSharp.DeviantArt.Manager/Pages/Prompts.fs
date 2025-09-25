@@ -91,10 +91,19 @@ type Prompts() =
                             fun (args: InputFileChangeEventArgs) -> processUploadedFile prompt args.File
                         
                         concat {
-                            prompt.Inspiration
-                            |> Option.map _.Timestamp.ToString()
-                            |> Option.defaultValue "?"
-                            |> text
+                            comp<RadzenStack> {
+                                "Orientation" => Orientation.Horizontal
+                                
+                                prompt.Inspiration
+                                |> Option.map _.Timestamp.ToString()
+                                |> Option.defaultValue "?"
+                                |> text
+                            
+                                match prompt.Inspiration with
+                                | Some inspiration ->
+                                    Link.render (Some "DA Link") inspiration.Url
+                                | None -> ()
+                            }
                             
                             Button.render "Copy Prompt" (Helpers.copyToClipboard this.JSRuntime prompt.Text) false
                             
