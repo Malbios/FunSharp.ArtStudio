@@ -266,31 +266,24 @@ module WebParts =
         fun ctx ->
             let key = getKey ctx
             
-            match ctx.request.queryParam "key" with
-            | Choice2Of2 _ ->
-                badRequestMessage ctx (nameof publish) "could not identify stashed deviation"
+            match persistence.Find<string, StashedDeviation>(dbKey_StashedDeviations, key) with
+            | None ->
+                badRequestMessage ctx (nameof publish) $"stashed deviation '{key}' not found"
+            
+            | Some stashedDeviation ->
+                printfn $"Publishing '{key}' from stash..."
                 
-            | Choice1Of2 key ->
-                let key = key |> HttpUtility.UrlDecode
+                let galleryId = galleryId secrets stashedDeviation.Metadata.Gallery
                 
-                match persistence.Find<string, StashedDeviation>(dbKey_StashedDeviations, key) with
-                | None ->
-                    badRequestMessage ctx (nameof publish) $"stashed deviation '{key}' not found"
-                
-                | Some stashedDeviation ->
-                    printfn $"Publishing '{key}' from stash..."
+                publishFromStash apiClient galleryId stashedDeviation
+                |> Async.bind (fun publishedDeviation ->
+                    persistence.Delete(dbKey_StashedDeviations, key) |> ignore
+                    persistence.Insert(dbKey_PublishedDeviations, key, publishedDeviation)
                     
-                    let galleryId = galleryId secrets stashedDeviation.Metadata.Gallery
+                    printfn "Publishing done!"
                     
-                    publishFromStash apiClient galleryId stashedDeviation
-                    |> Async.bind (fun publishedDeviation ->
-                        persistence.Delete(dbKey_StashedDeviations, key) |> ignore
-                        persistence.Insert(dbKey_PublishedDeviations, key, publishedDeviation)
-                        
-                        printfn "Publishing done!"
-                        
-                        publishedDeviation |> asOkJsonResponse ctx
-                    )
+                    publishedDeviation |> asOkJsonResponse ctx
+                )
         |> tryCatch (nameof publish)
 
     let rec deleteInspiration (persistence: IPersistence) =
