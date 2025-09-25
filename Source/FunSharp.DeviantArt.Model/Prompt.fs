@@ -15,3 +15,7 @@ module Prompt =
     let keyOf prompt =
         
         prompt.Id
+
+    let identifier p1 p2 =
+        
+        keyOf p1 = keyOf p2

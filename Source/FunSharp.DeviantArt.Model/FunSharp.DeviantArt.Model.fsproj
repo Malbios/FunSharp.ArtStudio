@@ -16,7 +16,6 @@
         <Compile Include="Gallery.fs" />
         <Compile Include="ClipboardSnippet.fs" />
         <Compile Include="Remix.fs" />
-        <Compile Include="Forgotten.fs" />
     </ItemGroup>
 
 </Project>

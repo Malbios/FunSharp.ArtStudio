@@ -72,7 +72,7 @@ type Prompts() =
             PromptDialog.OpenAsync(this.DialogService, model.Settings, "Edit Prompt", prompt.Text)
             |> Task.map (
                 function
-                | :? string as promptText -> Message.EditPrompt (prompt, promptText) |> dispatch
+                | :? string as promptText -> Message.UpdatePrompt { prompt with Text = promptText } |> dispatch
                 | _ -> ()
             )
         
@@ -121,11 +121,10 @@ type Prompts() =
                                 
                                 Button.render "Copy Prompt" (Helpers.copyToClipboard this.JSRuntime prompt.Text) isBusy
                                 Button.renderAsync "Edit Prompt" (fun () -> openEditPromptDialog prompt) isBusy
+                                Button.render "Forget" (fun () -> forgetPrompt prompt) isBusy
                             }
                             
                             FileInput.renderAsync false processUpload isBusy
-                            
-                            Button.render "Forget" (fun () -> forgetPrompt prompt) isBusy
                         }
                         |> Deviation.renderWithContent (prompt.Inspiration |> Option.bind _.ImageUrl) None
                 )

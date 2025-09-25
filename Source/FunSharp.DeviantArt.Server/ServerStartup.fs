@@ -41,7 +41,7 @@ module ServerStartup =
         allowCors >=> choose [
             corsPreflight
             
-            GET >=> path $"{apiBase}/user/name" >=> username apiClient
+            GET >=> path $"{apiBase}/user/name" >=> getUsername apiClient
             GET >=> path $"{apiBase}/settings" >=> getSettings secrets
             
             GET >=> path $"{apiBase}/local/inspirations" >=> getInspirations persistence
@@ -50,23 +50,26 @@ module ServerStartup =
             GET >=> path $"{apiBase}/stash" >=> getStashedDeviations persistence
             GET >=> path $"{apiBase}/publish" >=> getPublishedDeviations persistence
             
-            POST >=> path $"{apiBase}/local/images" >=> uploadImages serverAddress serverPort
-            POST >=> path $"{apiBase}/local/inspiration" >=> addInspiration serverAddress serverPort persistence apiClient
-            POST >=> path $"{apiBase}/local/prompt" >=> (fun ctx -> badRequestMessage ctx "addPrompt()" "not implemented yet")
-            POST >=> path $"{apiBase}/local/deviation" >=> (fun ctx -> badRequestMessage ctx "addDeviation()" "not implemented yet")
+            PUT >=> path $"{apiBase}/local/images" >=> putImages serverAddress serverPort
+            PUT >=> path $"{apiBase}/local/inspiration" >=> putInspiration serverAddress serverPort persistence apiClient
+            
+            PUT >=> path $"{apiBase}/local/deviation/asImages" >=> putLocalDeviations serverAddress serverPort persistence
+            
+            PUT >=> path $"{apiBase}/local/prompt" >=> (fun ctx -> badRequestMessage ctx "addPrompt()" "not implemented yet")
+            PUT >=> path $"{apiBase}/local/deviation" >=> (fun ctx -> badRequestMessage ctx "addDeviation()" "not implemented yet")
+            
             POST >=> path $"{apiBase}/stash" >=> stash persistence apiClient
-            POST >=> path $"{apiBase}/publish" >=> publish secrets persistence apiClient
+            POST >=> path $"{apiBase}/publish" >=> publish persistence apiClient secrets
             
             POST >=> path $"{apiBase}/inspiration2prompt" >=> inspiration2Prompt persistence
             POST >=> path $"{apiBase}/prompt2deviation" >=> prompt2Deviation persistence
             
-            POST >=> path $"{apiBase}/local/deviation/asImages" >=> uploadLocalDeviations serverAddress serverPort persistence
+            PATCH >=> path $"{apiBase}/local/prompt" >=> patchPrompt persistence
+            PATCH >=> path $"{apiBase}/local/deviation" >=> patchLocalDeviation persistence
             
-            PATCH >=> path $"{apiBase}/local/deviation" >=> updateLocalDeviation persistence
-            
-            DELETE >=> path $"{apiBase}/local/inspiration" >=> forgetInspiration persistence
-            DELETE >=> path $"{apiBase}/local/prompt" >=> forgetPrompt persistence
-            DELETE >=> path $"{apiBase}/local/deviation" >=> forgetLocalDeviation persistence
+            DELETE >=> path $"{apiBase}/local/inspiration" >=> deleteInspiration persistence
+            DELETE >=> path $"{apiBase}/local/prompt" >=> deletePrompt persistence
+            DELETE >=> path $"{apiBase}/local/deviation" >=> deleteLocalDeviation persistence
             
             pathScan "/images/%s" (fun filename ->
                 let filepath = Path.Combine(imagesLocation, filename)

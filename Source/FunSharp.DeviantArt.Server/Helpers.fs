@@ -2,6 +2,7 @@
 
 open System
 open System.Text
+open System.Web
 open Microsoft.AspNetCore.StaticFiles
 open Suave
 open Suave.Operators
@@ -30,6 +31,9 @@ module Helpers =
     
     [<Literal>]
     let dbKey_PublishedDeviations = "PublishedDeviations"
+    
+    [<Literal>]
+    let dbKey_DeletedItems = "DeletedItems"
     
     [<Literal>]
     let imagesLocation = @"C:\Files\FunSharp.DeviantArt\images"
@@ -91,12 +95,13 @@ module Helpers =
         |> Async.getOrFail
         |> Async.map (asPublished stashed)
         
-    let asOkJsonResponse data =
+    let asOkJsonResponse ctx data =
         
         data
         |> JsonSerializer.serialize
         |> OK
         >=> setHeader "Content-Type" "application/json"
+        <| ctx
         
     let asString request =
         
@@ -161,6 +166,7 @@ module Helpers =
         
         let existingInspirations =
             dataPersistence.FindAny<Inspiration>(dbKey_Inspirations, (fun x -> x.Url.ToString() = url))
+            
         let existingPrompts =
             dataPersistence.FindAny<Prompt>(dbKey_Prompts, (fun x ->
                 x.Inspiration
@@ -168,6 +174,7 @@ module Helpers =
                 |> Option.defaultValue ""
                 |> fun x -> x = url
             ))
+            
         let existingLocalDeviations =
             dataPersistence.FindAny<LocalDeviation>(dbKey_LocalDeviations, (fun x ->
                 match x.Origin with
@@ -175,6 +182,7 @@ module Helpers =
                     inspiration.Url.ToString() = url
                 | _ -> false
             ))
+            
         let existingStashedDeviations =
             dataPersistence.FindAny<StashedDeviation>(dbKey_StashedDeviations, (fun x ->
                 match x.Origin with
@@ -182,6 +190,7 @@ module Helpers =
                     inspiration.Url.ToString() = url
                 | _ -> false
             ))
+            
         let existingPublishedDeviations =
             dataPersistence.FindAny<PublishedDeviation>(dbKey_PublishedDeviations, (fun x ->
                 match x.Origin with
@@ -195,3 +204,52 @@ module Helpers =
         || existingLocalDeviations.Length > 0
         || existingStashedDeviations.Length > 0
         || existingPublishedDeviations.Length > 0
+        
+    let private upsertItem<'Key, 'Value> (ctx: HttpContext) (persistence: IPersistence) (key: 'Key) dbKey (item: 'Value)=
+        
+        printfn $"Updating '{key}'..."
+        
+        do persistence.Upsert(dbKey, key, item) |> ignore
+        
+        printfn "Update done!"
+        
+        item |> asOkJsonResponse ctx
+        
+    let upsertPrompt (ctx: HttpContext) (persistence: IPersistence) (prompt: Prompt) =
+        
+        upsertItem<Guid, Prompt> ctx persistence (Prompt.keyOf prompt) dbKey_Prompts prompt
+        
+    let upsertLocalDeviation (ctx: HttpContext) (persistence: IPersistence) (deviation: LocalDeviation) =
+        
+        upsertItem<Uri, LocalDeviation> ctx persistence (LocalDeviation.keyOf deviation) dbKey_LocalDeviations deviation
+        
+    let tryCatch (id: string) action : WebPart =
+        
+        fun ctx ->
+            try
+                action ctx
+            with ex ->
+                badRequestException ctx id ex
+                
+    let getKey (ctx: HttpContext)=
+        
+        match ctx.request.queryParam "key" with
+        | Choice2Of2 _ ->
+            failwith "query param 'key' is missing"
+            
+        | Choice1Of2 key ->
+            key |> HttpUtility.UrlDecode
+
+    let rec deleteItem<'T when 'T: not struct and 'T: equality and 'T: not null> (persistence: IPersistence) dbKey (id: string) =
+        
+        fun ctx ->
+            let key = getKey ctx
+            
+            match persistence.Find<string, 'T>(dbKey, key) with
+            | None -> ()
+            | Some item ->
+                persistence.Delete(dbKey, key) |> ignore
+                persistence.Insert(dbKey_DeletedItems, key, item)
+                
+            NO_CONTENT ctx
+        |> tryCatch id

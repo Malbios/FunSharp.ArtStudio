@@ -17,343 +17,290 @@ open FunSharp.DeviantArt.Server.Helpers
 
 module WebParts =
     
-    let allowCors : WebPart =
+    let allowCors =
         
         setHeader "Access-Control-Allow-Origin" "*"
         >=> setHeader "Access-Control-Allow-Headers" "Content-Type"
         >=> setHeader "Access-Control-Allow-Methods" "GET, POST, PUT, PATCH, DELETE, OPTIONS"
 
-    let corsPreflight : WebPart =
+    let corsPreflight =
         
         pathRegex ".*" >=> OPTIONS >=> allowCors >=> OK "CORS preflight"
 
-    let username (apiClient: Client) : WebPart =
+    let rec getUsername (apiClient: Client) =
         
-        fun ctx -> async {
-            let! username =
-                apiClient.WhoAmI()
-                |> Async.getOrFail
-                |> Async.map _.username
-                
-            return! {| username = username |} |> asOkJsonResponse <| ctx
-        }
+        fun ctx ->
+            apiClient.WhoAmI()
+            |> Async.bind (fun response -> {| username = response.username |} |> asOkJsonResponse ctx)
+        |> tryCatch (nameof getUsername)
 
-    let getSettings (secrets: Secrets) : WebPart =
+    let rec getSettings (secrets: Secrets) =
         
         fun ctx ->
             {| Galleries = secrets.galleries; Snippets = secrets.snippets |}
-            |> asOkJsonResponse <| ctx
+            |> asOkJsonResponse ctx
+        |> tryCatch (nameof getSettings)
         
-    let getInspirations (dataPersistence: IPersistence) : WebPart =
+    let rec getInspirations (persistence: IPersistence) =
         
-        fun ctx -> async {
-            return! dataPersistence.FindAll<Inspiration>(dbKey_Inspirations)
-                    |> asOkJsonResponse <| ctx
-        }
+        fun ctx ->
+            persistence.FindAll<Inspiration>(dbKey_Inspirations)
+            |> asOkJsonResponse ctx
+        |> tryCatch (nameof getInspirations)
         
-    let getPrompts (dataPersistence: IPersistence) : WebPart =
+    let rec getPrompts (persistence: IPersistence) =
         
-        fun ctx -> async {
-            return! dataPersistence.FindAll<Prompt>(dbKey_Prompts)
-                    |> asOkJsonResponse <| ctx
-        }
+        fun ctx ->
+            persistence.FindAll<Prompt>(dbKey_Prompts)
+            |> asOkJsonResponse ctx
+        |> tryCatch (nameof getPrompts)
         
-    let getLocalDeviations (dataPersistence: IPersistence) : WebPart =
+    let rec getLocalDeviations (persistence: IPersistence) =
         
-        fun ctx -> async {
-            return! dataPersistence.FindAll<LocalDeviation>(dbKey_LocalDeviations)
-                    |> asOkJsonResponse <| ctx
-        }
+        fun ctx ->
+            persistence.FindAll<LocalDeviation>(dbKey_LocalDeviations)
+            |> asOkJsonResponse ctx
+        |> tryCatch (nameof getLocalDeviations)
         
-    let getStashedDeviations (dataPersistence: IPersistence) : WebPart =
+    let rec getStashedDeviations (persistence: IPersistence) =
         
-        fun ctx -> async {
-            return! dataPersistence.FindAll<StashedDeviation>(dbKey_StashedDeviations)
-                    |> asOkJsonResponse <| ctx
-        }
+        fun ctx ->
+            persistence.FindAll<StashedDeviation>(dbKey_StashedDeviations)
+            |> asOkJsonResponse ctx
+        |> tryCatch (nameof getStashedDeviations)
         
-    let getPublishedDeviations (dataPersistence: IPersistence) : WebPart =
+    let rec getPublishedDeviations (persistence: IPersistence) =
         
-        fun ctx -> async {
-            return! dataPersistence.FindAll<PublishedDeviation>(dbKey_PublishedDeviations)
-                    |> asOkJsonResponse <| ctx
-        }
+        fun ctx ->
+            persistence.FindAll<PublishedDeviation>(dbKey_PublishedDeviations)
+            |> asOkJsonResponse ctx
+        |> tryCatch (nameof getPublishedDeviations)
         
-    let uploadImages (serverAddress: string) (serverPort: int) : WebPart =
-        
-        fun ctx -> async {
-            match ctx.request.files with
-            | [] -> return! badRequestMessage ctx "uploadImages()" "No files uploaded"
-            | files ->
-                try
-                    let mutable items = []
-                    
-                    for file in files do
-                        let key = file.fileName
-                        
-                        let! content = File.readAllBytesAsync file.tempFilePath
-                        do! File.writeAllBytesAsync $"{imagesLocation}\\{key}" content
-                        
-                        let imageUrl = Uri $"http://{serverAddress}:{serverPort}/images/{key}"
-                        
-                        items <- items @ [imageUrl]
-
-                    return! items |> asOkJsonResponse <| ctx
-                with ex ->
-                    return! badRequestException ctx "uploadImages()" ex
-        }
-        
-    let addInspiration (serverAddress: string) (serverPort: int) (dataPersistence: IPersistence) (apiClient: Client) : WebPart =
-        
-        fun ctx -> async {
-            try
-                let url = ctx.request |> asString |> HttpUtility.HtmlDecode
-                
-                match inspirationUrlAlreadyExists dataPersistence url with
-                | true ->
-                    return! badRequestMessage ctx "addInspiration()" "This inspiration url already has a published deviation."
-                    
-                | false ->
-                    let! id = apiClient.GetDeviationId url |> Async.getOrFail
-                    let! deviation = apiClient.GetDeviation id |> Async.getOrFail
-                    
-                    let fileName = $"{id}.jpg"
-                    
-                    let! imageContent = apiClient.DownloadFile(deviation.preview.src)
-                    do! File.writeAllBytesAsync $"{imagesLocation}/{fileName}" imageContent
-                    
-                    let imageUrl = imageUrl serverAddress serverPort fileName
-                    
-                    let inspiration = {
-                        Url = Uri url
-                        Timestamp = DateTimeOffset.Now
-                        ImageUrl = Some imageUrl
-                    }
-                    
-                    do dataPersistence.Insert(dbKey_Inspirations, url, inspiration)
-                    
-                    return! inspiration |> asOkJsonResponse <| ctx
-                
-            with ex ->
-                return! badRequestException ctx "addInspiration()" ex
-        }
-        
-    let uploadLocalDeviations (serverAddress: string) (serverPort: int) (dataPersistence: IPersistence) : WebPart =
+    let rec putImages (serverAddress: string) (serverPort: int) =
         
         fun ctx -> async {
             match ctx.request.files with
             | [] ->
-                return! badRequestMessage ctx "uploadLocalDeviations()" "No files uploaded"
+                return! badRequestMessage ctx (nameof putImages) "No files uploaded"
+            
             | files ->
-                try
-                    let mutable items = []
+                let mutable items = []
+                
+                for file in files do
+                    let key = file.fileName
                     
-                    for file in files do
-                        let! content = File.readAllBytesAsync file.tempFilePath
-                        do! File.writeAllBytesAsync $"{imagesLocation}\\{file.fileName}" content
-
-                        let imageUrl = Uri $"http://{serverAddress}:{serverPort}/images/{file.fileName}"
-                        
-                        let deviation = LocalDeviation.defaults imageUrl
-                        
-                        do dataPersistence.Insert(dbKey_LocalDeviations, imageUrl.ToString(), deviation)
-                        
-                        items <- items @ [deviation]
-
-                    return! items |> asOkJsonResponse <| ctx
-                with ex ->
-                    return! badRequestException ctx "uploadLocalDeviations()" ex
+                    let! content = File.readAllBytesAsync file.tempFilePath
+                    do! File.writeAllBytesAsync $"{imagesLocation}\\{key}" content
+                    
+                    let imageUrl = Uri $"http://{serverAddress}:{serverPort}/images/{key}"
+                    
+                    items <- items @ [imageUrl]
+                    
+                return! items |> asOkJsonResponse ctx
         }
+        |> tryCatch (nameof putImages)
         
-    let updateLocalInDatabase (ctx: HttpContext) (dataPersistence: IPersistence) (key: string) (deviation: LocalDeviation) =
-        printfn $"Updating '{key}'..."
-                        
-        do dataPersistence.Update(dbKey_LocalDeviations, key, deviation) |> ignore
+    let rec putInspiration (serverAddress: string) (serverPort: int) (persistence: IPersistence) (apiClient: Client) =
         
-        printfn "Update done!"
-        
-        deviation |> asOkJsonResponse <| ctx
-        
-    let updateLocalDeviation (dataPersistence: IPersistence) : WebPart =
-        
-        fun ctx -> async {
-            try
-                let deviation = ctx.request |> asJson<LocalDeviation>
-                let key = deviation.ImageUrl.ToString()
+        fun ctx ->
+            let url = ctx.request |> asString |> HttpUtility.HtmlDecode
                 
-                match dataPersistence.Find<string, LocalDeviation>(dbKey_LocalDeviations, key) with
-                | None ->
-                    return! badRequestMessage ctx "updateLocalDeviation()" $"local deviation '{key}' not found"
-                | Some _ ->
-                    match deviation.Origin with
-                    | DeviationOrigin.Inspiration inspiration ->
-                        match inspiration.Url.ToString() |> inspirationUrlAlreadyExists dataPersistence with
-                        | true ->
-                            return! badRequestMessage ctx "addInspiration()" "This inspiration url already has a published deviation."
-                        | false ->
-                            return! updateLocalInDatabase ctx dataPersistence key deviation
-                    | _ ->
-                        return! updateLocalInDatabase ctx dataPersistence key deviation
+            match inspirationUrlAlreadyExists persistence url with
+            | true ->
+                badRequestMessage ctx (nameof putInspiration) "This inspiration url already has a published deviation."
                 
-            with ex ->
-                return! badRequestException ctx "updateLocalDeviation()" ex
-        }
-        
-    let inspiration2Prompt (dataPersistence: IPersistence) : WebPart =
-        
-        fun ctx -> async {
-            try
-                let payload = ctx.request |> asJson<Inspiration2Prompt>
+            | false -> async {
+                let! id = apiClient.GetDeviationId url |> Async.getOrFail
+                let! deviation = apiClient.GetDeviation id |> Async.getOrFail
                 
-                let inspiration = dataPersistence.Find(dbKey_Inspirations, payload.Inspiration.ToString()) |> Option.get
+                let fileName = $"{id}.jpg"
                 
-                let prompt: Prompt = {
-                    Id = Guid.NewGuid()
+                let! imageContent = apiClient.DownloadFile(deviation.preview.src)
+                do! File.writeAllBytesAsync $"{imagesLocation}/{fileName}" imageContent
+                
+                let imageUrl = imageUrl serverAddress serverPort fileName
+                
+                let inspiration = {
+                    Url = Uri url
                     Timestamp = DateTimeOffset.Now
-                    Inspiration = Some inspiration
-                    Text = payload.Text
+                    ImageUrl = Some imageUrl
                 }
                 
-                do dataPersistence.Delete(dbKey_Inspirations, inspiration.Url.ToString()) |> ignore
-                do dataPersistence.Insert(dbKey_Prompts, prompt.Id.ToString(), prompt)
+                do persistence.Insert(dbKey_Inspirations, url, inspiration)
                 
-                return! prompt |> asOkJsonResponse <| ctx
-                
-            with ex ->
-                return! badRequestException ctx "inspiration2Prompt()" ex
-        }
+                return! inspiration |> asOkJsonResponse ctx
+            }
+        |> tryCatch (nameof putInspiration)
         
-    let prompt2Deviation (dataPersistence: IPersistence) : WebPart =
+    let rec putLocalDeviations (serverAddress: string) (serverPort: int) (persistence: IPersistence) =
         
-        fun ctx -> async {
-            try
-                let payload = ctx.request |> asJson<Prompt2LocalDeviation>
+        fun ctx ->
+            match ctx.request.files with
+            | [] ->
+                badRequestMessage ctx (nameof putLocalDeviations) "No files uploaded"
                 
-                let prompt = dataPersistence.Find(dbKey_Prompts, payload.Prompt.ToString()) |> Option.get
+            | files -> async{
+                let mutable items = []
                 
-                let deviation : LocalDeviation = {
-                    ImageUrl = payload.ImageUrl
-                    Timestamp = DateTimeOffset.Now
-                    Metadata = Metadata.defaults
-                    Origin = DeviationOrigin.Prompt prompt
-                }
-                
-                do dataPersistence.Delete(dbKey_Prompts, prompt.Id.ToString()) |> ignore
-                do dataPersistence.Insert(dbKey_LocalDeviations, deviation.ImageUrl.ToString(), deviation)
-                
-                return! deviation |> asOkJsonResponse <| ctx
-                
-            with ex ->
-                return! badRequestException ctx "inspiration2Prompt()" ex
-        }
-        
-    let stash (dataPersistence: IPersistence) (apiClient: Client) : WebPart =
-        
-        fun ctx -> async {
-            try
-                let key = ctx.request |> asString
-                
-                let deviation = dataPersistence.Find<string, LocalDeviation>(dbKey_LocalDeviations, key)
-                
-                match deviation with
-                | None -> return! badRequestMessage ctx "stash()" $"Local deviation '{key}' not found"
-                | Some local ->
-                    let fileName = Uri key |> FunSharp.Common.Uri.lastSegment |> HttpUtility.UrlDecode
-                    let imagePath = $"{imagesLocation}\\{fileName}"
-                    let mimeType = Helpers.mimeType imagePath
-                    let! imageContent = File.readAllBytesAsync imagePath
+                for file in files do
+                    let! content = File.readAllBytesAsync file.tempFilePath
+                    do! File.writeAllBytesAsync $"{imagesLocation}\\{file.fileName}" content
+
+                    let imageUrl = Uri $"http://{serverAddress}:{serverPort}/images/{file.fileName}"
                     
-                    printfn $"Submitting '{key}' to stash..."
+                    let deviation = LocalDeviation.defaults imageUrl
                     
-                    let! stashedDeviation = submitToStash apiClient imageContent mimeType local
+                    do persistence.Insert(dbKey_LocalDeviations, imageUrl, deviation)
                     
-                    do dataPersistence.Delete(dbKey_LocalDeviations, key) |> ignore
-                    do dataPersistence.Insert(dbKey_StashedDeviations, key, stashedDeviation)
+                    items <- items @ [deviation]
+
+                return! items |> asOkJsonResponse ctx
+            }
+        |> tryCatch (nameof putLocalDeviations)
+        
+    let rec patchPrompt (persistence: IPersistence) =
+        
+        fun ctx ->
+            let prompt = ctx.request |> asJson<Prompt>
+            
+            match prompt.Inspiration with
+            | Some inspiration when inspiration.Url.ToString() |> inspirationUrlAlreadyExists persistence = true ->
+                badRequestMessage ctx (nameof patchPrompt) "This inspiration url already has another deviation."
+                
+            | _ ->
+                upsertPrompt ctx persistence prompt
+        |> tryCatch (nameof patchPrompt)
+        
+    let rec patchLocalDeviation (persistence: IPersistence) =
+        
+        fun ctx ->
+            let deviation = ctx.request |> asJson<LocalDeviation>
+            
+            match deviation.Origin with
+            | DeviationOrigin.Inspiration inspiration ->
+                match inspiration.Url.ToString() |> inspirationUrlAlreadyExists persistence with
+                | true ->
+                    badRequestMessage ctx (nameof patchLocalDeviation) "This inspiration url already has a published deviation."
+                    
+                | false ->
+                    upsertLocalDeviation ctx persistence deviation
+                    
+            | _ ->
+                upsertLocalDeviation ctx persistence deviation
+        |> tryCatch (nameof patchLocalDeviation)
+        
+    let rec inspiration2Prompt (persistence: IPersistence) =
+        
+        fun ctx ->
+            let payload = ctx.request |> asJson<Inspiration2Prompt>
+            
+            let inspiration = persistence.Find(dbKey_Inspirations, payload.Inspiration.ToString()) |> Option.get
+            
+            let prompt: Prompt = {
+                Id = Guid.NewGuid()
+                Timestamp = DateTimeOffset.Now
+                Inspiration = Some inspiration
+                Text = payload.Text
+            }
+            
+            persistence.Delete(dbKey_Inspirations, inspiration.Url.ToString()) |> ignore
+            persistence.Insert(dbKey_Prompts, prompt.Id.ToString(), prompt)
+            
+            prompt |> asOkJsonResponse ctx
+        |> tryCatch (nameof inspiration2Prompt)
+        
+    let rec prompt2Deviation (persistence: IPersistence) =
+        
+        fun ctx ->
+            let payload = ctx.request |> asJson<Prompt2LocalDeviation>
+            
+            let prompt = persistence.Find(dbKey_Prompts, payload.Prompt.ToString()) |> Option.get
+            
+            let deviation : LocalDeviation = {
+                ImageUrl = payload.ImageUrl
+                Timestamp = DateTimeOffset.Now
+                Metadata = Metadata.defaults
+                Origin = DeviationOrigin.Prompt prompt
+            }
+            
+            persistence.Delete(dbKey_Prompts, prompt.Id.ToString()) |> ignore
+            persistence.Insert(dbKey_LocalDeviations, deviation.ImageUrl.ToString(), deviation)
+            
+            deviation |> asOkJsonResponse ctx
+        |> tryCatch (nameof prompt2Deviation)
+        
+    let rec stash (persistence: IPersistence) apiClient =
+        
+        fun ctx ->
+            let key = getKey ctx
+            
+            let deviation = persistence.Find<string, LocalDeviation>(dbKey_LocalDeviations, key)
+            
+            match deviation with
+            | None ->
+                badRequestMessage ctx (nameof stash) $"No local deviation found for key '{key}'"
+            
+            | Some local ->
+                let fileName = Uri key |> FunSharp.Common.Uri.lastSegment |> HttpUtility.UrlDecode
+                let imagePath = $"{imagesLocation}\\{fileName}"
+                let mimeType = Helpers.mimeType imagePath
+                
+                File.readAllBytesAsync imagePath
+                |> Async.bind (fun imageContent ->
+                    printfn $"Submitting '{LocalDeviation.keyOf local}' to stash..."
+                
+                    submitToStash apiClient imageContent mimeType local
+                )
+                |> Async.bind (fun stashedDeviation ->
+                    persistence.Delete(dbKey_LocalDeviations, key) |> ignore
+                    persistence.Insert(dbKey_StashedDeviations, key, stashedDeviation)
                     
                     printfn "Submission done!"
                     
-                    return! stashedDeviation |> asOkJsonResponse <| ctx
-                
-            with ex ->
-                return! badRequestException ctx "stash()" ex
-        }
+                    stashedDeviation |> asOkJsonResponse ctx
+                )
+        |> tryCatch (nameof stash)
         
-    let publish (secrets: Secrets) (dataPersistence: IPersistence) (apiClient: Client) : WebPart =
+    let rec publish (persistence: IPersistence) apiClient secrets =
         
-        fun ctx -> async {
-            try
-                let key = ctx.request |> asString
+        fun ctx ->
+            let key = getKey ctx
+            
+            match ctx.request.queryParam "key" with
+            | Choice2Of2 _ ->
+                badRequestMessage ctx (nameof publish) "could not identify stashed deviation"
                 
-                match dataPersistence.Find<string, StashedDeviation>(dbKey_StashedDeviations, key) with
-                | None -> return! badRequestMessage ctx "publish()" $"stashed deviation '{key}' not found"
+            | Choice1Of2 key ->
+                let key = key |> HttpUtility.UrlDecode
+                
+                match persistence.Find<string, StashedDeviation>(dbKey_StashedDeviations, key) with
+                | None ->
+                    badRequestMessage ctx (nameof publish) $"stashed deviation '{key}' not found"
+                
                 | Some stashedDeviation ->
                     printfn $"Publishing '{key}' from stash..."
                     
                     let galleryId = galleryId secrets stashedDeviation.Metadata.Gallery
                     
-                    let! publishedDeviation = publishFromStash apiClient galleryId stashedDeviation
-                    
-                    do dataPersistence.Delete(dbKey_StashedDeviations, key) |> ignore
-                    do dataPersistence.Insert(dbKey_PublishedDeviations, key, publishedDeviation)
-                    
-                    printfn "Publishing done!"
-                    
-                    return! publishedDeviation |> asOkJsonResponse <| ctx
-                    
-            with ex ->
-                return! badRequestException ctx "publish()" ex
-        }
+                    publishFromStash apiClient galleryId stashedDeviation
+                    |> Async.bind (fun publishedDeviation ->
+                        persistence.Delete(dbKey_StashedDeviations, key) |> ignore
+                        persistence.Insert(dbKey_PublishedDeviations, key, publishedDeviation)
+                        
+                        printfn "Publishing done!"
+                        
+                        publishedDeviation |> asOkJsonResponse ctx
+                    )
+        |> tryCatch (nameof publish)
 
-    let forgetInspiration (dataPersistence: IPersistence) : WebPart =
+    let rec deleteInspiration (persistence: IPersistence) =
         
-        fun ctx -> async {
-            try
-                match ctx.request.queryParam "url" with
-                | Choice2Of2 _ ->
-                    return! badRequestMessage ctx "forgetInspiration()" "could not identify inspiration"
-                | Choice1Of2 url ->
-                    let url = url |> HttpUtility.UrlDecode
-                    printfn $"forgetInspiration(): {url}"
-                    
-                    do dataPersistence.Delete(dbKey_Inspirations, url) |> ignore
-                    
-                    return! "ok" |> asOkJsonResponse <| ctx
-                
-            with ex ->
-                return! badRequestException ctx "forgetInspiration()" ex
-        }
+        deleteItem<Inspiration> persistence dbKey_Inspirations (nameof deleteInspiration)
 
-    let forgetPrompt (dataPersistence: IPersistence) : WebPart =
+    let rec deletePrompt (persistence: IPersistence) =
         
-        fun ctx -> async {
-            try
-                match ctx.request.queryParam "id" with
-                | Choice2Of2 _ ->
-                    return! badRequestMessage ctx "forgetPrompt()" "could not identify prompt"
-                | Choice1Of2 key ->
-                    do dataPersistence.Delete(dbKey_Prompts, key) |> ignore
-                    
-                    return! "ok" |> asOkJsonResponse <| ctx
-                
-            with ex ->
-                return! badRequestException ctx "forgetPrompt()" ex
-        }
+        deleteItem<Prompt> persistence dbKey_Prompts (nameof deletePrompt)
 
-    let forgetLocalDeviation (dataPersistence: IPersistence) : WebPart =
+    let rec deleteLocalDeviation (persistence: IPersistence) =
         
-        fun ctx -> async {
-            try
-                match ctx.request.queryParam "url" with
-                | Choice2Of2 _ ->
-                    return! badRequestMessage ctx "forgetLocalDeviation()" "could not identify deviation"
-                | Choice1Of2 url ->
-                    let url = url |> HttpUtility.UrlDecode
-                    printfn $"forgetLocalDeviation(): {url}"
-                    
-                    do dataPersistence.Delete(dbKey_LocalDeviations, url) |> ignore
-                    
-                    return! "ok" |> asOkJsonResponse <| ctx
-                
-            with ex ->
-                return! badRequestException ctx "forgetLocalDeviation()" ex
-        }
+        deleteItem<LocalDeviation> persistence dbKey_LocalDeviations (nameof deleteLocalDeviation)

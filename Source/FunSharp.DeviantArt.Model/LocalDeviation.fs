@@ -22,3 +22,7 @@ module LocalDeviation =
     let keyOf deviation =
         
         deviation.ImageUrl
+
+    let identifier d1 d2 =
+        
+        keyOf d1 = keyOf d2

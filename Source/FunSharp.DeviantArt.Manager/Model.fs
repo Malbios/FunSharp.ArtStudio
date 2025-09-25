@@ -67,29 +67,132 @@ module StatefulItemArray =
         items |> Array.sortByDescending (StatefulItem.valueOf >> projection)
     
 [<RequireQualifiedAccess>]
-module LoadableStatefulItemArray =
+module LoadableStatefulItems =
     
-    let withNew<'T> (newItem: 'T) (items: Loadable<StatefulItem<'T> array>) =
+    let withNew (newItem: 'T) (collection: Loadable<StatefulItem<'T> array>) =
         
-        match items with
-        | Loaded items -> [|StatefulItem.Default newItem|] |> Array.append items |> Loaded
-        | x -> x
+        match collection with
+        | Loaded items ->
+            [| Default newItem |]
+            |> Array.append items
+            |> Loadable.Loaded
+            
+        | other -> other
         
-    let without<'T> (condition: 'T -> bool) (items: Loadable<StatefulItem<'T> array>) =
+    let withUpdated (identifier: 'T -> bool) (newValue: 'T) (collection: Loadable<StatefulItem<'T> array>) =
         
-        match items with
+        match collection with
+        | Loaded items ->
+            items
+            |> Array.map (fun item ->
+                match item with
+                | Default item ->
+                    if identifier item then newValue else item
+                    |> Default
+                | IsBusy item ->
+                    if identifier item then newValue else item
+                    |> IsBusy
+                | HasError (item, error) ->
+                    if identifier item then (newValue, error) else (item, error)
+                    |> HasError
+            )
+            |> Loadable.Loaded
+            
+        | other -> other
+        
+    let without (identifier: 'T -> bool) (collection: Loadable<StatefulItem<'T> array>) =
+        
+        match collection with
         | Loaded items ->
             items
             |> Array.filter (fun item ->
                 match item with
-                | Default item
-                | IsBusy item
-                | HasError (item, _) ->
-                    condition item
+                | Default item -> identifier item |> not
+                | IsBusy item -> identifier item |> not
+                | HasError (item, _) -> identifier item |> not
             )
             |> Loadable.Loaded
             
-        | x -> x
+        | other -> other
+    
+    let isBusy (identifier: 'T -> bool) (collection: Loadable<StatefulItem<'T> array>) =
+        
+        match collection with
+        | Loaded items ->
+            items
+            |> Array.map (fun item ->
+                match item with
+                | Default item ->
+                    if identifier item then
+                        IsBusy item
+                    else
+                        Default item
+                        
+                | IsBusy item -> IsBusy item
+                
+                | HasError (item, error) ->
+                    if identifier item then
+                        IsBusy item
+                    else
+                        HasError (item, error)
+            )
+            |> Loadable.Loaded
+            
+        | other -> other
+    
+    let isDefault (identifier: 'T -> bool) (collection: Loadable<StatefulItem<'T> array>) =
+        
+        match collection with
+        | Loaded items ->
+            items
+            |> Array.map (fun item ->
+                match item with
+                | Default item -> Default item
+                
+                | IsBusy item ->
+                    if identifier item then
+                        Default item
+                    else
+                        IsBusy item
+                        
+                | HasError (item, error) ->
+                    if identifier item then
+                        Default item
+                    else
+                        HasError (item, error)
+            )
+            |> Loadable.Loaded
+            
+        | other -> other
+    
+    let hasError (identifier: 'T -> bool) (error: exn) (collection: Loadable<StatefulItem<'T> array>) =
+        
+        match collection with
+        | Loaded items ->
+            items
+            |> Array.map (fun item ->
+                match item with
+                | Default item ->
+                    if identifier item then
+                        HasError (item, error)
+                    else
+                        Default item
+                        
+                | IsBusy item ->
+                    if identifier item then
+                        HasError (item, error)
+                    else
+                        IsBusy item
+                        
+                | HasError (item, oldError) -> 
+                    if identifier item then
+                        HasError (item, error)
+                    else
+                        HasError (item, oldError)
+            )
+            |> Loadable.Loaded
+            
+        | other -> other
         
 type State = {
     Page: Page
@@ -119,110 +222,6 @@ module State =
         StashedDeviations = NotLoaded
         PublishedDeviations = NotLoaded
     }
-    
-    let isBusy (identifier: 'T -> bool) (collection: Loadable<StatefulItem<'T> array>) =
-        
-        match collection with
-        | Loaded items ->
-            items
-            |> Array.map (fun item ->
-                match item with
-                | Default item ->
-                    if identifier item then
-                        IsBusy item
-                    else
-                        Default item
-                | IsBusy item -> IsBusy item
-                | HasError (item, error) ->
-                    if identifier item then
-                        IsBusy item
-                    else
-                        HasError (item, error)
-            )
-            |> Loadable.Loaded
-        | other -> other
-    
-    let isDefault (identifier: 'T -> bool) (collection: Loadable<StatefulItem<'T> array>) =
-        
-        match collection with
-        | Loaded items ->
-            items
-            |> Array.map (fun item ->
-                match item with
-                | Default item -> Default item
-                | IsBusy item ->
-                    if identifier item then
-                        Default item
-                    else
-                        IsBusy item
-                | HasError (item, error) ->
-                    if identifier item then
-                        Default item
-                    else
-                        HasError (item, error)
-            )
-            |> Loadable.Loaded
-        | other -> other
-    
-    let hasError (identifier: 'T -> bool) (error: exn) (collection: Loadable<StatefulItem<'T> array>) =
-        
-        match collection with
-        | Loaded items ->
-            items
-            |> Array.map (fun item ->
-                match item with
-                | Default item ->
-                    if identifier item then
-                        HasError (item, error)
-                    else
-                        Default item
-                | IsBusy item ->
-                    if identifier item then
-                        HasError (item, error)
-                    else
-                        IsBusy item
-                | HasError (item, oldError) -> 
-                    if identifier item then
-                        HasError (item, error)
-                    else
-                        HasError (item, oldError)
-            )
-            |> Loadable.Loaded
-        | other -> other
-        
-    let without (identifier: 'T -> bool) (collection: Loadable<StatefulItem<'T> array>) =
-        
-        match collection with
-        | Loaded items ->
-            items
-            |> Array.filter (fun item ->
-                match item with
-                | Default item -> identifier item |> not
-                | IsBusy item -> identifier item |> not
-                | HasError (item, _) -> identifier item |> not
-            )
-            |> Loadable.Loaded
-        | other -> other
-        
-    let withUpdated (identifier: 'T -> bool) (newValue: 'T) (collection: Loadable<StatefulItem<'T> array>) =
-        
-        match collection with
-        | Loaded items ->
-            items
-            |> Array.map (fun item ->
-                match item with
-                | Default item ->
-                    if identifier item then newValue else item
-                    |> Default
-                | IsBusy item ->
-                    if identifier item then newValue else item
-                    |> IsBusy
-                | HasError (item, error) ->
-                    if identifier item then (newValue, error) else (item, error)
-                    |> HasError
-            )
-            |> Loadable.Loaded
-        | other -> other
     
 type Message =
     | SetPage of Page
@@ -258,38 +257,41 @@ type Message =
     
     | Inspiration2Prompt of Inspiration * promptText: string
     | Inspiration2PromptDone of Inspiration * Prompt
-    | Inspiration2PromptFailed of error: exn * Inspiration * promptText: string
+    | Inspiration2PromptFailed of Inspiration * promptText: string * error: exn
     
     | AddPrompt of promptText: string
     | AddedPrompt of Prompt
-    | AddPromptFailed of error: exn * promptText: string
+    | AddPromptFailed of promptText: string * error: exn
     
-    | EditPrompt of Prompt * promptText: string
+    | UpdatePrompt of Prompt
+    | UpdatedPrompt of Prompt
+    | UpdatePromptFailed of Prompt * error: exn
+    
     | RemovePrompt of Prompt
     | ForgetPrompt of Prompt
     
     | Prompt2LocalDeviation of Prompt * Image
     | Prompt2LocalDeviationDone of Prompt * local: LocalDeviation
-    | Prompt2LocalDeviationFailed of error: exn * Prompt * Image
+    | Prompt2LocalDeviationFailed of Prompt * Image * error: exn
     
     | AddedLocalDeviation of local: LocalDeviation
     
     | UpdateLocalDeviation of local: LocalDeviation
     | UpdatedLocalDeviation of local: LocalDeviation
-    | UpdateLocalDeviationFailed of error: exn * local: LocalDeviation
+    | UpdateLocalDeviationFailed of local: LocalDeviation * error: exn
     
     | RemoveLocalDeviation of local: LocalDeviation
     | ForgetLocalDeviation of local: LocalDeviation
     
     | StashDeviation of local: LocalDeviation
     | StashedDeviation of local: LocalDeviation * stashed: StashedDeviation
-    | StashDeviationFailed of error: exn * local: LocalDeviation
+    | StashDeviationFailed of local: LocalDeviation * error: exn
     
     | AddedStashedDeviation of stashed: StashedDeviation
     | RemoveStashedDeviation of stashed: StashedDeviation
     
     | PublishStashed of stashed: StashedDeviation
     | PublishedStashed of stashed: StashedDeviation * published: PublishedDeviation
-    | PublishStashedFailed of error: exn * stashed: StashedDeviation
+    | PublishStashedFailed of stashed: StashedDeviation * error: exn
     
     | AddedPublishedDeviation of published: PublishedDeviation

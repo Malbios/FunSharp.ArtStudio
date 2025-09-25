@@ -12,6 +12,81 @@ open FunSharp.DeviantArt.Manager.Components
 
 type LocalDeviations() =
     inherit ElmishComponent<State, Message>()
+            
+    let galleries model =
+        match model.Settings with
+        | Loaded settings -> settings.Galleries |> Array.map _.name
+        | _ -> Array.empty
+        
+    let originLink origin =
+        
+        match origin with
+        | DeviationOrigin.None -> Node.Empty ()
+        | DeviationOrigin.Inspiration inspiration ->
+            Link.render None inspiration.Url
+        | DeviationOrigin.Prompt prompt ->
+            match prompt.Inspiration with
+            | None -> Node.Empty ()
+            | Some inspiration ->
+                Link.render None inspiration.Url
+    
+    let editorWidget dispatch galleries deviation =
+        
+        let update deviation =
+            
+            Message.UpdateLocalDeviation deviation |> dispatch
+            
+        let stash deviation =
+            
+            Message.StashDeviation deviation |> dispatch
+            
+        let forget deviation =
+            
+            Message.ForgetLocalDeviation deviation |> dispatch
+            
+        let editTitle deviation newTitle =
+            
+            { deviation with LocalDeviation.Metadata.Title = newTitle }
+            |> update
+            
+        let editGallery deviation newGallery =
+            
+            let isMature =
+                match newGallery with
+                | "Spicy" -> true
+                | _ -> deviation.Metadata.IsMature
+                
+            {
+                deviation with
+                    LocalDeviation.Metadata.Gallery = newGallery
+                    LocalDeviation.Metadata.IsMature = isMature
+            }
+            |> update
+            
+        let editIsMature deviation newIsMature =
+            
+            { deviation with LocalDeviation.Metadata.IsMature = newIsMature }
+            |> update
+            
+        comp<RadzenStack> {
+            "Orientation" => Orientation.Vertical
+            
+            TextInput.render (editTitle deviation) (fun _ -> ()) false "Enter title..." deviation.Metadata.Title
+            
+            comp<RadzenStack> {
+                "Orientation" => Orientation.Horizontal
+                
+                DropDown.render (editGallery deviation) "Gallery" "Select gallery..." galleries deviation.Metadata.Gallery
+                CheckBox.render (editIsMature deviation) "IsMature" deviation.Metadata.IsMature
+            }
+            
+            comp<RadzenStack> {
+                "Orientation" => Orientation.Horizontal
+                
+                Button.render "Stash" (fun () -> stash deviation) false
+                Button.render "Forget" (fun () -> forget deviation) false
+            }
+        }
     
     override _.CssScope = CssScopes.LocalDeviations
     
@@ -19,64 +94,13 @@ type LocalDeviations() =
     member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
     
     override this.View model dispatch =
-            
-        let galleries =
-            match model.Settings with
-            | Loaded settings -> settings.Galleries |> Array.map _.name
-            | _ -> Array.empty
         
-        let fieldConfigurations =
-            let metadataConfigurations (onChange: obj -> unit) (currentValue: obj) =
-                let currentMetadata = currentValue :?> Metadata
-                
-                let onNewTitle (newTitle: string) =
-                    { currentMetadata with Title = newTitle } |> onChange
-                    
-                let onNewGallery (newGallery: string) =
-                    {
-                        currentMetadata with
-                            Gallery = newGallery
-                            IsMature =
-                                match newGallery with
-                                | "Spicy" -> true
-                                | _ -> currentMetadata.IsMature
-                    } |> onChange
-                    
-                let onNewIsMature (newIsMature: bool) =
-                    { currentMetadata with IsMature = newIsMature } |> onChange
-                
-                comp<RadzenStack> {
-                    "Orientation" => Orientation.Vertical
-                    
-                    TextInput.render onNewTitle (fun _ -> ()) false "Enter title..." currentMetadata.Title
-                    
-                    comp<RadzenStack> {
-                        "Orientation" => Orientation.Horizontal
-                        
-                        DropDown.render onNewGallery "Gallery" "Select gallery..." galleries currentMetadata.Gallery
-                        
-                        CheckBox.render onNewIsMature "IsMature" currentMetadata.IsMature
-                    }
-                }
-                
-            [
-                ("Metadata", metadataConfigurations)
-            ]
-            |> Map.ofList
+        let galleries = galleries model
         
         let localDeviationsCount =
             match model.LocalDeviations with
             | Loaded deviations -> deviations.Length
             | _ -> -1
-            
-        let updateLocalDeviation deviation =
-            Message.UpdateLocalDeviation deviation |> dispatch
-            
-        let stashDeviation deviation =
-            Message.StashDeviation deviation |> dispatch
-            
-        let forgetDeviation deviation =
-            Message.ForgetLocalDeviation deviation |> dispatch
 
         match localDeviationsCount with
         | 0 -> text "No items."
@@ -111,24 +135,9 @@ type LocalDeviations() =
                                 
                                 ImageUrl.render (Some deviation.ImageUrl)
                                 
-                                match deviation.Origin with
-                                | DeviationOrigin.None -> ()
-                                | DeviationOrigin.Inspiration inspiration ->
-                                    Link.render None inspiration.Url
-                                | DeviationOrigin.Prompt prompt ->
-                                    match prompt.Inspiration with
-                                    | None -> ()
-                                    | Some inspiration ->
-                                        Link.render None inspiration.Url
-                                        
-                                comp<ItemEditor<LocalDeviation>> {
-                                    "Fields" => fieldConfigurations
-                                    "Item" => Some deviation
-                                    "OnSave" => updateLocalDeviation
-                                    "FinishLabel" => "Stash"
-                                    "OnFinish" => stashDeviation
-                                    "OnForget" => forgetDeviation
-                                }
+                                originLink deviation.Origin
+                                
+                                editorWidget dispatch galleries deviation
                             }
                             |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
                 }

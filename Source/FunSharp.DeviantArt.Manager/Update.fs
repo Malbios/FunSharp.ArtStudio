@@ -45,9 +45,18 @@ module Update =
         client.GetAsync(url)
         |> ensureSuccess
         
-    let private post (client: HttpClient) (url: string) content =
+    let private post (client: HttpClient) (url: string) (content: HttpContent option) =
         
-        client.PostAsync(url, content)
+        match content with
+        | None ->
+            client.PostAsync(url, null)
+        | Some content ->
+            client.PostAsync(url, content)
+        |> ensureSuccess
+        
+    let private put (client: HttpClient) (url: string) content =
+        
+        client.PutAsync(url, content)
         |> ensureSuccess
         
     let private patch (client: HttpClient) (url: string) content =
@@ -66,19 +75,14 @@ module Update =
         |> Async.AwaitTask
         |> Async.getOrFail
         
-    let private postString client url value =
-        
-        new StringContent(value)
-        |> post client url
-        
     let private postObject client url object =
         
         object
         |> JsonSerializer.serialize
         |> fun x -> new StringContent(x, Encoding.UTF8, "application/json")
-        |> post client url
+        |> fun x -> post client url (Some x)
         
-    let private postFile client url name mimeType content=
+    let private putFile client url name mimeType content=
         
         let byteContent = new ByteArrayContent(content)
         
@@ -89,11 +93,16 @@ module Update =
         content.Add(byteContent, "file", name)
         
         content
-        |> post client url
+        |> put client url
         
-    let private patchObject client url object =
+    let private putString client url (value: String) =
         
-        object
+        new StringContent(value)
+        |> put client url
+        
+    let private patchObject client url value =
+        
+        value
         |> JsonSerializer.serialize
         |> fun x -> new StringContent(x, Encoding.UTF8, "application/json")
         |> patch client url
@@ -136,7 +145,7 @@ module Update =
         
         inspirationUrl.ToString()
         |> HttpUtility.HtmlEncode
-        |> postString client $"{apiRoot}/local/inspiration"
+        |> putString client $"{apiRoot}/local/inspiration"
         |> Async.bind contentAsString
         |> Async.map JsonSerializer.deserialize<Inspiration>
         
@@ -144,7 +153,7 @@ module Update =
         
         promptText
         |> HttpUtility.HtmlEncode
-        |> postString client $"{apiRoot}/local/prompt"
+        |> putString client $"{apiRoot}/local/prompt"
         |> Async.bind contentAsString
         |> Async.map JsonSerializer.deserialize<Prompt>
         
@@ -158,16 +167,22 @@ module Update =
         delete client $"{apiRoot}/local/inspiration?url={inspiration.Url.ToString()}"
         |> Async.bind (fun _ -> inspiration |> Async.returnM)
         
-    let private deleteLocalDeviation client (local: LocalDeviation) =
+    let private forgetLocalDeviation client (local: LocalDeviation) =
         
         delete client $"{apiRoot}/local/deviation?url={local.ImageUrl.ToString() |> HttpUtility.UrlEncode}"
         |> Async.bind (fun _ -> local |> Async.returnM)
     
     let private uploadImage client (image: Image) =
         
-        postFile client $"{apiRoot}/local/deviation/asImages" image.Name image.ContentType image.Content
+        putFile client $"{apiRoot}/local/deviation/asImages" image.Name image.ContentType image.Content
         |> Async.bind contentAsString
         |> Async.map (JsonSerializer.deserialize<LocalDeviation array> >> Array.head)
+        
+    let private updatePrompt client (prompt: Prompt) =
+        
+        patchObject client $"{apiRoot}/local/prompt" prompt
+        |> Async.bind contentAsString
+        |> Async.map JsonSerializer.deserialize<Prompt>
         
     let private updateLocalDeviation client (local: LocalDeviation) =
         
@@ -185,7 +200,7 @@ module Update =
         
     let private prompt2LocalDeviation client (prompt: Prompt, image: Image) =
         
-        postFile client $"{apiRoot}/local/images" image.Name image.ContentType image.Content
+        putFile client $"{apiRoot}/local/images" image.Name image.ContentType image.Content
         |> Async.bind contentAsString
         |> Async.map (JsonSerializer.deserialize<Uri array> >> Array.head)
         |> Async.bind (fun imageUrl ->
@@ -201,8 +216,9 @@ module Update =
         local
         |> updateLocalDeviation client
         |> Async.bind (fun _ ->
-            local.ImageUrl.ToString()
-            |> postString client $"{apiRoot}/stash"
+            let encodedKey = local.ImageUrl.ToString() |> HttpUtility.UrlEncode
+            
+            post client $"{apiRoot}/stash?key={encodedKey}" None
             |> Async.bind contentAsString
             |> Async.map JsonSerializer.deserialize<StashedDeviation>
             |> Async.map (fun stashed -> local, stashed)
@@ -210,8 +226,9 @@ module Update =
         
     let private publishDeviation client (stashed: StashedDeviation) =
         
-        $"{apiRoot}/publish"
-        |> post client <| new StringContent(stashed.ImageUrl.ToString())
+        let encodedKey = stashed.ImageUrl.ToString() |> HttpUtility.UrlEncode
+        
+        post client $"{apiRoot}/publish?key={encodedKey}" None
         |> Async.bind contentAsString
         |> Async.map JsonSerializer.deserialize<PublishedDeviation>
         |> Async.map (fun published -> (stashed, published))
@@ -308,11 +325,10 @@ module Update =
             match Uri.tryParse url with
             | Some uri ->
                 { model with AddInspirationState.Url = Some uri; AddInspirationState.Error = None }, Cmd.none
+                
             | None ->
                 let error = InvalidOperationException($"could not parse url: '{url}'")
-                let model = { model with AddInspirationState.Error = Some error }
-                    
-                model, Cmd.none
+                { model with AddInspirationState.Error = Some error }, Cmd.none
 
         | AddInspiration ->
             
@@ -325,43 +341,39 @@ module Update =
                     InvalidOperationException("no url set") |> failed |> Cmd.ofMsg
                 | Some url ->
                     Cmd.OfAsync.either add url AddedInspiration failed
-            
-            let model = { model with AddInspirationState.IsBusy = true; AddInspirationState.Url = None }
-            
-            model, cmd
+                    
+            { model with AddInspirationState.IsBusy = true; AddInspirationState.Url = None }, cmd
             
         | AddedInspiration inspiration ->
             
             let subState = { model.AddInspirationState with IsBusy = false; Url = None; Error = None }
-            let inspirations = model.Inspirations |> LoadableStatefulItemArray.withNew inspiration
+            let inspirations = model.Inspirations |> LoadableStatefulItems.withNew inspiration
             
             { model with Inspirations = inspirations; AddInspirationState = subState }, Cmd.none
             
         | AddInspirationFailed error ->
             
-            printfn $"adding inspiration failed: {error}"
+            printfn $"adding new inspiration failed: {error}"
             
-            let model = { model with State.AddInspirationState.Error = Some error; State.AddInspirationState.IsBusy = false }
-            
-            model, Cmd.none
+            { model with State.AddInspirationState.Error = Some error; State.AddInspirationState.IsBusy = false }, Cmd.none
             
         | RemoveInspiration inspiration ->
             
-            let inspirations =
-                model.Inspirations
-                |> LoadableStatefulItemArray.without (fun x ->
-                    Inspiration.keyOf x <> Inspiration.keyOf inspiration
-                )
+            let inspirations = model.Inspirations |> LoadableStatefulItems.without (Inspiration.identifier inspiration)
                 
             { model with Inspirations = inspirations }, Cmd.none
             
         | ForgetInspiration inspiration ->
             
-            let action = forgetInspiration client
+            let inspirations = model.Inspirations |> LoadableStatefulItems.isBusy (Inspiration.identifier inspiration)
             
-            model, Cmd.OfAsync.perform action inspiration RemoveInspiration
+            let forget = forgetInspiration client
+            
+            { model with Inspirations = inspirations }, Cmd.OfAsync.perform forget inspiration RemoveInspiration
             
         | Inspiration2Prompt (inspiration, promptText) ->
+            
+            let inspirations = model.Inspirations |> LoadableStatefulItems.isBusy (Inspiration.identifier inspiration)
             
             let promptText =
                 promptText.Split("\n")
@@ -370,9 +382,11 @@ module Update =
                 |> String.concat "\n\n"
             
             let inspiration2Prompt = inspiration2Prompt client
-            let failed ex = Inspiration2PromptFailed (ex, inspiration, promptText)
+            let failed ex = Inspiration2PromptFailed (inspiration, promptText, ex)
             
-            model, Cmd.OfAsync.either inspiration2Prompt (inspiration, promptText) Inspiration2PromptDone failed
+            let cmd = Cmd.OfAsync.either inspiration2Prompt (inspiration, promptText) Inspiration2PromptDone failed
+            
+            { model with Inspirations = inspirations }, cmd
             
         | Inspiration2PromptDone (inspiration, prompt) ->
             
@@ -383,60 +397,86 @@ module Update =
             
             model, batch
             
-        | Inspiration2PromptFailed (error, inspiration, promptText) ->
+        | Inspiration2PromptFailed (inspiration, promptText, error) ->
             
-            printfn $"inspiration2prompt failed for: {inspiration.Url} -> {promptText}"
+            let inspirations = model.Inspirations |> LoadableStatefulItems.isDefault (Inspiration.identifier inspiration)
+            
+            printfn $"inspiration2prompt failed for: {Inspiration.keyOf inspiration} -> {promptText}"
             printfn $"error: {error}"
             
-            model, Cmd.none
+            { model with Inspirations = inspirations }, Cmd.none
             
         | AddPrompt promptText ->
             
             let add = addPrompt client
-            let failed ex = AddPromptFailed (ex, promptText)
+            let failed ex = AddPromptFailed (promptText, ex)
             
             model, Cmd.OfAsync.either add promptText AddedPrompt failed
             
         | AddedPrompt prompt ->
             
-            let prompts = model.Prompts |> LoadableStatefulItemArray.withNew prompt
+            let prompts = model.Prompts |> LoadableStatefulItems.withNew prompt
             
             { model with Prompts = prompts }, Cmd.none
             
-        | AddPromptFailed (error, promptText) ->
+        | AddPromptFailed (promptText, error) ->
             
             printfn $"adding prompt failed for: {promptText}"
             printfn $"error: {error}"
             
             model, Cmd.none
             
-        | EditPrompt (prompt, promptText) ->
-            failwith "todo"
+        | UpdatePrompt prompt ->
             
-        | RemovePrompt prompt ->
+            let prompts = model.Prompts |> LoadableStatefulItems.isBusy (fun x ->  x.Id = prompt.Id)
+            
+            let update = updatePrompt client
+            let error ex = UpdatePromptFailed (prompt, ex)
+            
+            { model with Prompts = prompts }, Cmd.OfAsync.either update prompt UpdatedPrompt error
+            
+        | UpdatedPrompt prompt ->
             
             let prompts =
                 model.Prompts
-                |> LoadableStatefulItemArray.without (fun x ->
-                    Prompt.keyOf x <> Prompt.keyOf prompt
-                )
+                |> LoadableStatefulItems.withUpdated (Prompt.identifier prompt) prompt
+                |> LoadableStatefulItems.isDefault (Prompt.identifier prompt)
+                
+            { model with Prompts = prompts }, Cmd.none
+            
+        | UpdatePromptFailed (prompt, error) ->
+            
+            let prompts = model.Prompts |> LoadableStatefulItems.isDefault (Prompt.identifier prompt)
+            
+            printfn $"UpdatePrompt failed for: {Prompt.keyOf prompt}"
+            printfn $"error: {error}"
+            
+            { model with Prompts = prompts }, Cmd.none
+            
+        | RemovePrompt prompt ->
+            
+            let prompts = model.Prompts |> LoadableStatefulItems.without (Prompt.identifier prompt)
                 
             { model with Prompts = prompts }, Cmd.none
             
         | ForgetPrompt prompt ->
             
-            let action = forgetPrompt client
-                
-            model, Cmd.OfAsync.perform action prompt RemovePrompt
+            let prompts = model.Prompts |> LoadableStatefulItems.isBusy (Prompt.identifier prompt)
+            
+            let forget = forgetPrompt client
+            
+            { model with Prompts = prompts }, Cmd.OfAsync.perform forget prompt RemovePrompt
             
         | Prompt2LocalDeviation (prompt, image) ->
+            
+            let prompts = model.Prompts |> LoadableStatefulItems.isBusy (fun x ->  x.Id = prompt.Id)
         
             let prompt2LocalDeviation = prompt2LocalDeviation client
-            let failed ex = Prompt2LocalDeviationFailed (ex, prompt, image)
+            let failed ex = Prompt2LocalDeviationFailed (prompt, image, ex)
             
-            let model = { model with Prompts = model.Prompts |> State.isBusy (fun x ->  x.Id = prompt.Id) }
+            let cmd = Cmd.OfAsync.either prompt2LocalDeviation (prompt, image) Prompt2LocalDeviationDone failed
             
-            model, Cmd.OfAsync.either prompt2LocalDeviation (prompt, image) Prompt2LocalDeviationDone failed
+            { model with Prompts = prompts }, cmd
             
         | Prompt2LocalDeviationDone (prompt, local) ->
             
@@ -447,68 +487,68 @@ module Update =
             
             model, batch
             
-        | Prompt2LocalDeviationFailed (error, prompt, imageFile) ->
+        | Prompt2LocalDeviationFailed (prompt, imageFile, error) ->
             
-            printfn $"prompt2local failed for: {prompt.Id} -> {imageFile.Name}"
+            let prompts = model.Prompts |> LoadableStatefulItems.isDefault (Prompt.identifier prompt)
+            
+            printfn $"prompt2local failed for: {Prompt.keyOf prompt} -> {imageFile.Name}"
             printfn $"error: {error}"
             
-            model, Cmd.none
+            { model with Prompts = prompts }, Cmd.none
             
         | AddedLocalDeviation local ->
             
-            let deviations = model.LocalDeviations |> LoadableStatefulItemArray.withNew local
+            let deviations = model.LocalDeviations |> LoadableStatefulItems.withNew local
             
             { model with LocalDeviations = deviations }, Cmd.none
             
         | UpdateLocalDeviation local ->
             
+            let deviations = model.LocalDeviations |> LoadableStatefulItems.isBusy (LocalDeviation.identifier local)
+            
             let update = updateLocalDeviation client
-            let error ex = UpdateLocalDeviationFailed (ex, local)
+            let failed ex = UpdateLocalDeviationFailed (local, ex)
             
-            { model with LocalDeviations = Loading }, Cmd.OfAsync.either update local UpdatedLocalDeviation error
+            { model with LocalDeviations = deviations }, Cmd.OfAsync.either update local UpdatedLocalDeviation failed
             
-        | UpdatedLocalDeviation _ ->
-            
-            model, Cmd.ofMsg LoadLocalDeviations
-            
-        | UpdateLocalDeviationFailed (error, local) ->
-            
-            printfn $"updating local deviation failed for: {local.ImageUrl}"
-            printfn $"error: {error}"
-            
-            model, Cmd.none
-            
-        | RemoveLocalDeviation local ->
+        | UpdatedLocalDeviation local ->
             
             let deviations =
                 model.LocalDeviations
-                |> LoadableStatefulItemArray.without (fun x ->
-                    LocalDeviation.keyOf x <> LocalDeviation.keyOf local
-                )
+                |> LoadableStatefulItems.withUpdated (LocalDeviation.identifier local) local
+                |> LoadableStatefulItems.isDefault (LocalDeviation.identifier local)
+                
+            { model with LocalDeviations = deviations }, Cmd.none
+            
+        | UpdateLocalDeviationFailed (local, error) ->
+            
+            let deviations = model.LocalDeviations |> LoadableStatefulItems.isDefault (LocalDeviation.identifier local)
+            
+            printfn $"updating local deviation failed for: {LocalDeviation.keyOf local}"
+            printfn $"error: {error}"
+            
+            { model with LocalDeviations = deviations }, Cmd.none
+            
+        | RemoveLocalDeviation local ->
+            
+            let deviations = model.LocalDeviations |> LoadableStatefulItems.without (LocalDeviation.identifier local)
                 
             { model with LocalDeviations = deviations }, Cmd.none
             
         | ForgetLocalDeviation local ->
             
-            let action = deleteLocalDeviation client
+            let action = forgetLocalDeviation client
             
             model, Cmd.OfAsync.perform action local RemoveLocalDeviation
             
         | StashDeviation local ->
             
+            let deviations = model.LocalDeviations |> LoadableStatefulItems.isBusy (LocalDeviation.identifier local)
+            
             let stash = stashDeviation client
-            let failed ex = StashDeviationFailed (ex, local)
+            let failed ex = StashDeviationFailed (local, ex)
             
-            let model = {
-                model with
-                    LocalDeviations =
-                        model.LocalDeviations
-                        |> State.isBusy (fun x ->
-                            LocalDeviation.keyOf x = LocalDeviation.keyOf local
-                        )
-            }
-            
-            model, Cmd.OfAsync.either stash local StashedDeviation failed
+            { model with LocalDeviations = deviations }, Cmd.OfAsync.either stash local StashedDeviation failed
             
         | StashedDeviation (local, stashed) ->
             
@@ -519,44 +559,35 @@ module Update =
             
             model, batch
             
-        | StashDeviationFailed (error, local) ->
+        | StashDeviationFailed (local, error) ->
             
-            printfn $"stashing failed for: {local.ImageUrl}"
+            let deviations = model.LocalDeviations |> LoadableStatefulItems.isDefault (LocalDeviation.identifier local)
+            
+            printfn $"stashing failed for: {LocalDeviation.keyOf local}"
             printfn $"error: {error}"
             
-            model, Cmd.none
+            { model with LocalDeviations = deviations }, Cmd.none
             
         | AddedStashedDeviation stashed ->
             
-            let deviations = model.StashedDeviations |> LoadableStatefulItemArray.withNew stashed
+            let deviations = model.StashedDeviations |> LoadableStatefulItems.withNew stashed
             
             { model with StashedDeviations = deviations }, Cmd.none
             
         | RemoveStashedDeviation stashed ->
             
-            let deviations =
-                model.StashedDeviations
-                |> LoadableStatefulItemArray.without (fun x ->
-                    StashedDeviation.keyOf x <> StashedDeviation.keyOf stashed
-                )
-                
+            let deviations = model.StashedDeviations |> LoadableStatefulItems.without (StashedDeviation.identifier stashed)
+            
             { model with StashedDeviations = deviations }, Cmd.none
-        
+            
         | PublishStashed stashed ->
             
+            let deviations = model.StashedDeviations |> LoadableStatefulItems.isBusy (StashedDeviation.identifier stashed)
+            
             let publish = publishDeviation client
-            let failed ex = PublishStashedFailed (ex, stashed)
+            let failed ex = PublishStashedFailed (stashed, ex)
             
-            let model = {
-                model with
-                    StashedDeviations =
-                        model.StashedDeviations
-                        |> State.isBusy (fun x ->
-                            StashedDeviation.keyOf x = StashedDeviation.keyOf stashed
-                        )
-            }
-            
-            model, Cmd.OfAsync.either publish stashed PublishedStashed failed
+            { model with StashedDeviations = deviations }, Cmd.OfAsync.either publish stashed PublishedStashed failed
             
         | PublishedStashed (stashed, published) ->
             
@@ -567,15 +598,17 @@ module Update =
             
             model, batch
             
-        | PublishStashedFailed (error, stashed) ->
+        | PublishStashedFailed (stashed, error) ->
             
-            printfn $"publishing failed for: {stashed.ImageUrl}"
+            let deviations = model.StashedDeviations |> LoadableStatefulItems.isDefault (StashedDeviation.identifier stashed)
+            
+            printfn $"publishing failed for: {StashedDeviation.keyOf stashed}"
             printfn $"error: {error}"
             
-            model, Cmd.none
+            { model with StashedDeviations = deviations }, Cmd.none
             
         | AddedPublishedDeviation published ->
             
-            let deviations = model.PublishedDeviations |> LoadableStatefulItemArray.withNew published
+            let deviations = model.PublishedDeviations |> LoadableStatefulItems.withNew published
             
             { model with PublishedDeviations = deviations }, Cmd.none
