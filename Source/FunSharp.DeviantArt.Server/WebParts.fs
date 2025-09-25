@@ -105,7 +105,7 @@ module WebParts =
         fun ctx ->
             let url = ctx.request |> asString |> HttpUtility.HtmlDecode
                 
-            match inspirationUrlAlreadyExists persistence url with
+            match urlAlreadyExists persistence url with
             | true ->
                 badRequestMessage ctx (nameof putInspiration) "This inspiration url already has a published deviation."
                 
@@ -164,7 +164,7 @@ module WebParts =
             let prompt = ctx.request |> asJson<Prompt>
             
             match prompt.Inspiration with
-            | Some inspiration when inspiration.Url.ToString() |> inspirationUrlAlreadyExists persistence = true ->
+            | Some inspiration when inspiration.Url.ToString() |> urlAlreadyExists persistence = true ->
                 badRequestMessage ctx (nameof patchPrompt) "This inspiration url already has another deviation."
                 
             | _ ->
@@ -178,7 +178,7 @@ module WebParts =
             
             match deviation.Origin with
             | DeviationOrigin.Inspiration inspiration ->
-                match inspiration.Url.ToString() |> inspirationUrlAlreadyExists persistence with
+                match inspiration.Url.ToString() |> urlAlreadyExists persistence with
                 | true ->
                     badRequestMessage ctx (nameof patchLocalDeviation) "This inspiration url already has a published deviation."
                     

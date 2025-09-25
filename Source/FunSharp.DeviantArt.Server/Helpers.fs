@@ -4,6 +4,7 @@ open System
 open System.Text
 open System.Web
 open Microsoft.AspNetCore.StaticFiles
+open Microsoft.FSharp.Collections
 open Suave
 open Suave.Operators
 open Suave.RequestErrors
@@ -162,48 +163,44 @@ module Helpers =
         |> Array.find(fun x -> x.name = galleryName)
         |> _.id
         
-    let inspirationUrlAlreadyExists (dataPersistence: IPersistence) (url: string) =
+    let urlAlreadyExists (persistence: IPersistence) (url: string) =
         
-        let existingInspirations =
-            dataPersistence.FindAny<Inspiration>(dbKey_Inspirations, (fun x -> x.Url.ToString() = url))
+        let inspirationHasUrl inspiration =
+            inspiration.Url.ToString() = url
             
-        let existingPrompts =
-            dataPersistence.FindAny<Prompt>(dbKey_Prompts, (fun x ->
-                x.Inspiration
-                |> Option.map _.Url.ToString()
-                |> Option.defaultValue ""
-                |> fun x -> x = url
-            ))
+        let promptHasUrl prompt =
+            match prompt.Inspiration with
+            | None -> false
+            | Some inspiration -> inspirationHasUrl inspiration
             
-        let existingLocalDeviations =
-            dataPersistence.FindAny<LocalDeviation>(dbKey_LocalDeviations, (fun x ->
-                match x.Origin with
-                | DeviationOrigin.Inspiration inspiration ->
-                    inspiration.Url.ToString() = url
-                | _ -> false
-            ))
+        let localHasUrl local =
+            match local.Origin with
+            | DeviationOrigin.None -> false
+            | DeviationOrigin.Inspiration inspiration -> inspirationHasUrl inspiration
+            | DeviationOrigin.Prompt prompt -> promptHasUrl prompt
             
-        let existingStashedDeviations =
-            dataPersistence.FindAny<StashedDeviation>(dbKey_StashedDeviations, (fun x ->
-                match x.Origin with
-                | DeviationOrigin.Inspiration inspiration ->
-                    inspiration.Url.ToString() = url
-                | _ -> false
-            ))
+        let stashedHasUrl (stashed: StashedDeviation) =
+            match stashed.Origin with
+            | DeviationOrigin.None -> false
+            | DeviationOrigin.Inspiration inspiration -> inspirationHasUrl inspiration
+            | DeviationOrigin.Prompt prompt -> promptHasUrl prompt
             
-        let existingPublishedDeviations =
-            dataPersistence.FindAny<PublishedDeviation>(dbKey_PublishedDeviations, (fun x ->
-                match x.Origin with
-                | DeviationOrigin.Inspiration inspiration ->
-                    inspiration.Url.ToString() = url
-                | _ -> false
-            ))
+        let publishedHasUrl (published: PublishedDeviation) =
+            match published.Origin with
+            | DeviationOrigin.None -> false
+            | DeviationOrigin.Inspiration inspiration -> inspirationHasUrl inspiration
+            | DeviationOrigin.Prompt prompt -> promptHasUrl prompt
 
-        existingInspirations.Length > 0
-        || existingPrompts.Length > 0
-        || existingLocalDeviations.Length > 0
-        || existingStashedDeviations.Length > 0
-        || existingPublishedDeviations.Length > 0
+        (persistence.FindAny<Inspiration>(dbKey_Inspirations, inspirationHasUrl) |> Array.isEmpty) ||
+        (persistence.FindAny<Inspiration>(dbKey_DeletedItems, inspirationHasUrl) |> Array.isEmpty) ||
+        (persistence.FindAny<Prompt>(dbKey_Prompts, promptHasUrl) |> Array.isEmpty) ||
+        (persistence.FindAny<Prompt>(dbKey_DeletedItems, promptHasUrl) |> Array.isEmpty) ||
+        (persistence.FindAny<LocalDeviation>(dbKey_LocalDeviations, localHasUrl) |> Array.isEmpty) ||
+        (persistence.FindAny<LocalDeviation>(dbKey_DeletedItems, localHasUrl) |> Array.isEmpty) ||
+        (persistence.FindAny<StashedDeviation>(dbKey_StashedDeviations, stashedHasUrl) |> Array.isEmpty) ||
+        (persistence.FindAny<StashedDeviation>(dbKey_DeletedItems, stashedHasUrl) |> Array.isEmpty) ||
+        (persistence.FindAny<PublishedDeviation>(dbKey_PublishedDeviations, publishedHasUrl) |> Array.isEmpty) ||
+        (persistence.FindAny<PublishedDeviation>(dbKey_DeletedItems, publishedHasUrl) |> Array.isEmpty)
         
     let private upsertItem<'Key, 'Value> (ctx: HttpContext) (persistence: IPersistence) (key: 'Key) dbKey (item: 'Value)=
         
