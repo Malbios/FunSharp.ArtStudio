@@ -36,6 +36,7 @@ type Prompts() =
     override this.View model dispatch =
             
         let forgetPrompt prompt =
+            
             Message.ForgetPrompt prompt |> dispatch
     
         let processUploadedFile (prompt: Prompt) (file: IBrowserFile) = task {
@@ -56,12 +57,22 @@ type Prompts() =
             
             busy <- busy |> Map.remove prompt.Id
         }
+        
+        let openNewPromptDialog () =
             
-        let openPromptDialog () =
             PromptDialog.OpenAsync(this.DialogService, model.Settings, "New Prompt")
             |> Task.map (
                 function
                 | :? string as promptText -> Message.AddPrompt promptText |> dispatch
+                | _ -> ()
+            )
+            
+        let openEditPromptDialog (prompt: Prompt) =
+            
+            PromptDialog.OpenAsync(this.DialogService, model.Settings, "Edit Prompt", prompt.Text)
+            |> Task.map (
+                function
+                | :? string as promptText -> Message.EditPrompt (prompt, promptText) |> dispatch
                 | _ -> ()
             )
         
@@ -105,11 +116,16 @@ type Prompts() =
                                 | None -> ()
                             }
                             
-                            Button.render "Copy Prompt" (Helpers.copyToClipboard this.JSRuntime prompt.Text) false
+                            comp<RadzenStack> {
+                                "Orientation" => Orientation.Horizontal
+                                
+                                Button.render "Copy Prompt" (Helpers.copyToClipboard this.JSRuntime prompt.Text) isBusy
+                                Button.renderAsync "Edit Prompt" (fun () -> openEditPromptDialog prompt) isBusy
+                            }
                             
                             FileInput.renderAsync false processUpload isBusy
                             
-                            Button.render "Forget" (fun () -> forgetPrompt prompt) false
+                            Button.render "Forget" (fun () -> forgetPrompt prompt) isBusy
                         }
                         |> Deviation.renderWithContent (prompt.Inspiration |> Option.bind _.ImageUrl) None
                 )
@@ -118,7 +134,7 @@ type Prompts() =
                 
             div {
                 attr.style "padding: 2rem; border: 2px solid gray; border-radius: 8px;"
-                Button.renderAsync "Add new prompt" (fun () -> openPromptDialog ()) false
+                Button.renderAsync "Add new prompt" (fun () -> openNewPromptDialog ()) false
             }
         }
         |> Page.render model dispatch this.NavManager

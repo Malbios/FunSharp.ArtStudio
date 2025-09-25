@@ -410,6 +410,9 @@ module Update =
             
             model, Cmd.none
             
+        | EditPrompt (prompt, promptText) ->
+            failwith "todo"
+            
         | RemovePrompt prompt ->
             
             let prompts =

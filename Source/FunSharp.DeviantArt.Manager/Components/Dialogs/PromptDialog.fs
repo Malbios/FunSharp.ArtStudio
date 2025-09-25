@@ -13,8 +13,6 @@ open Radzen.Blazor
 type PromptDialog() =
     inherit Component()
     
-    let mutable promptText = ""
-    
     [<Inject>]
     member val JSRuntime = Unchecked.defaultof<_> with get, set
 
@@ -23,6 +21,9 @@ type PromptDialog() =
     
     [<Parameter>]
     member val Snippets : ClipboardSnippet array = Array.empty with get, set
+    
+    [<Parameter>]
+    member val Prompt = "" with get, set
 
     override this.Render() =
         
@@ -34,23 +35,32 @@ type PromptDialog() =
                 ClipboardSnippets.render this.JSRuntime this.Snippets
             }
             
-            TextAreaInput.render 20 200 (fun s -> promptText <- s) "Enter prompt..." promptText
+            TextAreaInput.render 20 200 (fun s -> this.Prompt <- s) "Enter prompt..." this.Prompt
             
             comp<RadzenStack> {
                 "Orientation" => Orientation.Horizontal
                 
-                Button.render "Ok" (fun () -> this.DialogService.Close(promptText)) false
+                Button.render "Ok" (fun () -> this.DialogService.Close(this.Prompt)) false
                 Button.render "Cancel" (fun () -> this.DialogService.Close(null)) false
             }
         }
 
-    static member OpenAsync(dialogService: DialogService, settings: Loadable<Settings>, title: string) =
+    static member OpenAsync(dialogService: DialogService, settings: Loadable<Settings>, title: string, currentPrompt: string) =
         
         let snippets =
             match settings with
             | Loaded settings -> settings.Snippets
             | _ -> Array.empty
         
-        let parameters = Dictionary<string, obj>(dict [ "Snippets", box snippets ])
+        let parameters = dict [
+            "Snippets", box snippets
+            "Prompt", box currentPrompt
+        ]
+        
+        let parameters = Dictionary<string, obj>(parameters)
         
         dialogService.OpenAsync<PromptDialog>(title, parameters)
+
+    static member OpenAsync(dialogService: DialogService, settings: Loadable<Settings>, title: string) =
+        
+        PromptDialog.OpenAsync(dialogService, settings, title, "")
