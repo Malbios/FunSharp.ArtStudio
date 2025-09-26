@@ -498,29 +498,10 @@ module Update =
             
         | UpdateLocalDeviation local ->
             
-            let deviations = model.LocalDeviations |> LoadableStatefulItems.isBusy (LocalDeviation.identifier local)
-            
-            let update = updateLocalDeviation client
-            let failed ex = UpdateLocalDeviationFailed (local, ex)
-            
-            { model with LocalDeviations = deviations }, Cmd.OfAsync.either update local UpdatedLocalDeviation failed
-            
-        | UpdatedLocalDeviation local ->
-            
             let deviations =
                 model.LocalDeviations
                 |> LoadableStatefulItems.withUpdated (LocalDeviation.identifier local) local
-                |> LoadableStatefulItems.isDefault (LocalDeviation.identifier local)
                 
-            { model with LocalDeviations = deviations }, Cmd.none
-            
-        | UpdateLocalDeviationFailed (local, error) ->
-            
-            let deviations = model.LocalDeviations |> LoadableStatefulItems.isDefault (LocalDeviation.identifier local)
-            
-            printfn $"updating local deviation failed for: {LocalDeviation.keyOf local}"
-            printfn $"error: {error}"
-            
             { model with LocalDeviations = deviations }, Cmd.none
             
         | RemoveLocalDeviation local ->
@@ -539,10 +520,14 @@ module Update =
             
             let deviations = model.LocalDeviations |> LoadableStatefulItems.isBusy (LocalDeviation.identifier local)
             
-            let stash = stashDeviation client
             let failed ex = StashDeviationFailed (local, ex)
             
-            { model with LocalDeviations = deviations }, Cmd.OfAsync.either stash local StashedDeviation failed
+            let updateAndStash local = async {
+                let! local = updateLocalDeviation client local
+                return! stashDeviation client local
+            }
+            
+            { model with LocalDeviations = deviations }, Cmd.OfAsync.either updateAndStash local StashedDeviation failed
             
         | StashedDeviation (local, stashed) ->
             

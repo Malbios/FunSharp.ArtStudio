@@ -277,8 +277,6 @@ type Message =
     | AddedLocalDeviation of local: LocalDeviation
     
     | UpdateLocalDeviation of local: LocalDeviation
-    | UpdatedLocalDeviation of local: LocalDeviation
-    | UpdateLocalDeviationFailed of local: LocalDeviation * error: exn
     
     | RemoveLocalDeviation of local: LocalDeviation
     | ForgetLocalDeviation of local: LocalDeviation

@@ -46,8 +46,9 @@ type LocalDeviations() =
             
         let editTitle deviation newTitle =
             
-            { deviation with LocalDeviation.Metadata.Title = newTitle }
-            |> update
+            if deviation.Metadata.Title <> newTitle then
+                { deviation with LocalDeviation.Metadata.Title = newTitle }
+                |> update
             
         let editGallery deviation newGallery =
             
@@ -123,26 +124,30 @@ type LocalDeviations() =
                             | DeviationOrigin.Prompt prompt -> prompt.Inspiration |> Option.bind _.ImageUrl
                             | DeviationOrigin.Inspiration inspiration -> inspiration.ImageUrl
 
-                        comp<RadzenStack> {
-                            "Orientation" => Orientation.Vertical
-                            "JustifyContent" => JustifyContent.Left
-                            
-                            deviation.Timestamp.ToString() |> text
-                            
-                            ImageUrl.render (Some deviation.ImageUrl)
-                            
-                            originLink deviation.Origin
-                            
-                            match error with
-                            | None -> ()
-                            | Some error ->
-                                concat {
-                                    text $"deviation: {LocalDeviation.keyOf deviation}"
-                                    text $"error: {error}"
-                                }
-                            
-                            editorWidget dispatch galleries isBusy deviation
-                        }
-                        |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
+                        match isBusy with
+                        | true -> ()
+                        
+                        | false ->
+                            comp<RadzenStack> {
+                                "Orientation" => Orientation.Vertical
+                                "JustifyContent" => JustifyContent.Left
+                                
+                                deviation.Timestamp.ToString() |> text
+                                
+                                ImageUrl.render (Some deviation.ImageUrl)
+                                
+                                originLink deviation.Origin
+                                
+                                match error with
+                                | None -> ()
+                                | Some error ->
+                                    concat {
+                                        text $"deviation: {LocalDeviation.keyOf deviation}"
+                                        text $"error: {error}"
+                                    }
+                                
+                                editorWidget dispatch galleries isBusy deviation
+                            }
+                            |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
                 }
         |> Page.render model dispatch this.NavManager

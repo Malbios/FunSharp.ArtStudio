@@ -119,7 +119,7 @@ type Prompts() =
                             comp<RadzenStack> {
                                 "Orientation" => Orientation.Horizontal
                                 
-                                Button.render "Copy Prompt" (Helpers.copyToClipboard this.JSRuntime prompt.Text) isBusy
+                                Button.render "Copy Prompt" (fun () -> Helpers.copyToClipboard this.JSRuntime prompt.Text) isBusy
                                 Button.renderAsync "Edit Prompt" (fun () -> openEditPromptDialog prompt) isBusy
                                 Button.render "Forget" (fun () -> forgetPrompt prompt) isBusy
                             }

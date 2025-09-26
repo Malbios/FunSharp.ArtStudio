@@ -72,13 +72,13 @@ type StashedDeviations() =
                                 match deviation.Origin with
                                 | DeviationOrigin.None -> ()
                                 | DeviationOrigin.Inspiration inspiration ->
-                                    Helpers.copyToClipboard this.JSRuntime $"Inspired by {inspiration.Url}"
+                                    fun () -> Helpers.copyToClipboard this.JSRuntime $"Inspired by {inspiration.Url}"
                                     |> IconButton.render "Copy inspiration to clipboard"
                                 | DeviationOrigin.Prompt prompt ->
                                     match prompt.Inspiration with
                                     | None -> ()
                                     | Some inspiration ->
-                                        Helpers.copyToClipboard this.JSRuntime $"Inspired by {inspiration.Url}"
+                                        fun () -> Helpers.copyToClipboard this.JSRuntime $"Inspired by {inspiration.Url}"
                                         |> IconButton.render "Copy inspiration to clipboard"
                             }
                             

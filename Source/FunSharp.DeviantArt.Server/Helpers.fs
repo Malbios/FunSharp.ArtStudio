@@ -191,16 +191,16 @@ module Helpers =
             | DeviationOrigin.Inspiration inspiration -> inspirationHasUrl inspiration
             | DeviationOrigin.Prompt prompt -> promptHasUrl prompt
 
-        (persistence.FindAny<Inspiration>(dbKey_Inspirations, inspirationHasUrl) |> Array.isEmpty) ||
-        (persistence.FindAny<Inspiration>(dbKey_DeletedItems, inspirationHasUrl) |> Array.isEmpty) ||
-        (persistence.FindAny<Prompt>(dbKey_Prompts, promptHasUrl) |> Array.isEmpty) ||
-        (persistence.FindAny<Prompt>(dbKey_DeletedItems, promptHasUrl) |> Array.isEmpty) ||
-        (persistence.FindAny<LocalDeviation>(dbKey_LocalDeviations, localHasUrl) |> Array.isEmpty) ||
-        (persistence.FindAny<LocalDeviation>(dbKey_DeletedItems, localHasUrl) |> Array.isEmpty) ||
-        (persistence.FindAny<StashedDeviation>(dbKey_StashedDeviations, stashedHasUrl) |> Array.isEmpty) ||
-        (persistence.FindAny<StashedDeviation>(dbKey_DeletedItems, stashedHasUrl) |> Array.isEmpty) ||
-        (persistence.FindAny<PublishedDeviation>(dbKey_PublishedDeviations, publishedHasUrl) |> Array.isEmpty) ||
-        (persistence.FindAny<PublishedDeviation>(dbKey_DeletedItems, publishedHasUrl) |> Array.isEmpty)
+        (persistence.FindAny<Inspiration>(dbKey_Inspirations, inspirationHasUrl) |> Array.isEmpty |> not) ||
+        (persistence.FindAny<Inspiration>(dbKey_DeletedItems, inspirationHasUrl) |> Array.isEmpty |> not) ||
+        (persistence.FindAny<Prompt>(dbKey_Prompts, promptHasUrl) |> Array.isEmpty |> not) ||
+        (persistence.FindAny<Prompt>(dbKey_DeletedItems, promptHasUrl) |> Array.isEmpty |> not) ||
+        (persistence.FindAny<LocalDeviation>(dbKey_LocalDeviations, localHasUrl) |> Array.isEmpty |> not) ||
+        (persistence.FindAny<LocalDeviation>(dbKey_DeletedItems, localHasUrl) |> Array.isEmpty |> not) ||
+        (persistence.FindAny<StashedDeviation>(dbKey_StashedDeviations, stashedHasUrl) |> Array.isEmpty |> not) ||
+        (persistence.FindAny<StashedDeviation>(dbKey_DeletedItems, stashedHasUrl) |> Array.isEmpty |> not) ||
+        (persistence.FindAny<PublishedDeviation>(dbKey_PublishedDeviations, publishedHasUrl) |> Array.isEmpty |> not) ||
+        (persistence.FindAny<PublishedDeviation>(dbKey_DeletedItems, publishedHasUrl) |> Array.isEmpty |> not)
         
     let private upsertItem<'Key, 'Value> (ctx: HttpContext) (persistence: IPersistence) (key: 'Key) dbKey (item: 'Value)=
         

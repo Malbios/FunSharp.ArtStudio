@@ -64,3 +64,4 @@ type PromptDialog() =
     static member OpenAsync(dialogService: DialogService, settings: Loadable<Settings>, title: string) =
         
         PromptDialog.OpenAsync(dialogService, settings, title, "")
+        

@@ -1,5 +1,6 @@
 ﻿namespace FunSharp.DeviantArt.Manager.Pages
 
+open System
 open Bolero
 open Bolero.Html
 open Bolero.Html.attr
@@ -21,18 +22,17 @@ type AddInspiration() =
     override this.View model dispatch =
         
         let addInspiration () =
+            
             dispatch Message.AddInspiration
             
-        let onChange_NewInspirationUrl newValue =
-            Message.ChangeNewInspirationUrl newValue |> dispatch
+        let onChange_NewInspirationUrl (newValue: string) =
             
-        let onEnter_NewInspirationUrl newValue =
-            onChange_NewInspirationUrl newValue
-            addInspiration ()
-            
+            if not <| String.IsNullOrWhiteSpace(newValue.Trim()) then
+                Message.ChangeNewInspirationUrl newValue |> dispatch
+                
         let currentValue = model.AddInspirationState.Url |> Option.map _.ToString() |> Option.defaultValue ""
         let isBusy = model.AddInspirationState.IsBusy
-
+        
         comp<RadzenStack> {
             "Orientation" => Orientation.Vertical
             "Gap" => "2rem"
@@ -42,7 +42,7 @@ type AddInspiration() =
                 
                 "Orientation" => Orientation.Horizontal
                 
-                TextInput.render onChange_NewInspirationUrl onEnter_NewInspirationUrl isBusy "Enter inspiration url..." currentValue
+                TextInput.render onChange_NewInspirationUrl (fun _ -> ()) isBusy "Enter inspiration url..." currentValue
                 
                 Button.render "Add" addInspiration isBusy
                 

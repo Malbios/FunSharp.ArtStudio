@@ -16,7 +16,7 @@ module ClipboardSnippets =
             
             snippets
             |> Array.map (fun snippet ->
-                Button.render snippet.label (Helpers.copyToClipboard jsRuntime snippet.value) false
+                Button.render snippet.label (fun () -> Helpers.copyToClipboard jsRuntime snippet.value) false
             )
             |> Helpers.renderArray
         }
