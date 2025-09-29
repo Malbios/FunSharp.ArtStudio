@@ -29,7 +29,7 @@ type StashedDeviations() =
         
         let stashedDeviationsCount =
             match model.StashedDeviations with
-            | Loaded deviations -> deviations.Length
+            | Loadable.Loaded deviations -> deviations.Length
             | _ -> -1
 
         match stashedDeviationsCount with
@@ -38,19 +38,19 @@ type StashedDeviations() =
             Loadable.render model.StashedDeviations
             <| fun deviations ->
                 deviations
-                |> StatefulItemArray.sortBy _.Timestamp
+                |> StatefulItems.sortBy _.Timestamp
                 |> Array.map (fun deviation ->
                     match deviation with
-                    | IsBusy _ ->
+                    | StatefulItem.IsBusy _ ->
                         LoadingWidget.render ()
                         
-                    | HasError (deviation, error) ->
+                    | StatefulItem.HasError (deviation, error) ->
                         concat {
                             text $"deviation: {StashedDeviation.keyOf deviation}"
                             text $"error: {error}"
                         }
                         
-                    | Default deviation ->
+                    | StatefulItem.Default deviation ->
                         let inspirationUrl =
                             match deviation.Origin with
                             | DeviationOrigin.None -> None

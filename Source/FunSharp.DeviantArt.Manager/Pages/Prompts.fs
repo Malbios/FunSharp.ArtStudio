@@ -83,19 +83,19 @@ type Prompts() =
             Loadable.render model.Prompts
             <| fun prompts ->
                 prompts
-                |> StatefulItemArray.sortBy _.Timestamp
+                |> StatefulItems.sortBy _.Timestamp
                 |> Array.map (fun prompt ->
                     match prompt with
-                    | IsBusy _ ->
+                    | StatefulItem.IsBusy _ ->
                         LoadingWidget.render ()
                         
-                    | HasError (prompt, error) ->
+                    | StatefulItem.HasError (prompt, error) ->
                         concat {
                             text $"prompt: {prompt.Id}"
                             text $"error: {error}"
                         }
                         
-                    | Default prompt ->
+                    | StatefulItem.Default prompt ->
                         let isBusy = busy |> Map.tryFind prompt.Id |> Option.defaultValue false
                         
                         let processUpload : InputFileChangeEventArgs -> Task =

@@ -61,7 +61,7 @@ type AddInspiration() =
             Loadable.render model.Inspirations
             <| fun inspirations ->
                 inspirations
-                |> StatefulItemArray.sortByDescending _.Timestamp
+                |> StatefulItems.sortByDescending _.Timestamp
                 |> Array.map (fun inspiration ->
                     inspiration
                     |> StatefulItem.valueOf

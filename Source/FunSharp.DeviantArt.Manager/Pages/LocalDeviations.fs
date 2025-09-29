@@ -15,7 +15,7 @@ type LocalDeviations() =
             
     let galleries model =
         match model.Settings with
-        | Loaded settings -> settings.Galleries |> Array.map _.name
+        | Loadable.Loaded settings -> settings.Galleries |> Array.map _.name
         | _ -> Array.empty
         
     let originLink origin =
@@ -97,35 +97,39 @@ type LocalDeviations() =
     
     override this.View model dispatch =
         
+        let pageLimit = 50
+        
+        let changePage newPage =
+            Message.LoadLocalDeviationsPage (newPage * pageLimit, pageLimit) |> dispatch
+        
         let galleries = galleries model
         
         let localDeviationsCount =
             match model.LocalDeviations with
-            | Loaded deviations -> deviations.Length
+            | Loadable.Loaded page -> page.total
             | _ -> -1
 
         match localDeviationsCount with
         | 0 -> text "No items."
         | _ ->
             Loadable.render model.LocalDeviations
-            <| fun deviations ->
-                Deviations.render
-                <| concat {
-                    for deviation in deviations |> StatefulItemArray.sortBy _.Timestamp do
+            <| fun page ->
+                Pager.render page.total pageLimit page.offset changePage page.items
+                    <| fun deviation ->
                         let deviation, isBusy, error =
                             match deviation with
-                            | Default deviation -> deviation, false, None
-                            | IsBusy deviation -> deviation, true, None
-                            | HasError (deviation, error) -> deviation, false, Some error
+                            | StatefulItem.Default deviation -> deviation, false, None
+                            | StatefulItem.IsBusy deviation -> deviation, true, None
+                            | StatefulItem.HasError (deviation, error) -> deviation, false, Some error
                             
                         let inspirationUrl =
                             match deviation.Origin with
                             | DeviationOrigin.None -> None
                             | DeviationOrigin.Prompt prompt -> prompt.Inspiration |> Option.bind _.ImageUrl
                             | DeviationOrigin.Inspiration inspiration -> inspiration.ImageUrl
-
+                        
                         match isBusy with
-                        | true -> ()
+                        | true -> Node.Empty ()
                         
                         | false ->
                             comp<RadzenStack> {
@@ -149,5 +153,5 @@ type LocalDeviations() =
                                 editorWidget dispatch galleries isBusy deviation
                             }
                             |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
-                }
+                |> Deviations.render
         |> Page.render model dispatch this.NavManager

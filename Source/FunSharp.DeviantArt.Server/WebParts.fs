@@ -55,11 +55,17 @@ module WebParts =
             |> asOkJsonResponse ctx
         |> tryCatch (nameof getPrompts)
         
+    let private sortLocalDeviations (options: SortOptions) (items: LocalDeviation array) =
+        
+        match options.Property, options.Direction with
+        | "timestamp", SortDirection.Ascending -> items |> Array.sortBy _.Timestamp
+        | "timestamp", SortDirection.Descending -> items |> Array.sortByDescending _.Timestamp
+        | property, _ -> failwith $"unsupported sort property: '{property}'"
+        
     let rec getLocalDeviations (persistence: IPersistence) =
         
-        fun ctx ->
-            persistence.FindAll<LocalDeviation>(dbKey_LocalDeviations)
-            |> asOkJsonResponse ctx
+        persistence.FindAll<LocalDeviation>(dbKey_LocalDeviations)
+        |> withPagination sortLocalDeviations
         |> tryCatch (nameof getLocalDeviations)
         
     let rec getStashedDeviations (persistence: IPersistence) =

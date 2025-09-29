@@ -50,7 +50,7 @@ type Inspirations() =
             Loadable.render model.Inspirations
             <| fun inspirations ->
                 inspirations
-                |> StatefulItemArray.sortBy _.Timestamp
+                |> StatefulItems.sortBy _.Timestamp
                 |> Array.map (fun inspiration ->
                     let inspiration = StatefulItem.valueOf inspiration
                     

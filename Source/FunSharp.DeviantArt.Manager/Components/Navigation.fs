@@ -15,27 +15,27 @@ module Navigation =
         
         let inspirationsCount =
             match model.Inspirations with
-            | Loaded inspirations -> inspirations.Length
+            | Loadable.Loaded inspirations -> inspirations.Length
             | _ -> -1
         
         let promptsCount =
             match model.Prompts with
-            | Loaded prompts -> prompts.Length
+            | Loadable.Loaded prompts -> prompts.Length
             | _ -> -1
         
         let localDeviationsCount =
             match model.LocalDeviations with
-            | Loaded deviations -> deviations.Length
+            | Loadable.Loaded deviations -> deviations.total
             | _ -> -1
             
         let stashedDeviationsCount =
             match model.StashedDeviations with
-            | Loaded deviations -> deviations.Length
+            | Loadable.Loaded deviations -> deviations.Length
             | _ -> -1
             
         let publishedDeviationsCount =
             match model.PublishedDeviations with
-            | Loaded deviations -> deviations.Length
+            | Loadable.Loaded deviations -> deviations.Length
             | _ -> -1
         
         let currentLocation = (Uri nav.Uri).AbsolutePath

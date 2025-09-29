@@ -19,7 +19,7 @@ type PublishedDeviations() =
             
         let publishedDeviationsCount =
             match model.PublishedDeviations with
-            | Loaded deviations -> deviations.Length
+            | Loadable.Loaded deviations -> deviations.Length
             | _ -> -1
             
         match publishedDeviationsCount with
@@ -28,7 +28,7 @@ type PublishedDeviations() =
             Loadable.render model.PublishedDeviations
             <| fun deviations ->
                 deviations
-                |> StatefulItemArray.sortByDescending _.ImageUrl.ToString()
+                |> StatefulItems.sortByDescending _.ImageUrl.ToString()
                 |> Array.map (fun deviation ->
                     deviation
                     |> StatefulItem.valueOf

@@ -49,7 +49,7 @@ type PromptDialog() =
         
         let snippets =
             match settings with
-            | Loaded settings -> settings.Snippets
+            | Loadable.Loaded settings -> settings.Snippets
             | _ -> Array.empty
         
         let parameters = dict [

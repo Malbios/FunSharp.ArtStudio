@@ -114,6 +114,22 @@ module Update =
         |> Async.bind contentAsString
         |> Async.map (JsonSerializer.deserialize<'T array> >> Array.map StatefulItem.Default >> Loadable.Loaded)
         
+    let private loadStatefulItemsPage<'T> client endpoint offset limit =
+        
+        let asLoadedStatefulItemsPage page =
+            {
+                items = page.items |> Array.map StatefulItem.Default
+                offset = page.offset
+                total = page.total
+                has_more = page.has_more
+            }
+            |> Loadable.Loaded
+        
+        $"{apiRoot}{endpoint}?offset={offset}&limit={limit}"
+        |> get client
+        |> Async.bind contentAsString
+        |> Async.map (JsonSerializer.deserialize<Page<'T>> >> asLoadedStatefulItemsPage)
+        
     let private loadSettings (client: HttpClient) =
         
         $"{apiRoot}/settings"
@@ -129,9 +145,10 @@ module Update =
         
         loadStatefulItems<Prompt> client "/local/prompts"
         
-    let private loadLocalDeviations client =
+    let private loadLocalDeviations client offset limit =
         
-        loadStatefulItems<LocalDeviation> client "/local/deviations"
+        printfn $"Loading page: {offset} {limit}"
+        loadStatefulItemsPage<LocalDeviation> client "/local/deviations" offset limit
         
     let private loadStashedDeviations client =
         
@@ -251,9 +268,9 @@ module Update =
         | LoadSettings ->
             
             let load () = loadSettings client
-            let failed ex = LoadedSettings (LoadingFailed ex)
+            let failed ex = LoadedSettings (Loadable.LoadingFailed ex)
             
-            { model with Settings = Loading }, Cmd.OfAsync.either load () LoadedSettings failed
+            { model with Settings = Loadable.Loading }, Cmd.OfAsync.either load () LoadedSettings failed
             
         | LoadedSettings loadable ->
            
@@ -262,9 +279,9 @@ module Update =
         | LoadInspirations ->
             
             let load () = loadInspirations client
-            let failed ex = LoadedInspirations (LoadingFailed ex)
+            let failed ex = LoadedInspirations (Loadable.LoadingFailed ex)
             
-            { model with Inspirations = Loading }, Cmd.OfAsync.either load () LoadedInspirations failed
+            { model with Inspirations = Loadable.Loading }, Cmd.OfAsync.either load () LoadedInspirations failed
             
         | LoadedInspirations loadable ->
             
@@ -273,9 +290,9 @@ module Update =
         | LoadPrompts ->
             
             let load () = loadPrompts client
-            let failed ex = LoadedPrompts (LoadingFailed ex)
+            let failed ex = LoadedPrompts (Loadable.LoadingFailed ex)
             
-            { model with Prompts = Loading }, Cmd.OfAsync.either load () LoadedPrompts failed
+            { model with Prompts = Loadable.Loading }, Cmd.OfAsync.either load () LoadedPrompts failed
             
         | LoadedPrompts loadable ->
             
@@ -283,21 +300,25 @@ module Update =
             
         | LoadLocalDeviations ->
             
-            let load () = loadLocalDeviations client
-            let failed ex = LoadedLocalDeviations (LoadingFailed ex)
+            model, Cmd.ofMsg <| LoadLocalDeviationsPage (0, 50)
+        
+        | LoadLocalDeviationsPage(offset, limit) ->
             
-            { model with LocalDeviations = Loading }, Cmd.OfAsync.either load () LoadedLocalDeviations failed
+            let load () = loadLocalDeviations client offset limit
+            let failed ex = LoadedLocalDeviationsPage (Loadable.LoadingFailed ex)
             
-        | LoadedLocalDeviations loadable ->
+            { model with LocalDeviations = Loadable.Loading }, Cmd.OfAsync.either load () LoadedLocalDeviationsPage failed
+            
+        | LoadedLocalDeviationsPage loadable ->
             
             { model with LocalDeviations = loadable }, Cmd.none
             
         | LoadStashedDeviations ->
             
             let load () = loadStashedDeviations client
-            let failed ex = LoadedStashedDeviations (LoadingFailed ex)
+            let failed ex = LoadedStashedDeviations (Loadable.LoadingFailed ex)
             
-            { model with StashedDeviations = Loading }, Cmd.OfAsync.either load () LoadedStashedDeviations failed
+            { model with StashedDeviations = Loadable.Loading }, Cmd.OfAsync.either load () LoadedStashedDeviations failed
             
         | LoadedStashedDeviations loadable ->
             
@@ -306,9 +327,9 @@ module Update =
         | LoadPublishedDeviations ->
             
             let load () = loadPublishedDeviations client
-            let failed ex = LoadedPublishedDeviations (LoadingFailed ex)
+            let failed ex = LoadedPublishedDeviations (Loadable.LoadingFailed ex)
             
-            { model with PublishedDeviations = Loading }, Cmd.OfAsync.either load () LoadedPublishedDeviations failed
+            { model with PublishedDeviations = Loadable.Loading }, Cmd.OfAsync.either load () LoadedPublishedDeviations failed
             
         | LoadedPublishedDeviations loadable ->
             
@@ -359,7 +380,7 @@ module Update =
             
         | ForgetInspiration inspiration ->
             
-            let inspirations = model.Inspirations |> LoadableStatefulItems.isBusy (Inspiration.identifier inspiration)
+            let inspirations = model.Inspirations |> LoadableStatefulItems.setBusy (Inspiration.identifier inspiration)
             
             let forget = forgetInspiration client
             
@@ -367,7 +388,7 @@ module Update =
             
         | Inspiration2Prompt (inspiration, promptText) ->
             
-            let inspirations = model.Inspirations |> LoadableStatefulItems.isBusy (Inspiration.identifier inspiration)
+            let inspirations = model.Inspirations |> LoadableStatefulItems.setBusy (Inspiration.identifier inspiration)
             
             let promptText =
                 promptText.Split("\n")
@@ -393,7 +414,7 @@ module Update =
             
         | Inspiration2PromptFailed (inspiration, promptText, error) ->
             
-            let inspirations = model.Inspirations |> LoadableStatefulItems.isDefault (Inspiration.identifier inspiration)
+            let inspirations = model.Inspirations |> LoadableStatefulItems.setDefault (Inspiration.identifier inspiration)
             
             printfn $"inspiration2prompt failed for: {Inspiration.keyOf inspiration} -> {promptText}"
             printfn $"error: {error}"
@@ -422,7 +443,7 @@ module Update =
             
         | UpdatePrompt prompt ->
             
-            let prompts = model.Prompts |> LoadableStatefulItems.isBusy (fun x ->  x.Id = prompt.Id)
+            let prompts = model.Prompts |> LoadableStatefulItems.setBusy (fun x ->  x.Id = prompt.Id)
             
             let update = updatePrompt client
             let error ex = UpdatePromptFailed (prompt, ex)
@@ -433,14 +454,14 @@ module Update =
             
             let prompts =
                 model.Prompts
-                |> LoadableStatefulItems.withUpdated (Prompt.identifier prompt) prompt
-                |> LoadableStatefulItems.isDefault (Prompt.identifier prompt)
+                |> LoadableStatefulItems.update (Prompt.identifier prompt) prompt
+                |> LoadableStatefulItems.setDefault (Prompt.identifier prompt)
                 
             { model with Prompts = prompts }, Cmd.none
             
         | UpdatePromptFailed (prompt, error) ->
             
-            let prompts = model.Prompts |> LoadableStatefulItems.isDefault (Prompt.identifier prompt)
+            let prompts = model.Prompts |> LoadableStatefulItems.setDefault (Prompt.identifier prompt)
             
             printfn $"UpdatePrompt failed for: {Prompt.keyOf prompt}"
             printfn $"error: {error}"
@@ -455,7 +476,7 @@ module Update =
             
         | ForgetPrompt prompt ->
             
-            let prompts = model.Prompts |> LoadableStatefulItems.isBusy (Prompt.identifier prompt)
+            let prompts = model.Prompts |> LoadableStatefulItems.setBusy (Prompt.identifier prompt)
             
             let forget = forgetPrompt client
             
@@ -463,7 +484,7 @@ module Update =
             
         | Prompt2LocalDeviation (prompt, image) ->
             
-            let prompts = model.Prompts |> LoadableStatefulItems.isBusy (fun x ->  x.Id = prompt.Id)
+            let prompts = model.Prompts |> LoadableStatefulItems.setBusy (fun x ->  x.Id = prompt.Id)
         
             let prompt2LocalDeviation = prompt2LocalDeviation client
             let failed ex = Prompt2LocalDeviationFailed (prompt, image, ex)
@@ -483,7 +504,7 @@ module Update =
             
         | Prompt2LocalDeviationFailed (prompt, imageFile, error) ->
             
-            let prompts = model.Prompts |> LoadableStatefulItems.isDefault (Prompt.identifier prompt)
+            let prompts = model.Prompts |> LoadableStatefulItems.setDefault (Prompt.identifier prompt)
             
             printfn $"prompt2local failed for: {Prompt.keyOf prompt} -> {imageFile.Name}"
             printfn $"error: {error}"
@@ -492,23 +513,31 @@ module Update =
             
         | AddedLocalDeviation local ->
             
-            let deviations = model.LocalDeviations |> LoadableStatefulItems.withNew local
+            // let deviations = model.LocalDeviations |> LoadableStatefulItems.withNew local
+            //
+            // { model with LocalDeviations = deviations }, Cmd.none
             
-            { model with LocalDeviations = deviations }, Cmd.none
+            let currentOffset = LoadableStatefulItemsPage.offset model.LocalDeviations
+            
+            model, LoadLocalDeviationsPage (currentOffset, 50) |> Cmd.ofMsg
             
         | UpdateLocalDeviation local ->
             
             let deviations =
                 model.LocalDeviations
-                |> LoadableStatefulItems.withUpdated (LocalDeviation.identifier local) local
+                |> LoadableStatefulItemsPage.update (LocalDeviation.identifier local) local
                 
             { model with LocalDeviations = deviations }, Cmd.none
             
         | RemoveLocalDeviation local ->
             
-            let deviations = model.LocalDeviations |> LoadableStatefulItems.without (LocalDeviation.identifier local)
-                
-            { model with LocalDeviations = deviations }, Cmd.none
+            // let deviations = model.LocalDeviations |> LoadableStatefulItems.without (LocalDeviation.identifier local)
+            //     
+            // { model with LocalDeviations = deviations }, Cmd.none
+            
+            let currentOffset = LoadableStatefulItemsPage.offset model.LocalDeviations
+            
+            model, LoadLocalDeviationsPage (currentOffset, 50) |> Cmd.ofMsg
             
         | ForgetLocalDeviation local ->
             
@@ -518,7 +547,7 @@ module Update =
             
         | StashDeviation local ->
             
-            let deviations = model.LocalDeviations |> LoadableStatefulItems.isBusy (LocalDeviation.identifier local)
+            let deviations = model.LocalDeviations |> LoadableStatefulItemsPage.setBusy (LocalDeviation.identifier local)
             
             let failed ex = StashDeviationFailed (local, ex)
             
@@ -540,7 +569,9 @@ module Update =
             
         | StashDeviationFailed (local, error) ->
             
-            let deviations = model.LocalDeviations |> LoadableStatefulItems.isDefault (LocalDeviation.identifier local)
+            let deviations =
+                model.LocalDeviations
+                |> LoadableStatefulItemsPage.setDefault (LocalDeviation.identifier local)
             
             printfn $"stashing failed for: {LocalDeviation.keyOf local}"
             printfn $"error: {error}"
@@ -561,7 +592,7 @@ module Update =
             
         | PublishStashed stashed ->
             
-            let deviations = model.StashedDeviations |> LoadableStatefulItems.isBusy (StashedDeviation.identifier stashed)
+            let deviations = model.StashedDeviations |> LoadableStatefulItems.setBusy (StashedDeviation.identifier stashed)
             
             let publish = publishDeviation client
             let failed ex = PublishStashedFailed (stashed, ex)
@@ -579,7 +610,7 @@ module Update =
             
         | PublishStashedFailed (stashed, error) ->
             
-            let deviations = model.StashedDeviations |> LoadableStatefulItems.isDefault (StashedDeviation.identifier stashed)
+            let deviations = model.StashedDeviations |> LoadableStatefulItems.setDefault (StashedDeviation.identifier stashed)
             
             printfn $"publishing failed for: {StashedDeviation.keyOf stashed}"
             printfn $"error: {error}"

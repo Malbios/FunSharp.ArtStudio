@@ -227,16 +227,77 @@ module Helpers =
                 action ctx
             with ex ->
                 badRequestException ctx id ex
-                
+        
+    let getQueryParam (ctx: HttpContext) key =
+        
+        match ctx.request.queryParam key with
+        | Choice1Of2 value -> Some value
+        | _ -> None
+        
     let getKey (ctx: HttpContext)=
         
-        match ctx.request.queryParam "key" with
-        | Choice2Of2 _ ->
-            failwith "query param 'key' is missing"
+        match getQueryParam ctx "key" with
+        | None -> failwith "query param 'key' is missing"
+        | Some v -> v |> HttpUtility.UrlDecode
+        
+    [<RequireQualifiedAccess>]
+    type SortDirection =
+        | Ascending
+        | Descending
+        
+    [<RequireQualifiedAccess>]
+    module SortDirection =
+        
+        let fromString (value: string) =
             
-        | Choice1Of2 key ->
-            key |> HttpUtility.UrlDecode
+            match value.ToLower() with
+            | "asc" -> SortDirection.Ascending
+            | "desc" -> SortDirection.Descending
+            | x -> failwith $"unexpected sort direction: '{x}'"
+        
+    type SortOptions = {
+        Property: string
+        Direction: SortDirection
+    }
+    
+    let withPagination (sort: SortOptions -> 'T array -> 'T array) (items: 'T array) =
+        fun ctx ->
+            let offset =
+                getQueryParam ctx "offset"
+                |> Option.bind Int.tryParse
+                |> Option.defaultValue 0
 
+            let limit =
+                getQueryParam ctx "limit"
+                |> Option.bind Int.tryParse
+                |> Option.defaultValue 50
+                
+            let sortBy =
+                getQueryParam ctx "sortBy"
+                |> Option.defaultValue "timestamp"
+                
+            let sortDirection =
+                getQueryParam ctx "sortDir"
+                |> Option.map SortDirection.fromString
+                |> Option.defaultValue SortDirection.Ascending
+                
+            let sortOptions = { Property = sortBy; Direction = sortDirection }
+            let sortedItems = sort sortOptions items
+            
+            let pageItems =
+                sortedItems
+                |> Array.skip offset
+                |> Array.truncate limit
+            
+            {
+                Page.empty with
+                    items = pageItems
+                    offset = offset
+                    total = items.Length
+                    has_more = offset + limit < items.Length
+            }
+            |> asOkJsonResponse ctx
+        
     let rec deleteItem<'T when 'T: not struct and 'T: equality and 'T: not null> (persistence: IPersistence) dbKey (id: string) =
         
         fun ctx ->
