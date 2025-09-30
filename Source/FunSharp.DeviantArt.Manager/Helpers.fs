@@ -1,10 +1,11 @@
 ﻿namespace FunSharp.DeviantArt.Manager
 
 open FunSharp.Common
-open Microsoft.JSInterop
 
 [<RequireQualifiedAccess>]
 module Helpers =
+        
+    let localDeviationsPageSize = 20
     
     let stashUrl itemId =
         

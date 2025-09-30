@@ -23,7 +23,6 @@ open FunSharp.DeviantArt.Manager.Model
 // |> AsyncResult.getOrFail
 
 module Update =
-    
     let private apiRoot = "http://localhost:5123/api/v1"
     
     let private ensureSuccess (task: Task<HttpResponseMessage>) =
@@ -300,7 +299,7 @@ module Update =
             
         | LoadLocalDeviations ->
             
-            model, Cmd.ofMsg <| LoadLocalDeviationsPage (0, 50)
+            model, Cmd.ofMsg <| LoadLocalDeviationsPage (0, Helpers.localDeviationsPageSize)
         
         | LoadLocalDeviationsPage(offset, limit) ->
             
@@ -511,15 +510,11 @@ module Update =
             
             { model with Prompts = prompts }, Cmd.none
             
-        | AddedLocalDeviation local ->
-            
-            // let deviations = model.LocalDeviations |> LoadableStatefulItems.withNew local
-            //
-            // { model with LocalDeviations = deviations }, Cmd.none
+        | AddedLocalDeviation _ ->
             
             let currentOffset = LoadableStatefulItemsPage.offset model.LocalDeviations
             
-            model, LoadLocalDeviationsPage (currentOffset, 50) |> Cmd.ofMsg
+            model, LoadLocalDeviationsPage (currentOffset, Helpers.localDeviationsPageSize) |> Cmd.ofMsg
             
         | UpdateLocalDeviation local ->
             
@@ -529,15 +524,11 @@ module Update =
                 
             { model with LocalDeviations = deviations }, Cmd.none
             
-        | RemoveLocalDeviation local ->
-            
-            // let deviations = model.LocalDeviations |> LoadableStatefulItems.without (LocalDeviation.identifier local)
-            //     
-            // { model with LocalDeviations = deviations }, Cmd.none
+        | RemoveLocalDeviation _ ->
             
             let currentOffset = LoadableStatefulItemsPage.offset model.LocalDeviations
             
-            model, LoadLocalDeviationsPage (currentOffset, 50) |> Cmd.ofMsg
+            model, LoadLocalDeviationsPage (currentOffset, Helpers.localDeviationsPageSize) |> Cmd.ofMsg
             
         | ForgetLocalDeviation local ->
             

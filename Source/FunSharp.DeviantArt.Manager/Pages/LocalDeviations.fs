@@ -89,6 +89,45 @@ type LocalDeviations() =
                 Button.render "Forget" (fun () -> forget deviation) isBusy
             }
         }
+        
+    let deviationWidget dispatch galleries deviation =
+        let deviation, isBusy, error =
+            match deviation with
+            | StatefulItem.Default deviation -> deviation, false, None
+            | StatefulItem.IsBusy deviation -> deviation, true, None
+            | StatefulItem.HasError (deviation, error) -> deviation, false, Some error
+            
+        let inspirationUrl =
+            match deviation.Origin with
+            | DeviationOrigin.None -> None
+            | DeviationOrigin.Prompt prompt -> prompt.Inspiration |> Option.bind _.ImageUrl
+            | DeviationOrigin.Inspiration inspiration -> inspiration.ImageUrl
+        
+        match isBusy with
+        | true -> Node.Empty ()
+        
+        | false ->
+            comp<RadzenStack> {
+                "Orientation" => Orientation.Vertical
+                "JustifyContent" => JustifyContent.Left
+                
+                deviation.Timestamp.ToString() |> text
+                
+                ImageUrl.render (Some deviation.ImageUrl)
+                
+                originLink deviation.Origin
+                
+                match error with
+                | None -> ()
+                | Some error ->
+                    concat {
+                        text $"deviation: {LocalDeviation.keyOf deviation}"
+                        text $"error: {error}"
+                    }
+                
+                editorWidget dispatch galleries isBusy deviation
+            }
+            |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
     
     override _.CssScope = CssScopes.LocalDeviations
     
@@ -97,10 +136,13 @@ type LocalDeviations() =
     
     override this.View model dispatch =
         
-        let pageLimit = 50
+        let pageSize = FunSharp.DeviantArt.Manager.Helpers.localDeviationsPageSize
         
         let changePage newPage =
-            Message.LoadLocalDeviationsPage (newPage * pageLimit, pageLimit) |> dispatch
+            let newOffset = newPage * pageSize
+            
+            printfn $"LoadLocalDeviationsPage: ({newOffset}, {pageSize})"
+            Message.LoadLocalDeviationsPage (newOffset, pageSize) |> dispatch
         
         let galleries = galleries model
         
@@ -114,44 +156,15 @@ type LocalDeviations() =
         | _ ->
             Loadable.render model.LocalDeviations
             <| fun page ->
-                Pager.render page.total pageLimit page.offset changePage page.items
-                    <| fun deviation ->
-                        let deviation, isBusy, error =
-                            match deviation with
-                            | StatefulItem.Default deviation -> deviation, false, None
-                            | StatefulItem.IsBusy deviation -> deviation, true, None
-                            | StatefulItem.HasError (deviation, error) -> deviation, false, Some error
-                            
-                        let inspirationUrl =
-                            match deviation.Origin with
-                            | DeviationOrigin.None -> None
-                            | DeviationOrigin.Prompt prompt -> prompt.Inspiration |> Option.bind _.ImageUrl
-                            | DeviationOrigin.Inspiration inspiration -> inspiration.ImageUrl
-                        
-                        match isBusy with
-                        | true -> Node.Empty ()
-                        
-                        | false ->
-                            comp<RadzenStack> {
-                                "Orientation" => Orientation.Vertical
-                                "JustifyContent" => JustifyContent.Left
-                                
-                                deviation.Timestamp.ToString() |> text
-                                
-                                ImageUrl.render (Some deviation.ImageUrl)
-                                
-                                originLink deviation.Origin
-                                
-                                match error with
-                                | None -> ()
-                                | Some error ->
-                                    concat {
-                                        text $"deviation: {LocalDeviation.keyOf deviation}"
-                                        text $"error: {error}"
-                                    }
-                                
-                                editorWidget dispatch galleries isBusy deviation
-                            }
-                            |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
-                |> Deviations.render
+                comp<RadzenStack> {
+                    "Orientation" => Orientation.Vertical
+                    "Gap" => "3rem"
+                    
+                    page.items
+                    |> Array.map (deviationWidget dispatch galleries)
+                    |> Helpers.renderArray
+                    |> Deviations.render
+                    
+                    Pager.render page.total pageSize page.offset changePage
+                }
         |> Page.render model dispatch this.NavManager
