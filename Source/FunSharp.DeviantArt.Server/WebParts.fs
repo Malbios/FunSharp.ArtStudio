@@ -230,10 +230,8 @@ module WebParts =
                     submitToStash apiClient imageContent mimeType local
                 )
                 |> Async.bind (fun stashedDeviation ->
-                    printfn $"localDeviations a: {persistence.FindAll<LocalDeviation>(dbKey_LocalDeviations).Length}"
                     persistence.Delete(dbKey_LocalDeviations, key) |> ignore
                     persistence.Insert(dbKey_StashedDeviations, key, stashedDeviation)
-                    printfn $"localDeviations b: {persistence.FindAll<LocalDeviation>(dbKey_LocalDeviations).Length}"
                     
                     printfn "Submission done!"
                     
