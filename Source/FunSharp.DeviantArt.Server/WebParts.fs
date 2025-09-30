@@ -64,8 +64,9 @@ module WebParts =
         
     let rec getLocalDeviations (persistence: IPersistence) =
         
-        persistence.FindAll<LocalDeviation>(dbKey_LocalDeviations)
-        |> withPagination sortLocalDeviations
+        fun ctx ->
+            persistence.FindAll<LocalDeviation>(dbKey_LocalDeviations)
+            |> withPagination ctx sortLocalDeviations
         |> tryCatch (nameof getLocalDeviations)
         
     let rec getStashedDeviations (persistence: IPersistence) =
@@ -225,12 +226,14 @@ module WebParts =
                 File.readAllBytesAsync imagePath
                 |> Async.bind (fun imageContent ->
                     printfn $"Submitting '{LocalDeviation.keyOf local}' to stash..."
-                
+                    
                     submitToStash apiClient imageContent mimeType local
                 )
                 |> Async.bind (fun stashedDeviation ->
+                    printfn $"localDeviations a: {persistence.FindAll<LocalDeviation>(dbKey_LocalDeviations).Length}"
                     persistence.Delete(dbKey_LocalDeviations, key) |> ignore
                     persistence.Insert(dbKey_StashedDeviations, key, stashedDeviation)
+                    printfn $"localDeviations b: {persistence.FindAll<LocalDeviation>(dbKey_LocalDeviations).Length}"
                     
                     printfn "Submission done!"
                     

@@ -260,43 +260,42 @@ module Helpers =
         Direction: SortDirection
     }
     
-    let withPagination (sort: SortOptions -> 'T array -> 'T array) (items: 'T array) =
-        fun ctx ->
-            let offset =
-                getQueryParam ctx "offset"
-                |> Option.bind Int.tryParse
-                |> Option.defaultValue 0
+    let withPagination (ctx: HttpContext) (sort: SortOptions -> 'T array -> 'T array) (items: 'T array) =
+        let offset =
+            getQueryParam ctx "offset"
+            |> Option.bind Int.tryParse
+            |> Option.defaultValue 0
 
-            let limit =
-                getQueryParam ctx "limit"
-                |> Option.bind Int.tryParse
-                |> Option.defaultValue 50
-                
-            let sortBy =
-                getQueryParam ctx "sortBy"
-                |> Option.defaultValue "timestamp"
-                
-            let sortDirection =
-                getQueryParam ctx "sortDir"
-                |> Option.map SortDirection.fromString
-                |> Option.defaultValue SortDirection.Ascending
-                
-            let sortOptions = { Property = sortBy; Direction = sortDirection }
-            let sortedItems = sort sortOptions items
+        let limit =
+            getQueryParam ctx "limit"
+            |> Option.bind Int.tryParse
+            |> Option.defaultValue 50
             
-            let pageItems =
-                sortedItems
-                |> Array.skip offset
-                |> Array.truncate limit
+        let sortBy =
+            getQueryParam ctx "sortBy"
+            |> Option.defaultValue "timestamp"
             
-            {
-                Page.empty with
-                    items = pageItems
-                    offset = offset
-                    total = items.Length
-                    has_more = offset + limit < items.Length
-            }
-            |> asOkJsonResponse ctx
+        let sortDirection =
+            getQueryParam ctx "sortDir"
+            |> Option.map SortDirection.fromString
+            |> Option.defaultValue SortDirection.Ascending
+            
+        let sortOptions = { Property = sortBy; Direction = sortDirection }
+        let sortedItems = sort sortOptions items
+        
+        let pageItems =
+            sortedItems
+            |> Array.skip offset
+            |> Array.truncate limit
+        
+        {
+            Page.empty with
+                items = pageItems
+                offset = offset
+                total = items.Length
+                has_more = offset + limit < items.Length
+        }
+        |> asOkJsonResponse ctx
         
     let rec deleteItem<'T when 'T: not struct and 'T: equality and 'T: not null> (persistence: IPersistence) dbKey (id: string) =
         
