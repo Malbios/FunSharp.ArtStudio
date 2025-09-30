@@ -139,10 +139,7 @@ type LocalDeviations() =
         let pageSize = FunSharp.DeviantArt.Manager.Helpers.localDeviationsPageSize
         
         let changePage newPage =
-            let newOffset = newPage * pageSize
-            
-            printfn $"LoadLocalDeviationsPage: ({newOffset}, {pageSize})"
-            Message.LoadLocalDeviationsPage (newOffset, pageSize) |> dispatch
+            Message.LoadLocalDeviationsPage (newPage * pageSize, pageSize) |> dispatch
         
         let galleries = galleries model
         
@@ -158,6 +155,7 @@ type LocalDeviations() =
             <| fun page ->
                 comp<RadzenStack> {
                     "Orientation" => Orientation.Vertical
+                    "AlignItems" => AlignItems.Center
                     "Gap" => "3rem"
                     
                     page.items
