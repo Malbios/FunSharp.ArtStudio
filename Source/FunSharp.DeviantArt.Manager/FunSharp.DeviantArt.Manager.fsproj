@@ -10,11 +10,6 @@
         </ServiceWorker>
     </ItemGroup>
     <ItemGroup>
-        <ServiceWorker Include="wwwroot\utilities.js" PublishedContent="wwwroot\utilities.js">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </ServiceWorker>
-    </ItemGroup>
-    <ItemGroup>
         <PackageReference Include="Bolero" Version="0.*"/>
         <PackageReference Include="Bolero.Build" Version="0.24.39"/>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.9"/>

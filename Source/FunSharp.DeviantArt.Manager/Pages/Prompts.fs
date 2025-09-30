@@ -112,7 +112,7 @@ type Prompts() =
                             
                                 match prompt.Inspiration with
                                 | Some inspiration ->
-                                    Link.render (Some "DA Link") inspiration.Url
+                                    Link.renderSimple (Some "DA Link") inspiration.Url
                                 | None -> ()
                             }
                             

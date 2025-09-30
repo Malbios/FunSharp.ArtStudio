@@ -23,12 +23,12 @@ type LocalDeviations() =
         match origin with
         | DeviationOrigin.None -> Node.Empty ()
         | DeviationOrigin.Inspiration inspiration ->
-            Link.render None inspiration.Url
+            Link.renderSimple None inspiration.Url
         | DeviationOrigin.Prompt prompt ->
             match prompt.Inspiration with
             | None -> Node.Empty ()
             | Some inspiration ->
-                Link.render None inspiration.Url
+                Link.renderSimple None inspiration.Url
     
     let editorWidget dispatch galleries isBusy deviation =
         

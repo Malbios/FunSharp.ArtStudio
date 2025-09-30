@@ -146,7 +146,6 @@ module Update =
         
     let private loadLocalDeviations client offset limit =
         
-        printfn $"Loading page: {offset} {limit}"
         loadStatefulItemsPage<LocalDeviation> client "/local/deviations" offset limit
         
     let private loadStashedDeviations client =

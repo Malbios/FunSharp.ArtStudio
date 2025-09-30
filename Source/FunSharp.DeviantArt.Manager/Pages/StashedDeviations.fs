@@ -51,40 +51,34 @@ type StashedDeviations() =
                         }
                         
                     | StatefulItem.Default deviation ->
+                        let copyInspirationToClipboard =
+                            match deviation.Origin with
+                            | DeviationOrigin.None -> None
+                            | DeviationOrigin.Inspiration inspiration ->
+                                Some <| fun () -> Helpers.copyToClipboard this.JSRuntime $"Inspired by {inspiration.Url}"
+                            | DeviationOrigin.Prompt prompt ->
+                                match prompt.Inspiration with
+                                | None -> None
+                                | Some inspiration ->
+                                    Some <| fun () -> Helpers.copyToClipboard this.JSRuntime $"Inspired by {inspiration.Url}"
+                        
                         let inspirationUrl =
                             match deviation.Origin with
                             | DeviationOrigin.None -> None
                             | DeviationOrigin.Prompt prompt -> prompt.Inspiration |> Option.bind _.ImageUrl
                             | DeviationOrigin.Inspiration inspiration -> inspiration.ImageUrl
-                                
-                        concat {
+                            
+                        Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
+                        <| comp<RadzenStack> {
+                            "Orientation" => Orientation.Vertical
+                            
                             deviation.Timestamp.ToString() |> text
                             
-                            comp<RadzenStack> {
-                                "Orientation" => Orientation.Horizontal
-                                
-                                comp<RadzenLink> {
-                                    "Path" => $"{Helpers.stashEditUrl deviation.StashId}"
-                                    "Text" => "Open in Sta.sh"
-                                    "Target" => "_blank"
-                                }
-
-                                match deviation.Origin with
-                                | DeviationOrigin.None -> ()
-                                | DeviationOrigin.Inspiration inspiration ->
-                                    fun () -> Helpers.copyToClipboard this.JSRuntime $"Inspired by {inspiration.Url}"
-                                    |> IconButton.render "Copy inspiration to clipboard"
-                                | DeviationOrigin.Prompt prompt ->
-                                    match prompt.Inspiration with
-                                    | None -> ()
-                                    | Some inspiration ->
-                                        fun () -> Helpers.copyToClipboard this.JSRuntime $"Inspired by {inspiration.Url}"
-                                        |> IconButton.render "Copy inspiration to clipboard"
-                            }
+                            Link.render copyInspirationToClipboard (Some "Open in Sta.sh")
+                                $"{Helpers.stashEditUrl deviation.StashId}"
                             
                             Button.render "Publish" (fun () -> publish deviation) false
                         }
-                        |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
