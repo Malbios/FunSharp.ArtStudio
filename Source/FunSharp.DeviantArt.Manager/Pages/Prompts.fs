@@ -57,15 +57,6 @@ type Prompts() =
             
             busy <- busy |> Map.remove prompt.Id
         }
-        
-        let openNewPromptDialog () =
-            
-            PromptDialog.OpenAsync(this.DialogService, model.Settings, "New Prompt")
-            |> Task.map (
-                function
-                | :? string as promptText -> Message.AddPrompt promptText |> dispatch
-                | _ -> ()
-            )
             
         let openEditPromptDialog (prompt: Prompt) =
             
@@ -130,10 +121,5 @@ type Prompts() =
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
-                
-            div {
-                attr.style "padding: 2rem; border: 2px solid gray; border-radius: 8px;"
-                Button.renderAsync "Add new prompt" (fun () -> openNewPromptDialog ()) false
-            }
         }
-        |> Page.render model dispatch this.NavManager
+        |> Page.render model dispatch this.NavManager this.DialogService

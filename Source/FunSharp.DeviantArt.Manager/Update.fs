@@ -523,11 +523,11 @@ module Update =
                 
             { model with LocalDeviations = deviations }, Cmd.none
             
-        | RemoveLocalDeviation _ ->
+        | RemoveLocalDeviation local ->
             
-            let currentOffset = LoadableStatefulItemsPage.offset model.LocalDeviations
+            let deviations = model.LocalDeviations |> LoadableStatefulItemsPage.without (LocalDeviation.identifier local)
             
-            model, LoadLocalDeviationsPage (currentOffset, Helpers.localDeviationsPageSize) |> Cmd.ofMsg
+            { model with LocalDeviations = deviations }, Cmd.none
             
         | ForgetLocalDeviation local ->
             

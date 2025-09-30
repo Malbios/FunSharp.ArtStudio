@@ -13,6 +13,17 @@ open Radzen.Blazor
 type PromptDialog() =
     inherit Component()
     
+    let clipboardSnippetsWidget jsRuntime snippets =
+        comp<RadzenStack> {
+            "Orientation" => Orientation.Horizontal
+            
+            snippets
+            |> Array.map (fun snippet ->
+                Button.render snippet.label (fun () -> Helpers.copyToClipboard jsRuntime snippet.value) false
+            )
+            |> Helpers.renderArray
+        }
+    
     [<Inject>]
     member val JSRuntime = Unchecked.defaultof<_> with get, set
 
@@ -32,7 +43,7 @@ type PromptDialog() =
             
             div {
                 attr.style "padding: 0.5rem;"
-                ClipboardSnippets.render this.JSRuntime this.Snippets
+                clipboardSnippetsWidget this.JSRuntime this.Snippets
             }
             
             TextAreaInput.render 20 200 (fun s -> this.Prompt <- s) "Enter prompt..." this.Prompt

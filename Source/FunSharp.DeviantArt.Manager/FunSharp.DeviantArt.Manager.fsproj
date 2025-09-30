@@ -37,14 +37,13 @@
         <Compile Include="Routes.fs"/>
         <Compile Include="Model.fs"/>
         <Compile Include="Helpers.fs"/>
+        <Compile Include="Components\Dialogs\PromptDialog.fs" />
+        <Compile Include="Components\Dialogs\ImageUploadDialog.fs" />
         <Compile Include="Components\Navigation.fs" />
         <Compile Include="Components\Page.fs" />
         <Compile Include="Components\ItemEditor.fs" />
-        <Compile Include="Components\ClipboardSnippets.fs" />
         <Compile Include="Components\Deviation.fs"/>
         <Compile Include="Components\Deviations.fs" />
-        <Compile Include="Components\Dialogs\PromptDialog.fs" />
-        <Compile Include="Components\Dialogs\ImageUploadDialog.fs" />
         <Compile Include="Pages\AddInspiration.fs" />
         <Content Include="Pages\AddInspiration.bolero.css" />
         <Compile Include="Pages\Inspirations.fs" />

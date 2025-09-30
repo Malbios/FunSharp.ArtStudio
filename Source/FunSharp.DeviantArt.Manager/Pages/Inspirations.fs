@@ -65,4 +65,4 @@ type Inspirations() =
                 |> Helpers.renderArray
                 |> Deviations.render
         }
-        |> Page.render model dispatch this.NavManager
+        |> Page.render model dispatch this.NavManager this.DialogService

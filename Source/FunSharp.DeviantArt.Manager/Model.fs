@@ -193,6 +193,11 @@ module LoadableStatefulItemsPage =
         
         | other -> other
         
+    let without (identifier: 'T -> bool) (items: Loadable<Page<StatefulItem<'T>>>) =
+        
+        items
+        |> modify (StatefulItems.without identifier)
+        
     let update (identifier: 'T -> bool) (newValue: 'T) (items: Loadable<Page<StatefulItem<'T>>>) =
         
         items

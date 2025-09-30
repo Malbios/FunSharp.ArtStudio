@@ -3,6 +3,7 @@
 open Bolero
 open Bolero.Html
 open Microsoft.AspNetCore.Components
+open Radzen
 open FunSharp.Blazor.Components
 open FunSharp.DeviantArt.Manager.Model
 open FunSharp.DeviantArt.Manager.Components
@@ -14,6 +15,9 @@ type PublishedDeviations() =
     
     [<Inject>]
     member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
+    
+    [<Inject>]
+    member val DialogService = Unchecked.defaultof<DialogService> with get, set
     
     override this.View model dispatch =
             
@@ -38,4 +42,4 @@ type PublishedDeviations() =
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
-        |> Page.render model dispatch this.NavManager
+        |> Page.render model dispatch this.NavManager this.DialogService

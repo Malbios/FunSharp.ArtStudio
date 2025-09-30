@@ -22,6 +22,9 @@ type StashedDeviations() =
     [<Inject>]
     member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
     
+    [<Inject>]
+    member val DialogService = Unchecked.defaultof<DialogService> with get, set
+    
     override this.View model dispatch =
         
         let publish deviation =
@@ -82,4 +85,4 @@ type StashedDeviations() =
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
-        |> Page.render model dispatch this.NavManager
+        |> Page.render model dispatch this.NavManager this.DialogService

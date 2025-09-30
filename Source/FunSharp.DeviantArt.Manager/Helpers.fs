@@ -5,7 +5,7 @@ open FunSharp.Common
 [<RequireQualifiedAccess>]
 module Helpers =
         
-    let localDeviationsPageSize = 20
+    let localDeviationsPageSize = 10
     
     let stashUrl itemId =
         
