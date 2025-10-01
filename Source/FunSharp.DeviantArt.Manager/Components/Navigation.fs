@@ -44,17 +44,17 @@ module Navigation =
         let navigateTo url =
             nav.NavigateTo(url, false, true)
             
-        let reloadCurrent, reloadCurrentDisabled =
+        let reloadCurrent =
             match currentLocation with
-            | "/add-inspiration" -> (fun () -> ()), true
-            | "/inspirations" -> (fun () -> dispatch LoadInspirations), false
-            | "/prompts" -> (fun () -> dispatch LoadPrompts), false
-            | "/local-deviations" -> (fun () -> dispatch LoadLocalDeviations), false
-            | "/stashed-deviations" -> (fun () -> dispatch LoadStashedDeviations), false
-            | "/published-deviations" -> (fun () -> dispatch LoadPublishedDeviations), false
+            | "/add-inspiration" -> fun () -> ()
+            | "/inspirations" -> fun () -> dispatch LoadInspirations
+            | "/prompts" -> fun () -> dispatch LoadPrompts
+            | "/local-deviations" -> fun () -> dispatch LoadLocalDeviations
+            | "/stashed-deviations" -> fun () -> dispatch LoadStashedDeviations
+            | "/published-deviations" -> fun () -> dispatch LoadPublishedDeviations
             | other ->
                 printfn $"ERROR: unexpected endpoint: {other}"
-                (fun () -> ()), true
+                fun () -> ()
                 
         let openNewPromptDialog () =
             
@@ -87,7 +87,7 @@ module Navigation =
             
             div {
                 attr.style "margin-left: 2rem;"
-                Button.render "Reload This" reloadCurrent reloadCurrentDisabled
+                Button.render "Reload This" reloadCurrent false
             }
             
             div {

@@ -7,7 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="ModelTests.fs" />
+        <Compile Include="Tests.fs"/>
         <Compile Include="Program.fs"/>
     </ItemGroup>
 
@@ -20,7 +20,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\FunSharp.DeviantArt.Api\FunSharp.DeviantArt.Api.fsproj" />
+      <ProjectReference Include="..\FunSharp.Http\FunSharp.Http.fsproj" />
     </ItemGroup>
 
 </Project>
