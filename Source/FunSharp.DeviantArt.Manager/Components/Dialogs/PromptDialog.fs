@@ -1,5 +1,6 @@
 ﻿namespace FunSharp.DeviantArt.Manager.Components
 
+open System
 open System.Collections.Generic
 open FunSharp.Blazor.Components
 open FunSharp.DeviantArt.Manager.Model
@@ -13,19 +14,28 @@ open Radzen.Blazor
 type PromptDialog() =
     inherit Component()
     
-    let clipboardSnippetsWidget jsRuntime snippets =
-        comp<RadzenStack> {
-            "Orientation" => Orientation.Horizontal
-            
-            snippets
-            |> Array.map (fun snippet ->
-                Button.render snippet.label (fun () -> Helpers.copyToClipboard jsRuntime snippet.value) false
-            )
-            |> Helpers.renderArray
-        }
+    let mutable prompt = Array.empty<string>
     
-    [<Inject>]
-    member val JSRuntime = Unchecked.defaultof<_> with get, set
+    let cleanedParagraphs (promptText: string) =
+        
+        promptText.Split([| "\r\n" |], StringSplitOptions.None)
+        |> Array.filter (fun s -> not (String.IsNullOrWhiteSpace s))
+        |> Array.map _.Trim()
+
+    let clipboardSnippetAction (snippet: ClipboardSnippet) =
+        
+        match snippet.action with
+        | Append paragraph ->
+            match paragraph with
+            | First -> prompt[0] <- prompt[0] + snippet.value
+            | Last -> prompt[prompt.Length - 1] <- prompt[prompt.Length - 1] + snippet.value
+            | Index i -> prompt[i] <- prompt[i] + snippet.value
+            
+        | Replace paragraph ->
+            match paragraph with
+            | First -> prompt[0] <- snippet.value
+            | Last -> prompt[prompt.Length - 1] <- snippet.value
+            | Index i -> prompt[i] <- snippet.value
 
     [<Inject>]
     member val DialogService = Unchecked.defaultof<DialogService> with get, set
@@ -34,16 +44,31 @@ type PromptDialog() =
     member val Snippets : ClipboardSnippet array = Array.empty with get, set
     
     [<Parameter>]
-    member val Prompt = "" with get, set
-
+    member this.Prompt
+        with get() =
+            prompt |> String.concat "\n\n"
+        and set (value: string) =
+            prompt <- cleanedParagraphs value
+        
     override this.Render() =
+        
+        let snippetButton snippet =
+            Button.render snippet.label (fun () -> clipboardSnippetAction snippet) false
         
         comp<RadzenStack> {
             "Orientation" => Orientation.Vertical
             
             div {
                 attr.style "padding: 0.5rem;"
-                clipboardSnippetsWidget this.JSRuntime this.Snippets
+                
+                comp<RadzenStack> {
+                    "Orientation" => Orientation.Horizontal
+                    "Gap" => "1rem"
+                    
+                    this.Snippets
+                    |> Array.map snippetButton
+                    |> Helpers.renderArray
+                }
             }
             
             TextAreaInput.render 20 200 (fun s -> this.Prompt <- s) "Enter prompt..." this.Prompt

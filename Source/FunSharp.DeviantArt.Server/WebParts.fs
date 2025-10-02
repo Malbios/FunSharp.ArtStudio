@@ -251,7 +251,10 @@ module WebParts =
             | Some stashedDeviation ->
                 printfn $"Publishing '{key}' from stash..."
                 
-                let galleryId = galleryId secrets stashedDeviation.Metadata.Gallery
+                let galleryId =
+                    match stashedDeviation.Metadata.Gallery.Trim() with
+                    | "" -> galleryId secrets "RandomPile"
+                    | x -> galleryId secrets x
                 
                 publishFromStash apiClient galleryId stashedDeviation
                 |> Async.bind (fun publishedDeviation ->

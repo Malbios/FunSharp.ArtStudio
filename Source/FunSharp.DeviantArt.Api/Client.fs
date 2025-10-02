@@ -7,6 +7,7 @@ open FunSharp.Http
 open FunSharp.Common
 open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.Api.Model
+open FunSharp.Http.Authentication
 
 type Client(persistence: IPersistence, httpClient: HttpClient, clientId: string, clientSecret: string) =
     
@@ -16,7 +17,8 @@ type Client(persistence: IPersistence, httpClient: HttpClient, clientId: string,
     [<Literal>]
     let redirectUrl = "http://localhost:8080/callback"
     
-    let httpSender = HttpSender(persistence, httpClient, tokenEndpoint, redirectUrl, clientId, clientSecret)
+    let authentication = OAuthAuthentication(persistence, tokenEndpoint, redirectUrl, clientId, clientSecret) :> IAuthentication
+    let httpSender = HttpSender(httpClient, authentication)
     
     member private this.SubmitToStash(destination: SubmitDestination, file: File, submission: StashSubmission) =
         
@@ -47,15 +49,15 @@ type Client(persistence: IPersistence, httpClient: HttpClient, clientId: string,
         |> Async.bind Helpers.ensureSuccess
         |> Async.bind Helpers.toRecord<StashSubmissionResponse>
         
-    member _.NeedsInteraction = httpSender.NeedsInteraction
+    member _.NeedsInteraction = authentication.NeedsInteraction
     
     member _.StartInteractiveLogin() =
         
-        httpSender.StartInteractiveLogin()
+        authentication.StartInteractiveLogin(httpClient)
     
     member this.DownloadFile(url: string) =
         
-        httpSender.EnsureAccessToken()
+        authentication.EnsureAccessToken(httpClient)
         |> Async.bind (fun () ->
             url
             |> httpClient.GetByteArrayAsync

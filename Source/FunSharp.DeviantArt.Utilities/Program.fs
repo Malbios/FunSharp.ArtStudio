@@ -1,6 +1,7 @@
 ﻿open System
 open System.IO
 open System.Net.Http
+open FunSharp.Common
 open FunSharp.Data
 open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.Api.Model
@@ -260,6 +261,14 @@ let main _ =
     // migrateToTimestamps ()
     //testNewDb ()
     
-    testNewApiClient()
+    // testNewApiClient()
+
+    let snippet = {
+      label = "test"
+      value = "blob bla"
+      action = SnippetAction.Append Paragraph.First
+    }
+    
+    printfn $"{JsonSerializer.serialize snippet}"
     
     0

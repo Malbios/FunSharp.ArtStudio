@@ -8,6 +8,7 @@
     <ItemGroup>
         <Compile Include="Model.fs" />
         <Compile Include="Helpers.fs" />
+        <Compile Include="Authentication.fs" />
         <Compile Include="HttpSender.fs" />
     </ItemGroup>
 
