@@ -1,8 +1,13 @@
 ﻿namespace FunSharp.Http
 
+open System.Collections.Generic
+open System.Net.Http
+open System.Net.Http.Headers
+open FunSharp.Common
+
 [<RequireQualifiedAccess>]
 module Helpers =
-        
+    
     let toHttpRequestMessage (payload: RequestPayload) =
         
         match payload with
@@ -31,8 +36,8 @@ module Helpers =
                 
             let fileContent =
                 match file with
-                | InMemory f -> new ByteArrayContent(f.Content) :> System.Net.Http.HttpContent
-                | Stream f   -> new StreamContent(f.Content)   :> System.Net.Http.HttpContent
+                | InMemory f -> new ByteArrayContent(f.Content) :> HttpContent
+                | Stream f   -> new StreamContent(f.Content)   :> HttpContent
                 
             fileContent.Headers.ContentType <- MediaTypeHeaderValue.Parse(mediaType)
             content.Add(fileContent, "file", title)

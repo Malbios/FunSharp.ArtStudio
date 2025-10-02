@@ -14,6 +14,7 @@
     <ItemGroup>
       <ProjectReference Include="..\..\External\FunSharp.Common\Source\FunSharp.Common\FunSharp.Common.fsproj" />
       <ProjectReference Include="..\..\External\FunSharp.Data\Source\FunSharp.Data\FunSharp.Data.fsproj" />
+      <ProjectReference Include="..\FunSharp.Http\FunSharp.Http.fsproj" />
     </ItemGroup>
 
     <ItemGroup>

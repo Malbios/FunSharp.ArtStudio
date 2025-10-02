@@ -1,7 +1,6 @@
 ﻿namespace FunSharp.DeviantArt.Api.Model
 
 open System
-open System.IO
 open System.Text.Json.Serialization
 open FunSharp.Common
 
@@ -193,27 +192,3 @@ type PublishResponse = {
     status: string
     url: string
 }
-
-type TokenResponse = {
-    access_token: string
-    token_type: string
-    expires_in: int
-    refresh_token: string
-    scope: string
-    status: string
-}
-
-type AuthenticationData = {
-    AccessToken: string
-    RefreshToken: string
-    ExpiresAt: DateTimeOffset
-}
-
-[<RequireQualifiedAccess>]
-module AuthenticationData =
-    
-    let fromTokenResponse response = {
-        AccessToken = response.access_token
-        RefreshToken = response.refresh_token
-        ExpiresAt = DateTimeOffset.UtcNow.AddSeconds(response.expires_in)
-    }

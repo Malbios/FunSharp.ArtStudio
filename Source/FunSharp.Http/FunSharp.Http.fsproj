@@ -8,6 +8,16 @@
     <ItemGroup>
         <Compile Include="Model.fs" />
         <Compile Include="Helpers.fs" />
+        <Compile Include="HttpSender.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\External\FunSharp.Common\Source\FunSharp.Common\FunSharp.Common.fsproj" />
+      <ProjectReference Include="..\..\External\FunSharp.Data\Source\FunSharp.Data\FunSharp.Data.fsproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Suave" Version="2.6.2" />
     </ItemGroup>
 
 </Project>

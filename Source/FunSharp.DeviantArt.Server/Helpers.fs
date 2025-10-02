@@ -3,6 +3,7 @@
 open System
 open System.Text
 open System.Web
+open FunSharp.Http
 open Microsoft.AspNetCore.StaticFiles
 open Microsoft.FSharp.Collections
 open Suave
