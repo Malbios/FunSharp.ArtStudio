@@ -3,6 +3,8 @@
 open System.Collections.Generic
 open System.Net.Http
 open System.Net.Http.Headers
+open System.Text
+open System.Threading.Tasks
 open FunSharp.Common
 
 [<RequireQualifiedAccess>]
@@ -13,6 +15,10 @@ module Helpers =
         match payload with
         | RequestPayload.Get url ->
             new HttpRequestMessage(HttpMethod.Get, url)
+            
+        | RequestPayload.PostJson (url, json) ->
+            let content = new StringContent(json, Encoding.UTF8, "application/json")
+            new HttpRequestMessage(HttpMethod.Post, url, Content = content)
             
         | RequestPayload.PostForm (url, properties) ->
             let properties = properties |> Seq.map (fun (k, v) -> KeyValuePair(k, v))
@@ -30,14 +36,14 @@ module Helpers =
                 
             let mediaType =
                 match file with
-                | InMemory f -> f.MediaType
-                | Stream f   -> f.MediaType
+                | InMemory (content, mediaType) -> mediaType
+                | Stream (content, mediaType) -> mediaType
                 |> Option.defaultValue "application/octet-stream"
                 
             let fileContent =
                 match file with
-                | InMemory f -> new ByteArrayContent(f.Content) :> HttpContent
-                | Stream f   -> new StreamContent(f.Content)   :> HttpContent
+                | InMemory (content, mediaType) -> new ByteArrayContent(content) :> HttpContent
+                | Stream (content, mediaType) -> new StreamContent(content) :> HttpContent
                 
             fileContent.Headers.ContentType <- MediaTypeHeaderValue.Parse(mediaType)
             content.Add(fileContent, "file", title)

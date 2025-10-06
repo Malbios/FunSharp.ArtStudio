@@ -5,6 +5,7 @@
 
 Source/FunSharp.DeviantArt.Server/secrets.json
 Source/FunSharp.DeviantArt.Utilities/secrets.json
+Source/FunSharp.OpenAI/secrets.json
 
 *.orig
 

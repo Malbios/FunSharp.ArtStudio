@@ -2,22 +2,13 @@
 
 open System.IO
 
-type InMemoryFile = {
-    Content: byte array
-    MediaType: string option
-}
-
-type FileStream = {
-    Content: Stream
-    MediaType: string option
-}
-
 type File =
-    | InMemory of InMemoryFile
-    | Stream of FileStream
-
+    | InMemory of content: byte array * mediaType: string option
+    | Stream of content: Stream * mediaType: string option
+    
 [<RequireQualifiedAccess>]
 type RequestPayload =
     | Get of url: string
+    | PostJson of url: string * json: string
     | PostForm of url: string * properties: (string * string) list
     | PostMultipart of url: string * file: File * properties: (string * string) list
