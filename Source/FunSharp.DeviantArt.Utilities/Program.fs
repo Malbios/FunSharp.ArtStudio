@@ -1,6 +1,7 @@
 ﻿open System
 open System.IO
 open System.Net.Http
+open System.Threading.Tasks
 open FunSharp.Common
 open FunSharp.Data
 open FunSharp.Data.Abstraction
@@ -322,6 +323,45 @@ let deleteAllGenerationsForever () =
         |> Async.RunSynchronously
 
     printfn $"{result}"
+    
+let getTasksWithGenerationsTest () =
+    
+    let client = Client()
+    
+    let result =
+        client.UpdateAuthTokens()
+        |> Async.bind (fun () -> client.GetTasks())
+        |> Async.RunSynchronously
+
+    printfn $"%A{result |> Array.filter (fun x -> x.generations.Length > 0)}"
+    
+let fullProcessTest () =
+    
+    let client = Client()
+    
+    async {
+        do! client.UpdateAuthTokens()
+        
+        let! taskId = client.CreateImage("a stunningly beautiful young woman", ImageType.Portrait)
+        
+        let mutable taskDetails = TaskDetails.empty
+        let mutable taskIsDone = false
+        while (not taskIsDone) do
+            let! newTaskDetails = client.CheckTask(taskId)
+            taskDetails <- newTaskDetails
+            
+            if taskDetails.status = TaskStatus.Running then
+                do! Task.Delay(5000)
+            else
+                taskIsDone <- true
+                
+        let mutable i = 0
+        for generation in taskDetails.generations do
+            let fileName = $"C:/Files/FunSharp.DeviantArt/automated/{taskDetails.title}{i}.png"
+            let! fileContent = client.DownloadImage(generation.url)
+            do! FunSharp.Common.File.writeAllBytesAsync fileName fileContent
+            i <- i + 1
+    }
 
 [<EntryPoint>]
 let main _ =
@@ -344,5 +384,9 @@ let main _ =
     // getTasksTest ()
     
     // deleteAllGenerationsForever ()
+    
+    // getTasksWithGenerationsTest ()
+    
+    fullProcessTest () |> Async.RunSynchronously
     
     0

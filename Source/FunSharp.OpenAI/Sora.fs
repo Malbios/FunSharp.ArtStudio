@@ -2,6 +2,7 @@
 
 open System
 open System.Diagnostics
+open System.Net.Http
 open System.Text
 open FunSharp.Common
 open FunSharp.OpenAI.Model.Sora
@@ -113,6 +114,8 @@ module Sora =
         
     type Client() =
         
+        let sender = new HttpClient()
+        
         let mutable authTokens = AuthenticationTokens.empty
         
         member _.UpdateAuthTokens() =
@@ -177,3 +180,9 @@ module Sora =
             match generationIds.Length with
             | 0 -> "Nothing to delete." |> Async.returnM
             | _ -> runScript_DeleteForever authTokens generationIds
+
+        member _.DownloadImage(imageUrl: string) =
+            
+            imageUrl
+            |> sender.GetByteArrayAsync
+            |> Async.AwaitTask

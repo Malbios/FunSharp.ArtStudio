@@ -59,6 +59,15 @@ module Sora =
         code: string option
         is_output_rejection: bool
     }
+
+    [<RequireQualifiedAccess>]
+    module ModerationResult =
+        
+        let empty = {
+            ``type`` = ModerationStatus.Passed
+            code = None
+            is_output_rejection = false
+        }
     
     type Generation = {
         id: string
@@ -93,3 +102,25 @@ module Sora =
         failure_reason: string option
         needs_user_review: bool
     }
+
+    [<RequireQualifiedAccess>]
+    module TaskDetails =
+        
+        let empty = {
+            id = ""
+            created_at = ""
+            status = TaskStatus.Failed
+            progress_pct = None
+            ``type`` = ""
+            prompt = ""
+            n_variants = 0
+            n_frames = 0
+            height = 0
+            width = 0
+            generations = Array.empty
+            num_unsafe_generations = 0
+            title = ""
+            moderation_result = ModerationResult.empty
+            failure_reason = None
+            needs_user_review = false
+        }
