@@ -7,6 +7,7 @@ open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.Api.Model
 open FunSharp.DeviantArt.Model
 open FunSharp.DeviantArt.Utilities
+open FunSharp.OpenAI.Sora
 
 [<Literal>]
 let dbKey_Settings = "Settings"
@@ -254,6 +255,34 @@ let testNewApiClient () =
     let userInfo = client.WhoAmI() |> Async.RunSynchronously
     
     printfn $"Hello, {userInfo.username}!"
+    
+let snippetTest () =
+    let snippet = {
+      label = "test"
+      value = "blob bla"
+      action = SnippetAction.Append Paragraph.First
+    }
+    
+    printfn $"{JsonSerializer.serialize snippet}"
+    
+let genImageTest () =
+    
+    let variant = ImageType.Square
+    let prompt =
+        """
+        cartoonish 3D (with cel-shading)
+        cat baker
+        baking a ton of "chocolate chip cookies"
+        """
+        
+    let client = Client()
+    
+    let result =
+        client.UpdateAuthTokens()
+        |> Async.bind(fun () -> client.CreateImage(prompt, variant))
+        |> Async.RunSynchronously
+    
+    printfn $"result: {result}"
 
 [<EntryPoint>]
 let main _ =
@@ -263,12 +292,8 @@ let main _ =
     
     // testNewApiClient()
 
-    let snippet = {
-      label = "test"
-      value = "blob bla"
-      action = SnippetAction.Append Paragraph.First
-    }
+    // snippetTest ()
     
-    printfn $"{JsonSerializer.serialize snippet}"
+    genImageTest ()
     
     0

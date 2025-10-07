@@ -4,7 +4,6 @@ open System.Collections.Generic
 open System.Net.Http
 open System.Net.Http.Headers
 open System.Text
-open System.Threading.Tasks
 open FunSharp.Common
 
 [<RequireQualifiedAccess>]
@@ -36,14 +35,14 @@ module Helpers =
                 
             let mediaType =
                 match file with
-                | InMemory (content, mediaType) -> mediaType
-                | Stream (content, mediaType) -> mediaType
+                | InMemory (_, mediaType) -> mediaType
+                | Stream (_, mediaType) -> mediaType
                 |> Option.defaultValue "application/octet-stream"
                 
             let fileContent =
                 match file with
-                | InMemory (content, mediaType) -> new ByteArrayContent(content) :> HttpContent
-                | Stream (content, mediaType) -> new StreamContent(content) :> HttpContent
+                | InMemory (content, _) -> new ByteArrayContent(content) :> HttpContent
+                | Stream (content, _) -> new StreamContent(content) :> HttpContent
                 
             fileContent.Headers.ContentType <- MediaTypeHeaderValue.Parse(mediaType)
             content.Add(fileContent, "file", title)

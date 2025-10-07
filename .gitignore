@@ -3,6 +3,8 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+Utilities/puppeteer/ChromeProfiles
+
 Source/FunSharp.DeviantArt.Server/secrets.json
 Source/FunSharp.DeviantArt.Utilities/secrets.json
 Source/FunSharp.OpenAI/secrets.json

@@ -2,11 +2,8 @@
 
 open System
 open System.Diagnostics
-open System.Net.Http
-open System.Net.Http.Headers
 open System.Text
 open FunSharp.Common
-open FunSharp.Http
 
 module Sora =
     
@@ -15,23 +12,57 @@ module Sora =
         | Square
         | Portrait
         
-    type GenerateResponse = {
+    type AuthenticationTokens = {
+        Sentinel: string
+        Cookies: string
+        Bearer: string
+    }
+    
+    [<RequireQualifiedAccess>]
+    module AuthenticationTokens =
+        
+        let empty = {
+            Sentinel = ""
+            Cookies = ""
+            Bearer = ""
+        }
+    
+    type BearerToken = {
+        accessToken: string
+    }
+    
+    type SoraTask = {
         id: string
+    }
+    
+    type SoraError = {
+        message: string
+        ``type``: string
+        code: string
+    }
+    
+    type SoraErrorContainer = {
+        error: SoraError
     }
     
     let private generateEndpoint = "https://sora.chatgpt.com/backend/video_gen"
     let private checkTaskEndpoint taskId = $"https://sora.chatgpt.com/backend/video_gen/{taskId}"
+    
+    let private runScript (scriptPath: string) (arguments: string array) =
         
-    let private sentinelToken () =
         let psi =
             ProcessStartInfo(
                 FileName = "node",
-                Arguments = @"C:\dev\OpenAIModeration\puppeteer\auth.js",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             )
+            
+        psi.ArgumentList.Add(scriptPath)
+        
+        for argument in arguments do
+            psi.ArgumentList.Add(argument)
 
         let proc = new Process(StartInfo = psi)
         let output = StringBuilder()
@@ -62,72 +93,86 @@ module Sora =
             finally
                 proc.Dispose()
         )
-    
-    let private addHeaders secrets (sentinelToken: string) (request: HttpRequestMessage) =
         
-        request.Headers.Authorization <- AuthenticationHeaderValue("Bearer", secrets.bearer_token)
+    let private runScript_SentinelAndCookies () =
         
-        request.Headers.TryAddWithoutValidation("OpenAI-Sentinel-Token", sentinelToken) |> ignore
-        request.Headers.TryAddWithoutValidation("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36 Edg/140.0.0.0") |> ignore
-        request.Headers.Add("accept", "*/*")
-        request.Headers.Add("accept-language", "en-US,en;q=0.9,de;q=0.8")
-        request.Headers.Add("cache-control", "no-cache")
-        request.Headers.Add("pragma", "no-cache")
-        request.Headers.Add("priority", "u=1, i")
-        request.Headers.Add("sec-ch-ua", "\"Chromium\";v=\"140\", \"Not=A?Brand\";v=\"24\", \"Google Chrome\";v=\"140\"")
-        request.Headers.Add("sec-ch-ua-mobile", "?0")
-        request.Headers.Add("sec-ch-ua-platform", "\"Windows\"")
-        request.Headers.Add("sec-fetch-dest", "empty")
-        request.Headers.Add("sec-fetch-mode", "cors")
-        request.Headers.Add("sec-fetch-site", "same-origin")
-        request.Headers.Add("Origin", "https://sora.chatgpt.com")
-        request.Headers.Add("OAI-Device-Id", "211a54fd-6a35-4b89-9523-b1bb74748473")
-        request.Headers.TryAddWithoutValidation("sec-ch-ua-arch", "\"x86\"") |> ignore
-        request.Headers.TryAddWithoutValidation("sec-ch-ua-bitness", "\"64\"") |> ignore
-        request.Headers.TryAddWithoutValidation("sec-ch-ua-platform-version", "\"19.0.0\"") |> ignore
-        request.Headers.TryAddWithoutValidation("sec-ch-ua-full-version", "\"140.0.3485.94\"") |> ignore
-        request.Headers.TryAddWithoutValidation("Cookie", secrets.cookies) |> ignore
+        runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\sentinel-and-cookies.js" Array.empty
+        |> Async.map (fun output ->
+            let lines = output.Trim().Split(Environment.NewLine)
+            // printfn $"sentinel: {lines[0]}"
+            // printfn $"cookies: {lines[1]}"
+            (lines[0], lines[1])
+        )
         
-        request.Headers.Referrer <- Uri("https://sora.chatgpt.com/trash")
+    let private runScript_BearerToken cookies =
         
-        request
+        runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\bearer.js" [|cookies|]
+        |> Async.map (fun output ->
+            // printfn $"bearer output: {output}"
+            let bearer = JsonSerializer.deserialize<BearerToken> output
+            // printfn $"bearer: {bearer.accessToken}"
+            bearer.accessToken
+        )
         
-    type Client(secrets: Secrets) =
+    let private runScript_CreateImage body (authTokens: AuthenticationTokens) =
         
-        let sender = new HttpClient()
+        let args = [| authTokens.Sentinel; authTokens.Cookies; authTokens.Bearer; body |]
+        runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\create-image.js" args
+        
+    let deserializeResponse<'T> value =
+        match JsonSerializer.tryDeserialize<'T> value, JsonSerializer.tryDeserialize<SoraErrorContainer> value with
+        | Some object, _ -> object
+        | None, Some error -> failwith $"{error.error.message}"
+        | _ -> failwith $"could not deserialize this value: {value}"
+        
+    type Client() =
+        
+        let mutable authTokens = AuthenticationTokens.empty
+        
+        member _.UpdateAuthTokens() =
+            
+            runScript_SentinelAndCookies ()
+            |> Async.bind (fun (sentinelToken, cookies) ->
+                runScript_BearerToken cookies
+                |> Async.map (fun bearerToken ->
+                    authTokens <- {
+                        Sentinel = sentinelToken
+                        Cookies = cookies
+                        Bearer = bearerToken
+                    }
+                )
+            )
         
         member _.CreateImage(prompt: string, variant: ImageType) =
+            
+            let prompt = String.trim prompt
             
             let width =
                 match variant with
                 | Landscape -> 720
                 | Portrait
                 | Square -> 480
-            
+                
             let height =
                 match variant with
                 | Portrait -> 720
                 | Square
                 | Landscape -> 480
                 
-            let body = {|
+            let createImage body =
+                runScript_CreateImage body authTokens
+                
+            {|
                 ``type`` = "image_gen"
                 operation = "simple_compose"
-                prompt = prompt.Trim()
+                prompt = prompt
                 n_variants = 2
                 width = width
                 height = height
                 n_frames = 1
                 inpaint_items = []
             |}
-            
-            let request =
-                ("https://sora.chatgpt.com/backend/video_gen", body |> JsonSerializer.serialize)
-                |> RequestPayload.PostJson
-                |> Helpers.toHttpRequestMessage
-            
-            sentinelToken ()
-            |> Async.map (fun sentinelToken -> addHeaders secrets sentinelToken request)
-            |> Async.bind (sender.SendAsync >> Async.AwaitTask)
-            |> Async.bind Helpers.ensureSuccess
-            |> Async.bind Helpers.toRecord<GenerateResponse>
+            |> JsonSerializer.serialize
+            |> createImage
+            |> Async.map deserializeResponse<SoraTask>
+            |> Async.map _.id
