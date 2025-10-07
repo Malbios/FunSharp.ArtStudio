@@ -24,6 +24,7 @@ async function main() {
 				"sec-fetch-site": "same-origin",
 				"Referer": "https://sora.chatgpt.com/library/trash"
 			},
+			"body": null,
 			"method": "GET"
 		}
 

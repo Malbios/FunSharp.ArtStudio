@@ -47,6 +47,7 @@ module Sora =
         | Running = 0
         | Succeeded = 1
         | Failed = 2
+        | Cancelled = 3
     
     [<JsonConverter(typeof<JsonStringEnumConverter>)>]
     type ModerationStatus =
@@ -78,7 +79,7 @@ module Sora =
         id: string
         created_at: string
         status: TaskStatus
-        progress_pct: float
+        progress_pct: float option
         ``type``: string
         prompt: string
         n_variants: int

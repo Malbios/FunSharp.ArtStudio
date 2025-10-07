@@ -11,7 +11,7 @@ module Sora =
     let private generateEndpoint = "https://sora.chatgpt.com/backend/video_gen"
     let private checkTaskEndpoint taskId = $"https://sora.chatgpt.com/backend/video_gen/{taskId}"
     
-    let private runScript (scriptPath: string) (arguments: string array) =
+    let private runScript scriptPath (arguments: string array) =
         
         let psi =
             ProcessStartInfo(
@@ -62,7 +62,8 @@ module Sora =
         
     let private runScript_SentinelAndCookies () =
         
-        runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\sentinel-and-cookies.js" Array.empty
+        Array.empty
+        |> runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\sentinel-and-cookies.js"
         |> Async.map (fun output ->
             let lines = output.Trim().Split(Environment.NewLine)
             // printfn $"sentinel: {lines[0]}"
@@ -72,7 +73,8 @@ module Sora =
         
     let private runScript_BearerToken cookies =
         
-        runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\bearer.js" [|cookies|]
+        [|cookies|]
+        |> runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\bearer.js"
         |> Async.map (fun output ->
             // printfn $"bearer output: {output}"
             let bearer = JsonSerializer.deserialize<BearerToken> output
@@ -80,21 +82,34 @@ module Sora =
             bearer.accessToken
         )
         
-    let private runScript_CreateImage (authTokens: AuthenticationTokens) body =
+    let private runScript_CreateImage authTokens body =
         
-        let args = [| authTokens.Sentinel; authTokens.Bearer; body |]
-        runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\create-image.js" args
+        [| authTokens.Sentinel; authTokens.Bearer; body |]
+        |> runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\create-image.js"
         
-    let private runScript_CheckTask (authTokens: AuthenticationTokens) taskId =
+    let private runScript_CheckTask authTokens taskId =
         
-        let args = [| authTokens.Sentinel; authTokens.Bearer; taskId |]
-        runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\check-task.js" args
+        [| authTokens.Sentinel; authTokens.Bearer; taskId |]
+        |> runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\check-task.js"
+        
+    let private runScript_GetTasks authTokens =
+        
+        [| authTokens.Sentinel; authTokens.Bearer |]
+        |> runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\get-tasks.js"
+        
+    let private runScript_DeleteForever authTokens (generationIds: string array) =
+        
+        [| authTokens.Sentinel; authTokens.Bearer; JsonSerializer.serialize generationIds |]
+        |> runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\delete-forever.js"
         
     let deserializeResponse<'T> value =
         match JsonSerializer.tryDeserialize<'T> value, JsonSerializer.tryDeserialize<ErrorContainer> value with
-        | Some object, _ -> object
-        | None, Some error -> failwith $"{error.error.message}"
-        | _ -> failwith $"could not deserialize this value: {value}"
+        | Some object, _ ->
+            object
+        | None, Some error ->
+            failwith $"{error.error.message}"
+        | _ ->
+            failwith $"could not deserialize this value:\n\n{value}"
         
     type Client() =
         
@@ -114,7 +129,7 @@ module Sora =
                 )
             )
         
-        member _.CreateImage(prompt: string, variant: ImageType) =
+        member _.CreateImage(prompt: string, variant) =
             
             let prompt =
                 prompt.Split([| "\r\n"; "\n" |], StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
@@ -147,7 +162,18 @@ module Sora =
             |> Async.map deserializeResponse<Task>
             |> Async.map _.id
             
-        member _.CheckTask(taskId: string) =
+        member _.CheckTask(taskId) =
             
             runScript_CheckTask authTokens taskId
             |> Async.map deserializeResponse<TaskDetails>
+            
+        member _.GetTasks() =
+            
+            runScript_GetTasks authTokens
+            |> Async.map deserializeResponse<TaskDetails array>
+            
+        member _.DeleteGenerations(generationIds: string array) =
+            
+            match generationIds.Length with
+            | 0 -> "Nothing to delete." |> Async.returnM
+            | _ -> runScript_DeleteForever authTokens generationIds

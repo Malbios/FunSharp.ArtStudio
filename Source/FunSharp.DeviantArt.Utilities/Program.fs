@@ -283,7 +283,6 @@ let genImageTest () =
         |> Async.bind(fun () -> client.CreateImage(prompt, variant))
         |> Async.RunSynchronously
     
-    printfn "result:"
     printfn $"{result}"
     
 let checkTaskTest () =
@@ -295,7 +294,33 @@ let checkTaskTest () =
         |> Async.bind (fun () -> client.CheckTask("task_01k6z3hn4efpgrcyghxxddqcg3"))
         |> Async.RunSynchronously
         
-    printfn "result:"
+    printfn $"{result}"
+    
+let getTasksTest () =
+    
+    let client = Client()
+    
+    let result =
+        client.UpdateAuthTokens()
+        |> Async.bind (fun () -> client.GetTasks())
+        |> Async.RunSynchronously
+
+    printfn $"%A{result}"
+    
+let deleteAllGenerationsForever () =
+    
+    let client = Client()
+    
+    let result =
+        client.UpdateAuthTokens()
+        |> Async.bind (fun () -> client.GetTasks())
+        |> Async.bind(fun tasks ->
+            tasks
+            |> Array.collect (fun task -> [| for generation in task.generations do generation.id |])
+            |> client.DeleteGenerations
+        )
+        |> Async.RunSynchronously
+
     printfn $"{result}"
 
 [<EntryPoint>]
@@ -310,10 +335,14 @@ let main _ =
     
     // genImageTest ()
     
-    checkTaskTest ()
+    // checkTaskTest ()
 
     // let json = "\"succeeded\""
     // let s = JsonSerializer.deserialize<TaskStatus> json
     // printfn $"s: {s}"
+    
+    // getTasksTest ()
+    
+    // deleteAllGenerationsForever ()
     
     0
