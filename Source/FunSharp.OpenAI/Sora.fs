@@ -4,46 +4,9 @@ open System
 open System.Diagnostics
 open System.Text
 open FunSharp.Common
+open FunSharp.OpenAI.Model.Sora
 
 module Sora =
-    
-    type ImageType =
-        | Landscape
-        | Square
-        | Portrait
-        
-    type AuthenticationTokens = {
-        Sentinel: string
-        Cookies: string
-        Bearer: string
-    }
-    
-    [<RequireQualifiedAccess>]
-    module AuthenticationTokens =
-        
-        let empty = {
-            Sentinel = ""
-            Cookies = ""
-            Bearer = ""
-        }
-    
-    type BearerToken = {
-        accessToken: string
-    }
-    
-    type SoraTask = {
-        id: string
-    }
-    
-    type SoraError = {
-        message: string
-        ``type``: string
-        code: string
-    }
-    
-    type SoraErrorContainer = {
-        error: SoraError
-    }
     
     let private generateEndpoint = "https://sora.chatgpt.com/backend/video_gen"
     let private checkTaskEndpoint taskId = $"https://sora.chatgpt.com/backend/video_gen/{taskId}"
@@ -86,6 +49,9 @@ module Sora =
         |> Async.AwaitEvent
         |> Async.map (fun _ ->
             try
+                // printfn $"DEBUG OUTPUT: {output.ToString().Trim()}"
+                // printfn $"DEBUG ERROR: {error.ToString().Trim()}"
+                
                 if proc.ExitCode = 0 then
                     output.ToString().Trim()
                 else
@@ -114,13 +80,18 @@ module Sora =
             bearer.accessToken
         )
         
-    let private runScript_CreateImage body (authTokens: AuthenticationTokens) =
+    let private runScript_CreateImage (authTokens: AuthenticationTokens) body =
         
-        let args = [| authTokens.Sentinel; authTokens.Cookies; authTokens.Bearer; body |]
+        let args = [| authTokens.Sentinel; authTokens.Bearer; body |]
         runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\create-image.js" args
         
+    let private runScript_CheckTask (authTokens: AuthenticationTokens) taskId =
+        
+        let args = [| authTokens.Sentinel; authTokens.Bearer; taskId |]
+        runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\check-task.js" args
+        
     let deserializeResponse<'T> value =
-        match JsonSerializer.tryDeserialize<'T> value, JsonSerializer.tryDeserialize<SoraErrorContainer> value with
+        match JsonSerializer.tryDeserialize<'T> value, JsonSerializer.tryDeserialize<ErrorContainer> value with
         | Some object, _ -> object
         | None, Some error -> failwith $"{error.error.message}"
         | _ -> failwith $"could not deserialize this value: {value}"
@@ -145,7 +116,9 @@ module Sora =
         
         member _.CreateImage(prompt: string, variant: ImageType) =
             
-            let prompt = String.trim prompt
+            let prompt =
+                prompt.Split([| "\r\n"; "\n" |], StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
+                |> String.concat "\n\n"
             
             let width =
                 match variant with
@@ -159,9 +132,6 @@ module Sora =
                 | Square
                 | Landscape -> 480
                 
-            let createImage body =
-                runScript_CreateImage body authTokens
-                
             {|
                 ``type`` = "image_gen"
                 operation = "simple_compose"
@@ -173,6 +143,11 @@ module Sora =
                 inpaint_items = []
             |}
             |> JsonSerializer.serialize
-            |> createImage
-            |> Async.map deserializeResponse<SoraTask>
+            |> (runScript_CreateImage authTokens)
+            |> Async.map deserializeResponse<Task>
             |> Async.map _.id
+            
+        member _.CheckTask(taskId: string) =
+            
+            runScript_CheckTask authTokens taskId
+            |> Async.map deserializeResponse<TaskDetails>

@@ -3,7 +3,7 @@ async function main() {
 		const sentinelToken = JSON.parse(process.argv[2])
 		const bearerToken = process.argv[3]
 
-		const body = JSON.stringify(JSON.parse(process.argv[4]))
+		const taskId = process.argv[4]
 
 		const request = {
 			"headers": {
@@ -24,11 +24,10 @@ async function main() {
 				"sec-fetch-site": "same-origin",
 				"Referer": "https://sora.chatgpt.com/library/trash"
 			},
-			"body": body,
-			"method": "POST"
+			"method": "GET"
 		}
 
-		const response = await fetch("https://sora.chatgpt.com/backend/video_gen", request)
+		const response = await fetch(`https://sora.chatgpt.com/backend/video_gen/${taskId}`, request)
 
 		const output = await response.json()
 

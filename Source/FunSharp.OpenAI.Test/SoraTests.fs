@@ -4,6 +4,7 @@ open Xunit
 open Faqt
 open Faqt.Operators
 open FunSharp.OpenAI.Sora
+open FunSharp.OpenAI.Model.Sora
 
 [<Trait("Category", "OnDemand")>]
 module ``Sora Tests`` =

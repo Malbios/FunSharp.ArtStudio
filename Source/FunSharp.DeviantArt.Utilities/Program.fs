@@ -7,6 +7,7 @@ open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.Api.Model
 open FunSharp.DeviantArt.Model
 open FunSharp.DeviantArt.Utilities
+open FunSharp.OpenAI.Model.Sora
 open FunSharp.OpenAI.Sora
 
 [<Literal>]
@@ -282,7 +283,20 @@ let genImageTest () =
         |> Async.bind(fun () -> client.CreateImage(prompt, variant))
         |> Async.RunSynchronously
     
-    printfn $"result: {result}"
+    printfn "result:"
+    printfn $"{result}"
+    
+let checkTaskTest () =
+    
+    let client = Client()
+    
+    let result =
+        client.UpdateAuthTokens()
+        |> Async.bind (fun () -> client.CheckTask("task_01k6z3hn4efpgrcyghxxddqcg3"))
+        |> Async.RunSynchronously
+        
+    printfn "result:"
+    printfn $"{result}"
 
 [<EntryPoint>]
 let main _ =
@@ -294,6 +308,12 @@ let main _ =
 
     // snippetTest ()
     
-    genImageTest ()
+    // genImageTest ()
+    
+    checkTaskTest ()
+
+    // let json = "\"succeeded\""
+    // let s = JsonSerializer.deserialize<TaskStatus> json
+    // printfn $"s: {s}"
     
     0
