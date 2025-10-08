@@ -44,10 +44,11 @@ module Sora =
     
     [<JsonConverter(typeof<JsonStringEnumConverter>)>]
     type TaskStatus =
-        | Running = 0
-        | Succeeded = 1
-        | Failed = 2
-        | Cancelled = 3
+        | PreProcessing = 0
+        | Running = 1
+        | Succeeded = 2
+        | Failed = 3
+        | Cancelled = 4
     
     [<JsonConverter(typeof<JsonStringEnumConverter>)>]
     type ModerationStatus =

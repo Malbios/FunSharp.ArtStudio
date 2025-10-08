@@ -342,7 +342,8 @@ let fullProcessTest () =
     async {
         do! client.UpdateAuthTokens()
         
-        let! taskId = client.CreateImage("a stunningly beautiful young woman", ImageType.Portrait)
+        let! taskId = client.CreateImage("a stunningly beautiful young woman inviting the viewer into her home, pov, hyperrealistic", ImageType.Portrait)
+        printfn "task started!"
         
         let mutable taskDetails = TaskDetails.empty
         let mutable taskIsDone = false
@@ -350,21 +351,72 @@ let fullProcessTest () =
             let! newTaskDetails = client.CheckTask(taskId)
             taskDetails <- newTaskDetails
             
-            if taskDetails.status = TaskStatus.Running then
+            if taskDetails.status = TaskStatus.Running || taskDetails.status = TaskStatus.PreProcessing then
                 do! Task.Delay(5000)
+                printfn "waiting..."
             else
+                printfn "waiting is done!"
                 taskIsDone <- true
                 
-        let mutable i = 0
         for generation in taskDetails.generations do
-            let fileName = $"C:/Files/FunSharp.DeviantArt/automated/{taskDetails.title}{i}.png"
+            let fileName = $"C:/Files/FunSharp.DeviantArt/automated/{Guid.NewGuid ()}.png"
             let! fileContent = client.DownloadImage(generation.url)
             do! FunSharp.Common.File.writeAllBytesAsync fileName fileContent
-            i <- i + 1
     }
+
+let adHocTest () =
+    
+    let json = """
+{
+	"id": "task_01k7220wfhe3ea77qnkws68q78",
+	"user": "user-aoBlrIMfjPcORklGBKDpQagL",
+	"created_at": "2025-10-08T14:01:24.772665Z",
+	"status": "preprocessing",
+	"progress_pct": null,
+	"progress_pos_in_queue": null,
+	"estimated_queue_wait_time": null,
+	"queue_status_message": null,
+	"priority": 2,
+	"type": "image_gen",
+	"prompt": "a stunningly beautiful young woman inviting the viewer into her bedroom, pov, hyperrealistic, she is slim and very exceptionally stacked (really exaggerated)",
+	"n_variants": 2,
+	"n_frames": 1,
+	"height": 720,
+	"width": 480,
+	"model": null,
+	"operation": "simple_compose",
+	"inpaint_items": [],
+	"preset_id": null,
+	"caption": null,
+	"actions": null,
+	"interpolation": null,
+	"sdedit": null,
+	"remix_config": null,
+	"quality": null,
+	"size": null,
+	"generations": [],
+	"num_unsafe_generations": 0,
+	"title": "Image Generation",
+	"moderation_result": {
+		"type": "passed",
+		"results_by_frame_index": {},
+		"code": null,
+		"is_output_rejection": false,
+		"task_id": "task_01k7220wfhe3ea77qnkws68q78"
+	},
+	"failure_reason": null,
+	"needs_user_review": false
+}
+"""
+    
+    let result = JsonSerializer.deserialize<TaskDetails> json
+    
+    printfn $"{result}"
 
 [<EntryPoint>]
 let main _ =
+    
+    // adHocTest ()
     
     // migrateToTimestamps ()
     //testNewDb ()
@@ -376,10 +428,6 @@ let main _ =
     // genImageTest ()
     
     // checkTaskTest ()
-
-    // let json = "\"succeeded\""
-    // let s = JsonSerializer.deserialize<TaskStatus> json
-    // printfn $"s: {s}"
     
     // getTasksTest ()
     
