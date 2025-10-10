@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+    </PropertyGroup>
+    <ItemGroup>
+        <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </ServiceWorker>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Bolero" Version="0.*"/>
+        <PackageReference Include="Bolero.Build" Version="0.24.39"/>
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="9.0.9"/>
+        <PackageReference Include="System.Net.Http.Json" Version="9.0.9"/>
+    </ItemGroup>
+    <ItemGroup>
+        <Content Update="wwwroot\icon-512.png">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <Content Update="wwwroot\index.html">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <Content Update="wwwroot\manifest.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <Content Update="wwwroot\service-worker.published.js">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <Content Update="wwwroot\assets\favicon.ico">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <Content Update="wwwroot\css\global.css">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <Compile Include="Routes.fs"/>
+        <Compile Include="Model.fs"/>
+        <Compile Include="Helpers.fs"/>
+        <Compile Include="Components\Dialogs\PromptDialog.fs" />
+        <Compile Include="Components\Dialogs\ImageUploadDialog.fs" />
+        <Compile Include="Components\Navigation.fs" />
+        <Compile Include="Components\Page.fs" />
+        <Compile Include="Components\ItemEditor.fs" />
+        <Compile Include="Components\Deviation.fs"/>
+        <Compile Include="Components\Deviations.fs" />
+        <Compile Include="Pages\AddInspiration.fs" />
+        <Content Include="Pages\AddInspiration.bolero.css" />
+        <Compile Include="Pages\Inspirations.fs" />
+        <Content Include="Pages\Inspirations.bolero.css" />
+        <Compile Include="Pages\Prompts.fs" />
+        <Content Include="Pages\Prompts.bolero.css" />
+        <Compile Include="Pages\LocalDeviations.fs" />
+        <Content Include="Pages\LocalDeviations.bolero.css" />
+        <Compile Include="Pages\StashedDeviations.fs" />
+        <Content Include="Pages\StashedDeviations.bolero.css" />
+        <Compile Include="Pages\PublishedDeviations.fs" />
+        <Content Include="Pages\PublishedDeviations.bolero.css" />
+        <Compile Include="Pages\NotFound.fs" />
+        <Compile Include="View.fs"/>
+        <Compile Include="Update.fs"/>
+        <Compile Include="Main.fs"/>
+        <Compile Include="Startup.fs"/>
+        <Content Include="FunSharp.ArtStudio.Client.bolero.css" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\External\FunSharp.Blazor.Components\Source\FunSharp.Blazor.Components\FunSharp.Blazor.Components.fsproj" />
+        <ProjectReference Include="..\..\External\FunSharp.Common\Source\FunSharp.Common\FunSharp.Common.fsproj" />
+        <ProjectReference Include="..\FunSharp.DeviantArt.Api\FunSharp.DeviantArt.Api.fsproj" />
+        <ProjectReference Include="..\FunSharp.ArtStudio.Model\FunSharp.ArtStudio.Model.fsproj" />
+    </ItemGroup>
+</Project>

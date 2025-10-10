@@ -5,9 +5,9 @@
 
 Utilities/puppeteer/ChromeProfiles
 
-Source/FunSharp.DeviantArt.Server/secrets.json
-Source/FunSharp.DeviantArt.Utilities/secrets.json
-Source/FunSharp.OpenAI/secrets.json
+Source/FunSharp.ArtStudio.Server/secrets.json
+Source/FunSharp.ArtStudio.Utilities/secrets.json
+Source/FunSharp.OpenAI.Api/secrets.json
 
 *.orig
 
