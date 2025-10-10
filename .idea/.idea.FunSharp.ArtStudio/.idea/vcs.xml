@@ -2,11 +2,5 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/External/FunSharp.Blazor.Components" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/External/FunSharp.Blazor.Components/External/FunSharp.Common" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/External/FunSharp.Common" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/External/FunSharp.Data" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/External/FunSharp.Data/External/FunSharp.Common" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/External/blazor-dragdrop" vcs="Git" />
   </component>
 </project>

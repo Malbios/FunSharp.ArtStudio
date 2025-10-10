@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <TargetFramework>net8.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Abstraction.fs"/>
+        <Compile Include="FSharpBsonMapper.fs"/>
+        <Compile Include="LiteDbPersistence.fs"/>
+        <Compile Include="PickledPersistence.fs"/>
+        <Compile Include="NewLiteDbPersistence.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="FsPickler" Version="5.3.2"/>
+        <PackageReference Include="LiteDB" Version="5.0.21"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\FunSharp.Common\FunSharp.Common.fsproj" />
+    </ItemGroup>
+    
+</Project>

@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <TargetFramework>net8.0</TargetFramework>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Record.fs" />
+        <Compile Include="Task.fs" />
+        <Compile Include="Async.fs" />
+        <Compile Include="String.fs" />
+        <Compile Include="Result.fs" />
+        <Compile Include="AsyncResult.fs" />
+        <Compile Include="Union.fs" />
+        <Compile Include="JsonSerializer.fs" />
+        <Compile Include="Base36.fs" />
+        <Compile Include="Stream.fs" />
+        <Compile Include="File.fs" />
+        <Compile Include="Uri.fs" />
+        <Compile Include="Int.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="FSharp.Control.AsyncSeq" Version="3.2.1" />
+      <PackageReference Include="FSharp.SystemTextJson" Version="1.3.13" />
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    </ItemGroup>
+
+</Project>

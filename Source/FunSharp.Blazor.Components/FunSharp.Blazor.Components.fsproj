@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Helpers.fs"/>
+        <Compile Include="Injector.fs" />
+        <Compile Include="LoadingWidget.fs"/>
+        <Compile Include="Loadable.fs"/>
+        <Compile Include="Link.fs" />
+        <Compile Include="ImageUrl.fs"/>
+        <Compile Include="ImagePreview.fs"/>
+        <Compile Include="CheckBox.fs"/>
+        <Compile Include="TextInput.fs"/>
+        <Compile Include="TextAreaInput.fs" />
+        <Compile Include="DropDown.fs"/>
+        <Compile Include="FileInput.fs"/>
+        <Compile Include="Button.fs"/>
+        <Compile Include="IconButton.fs"/>
+        <Compile Include="Accordion.fs"/>
+        <Compile Include="Tabs.fs" />
+        <Compile Include="Pager.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Bolero" Version="0.24.39"/>
+        <PackageReference Include="Radzen.Blazor" Version="7.3.3"/>
+        <PackageReference Include="Toolbelt.Blazor.FileDropZone" Version="3.0.1"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\FunSharp.Common\FunSharp.Common.fsproj" />
+    </ItemGroup>
+
+
+</Project>

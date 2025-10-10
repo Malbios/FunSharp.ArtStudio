@@ -64,8 +64,7 @@
         <Content Include="FunSharp.ArtStudio.Client.bolero.css" />
     </ItemGroup>
     <ItemGroup>
-        <ProjectReference Include="..\..\External\FunSharp.Blazor.Components\Source\FunSharp.Blazor.Components\FunSharp.Blazor.Components.fsproj" />
-        <ProjectReference Include="..\..\External\FunSharp.Common\Source\FunSharp.Common\FunSharp.Common.fsproj" />
+        <ProjectReference Include="..\FunSharp.Blazor.Components\FunSharp.Blazor.Components.fsproj" />
         <ProjectReference Include="..\FunSharp.DeviantArt.Api\FunSharp.DeviantArt.Api.fsproj" />
         <ProjectReference Include="..\FunSharp.ArtStudio.Model\FunSharp.ArtStudio.Model.fsproj" />
     </ItemGroup>
