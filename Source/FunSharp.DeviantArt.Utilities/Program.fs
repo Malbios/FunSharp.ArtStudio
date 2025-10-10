@@ -416,7 +416,7 @@ let adHocTest () =
 [<EntryPoint>]
 let main _ =
     
-    // adHocTest ()
+    adHocTest ()
     
     // migrateToTimestamps ()
     //testNewDb ()
@@ -435,6 +435,6 @@ let main _ =
     
     // getTasksWithGenerationsTest ()
     
-    fullProcessTest () |> Async.RunSynchronously
+    // fullProcessTest () |> Async.RunSynchronously
     
     0

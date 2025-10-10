@@ -75,10 +75,7 @@ module Helpers =
                 title = local.Metadata.Title
         }
         
-        let file = File.InMemory {
-            MediaType = Some mimeType
-            Content = imageContent
-        }
+        let file = File.InMemory (imageContent, Some mimeType)
         
         client.SubmitToStash(submission, file)
         |> Async.getOrFail
