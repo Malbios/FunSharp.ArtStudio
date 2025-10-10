@@ -9,6 +9,9 @@ open FunSharp.OpenAI.Api.Model.Sora
 
 module Sora =
     
+    [<Literal>]
+    let private puppeteerPath = "C:/dev/fsharp/DeviantArt/Utilities/puppeteer"
+    
     let private generateEndpoint = "https://sora.chatgpt.com/backend/video_gen"
     let private checkTaskEndpoint taskId = $"https://sora.chatgpt.com/backend/video_gen/{taskId}"
     
@@ -61,7 +64,7 @@ module Sora =
     let private runScript_SentinelAndCookies () =
         
         Array.empty
-        |> runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\sentinel-and-cookies.js"
+        |> runScript $"{puppeteerPath}/sentinel-and-cookies.js"
         |> Async.map (fun output ->
             let lines = output.Trim().Split(Environment.NewLine)
             (lines[0], lines[1])
@@ -70,7 +73,7 @@ module Sora =
     let private runScript_BearerToken cookies =
         
         [|cookies|]
-        |> runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\bearer.js"
+        |> runScript $"{puppeteerPath}/bearer.js"
         |> Async.map (fun output ->
             let bearer = JsonSerializer.deserialize<BearerToken> output
             bearer.accessToken
@@ -79,22 +82,22 @@ module Sora =
     let private runScript_CreateImage authTokens body =
         
         [| authTokens.Sentinel; authTokens.Bearer; body |]
-        |> runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\create-image.js"
+        |> runScript $"{puppeteerPath}/create-image.js"
         
     let private runScript_CheckTask authTokens taskId =
         
         [| authTokens.Sentinel; authTokens.Bearer; taskId |]
-        |> runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\check-task.js"
+        |> runScript $"{puppeteerPath}/check-task.js"
         
     let private runScript_GetTasks authTokens =
         
         [| authTokens.Sentinel; authTokens.Bearer |]
-        |> runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\get-tasks.js"
+        |> runScript $"{puppeteerPath}/get-tasks.js"
         
     let private runScript_DeleteForever authTokens (generationIds: string array) =
         
         [| authTokens.Sentinel; authTokens.Bearer; JsonSerializer.serialize generationIds |]
-        |> runScript @"C:\dev\fsharp\DeviantArt\Utilities\puppeteer\delete-forever.js"
+        |> runScript $"{puppeteerPath}/delete-forever.js"
         |> Async.ignore
         
     let deserializeResponse<'T> value =
