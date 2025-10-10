@@ -58,6 +58,7 @@
         <Content Include="Pages\PublishedDeviations.bolero.css" />
         <Compile Include="Pages\NotFound.fs" />
         <Compile Include="View.fs"/>
+        <Compile Include="Http.fs" />
         <Compile Include="Update.fs"/>
         <Compile Include="Main.fs"/>
         <Compile Include="Startup.fs"/>

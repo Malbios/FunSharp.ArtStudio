@@ -1,10 +1,6 @@
 ﻿namespace FunSharp.ArtStudio.Client
 
 open System
-open System.Net.Http
-open System.Net.Http.Headers
-open System.Text
-open System.Threading.Tasks
 open System.Web
 open FunSharp.ArtStudio.Client.Model.AddInspiration
 open Microsoft.Extensions.Logging
@@ -25,92 +21,11 @@ open FunSharp.ArtStudio.Client.Model
 module Update =
     let private apiRoot = "http://localhost:5123/api/v1"
     
-    let private ensureSuccess (task: Task<HttpResponseMessage>) =
-        
-        task
-        |> Async.AwaitTask
-        |> Async.bind (fun response ->
-            if response.IsSuccessStatusCode then
-                response |> Async.returnM
-            else
-                response.Content.ReadAsStringAsync()
-                |> Async.AwaitTask
-                |> Async.map failwith
-        )
-        |> Async.getOrFail
-    
-    let private get (client: HttpClient) (url: string) =
-        
-        client.GetAsync(url)
-        |> ensureSuccess
-        
-    let private post (client: HttpClient) (url: string) (content: HttpContent option) =
-        
-        match content with
-        | None ->
-            client.PostAsync(url, null)
-        | Some content ->
-            client.PostAsync(url, content)
-        |> ensureSuccess
-        
-    let private put (client: HttpClient) (url: string) content =
-        
-        client.PutAsync(url, content)
-        |> ensureSuccess
-        
-    let private patch (client: HttpClient) (url: string) content =
-        
-        client.PatchAsync(url, content)
-        |> ensureSuccess
-        
-    let private delete (client: HttpClient) (url: string) =
-        
-        client.DeleteAsync(url)
-        |> ensureSuccess
-        
-    let private contentAsString (response: HttpResponseMessage) =
-        
-        response.Content.ReadAsStringAsync()
-        |> Async.AwaitTask
-        |> Async.getOrFail
-        
-    let private postObject client url object =
-        
-        object
-        |> JsonSerializer.serialize
-        |> fun x -> new StringContent(x, Encoding.UTF8, "application/json")
-        |> fun x -> post client url (Some x)
-        
-    let private putFile client url name mimeType content=
-        
-        let byteContent = new ByteArrayContent(content)
-        
-        byteContent.Headers.ContentType <- MediaTypeHeaderValue(mimeType)
-        
-        use content = new MultipartFormDataContent()
-        
-        content.Add(byteContent, "file", name)
-        
-        content
-        |> put client url
-        
-    let private putString client url (value: String) =
-        
-        new StringContent(value)
-        |> put client url
-        
-    let private patchObject client url value =
-        
-        value
-        |> JsonSerializer.serialize
-        |> fun x -> new StringContent(x, Encoding.UTF8, "application/json")
-        |> patch client url
-    
     let private loadStatefulItems<'T> client endpoint =
         
         $"{apiRoot}{endpoint}"
-        |> get client
-        |> Async.bind contentAsString
+        |> Http.get client
+        |> Async.bind Http.contentAsString
         |> Async.map (JsonSerializer.deserialize<'T array> >> Array.map StatefulItem.Default >> Loadable.Loaded)
         
     let private loadStatefulItemsPage<'T> client endpoint offset limit =
@@ -125,15 +40,15 @@ module Update =
             |> Loadable.Loaded
         
         $"{apiRoot}{endpoint}?offset={offset}&limit={limit}"
-        |> get client
-        |> Async.bind contentAsString
+        |> Http.get client
+        |> Async.bind Http.contentAsString
         |> Async.map (JsonSerializer.deserialize<Page<'T>> >> asLoadedStatefulItemsPage)
         
-    let private loadSettings (client: HttpClient) =
+    let private loadSettings client =
         
         $"{apiRoot}/settings"
-        |> get client
-        |> Async.bind contentAsString
+        |> Http.get client
+        |> Async.bind Http.contentAsString
         |> Async.map (JsonSerializer.deserialize<Settings> >> Loadable.Loaded)
     
     let private loadInspirations client =
@@ -160,62 +75,62 @@ module Update =
         
         inspirationUrl.ToString()
         |> HttpUtility.HtmlEncode
-        |> putString client $"{apiRoot}/local/inspiration"
-        |> Async.bind contentAsString
+        |> Http.putString client $"{apiRoot}/local/inspiration"
+        |> Async.bind Http.contentAsString
         |> Async.map JsonSerializer.deserialize<Inspiration>
         
     let private addPrompt client promptText =
         
         promptText
         |> HttpUtility.HtmlEncode
-        |> putString client $"{apiRoot}/local/prompt"
-        |> Async.bind contentAsString
+        |> Http.putString client $"{apiRoot}/local/prompt"
+        |> Async.bind Http.contentAsString
         |> Async.map JsonSerializer.deserialize<Prompt>
         
     let private forgetPrompt client prompt =
         
-        delete client $"{apiRoot}/local/prompt?key={prompt.Id.ToString()}"
+        Http.delete client $"{apiRoot}/local/prompt?key={prompt.Id.ToString()}"
         |> Async.bind (fun _ -> prompt |> Async.returnM)
         
     let private forgetInspiration client (inspiration: Inspiration) =
         
-        delete client $"{apiRoot}/local/inspiration?key={inspiration.Url.ToString()}"
+        Http.delete client $"{apiRoot}/local/inspiration?key={inspiration.Url.ToString()}"
         |> Async.bind (fun _ -> inspiration |> Async.returnM)
         
     let private forgetLocalDeviation client (local: LocalDeviation) =
         
-        delete client $"{apiRoot}/local/deviation?key={local.ImageUrl.ToString() |> HttpUtility.UrlEncode}"
+        Http.delete client $"{apiRoot}/local/deviation?key={local.ImageUrl.ToString() |> HttpUtility.UrlEncode}"
         |> Async.bind (fun _ -> local |> Async.returnM)
         
     let private updatePrompt client (prompt: Prompt) =
         
-        patchObject client $"{apiRoot}/local/prompt" prompt
-        |> Async.bind contentAsString
+        Http.patchObject client $"{apiRoot}/local/prompt" prompt
+        |> Async.bind Http.contentAsString
         |> Async.map JsonSerializer.deserialize<Prompt>
         
     let private updateLocalDeviation client (local: LocalDeviation) =
         
-        patchObject client $"{apiRoot}/local/deviation" local
-        |> Async.bind contentAsString
+        Http.patchObject client $"{apiRoot}/local/deviation" local
+        |> Async.bind Http.contentAsString
         |> Async.map JsonSerializer.deserialize<LocalDeviation>
         
     let private inspiration2Prompt client (inspiration: Inspiration, promptText: string) =
         
         { Inspiration = inspiration.Url; Text = promptText }
-        |> postObject client $"{apiRoot}/inspiration2prompt"
-        |> Async.bind contentAsString
+        |> Http.postObject client $"{apiRoot}/inspiration2prompt"
+        |> Async.bind Http.contentAsString
         |> Async.map JsonSerializer.deserialize<Prompt>
         |> Async.map (fun prompt -> inspiration, prompt)
         
     let private prompt2LocalDeviation client (prompt: Prompt, image: Image) =
         
-        putFile client $"{apiRoot}/local/images" image.Name image.ContentType image.Content
-        |> Async.bind contentAsString
+        Http.putFile client $"{apiRoot}/local/images" image.Name image.ContentType image.Content
+        |> Async.bind Http.contentAsString
         |> Async.map (JsonSerializer.deserialize<Uri array> >> Array.head)
         |> Async.bind (fun imageUrl ->
             { Prompt = prompt.Id; ImageUrl = imageUrl }
-            |> postObject client $"{apiRoot}/prompt2deviation"
-            |> Async.bind contentAsString
+            |> Http.postObject client $"{apiRoot}/prompt2deviation"
+            |> Async.bind Http.contentAsString
             |> Async.map JsonSerializer.deserialize<LocalDeviation>
             |> Async.map (fun local -> prompt, local)
         )
@@ -227,8 +142,8 @@ module Update =
         |> Async.bind (fun _ ->
             let encodedKey = local.ImageUrl.ToString() |> HttpUtility.UrlEncode
             
-            post client $"{apiRoot}/stash?key={encodedKey}" None
-            |> Async.bind contentAsString
+            Http.post client $"{apiRoot}/stash?key={encodedKey}" None
+            |> Async.bind Http.contentAsString
             |> Async.map JsonSerializer.deserialize<StashedDeviation>
             |> Async.map (fun stashed -> local, stashed)
         )
@@ -237,8 +152,8 @@ module Update =
         
         let encodedKey = stashed.ImageUrl.ToString() |> HttpUtility.UrlEncode
         
-        post client $"{apiRoot}/publish?key={encodedKey}" None
-        |> Async.bind contentAsString
+        Http.post client $"{apiRoot}/publish?key={encodedKey}" None
+        |> Async.bind Http.contentAsString
         |> Async.map JsonSerializer.deserialize<PublishedDeviation>
         |> Async.map (fun published -> (stashed, published))
         
