@@ -5,7 +5,6 @@ open Bolero
 open Bolero.Html
 open Bolero.Html.attr
 open FunSharp.Blazor.Components
-open Microsoft.AspNetCore.Components
 open FunSharp.DeviantArt.Manager.Model
 open FunSharp.DeviantArt.Manager.Components
 open Radzen
@@ -15,12 +14,6 @@ type AddInspiration() =
     inherit ElmishComponent<State, Message>()
     
     override _.CssScope = CssScopes.AddInspiration
-    
-    [<Inject>]
-    member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
-    
-    [<Inject>]
-    member val DialogService = Unchecked.defaultof<DialogService> with get, set
     
     override this.View model dispatch =
         
@@ -74,4 +67,4 @@ type AddInspiration() =
                 |> Helpers.renderArray
                 |> Deviations.render
         }
-        |> Page.render model dispatch this.NavManager this.DialogService
+        |> Page.render model dispatch

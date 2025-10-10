@@ -17,9 +17,6 @@ type Inspirations() =
     override _.CssScope = CssScopes.Inspirations
     
     [<Inject>]
-    member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
-    
-    [<Inject>]
     member val DialogService = Unchecked.defaultof<DialogService> with get, set
     
     [<Inject>]
@@ -65,4 +62,4 @@ type Inspirations() =
                 |> Helpers.renderArray
                 |> Deviations.render
         }
-        |> Page.render model dispatch this.NavManager this.DialogService
+        |> Page.render model dispatch

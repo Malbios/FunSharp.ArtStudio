@@ -58,7 +58,7 @@ type ItemEditor<'T when 'T : not struct and 'T : equality>() =
         
         match this.Fields.TryFind(fieldName) with
         | None ->
-            Node.Empty ()
+            Node.Empty()
         | Some renderAction ->
             let onChange (newValue: obj) = this.Update(withChange newValue)
             renderAction onChange fieldValue

@@ -13,12 +13,6 @@ type NotFound() =
     
     override _.CssScope = CssScopes.``FunSharp.DeviantArt.Manager``
     
-    [<Inject>]
-    member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
-    
-    [<Inject>]
-    member val DialogService = Unchecked.defaultof<DialogService> with get, set
-    
     override this.View model dispatch =
         
         comp<RadzenStack> {
@@ -27,4 +21,4 @@ type NotFound() =
             
             p { "404 - Not Found" }
         }
-        |> Page.render model dispatch this.NavManager this.DialogService
+        |> Page.render model dispatch

@@ -2,7 +2,6 @@
 
 open Bolero
 open Bolero.Html
-open Microsoft.AspNetCore.Components
 open Radzen
 open Radzen.Blazor
 open FunSharp.Blazor.Components
@@ -10,25 +9,22 @@ open FunSharp.DeviantArt.Model
 open FunSharp.DeviantArt.Manager.Model
 open FunSharp.DeviantArt.Manager.Components
 
-type LocalDeviations() =
-    inherit ElmishComponent<State, Message>()
+[<RequireQualifiedAccess>]
+module LocalDeviations =
             
     let galleries model =
+        
         match model.Settings with
-        | Loadable.Loaded settings -> settings.Galleries |> Array.map _.name
+        | Loadable.Loaded settings ->
+            settings.Galleries |> Array.map _.name
         | _ -> Array.empty
         
     let originLink origin =
         
-        match origin with
-        | DeviationOrigin.None -> Node.Empty ()
-        | DeviationOrigin.Inspiration inspiration ->
+        match DeviationOrigin.inspiration origin with
+        | None -> Node.Empty ()
+        | Some inspiration ->
             Link.renderSimple None inspiration.Url
-        | DeviationOrigin.Prompt prompt ->
-            match prompt.Inspiration with
-            | None -> Node.Empty ()
-            | Some inspiration ->
-                Link.renderSimple None inspiration.Url
     
     let editorWidget dispatch galleries isBusy deviation =
         
@@ -104,7 +100,7 @@ type LocalDeviations() =
             | DeviationOrigin.Inspiration inspiration -> inspiration.ImageUrl
         
         match isBusy with
-        | true -> Node.Empty ()
+        | true -> Node.Empty()
         
         | false ->
             comp<RadzenStack> {
@@ -128,14 +124,11 @@ type LocalDeviations() =
                 editorWidget dispatch galleries isBusy deviation
             }
             |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
+
+type LocalDeviations() =
+    inherit ElmishComponent<State, Message>()
     
     override _.CssScope = CssScopes.LocalDeviations
-    
-    [<Inject>]
-    member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
-    
-    [<Inject>]
-    member val DialogService = Unchecked.defaultof<DialogService> with get, set
     
     override this.View model dispatch =
         
@@ -143,8 +136,6 @@ type LocalDeviations() =
         
         let changePage newPage =
             Message.LoadLocalDeviationsPage (newPage * pageSize, pageSize) |> dispatch
-        
-        let galleries = galleries model
         
         let localDeviationsCount =
             match model.LocalDeviations with
@@ -161,11 +152,13 @@ type LocalDeviations() =
                     "AlignItems" => AlignItems.Center
                     "Gap" => "3rem"
                     
+                    let galleries = LocalDeviations.galleries model
+                    
                     page.items
-                    |> Array.map (deviationWidget dispatch galleries)
+                    |> Array.map (LocalDeviations.deviationWidget dispatch galleries)
                     |> Helpers.renderArray
                     |> Deviations.render
                     
                     Pager.render page.total pageSize page.offset changePage
                 }
-        |> Page.render model dispatch this.NavManager this.DialogService
+        |> Page.render model dispatch

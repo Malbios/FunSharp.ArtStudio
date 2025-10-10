@@ -19,12 +19,6 @@ type StashedDeviations() =
     [<Inject>]
     member val JSRuntime = Unchecked.defaultof<_> with get, set
     
-    [<Inject>]
-    member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
-    
-    [<Inject>]
-    member val DialogService = Unchecked.defaultof<DialogService> with get, set
-    
     override this.View model dispatch =
         
         let publish deviation =
@@ -54,22 +48,18 @@ type StashedDeviations() =
                         }
                         
                     | StatefulItem.Default deviation ->
+                        let inspiration = DeviationOrigin.inspiration deviation.Origin
+                        
                         let copyInspirationToClipboard =
-                            match deviation.Origin with
-                            | DeviationOrigin.None -> None
-                            | DeviationOrigin.Inspiration inspiration ->
+                            match inspiration with
+                            | None -> None
+                            | Some inspiration ->
                                 Some <| fun () -> Helpers.copyToClipboard this.JSRuntime $"Inspired by {inspiration.Url}"
-                            | DeviationOrigin.Prompt prompt ->
-                                match prompt.Inspiration with
-                                | None -> None
-                                | Some inspiration ->
-                                    Some <| fun () -> Helpers.copyToClipboard this.JSRuntime $"Inspired by {inspiration.Url}"
                         
                         let inspirationUrl =
-                            match deviation.Origin with
-                            | DeviationOrigin.None -> None
-                            | DeviationOrigin.Prompt prompt -> prompt.Inspiration |> Option.bind _.ImageUrl
-                            | DeviationOrigin.Inspiration inspiration -> inspiration.ImageUrl
+                            match inspiration with
+                            | None -> None
+                            | Some inspiration -> inspiration.ImageUrl
                             
                         Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
                         <| comp<RadzenStack> {
@@ -85,4 +75,4 @@ type StashedDeviations() =
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
-        |> Page.render model dispatch this.NavManager this.DialogService
+        |> Page.render model dispatch

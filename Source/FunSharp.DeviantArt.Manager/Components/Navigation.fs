@@ -12,7 +12,7 @@ open Radzen.Blazor
 [<RequireQualifiedAccess>]
 module Navigation =
     
-    let render (model: State) dispatch (nav: NavigationManager) (dialogService: DialogService) =
+    let private renderInternal (model: State) dispatch (nav: NavigationManager) (dialogService: DialogService) =
         
         let inspirationsCount =
             match model.Inspirations with
@@ -38,7 +38,7 @@ module Navigation =
             match model.PublishedDeviations with
             | Loadable.Loaded deviations -> deviations.Length
             | _ -> -1
-        
+            
         let currentLocation = (Uri nav.Uri).AbsolutePath
         
         let navigateTo url =
@@ -95,3 +95,11 @@ module Navigation =
                 Button.render "Reload All" (fun () -> dispatch LoadAll) false
             }
         }
+        
+    let render (model: State) dispatch =
+        
+        fun (nav: NavigationManager) ->
+            fun (dialogService: DialogService) ->
+                renderInternal model dispatch nav dialogService
+            |> Injector.withInjected<DialogService>
+        |> Injector.withInjected<NavigationManager>

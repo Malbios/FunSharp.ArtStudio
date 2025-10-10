@@ -16,10 +16,7 @@ type PublishedDeviations() =
     override _.CssScope = CssScopes.PublishedDeviations
     
     [<Inject>]
-    member val NavManager: NavigationManager = Unchecked.defaultof<_> with get, set
-    
-    [<Inject>]
-    member val DialogService = Unchecked.defaultof<DialogService> with get, set
+    member val JSRuntime = Unchecked.defaultof<_> with get, set
     
     override this.View model dispatch =
             
@@ -41,26 +38,30 @@ type PublishedDeviations() =
                         "AlignItems" => AlignItems.Center
                         "Gap" => "0.2rem"
                         
+                        let deviation = StatefulItem.valueOf deviation
+                        
                         deviation
-                        |> StatefulItem.valueOf
                         |> _.ImageUrl
                         |> Some
                         |> Deviation.renderWithoutContent
                         
-                        let inspirationUrl =
-                            match (StatefulItem.valueOf deviation).Origin with
-                            | DeviationOrigin.Inspiration inspiration -> Some inspiration.Url
-                            | DeviationOrigin.Prompt prompt ->
-                                match prompt.Inspiration with
-                                | Some inspiration -> Some inspiration.Url
-                                | None -> None
-                            | _ -> None
-                        
-                        match inspirationUrl with
-                        | Some url -> Link.renderSimple (Some "Inspiration") url
-                        | None -> ()
+                        deviation
+                        |> _.Origin
+                        |> DeviationOrigin.inspiration
+                        |> function
+                            | None -> Node.Empty()
+                            | Some inspiration ->
+                                Link.renderSimple (Some "Inspiration") inspiration.Url
+                                
+                        deviation
+                        |> _.Origin
+                        |> DeviationOrigin.prompt
+                        |> function
+                            | None -> Node.Empty()
+                            | Some prompt ->
+                                Button.render "Copy Prompt" (fun () -> Helpers.copyToClipboard this.JSRuntime prompt.Text) false
                     }
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
-        |> Page.render model dispatch this.NavManager this.DialogService
+        |> Page.render model dispatch
