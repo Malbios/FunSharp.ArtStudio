@@ -318,6 +318,7 @@ type Message =
     
     | AddedStashedDeviation of stashed: StashedDeviation
     | RemoveStashedDeviation of stashed: StashedDeviation
+    | ForgetStashedDeviation of stashed: StashedDeviation
     
     | PublishStashed of stashed: StashedDeviation
     | PublishedStashed of stashed: StashedDeviation * published: PublishedDeviation

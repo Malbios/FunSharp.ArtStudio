@@ -68,6 +68,7 @@ module ServerStartup =
             DELETE >=> path $"{apiBase}/local/inspiration" >=> deleteInspiration persistence
             DELETE >=> path $"{apiBase}/local/prompt" >=> deletePrompt persistence
             DELETE >=> path $"{apiBase}/local/deviation" >=> deleteLocalDeviation persistence
+            DELETE >=> path $"{apiBase}/stash" >=> deleteStashedDeviation persistence
             
             pathScan "/images/%s" (fun filename ->
                 let filepath = Path.Combine(imagesLocation, filename)

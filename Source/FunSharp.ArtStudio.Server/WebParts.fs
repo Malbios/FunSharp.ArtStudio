@@ -278,3 +278,7 @@ module WebParts =
     let rec deleteLocalDeviation (persistence: IPersistence) =
         
         deleteItem<LocalDeviation> persistence dbKey_LocalDeviations (nameof deleteLocalDeviation)
+        
+    let rec deleteStashedDeviation (persistence: IPersistence) =
+        
+        deleteItem<StashedDeviation> persistence dbKey_StashedDeviations (nameof deleteStashedDeviation)

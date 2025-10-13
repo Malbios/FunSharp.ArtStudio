@@ -2,6 +2,7 @@
 
 open Bolero
 open Bolero.Html
+open Microsoft.AspNetCore.Components
 open Radzen
 open Radzen.Blazor
 open FunSharp.Blazor.Components
@@ -26,19 +27,19 @@ module LocalDeviations =
         | Some inspiration ->
             Link.renderSimple None inspiration.Url
     
-    let editorWidget dispatch galleries isBusy deviation =
+    let editorWidget dispatch js galleries isBusy deviation =
         
         let update deviation =
             
-            Message.UpdateLocalDeviation deviation |> dispatch
+            dispatch <| Message.UpdateLocalDeviation deviation
             
         let stash deviation =
             
-            Message.StashDeviation deviation |> dispatch
+            dispatch <| Message.StashDeviation deviation
             
         let forget deviation =
             
-            Message.ForgetLocalDeviation deviation |> dispatch
+            dispatch <| Message.ForgetLocalDeviation deviation
             
         let editTitle deviation newTitle =
             
@@ -82,11 +83,20 @@ module LocalDeviations =
                 "JustifyContent" => JustifyContent.SpaceBetween
                 
                 Button.render "Stash" (fun () -> stash deviation) isBusy
+                
+                deviation
+                |> _.Origin
+                |> DeviationOrigin.prompt
+                |> function
+                    | None -> Node.Empty()
+                    | Some prompt ->
+                        Button.render "Copy Prompt" (fun () -> Helpers.copyToClipboard js prompt.Text) false
+                        
                 Button.render "Forget" (fun () -> forget deviation) isBusy
             }
         }
         
-    let deviationWidget dispatch galleries deviation =
+    let deviationWidget dispatch js galleries deviation =
         let deviation, isBusy, error =
             match deviation with
             | StatefulItem.Default deviation -> deviation, false, None
@@ -121,7 +131,7 @@ module LocalDeviations =
                         text $"error: {error}"
                     }
                 
-                editorWidget dispatch galleries isBusy deviation
+                editorWidget dispatch js galleries isBusy deviation
             }
             |> Deviation.renderWithContent inspirationUrl (Some deviation.ImageUrl)
 
@@ -129,6 +139,9 @@ type LocalDeviations() =
     inherit ElmishComponent<State, Message>()
     
     override _.CssScope = CssScopes.LocalDeviations
+    
+    [<Inject>]
+    member val JSRuntime = Unchecked.defaultof<_> with get, set
     
     override this.View model dispatch =
         
@@ -155,7 +168,7 @@ type LocalDeviations() =
                     let galleries = LocalDeviations.galleries model
                     
                     page.items
-                    |> Array.map (LocalDeviations.deviationWidget dispatch galleries)
+                    |> Array.map (LocalDeviations.deviationWidget dispatch this.JSRuntime galleries)
                     |> Helpers.renderArray
                     |> Deviations.render
                     

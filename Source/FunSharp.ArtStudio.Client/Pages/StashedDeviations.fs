@@ -22,7 +22,12 @@ type StashedDeviations() =
     override this.View model dispatch =
         
         let publish deviation =
-            Message.PublishStashed deviation |> dispatch
+            
+            dispatch <| Message.PublishStashed deviation
+            
+        let forget deviation =
+            
+            dispatch <| Message.ForgetStashedDeviation deviation
         
         let stashedDeviationsCount =
             match model.StashedDeviations with
@@ -54,7 +59,9 @@ type StashedDeviations() =
                             match inspiration with
                             | None -> None
                             | Some inspiration ->
-                                Some <| fun () -> Helpers.copyToClipboard this.JSRuntime $"Inspired by {inspiration.Url}"
+                                fun () ->
+                                    Helpers.copyToClipboard this.JSRuntime $"Inspired by {inspiration.Url}"
+                                |> Some
                         
                         let inspirationUrl =
                             match inspiration with
@@ -70,7 +77,16 @@ type StashedDeviations() =
                             Link.render copyInspirationToClipboard (Some "Open in Sta.sh")
                                 $"{Helpers.stashEditUrl deviation.StashId}"
                             
-                            Button.render "Publish" (fun () -> publish deviation) false
+                            comp<RadzenStack> {
+                                "Orientation" => Orientation.Horizontal
+                                "JustifyContent" => JustifyContent.SpaceBetween
+                                
+                                Button.render "Publish" (fun () -> publish deviation) false
+                                
+                                CopyPrompt.render deviation.Origin
+                                
+                                Button.render "Forget" (fun () -> forget deviation) false
+                            }
                         }
                 )
                 |> Helpers.renderArray

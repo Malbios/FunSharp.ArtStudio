@@ -87,20 +87,10 @@ module Update =
         |> Async.bind Http.contentAsString
         |> Async.map JsonSerializer.deserialize<Prompt>
         
-    let private forgetPrompt client prompt =
+    let private forget<'T> client (value: 'T) url =
         
-        Http.delete client $"{apiRoot}/local/prompt?key={prompt.Id.ToString()}"
-        |> Async.bind (fun _ -> prompt |> Async.returnM)
-        
-    let private forgetInspiration client (inspiration: Inspiration) =
-        
-        Http.delete client $"{apiRoot}/local/inspiration?key={inspiration.Url.ToString()}"
-        |> Async.bind (fun _ -> inspiration |> Async.returnM)
-        
-    let private forgetLocalDeviation client (local: LocalDeviation) =
-        
-        Http.delete client $"{apiRoot}/local/deviation?key={local.ImageUrl.ToString() |> HttpUtility.UrlEncode}"
-        |> Async.bind (fun _ -> local |> Async.returnM)
+        Http.delete client url
+        |> Async.bind (fun _ -> value |> Async.returnM)
         
     let private updatePrompt client (prompt: Prompt) =
         
@@ -295,9 +285,11 @@ module Update =
             
             let inspirations = model.Inspirations |> LoadableStatefulItems.setBusy (Inspiration.identifier inspiration)
             
-            let forget = forgetInspiration client
+            let action () =
+                $"{apiRoot}/local/inspiration?key={inspiration.Url.ToString()}"
+                |> forget client inspiration
             
-            { model with Inspirations = inspirations }, Cmd.OfAsync.perform forget inspiration RemoveInspiration
+            { model with Inspirations = inspirations }, Cmd.OfAsync.perform action () RemoveInspiration
             
         | Inspiration2Prompt (inspiration, promptText) ->
             
@@ -391,9 +383,11 @@ module Update =
             
             let prompts = model.Prompts |> LoadableStatefulItems.setBusy (Prompt.identifier prompt)
             
-            let forget = forgetPrompt client
+            let action () =
+                $"{apiRoot}/local/prompt?key={prompt.Id.ToString()}"
+                |> forget client prompt
             
-            { model with Prompts = prompts }, Cmd.OfAsync.perform forget prompt RemovePrompt
+            { model with Prompts = prompts }, Cmd.OfAsync.perform action () RemovePrompt
             
         | Prompt2LocalDeviation (prompt, image) ->
             
@@ -446,9 +440,11 @@ module Update =
             
         | ForgetLocalDeviation local ->
             
-            let action = forgetLocalDeviation client
+            let action () =
+                $"{apiRoot}/local/deviation?key={local.ImageUrl.ToString() |> HttpUtility.UrlEncode}"
+                |> forget client local
             
-            model, Cmd.OfAsync.perform action local RemoveLocalDeviation
+            model, Cmd.OfAsync.perform action () RemoveLocalDeviation
             
         | StashDeviation local ->
             
@@ -494,6 +490,14 @@ module Update =
             let deviations = model.StashedDeviations |> LoadableStatefulItems.without (StashedDeviation.identifier stashed)
             
             { model with StashedDeviations = deviations }, Cmd.none
+            
+        | ForgetStashedDeviation stashed ->
+            
+            let action () =
+                $"{apiRoot}/stash?key={stashed.ImageUrl.ToString() |> HttpUtility.UrlEncode}"
+                |> forget client stashed
+            
+            model, Cmd.OfAsync.perform action () RemoveStashedDeviation
             
         | PublishStashed stashed ->
             

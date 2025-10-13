@@ -37,6 +37,7 @@
         <Compile Include="Routes.fs"/>
         <Compile Include="Model.fs"/>
         <Compile Include="Helpers.fs"/>
+        <Compile Include="Http.fs" />
         <Compile Include="Components\Dialogs\PromptDialog.fs" />
         <Compile Include="Components\Dialogs\ImageUploadDialog.fs" />
         <Compile Include="Components\Navigation.fs" />
@@ -44,6 +45,7 @@
         <Compile Include="Components\ItemEditor.fs" />
         <Compile Include="Components\Deviation.fs"/>
         <Compile Include="Components\Deviations.fs" />
+        <Compile Include="Components\CopyPrompt.fs" />
         <Compile Include="Pages\AddInspiration.fs" />
         <Content Include="Pages\AddInspiration.bolero.css" />
         <Compile Include="Pages\Inspirations.fs" />
@@ -58,7 +60,6 @@
         <Content Include="Pages\PublishedDeviations.bolero.css" />
         <Compile Include="Pages\NotFound.fs" />
         <Compile Include="View.fs"/>
-        <Compile Include="Http.fs" />
         <Compile Include="Update.fs"/>
         <Compile Include="Main.fs"/>
         <Compile Include="Startup.fs"/>
