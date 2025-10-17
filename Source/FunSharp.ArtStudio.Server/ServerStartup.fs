@@ -2,7 +2,6 @@
 
 open System
 open System.IO
-open System.Net.Http
 open System.Threading
 open Suave
 open Suave.Files
@@ -12,7 +11,6 @@ open Suave.RequestErrors
 open FunSharp.Common
 open FunSharp.Data
 open FunSharp.Data.Abstraction
-open FunSharp.DeviantArt.Api
 open FunSharp.DeviantArt.Api.Model
 open FunSharp.ArtStudio.Server.Helpers
 open FunSharp.ArtStudio.Server.WebParts
@@ -24,10 +22,9 @@ module ServerStartup =
     let apiBase = "/api/v1"
     
     let secrets = Secrets.load ()
-    let httpClient = new HttpClient()
     let persistence = new NewLiteDbPersistence(@"C:\Files\FunSharp.DeviantArt\persistence.db") :> IPersistence
-    let apiClient = new Client(persistence, httpClient, secrets.client_id, secrets.client_secret)
-    let disposableApiClient = apiClient :> IDisposable
+    let deviantArtClient = new FunSharp.DeviantArt.Api.Client(persistence, secrets.client_id, secrets.client_secret)
+    let soraClient = new FunSharp.OpenAI.Api.Sora.Client()
     let cts = new CancellationTokenSource()
     
     let serverConfiguration = {
@@ -41,7 +38,7 @@ module ServerStartup =
         allowCors >=> choose [
             corsPreflight
             
-            GET >=> path $"{apiBase}/user/name" >=> getUsername apiClient
+            GET >=> path $"{apiBase}/user/name" >=> getUsername deviantArtClient
             GET >=> path $"{apiBase}/settings" >=> getSettings secrets
             
             GET >=> path $"{apiBase}/local/inspirations" >=> getInspirations persistence
@@ -51,13 +48,13 @@ module ServerStartup =
             GET >=> path $"{apiBase}/publish" >=> getPublishedDeviations persistence
             
             PUT >=> path $"{apiBase}/local/images" >=> putImages serverAddress serverPort
-            PUT >=> path $"{apiBase}/local/inspiration" >=> putInspiration serverAddress serverPort persistence apiClient
-            
+            PUT >=> path $"{apiBase}/local/inspiration" >=> putInspiration serverAddress serverPort persistence deviantArtClient
+
             PUT >=> path $"{apiBase}/local/prompt" >=> (fun ctx -> badRequestMessage ctx "addPrompt()" "not implemented yet")
             PUT >=> path $"{apiBase}/local/deviation" >=> (fun ctx -> badRequestMessage ctx "addDeviation()" "not implemented yet")
             
-            POST >=> path $"{apiBase}/stash" >=> stash persistence apiClient
-            POST >=> path $"{apiBase}/publish" >=> publish persistence apiClient secrets
+            POST >=> path $"{apiBase}/stash" >=> stash persistence deviantArtClient
+            POST >=> path $"{apiBase}/publish" >=> publish persistence deviantArtClient secrets
             
             POST >=> path $"{apiBase}/inspiration2prompt" >=> inspiration2Prompt persistence
             POST >=> path $"{apiBase}/prompt2deviation" >=> prompt2Deviation persistence
@@ -81,7 +78,7 @@ module ServerStartup =
     let tryStartServer () =
         
         try
-            let who = apiClient.WhoAmI() |> Async.getOrFail |> Async.RunSynchronously
+            let who = deviantArtClient.WhoAmI() |> Async.getOrFail |> Async.RunSynchronously
             printfn $"Hello, {who.username}!"
             
             startWebServer serverConfiguration routing
@@ -89,11 +86,21 @@ module ServerStartup =
         | :? System.Net.Sockets.SocketException as ex ->
             printfn $"Socket bind failed: %s{ex.Message}"
             
+    let processPendingPrompts () =
+        
+        Async.returnM ()
+            
     [<EntryPoint>]
     let main _ =
         
-        if apiClient.NeedsInteraction then
-            apiClient.StartInteractiveLogin() |> Async.RunSynchronously
+        if deviantArtClient.NeedsInteraction then
+            deviantArtClient.StartInteractiveLogin() |> Async.RunSynchronously
+            
+        let randomDelay_Test = (3000, 6000)
+        let randomDelay_Prod = (10000, 20000)
+            
+        let backgroundJob = BackgroundWorker(cts.Token, randomDelay_Test, processPendingPrompts)
+        backgroundJob.Work () |> ignore
         
         Async.Start(async { do tryStartServer () }, cancellationToken = cts.Token)
         
@@ -104,7 +111,7 @@ module ServerStartup =
         
         cts.Cancel()
         persistence.Dispose()
-        disposableApiClient.Dispose()
-        httpClient.Dispose()
+        (deviantArtClient :> IDisposable).Dispose()
+        (soraClient :> IDisposable).Dispose()
         
         0

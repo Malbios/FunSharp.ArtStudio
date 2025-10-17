@@ -111,7 +111,7 @@ module Sora =
         
     type Client() =
         
-        let sender = new HttpClient()
+        let httpClient = new HttpClient()
         
         let mutable authTokens = AuthenticationTokens.empty
         
@@ -181,5 +181,12 @@ module Sora =
         member _.DownloadImage(imageUrl: string) =
             
             imageUrl
-            |> sender.GetByteArrayAsync
+            |> httpClient.GetByteArrayAsync
             |> Async.AwaitTask
+
+        interface IDisposable with
+        
+            member this.Dispose() =
+
+                httpClient.Dispose()
+        

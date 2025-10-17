@@ -9,7 +9,7 @@ open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.Api.Model
 open FunSharp.Http.Authentication
 
-type Client(persistence: IPersistence, httpClient: HttpClient, clientId: string, clientSecret: string) =
+type Client(persistence: IPersistence, clientId: string, clientSecret: string) =
     
     [<Literal>]
     let tokenEndpoint = "https://www.deviantart.com/oauth2/token"
@@ -18,6 +18,8 @@ type Client(persistence: IPersistence, httpClient: HttpClient, clientId: string,
     let redirectUrl = "http://localhost:8080/callback"
     
     let authentication = OAuthAuthentication(persistence, tokenEndpoint, redirectUrl, clientId, clientSecret) :> IAuthentication
+    
+    let httpClient = new HttpClient()
     let httpSender = HttpSender(httpClient, authentication)
     
     member private this.SubmitToStash(destination: SubmitDestination, file: File, submission: StashSubmission) =
