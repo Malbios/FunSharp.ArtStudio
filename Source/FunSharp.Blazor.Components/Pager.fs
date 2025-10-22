@@ -12,52 +12,36 @@ module Pager =
         let currentPage = (offset / limit)
         let lastPage = (total / limit)
         
+        let renderButton text disabled action =
+            
+            Button.render <| {
+                ButtonProps.defaults with
+                    ButtonStyle = ButtonStyle.Base
+                    Variant = Variant.Outlined
+                    Text = text
+                    Action = ClickAction.Sync action
+                    Disabled = disabled
+            }
+        
         comp<RadzenStack> {
             "Orientation" => Orientation.Horizontal
             "Wrap" => FlexWrap.Wrap
             "Gap" => "0.1rem"
             
-            Button.render <| {
-                ButtonProps.defaults with
-                    Text = "|<"
-                    Action = ClickAction.Sync <| fun () -> onPageChanged 0
-                    Disabled = currentPage = 0
-            }
+            renderButton "|<" (currentPage = 0) <| fun () -> onPageChanged 0
             
             div {
                 attr.style "margin-right: 1rem;"
-                
-                Button.render <| {
-                    ButtonProps.defaults with
-                        Text = "<"
-                        Action = ClickAction.Sync <| fun () -> onPageChanged <| currentPage - 1
-                        Disabled = currentPage = 0
-                }
+                renderButton "<" (currentPage = 0) <| fun () -> onPageChanged <| currentPage - 1
             }
             
             for i in [0..total / limit] do
-                Button.render <| {
-                    ButtonProps.defaults with
-                        Text = $"{i + 1}"
-                        Action = ClickAction.Sync <| fun () -> onPageChanged i
-                        Disabled = currentPage = i
-                }
+                renderButton $"{i + 1}" (currentPage = i) <| fun () -> onPageChanged i
             
             div {
                 attr.style "margin-left: 1rem;"
-                
-                Button.render <| {
-                    ButtonProps.defaults with
-                        Text = ">"
-                        Action = ClickAction.Sync <| fun () -> onPageChanged <| currentPage + 1
-                        Disabled = currentPage = lastPage
-                }
+                renderButton ">" (currentPage = lastPage) <| fun () -> onPageChanged <| currentPage + 1
             }
-                
-            Button.render <| {
-                ButtonProps.defaults with
-                    Text = ">|"
-                    Action = ClickAction.Sync <| fun () -> onPageChanged lastPage
-                    Disabled = currentPage = lastPage
-            }
+            
+            renderButton ">|" (currentPage = lastPage) <| fun () -> onPageChanged lastPage
         }
