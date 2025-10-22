@@ -15,4 +15,5 @@ module Secrets =
     
     let load () =
         
-        File.ReadAllText filePath |> JsonSerializer.deserialize<Secrets>
+        File.ReadAllText filePath
+        |> JsonSerializer.deserialize<Secrets>

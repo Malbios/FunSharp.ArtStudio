@@ -7,10 +7,10 @@ async function main() {
 	const config = {
 		headless: true,
 		executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
-		userDataDir: 'C:/dev/fsharp/DeviantArt/Utilities/puppeteer/ChromeProfiles',
+		userDataDir: 'C:/dev/fsharp/FunSharp.ArtStudio/Utilities/puppeteer/ChromeProfiles',
 		args: [
 			'--start-maximized',
-			`--user-data-dir='C:/dev/fsharp/DeviantArt/Utilities/puppeteer/ChromeProfiles'`,
+			`--user-data-dir='C:/dev/fsharp/FunSharp.ArtStudio/Utilities/puppeteer/ChromeProfiles'`,
 			`--profile-dir='Profile 2'`
 		]
 	}

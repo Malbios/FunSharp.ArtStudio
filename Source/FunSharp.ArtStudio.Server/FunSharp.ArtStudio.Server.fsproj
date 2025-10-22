@@ -14,6 +14,7 @@
         <Compile Include="BackgroundWorker.fs" />
         <Compile Include="WebParts.fs" />
         <Compile Include="ServerStartup.fs" />
+        <Compile Include="SoraTaskManager.fs" />
     </ItemGroup>
 
     <ItemGroup>

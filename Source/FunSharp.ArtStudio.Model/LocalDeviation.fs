@@ -23,6 +23,7 @@ module LocalDeviation =
         
         deviation.ImageUrl
 
+    // TODO: is identifier really a good name for this?
     let identifier d1 d2 =
         
         keyOf d1 = keyOf d2

@@ -11,12 +11,17 @@
         <Compile Include="Metadata.fs" />
         <Compile Include="DeviationOrigin.fs" />
         <Compile Include="LocalDeviation.fs" />
+        <Compile Include="SoraTask.fs" />
         <Compile Include="StashedDeviation.fs" />
         <Compile Include="PublishedDeviation.fs" />
         <Compile Include="Gallery.fs" />
         <Compile Include="ClipboardSnippet.fs" />
         <Compile Include="Remix.fs" />
         <Compile Include="Page.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\FunSharp.OpenAI.Api\FunSharp.OpenAI.Api.fsproj" />
     </ItemGroup>
 
 </Project>

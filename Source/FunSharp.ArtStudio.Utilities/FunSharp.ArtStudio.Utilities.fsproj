@@ -14,6 +14,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\FunSharp.ArtStudio.Server\FunSharp.ArtStudio.Server.fsproj" />
       <ProjectReference Include="..\FunSharp.DeviantArt.Api\FunSharp.DeviantArt.Api.fsproj" />
       <ProjectReference Include="..\FunSharp.ArtStudio.Model\FunSharp.ArtStudio.Model.fsproj" />
       <ProjectReference Include="..\FunSharp.OpenAI.Api\FunSharp.OpenAI.Api.fsproj" />

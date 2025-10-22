@@ -38,6 +38,9 @@ module Helpers =
     let dbKey_DeletedItems = "DeletedItems"
     
     [<Literal>]
+    let dbKey_SoraTasks = "SoraTasks"
+    
+    [<Literal>]
     let imagesLocation = @"C:\Files\FunSharp.DeviantArt\images"
         
     let private asStashed (local: LocalDeviation) (response: StashSubmissionResponse) =

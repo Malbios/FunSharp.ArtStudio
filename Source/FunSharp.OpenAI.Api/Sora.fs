@@ -4,13 +4,15 @@ open System
 open System.Diagnostics
 open System.Net.Http
 open System.Text
+open System.Text.Json
 open FunSharp.Common
+open FunSharp.Common.JsonSerializer
 open FunSharp.OpenAI.Api.Model.Sora
 
 module Sora =
     
     [<Literal>]
-    let private puppeteerPath = "C:/dev/fsharp/DeviantArt/Utilities/puppeteer"
+    let private puppeteerPath = "C:/dev/fsharp/FunSharp.ArtStudio/Utilities/puppeteer"
     
     let private generateEndpoint = "https://sora.chatgpt.com/backend/video_gen"
     let private checkTaskEndpoint taskId = $"https://sora.chatgpt.com/backend/video_gen/{taskId}"
@@ -75,7 +77,7 @@ module Sora =
         [|cookies|]
         |> runScript $"{puppeteerPath}/bearer.js"
         |> Async.map (fun output ->
-            let bearer = JsonSerializer.deserialize<BearerToken> output
+            let bearer = deserialize<BearerToken> output
             bearer.accessToken
         )
         
@@ -96,14 +98,24 @@ module Sora =
         
     let private runScript_DeleteForever authTokens (generationIds: string array) =
         
-        [| authTokens.Sentinel; authTokens.Bearer; JsonSerializer.serialize generationIds |]
+        [| authTokens.Sentinel; authTokens.Bearer; serialize generationIds |]
         |> runScript $"{puppeteerPath}/delete-forever.js"
         |> Async.ignore
         
+    let serializerOptionsCustomizer (options: JsonSerializerOptions) =
+        options.Converters.Add(NullTolerantFloatConverter())
+        options.Converters.Add(CaseInsensitiveEnumConverter<TaskStatus>())
+        options.Converters.Add(CaseInsensitiveEnumConverter<ModerationStatus>())
+        
+        options
+        
     let deserializeResponse<'T> value =
-        match JsonSerializer.tryDeserialize<'T> value, JsonSerializer.tryDeserialize<ErrorContainer> value with
-        | Some object, _ ->
-            object
+        let v = tryCustomDeserialize<'T> serializerOptionsCustomizer value
+        let e = tryCustomDeserialize<ErrorContainer> serializerOptionsCustomizer value
+        
+        match v, e with
+        | Some value, _ ->
+            value
         | None, Some error ->
             failwith $"{error.error.message}"
         | _ ->
@@ -157,7 +169,7 @@ module Sora =
                 n_frames = 1
                 inpaint_items = []
             |}
-            |> JsonSerializer.serialize
+            |> serialize
             |> (runScript_CreateImage authTokens)
             |> Async.map deserializeResponse<Task>
             |> Async.map _.id
