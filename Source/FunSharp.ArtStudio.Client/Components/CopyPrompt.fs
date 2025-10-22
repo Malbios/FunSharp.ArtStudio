@@ -16,5 +16,5 @@ module CopyPrompt =
             | None -> Node.Empty()
             | Some prompt ->
                 fun (js: IJSRuntime) ->
-                    Button.render "Copy Prompt" (fun () -> Helpers.copyToClipboard js prompt.Text) false
+                    Button.renderSimple "Copy Prompt" <| fun () -> Helpers.copyToClipboard js prompt.Text
                 |> Injector.withInjected<IJSRuntime>

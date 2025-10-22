@@ -81,11 +81,11 @@ type StashedDeviations() =
                                 "Orientation" => Orientation.Horizontal
                                 "JustifyContent" => JustifyContent.SpaceBetween
                                 
-                                Button.render "Publish" (fun () -> publish deviation) false
+                                Button.renderSimple "Publish" <| fun () -> publish deviation
                                 
                                 CopyPrompt.render deviation.Origin
                                 
-                                Button.render "Forget" (fun () -> forget deviation) false
+                                Button.renderSimple "Forget" <| fun () -> forget deviation
                             }
                         }
                 )

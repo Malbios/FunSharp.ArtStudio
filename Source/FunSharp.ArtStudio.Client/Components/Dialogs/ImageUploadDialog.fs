@@ -48,8 +48,14 @@ type ImageUploadDialog() =
             comp<RadzenStack> {
                 "Orientation" => Orientation.Horizontal
                 
-                Button.render "Ok" (fun () -> this.DialogService.Close(uploadedFile)) isBusy
-                Button.render "Cancel" (fun () -> this.DialogService.Close(null)) false
+                Button.render <| {
+                    ButtonProps.defaults with
+                        Text = "Ok"
+                        Action = ClickAction.Sync <| fun () -> this.DialogService.Close(uploadedFile)
+                        IsBusy = isBusy
+                }
+                
+                Button.renderSimple "Cancel" <| fun () -> this.DialogService.Close(null)
             }
         }
         

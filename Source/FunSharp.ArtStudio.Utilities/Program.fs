@@ -249,7 +249,7 @@ let testNewApiClient () =
     
     let secrets = Secrets.load()
     
-    use client = new FunSharp.DeviantArt.Api.Client(persistence, httpClient, secrets.client_id, secrets.client_secret)
+    use client = new FunSharp.DeviantArt.Api.Client(persistence, secrets.client_id, secrets.client_secret)
     
     if client.NeedsInteraction then
         client.StartInteractiveLogin() |> Async.RunSynchronously
@@ -277,7 +277,7 @@ let genImageTest () =
         baking a ton of "chocolate chip cookies"
         """
         
-    let client = Client()
+    use client = new Client()
     
     let result =
         client.UpdateAuthTokens()
@@ -288,7 +288,7 @@ let genImageTest () =
     
 let checkTaskTest () =
     
-    let client = Client()
+    use client = new Client()
     
     let result =
         client.UpdateAuthTokens()
@@ -299,7 +299,7 @@ let checkTaskTest () =
     
 let getTasksTest () =
     
-    let client = Client()
+    use client = new Client()
     
     let result =
         client.UpdateAuthTokens()
@@ -310,7 +310,7 @@ let getTasksTest () =
     
 let deleteAllGenerationsForever () =
     
-    let client = Client()
+    use client = new Client()
     
     let result =
         client.UpdateAuthTokens()
@@ -326,7 +326,7 @@ let deleteAllGenerationsForever () =
     
 let getTasksWithGenerationsTest () =
     
-    let client = Client()
+    use client = new Client()
     
     let result =
         client.UpdateAuthTokens()
@@ -337,7 +337,7 @@ let getTasksWithGenerationsTest () =
     
 let fullProcessTest () =
     
-    let client = Client()
+    use client = new Client()
     
     async {
         do! client.UpdateAuthTokens()

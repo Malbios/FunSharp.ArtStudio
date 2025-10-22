@@ -20,11 +20,11 @@ module ServerStartup =
     let serverAddress = "127.0.0.1"
     let serverPort = 5123
     let apiBase = "/api/v1"
+            
+    let randomDelay_Test = (3000, 6000)
+    let randomDelay_Prod = (10000, 20000)
     
     let secrets = Secrets.load ()
-    let persistence = new NewLiteDbPersistence(@"C:\Files\FunSharp.DeviantArt\persistence.db") :> IPersistence
-    let deviantArtClient = new FunSharp.DeviantArt.Api.Client(persistence, secrets.client_id, secrets.client_secret)
-    let soraClient = new FunSharp.OpenAI.Api.Sora.Client()
     let cts = new CancellationTokenSource()
     
     let serverConfiguration = {
@@ -33,7 +33,7 @@ module ServerStartup =
             bindings = [ HttpBinding.createSimple HTTP serverAddress serverPort ] 
     }
     
-    let routing =
+    let routing persistence deviantArtClient =
             
         allowCors >=> choose [
             corsPreflight
@@ -75,13 +75,13 @@ module ServerStartup =
             NOT_FOUND "unknown path"
         ]
         
-    let tryStartServer () =
+    let tryStartServer persistence (deviantArtClient: FunSharp.DeviantArt.Api.Client) =
         
         try
             let who = deviantArtClient.WhoAmI() |> Async.getOrFail |> Async.RunSynchronously
             printfn $"Hello, {who.username}!"
             
-            startWebServer serverConfiguration routing
+            startWebServer serverConfiguration (routing persistence deviantArtClient)
         with
         | :? System.Net.Sockets.SocketException as ex ->
             printfn $"Socket bind failed: %s{ex.Message}"
@@ -89,29 +89,32 @@ module ServerStartup =
     let processPendingPrompts () =
         
         Async.returnM ()
-            
+        
+    let startBackgroundWorker (cts: CancellationTokenSource) =
+        
+        printfn "Starting background worker..."
+        
+        let backgroundJob = BackgroundWorker(cts.Token, randomDelay_Test, processPendingPrompts)
+        backgroundJob.Work () |> ignore
+        
     [<EntryPoint>]
     let main _ =
+        
+        use persistence = new NewLiteDbPersistence(@"C:\Files\FunSharp.DeviantArt\persistence.db") :> IPersistence
+        use deviantArtClient = new FunSharp.DeviantArt.Api.Client(persistence, secrets.client_id, secrets.client_secret)
+        use soraClient = new FunSharp.OpenAI.Api.Sora.Client()
         
         if deviantArtClient.NeedsInteraction then
             deviantArtClient.StartInteractiveLogin() |> Async.RunSynchronously
             
-        let randomDelay_Test = (3000, 6000)
-        let randomDelay_Prod = (10000, 20000)
-            
-        let backgroundJob = BackgroundWorker(cts.Token, randomDelay_Test, processPendingPrompts)
-        backgroundJob.Work () |> ignore
+        startBackgroundWorker cts
         
-        Async.Start(async { do tryStartServer () }, cancellationToken = cts.Token)
+        Async.Start(async { do tryStartServer persistence deviantArtClient }, cancellationToken = cts.Token)
         
         printfn "Press Enter to stop..."
         Console.ReadLine() |> ignore
 
         printfn "Shutting down..."
-        
         cts.Cancel()
-        persistence.Dispose()
-        (deviantArtClient :> IDisposable).Dispose()
-        (soraClient :> IDisposable).Dispose()
         
         0

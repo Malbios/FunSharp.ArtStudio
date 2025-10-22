@@ -53,13 +53,7 @@ type PublishedDeviations() =
                             | Some inspiration ->
                                 Link.renderSimple (Some "Inspiration") inspiration.Url
                                 
-                        deviation
-                        |> _.Origin
-                        |> DeviationOrigin.prompt
-                        |> function
-                            | None -> Node.Empty()
-                            | Some prompt ->
-                                Button.render "Copy Prompt" (fun () -> Helpers.copyToClipboard this.JSRuntime prompt.Text) false
+                        CopyPrompt.render deviation.Origin
                     }
                 )
                 |> Helpers.renderArray

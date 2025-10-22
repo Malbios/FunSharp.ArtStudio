@@ -40,7 +40,12 @@ type AddInspiration() =
                 
                 TextInput.render onChange_NewInspirationUrl (fun _ -> ()) isBusy "Enter inspiration url..." currentValue
                 
-                Button.render "Add" addInspiration isBusy
+                Button.render <| {
+                    ButtonProps.defaults with
+                        Text = "Add"
+                        Action = ClickAction.Sync addInspiration
+                        IsBusy = isBusy
+                }
                 
                 div {
                     match model.AddInspirationState.Error with

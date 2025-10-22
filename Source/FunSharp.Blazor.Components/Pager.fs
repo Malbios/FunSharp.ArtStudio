@@ -17,20 +17,47 @@ module Pager =
             "Wrap" => FlexWrap.Wrap
             "Gap" => "0.1rem"
             
-            Button.render "|<" (fun () -> onPageChanged 0) (currentPage = 0)
+            Button.render <| {
+                ButtonProps.defaults with
+                    Text = "|<"
+                    Action = ClickAction.Sync <| fun () -> onPageChanged 0
+                    Disabled = currentPage = 0
+            }
             
             div {
                 attr.style "margin-right: 1rem;"
-                Button.render "<" (fun () -> onPageChanged <| currentPage - 1) (currentPage = 0)
+                
+                Button.render <| {
+                    ButtonProps.defaults with
+                        Text = "<"
+                        Action = ClickAction.Sync <| fun () -> onPageChanged <| currentPage - 1
+                        Disabled = currentPage = 0
+                }
             }
             
             for i in [0..total / limit] do
-                Button.render $"{i + 1}" (fun () -> onPageChanged i) (currentPage = i)
+                Button.render <| {
+                    ButtonProps.defaults with
+                        Text = $"{i + 1}"
+                        Action = ClickAction.Sync <| fun () -> onPageChanged i
+                        Disabled = currentPage = i
+                }
             
             div {
                 attr.style "margin-left: 1rem;"
-                Button.render ">" (fun () -> onPageChanged <| currentPage + 1) (currentPage = lastPage)
+                
+                Button.render <| {
+                    ButtonProps.defaults with
+                        Text = ">"
+                        Action = ClickAction.Sync <| fun () -> onPageChanged <| currentPage + 1
+                        Disabled = currentPage = lastPage
+                }
             }
-            
-            Button.render ">|" (fun () -> onPageChanged lastPage) (currentPage = lastPage)
+                
+            Button.render <| {
+                ButtonProps.defaults with
+                    Text = ">|"
+                    Action = ClickAction.Sync <| fun () -> onPageChanged lastPage
+                    Disabled = currentPage = lastPage
+            }
         }

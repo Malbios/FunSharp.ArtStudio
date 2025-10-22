@@ -66,33 +66,41 @@ module Navigation =
         
         comp<RadzenStack> {
             "Orientation" => Orientation.Horizontal
+            "Gap" => "2rem"
             
-            Button.renderAsync "Add Prompt" (fun () -> openNewPromptDialog ()) false
+            Button.renderSimpleAsync "Add Prompt" <| fun () -> openNewPromptDialog ()
             
-            [
-                ("/add-inspiration", $"Add Inspiration")
-                ("/inspirations", $"Inspirations ({inspirationsCount})")
-                ("/prompts", $"Prompts ({promptsCount})")
-                ("/local-deviations", $"Local Deviations ({localDeviationsCount})")
-                ("/stashed-deviations", $"Stashed Deviations ({stashedDeviationsCount})")
-                ("/published-deviations", $"Published Deviations ({publishedDeviationsCount})")
-            ]
-            |> List.map (fun (endpoint, label) ->
-                let disabled =
-                    endpoint = currentLocation
-
-                Button.render label (fun () -> navigateTo(endpoint)) disabled
-            )
-            |> Helpers.renderList
-            
-            div {
-                attr.style "margin-left: 2rem;"
-                Button.render "Reload This" reloadCurrent false
+            comp<RadzenStack> {
+                "Orientation" => Orientation.Horizontal
+                "Gap" => "0.5rem"
+                
+                [
+                    ("/add-inspiration", $"Add Inspiration")
+                    ("/inspirations", $"Inspirations ({inspirationsCount})")
+                    ("/prompts", $"Prompts ({promptsCount})")
+                    ("/local-deviations", $"Local Deviations ({localDeviationsCount})")
+                    ("/stashed-deviations", $"Stashed Deviations ({stashedDeviationsCount})")
+                    ("/published-deviations", $"Published Deviations ({publishedDeviationsCount})")
+                ]
+                |> List.map (fun (endpoint, label) ->
+                    Button.render <| {
+                        ButtonProps.defaults with
+                            Text = label
+                            ButtonStyle = ButtonStyle.Base
+                            Variant = Variant.Outlined
+                            Action = ClickAction.Sync <| fun () -> navigateTo(endpoint)
+                            Disabled = endpoint = currentLocation
+                    }
+                )
+                |> Helpers.renderList
             }
             
-            div {
-                attr.style "margin-left: 0.25rem;"
-                Button.render "Reload All" (fun () -> dispatch LoadAll) false
+            comp<RadzenStack> {
+                "Orientation" => Orientation.Horizontal
+                "Gap" => "0.25rem"
+                
+                Button.renderSimple "Reload This" <| reloadCurrent
+                Button.renderSimple "Reload All" <| fun () -> dispatch LoadAll
             }
         }
         

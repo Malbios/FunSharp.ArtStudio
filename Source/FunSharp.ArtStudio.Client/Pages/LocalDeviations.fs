@@ -82,7 +82,12 @@ module LocalDeviations =
                 "Orientation" => Orientation.Horizontal
                 "JustifyContent" => JustifyContent.SpaceBetween
                 
-                Button.render "Stash" (fun () -> stash deviation) isBusy
+                Button.render <| {
+                    ButtonProps.defaults with
+                        Text = "Stash"
+                        Action = ClickAction.Sync <| fun () -> stash deviation
+                        IsBusy = isBusy
+                }
                 
                 deviation
                 |> _.Origin
@@ -90,9 +95,14 @@ module LocalDeviations =
                 |> function
                     | None -> Node.Empty()
                     | Some prompt ->
-                        Button.render "Copy Prompt" (fun () -> Helpers.copyToClipboard js prompt.Text) false
+                        Button.renderSimple "Copy Prompt" <| fun () -> Helpers.copyToClipboard js prompt.Text
                         
-                Button.render "Forget" (fun () -> forget deviation) isBusy
+                Button.render <| {
+                    ButtonProps.defaults with
+                        Text = "Forget"
+                        Action = ClickAction.Sync <| fun () -> forget deviation
+                        IsBusy = isBusy
+                }
             }
         }
         

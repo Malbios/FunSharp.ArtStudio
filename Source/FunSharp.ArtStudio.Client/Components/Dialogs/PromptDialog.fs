@@ -53,7 +53,8 @@ type PromptDialog() =
     override this.Render() =
         
         let snippetButton snippet =
-            Button.render snippet.label (fun () -> clipboardSnippetAction snippet) false
+            
+            Button.renderSimple snippet.label <| fun () -> clipboardSnippetAction snippet
         
         comp<RadzenStack> {
             "Orientation" => Orientation.Vertical
@@ -76,8 +77,8 @@ type PromptDialog() =
             comp<RadzenStack> {
                 "Orientation" => Orientation.Horizontal
                 
-                Button.render "Ok" (fun () -> this.DialogService.Close(this.Prompt)) false
-                Button.render "Cancel" (fun () -> this.DialogService.Close(null)) false
+                Button.renderSimple "Ok" <| fun () -> this.DialogService.Close(this.Prompt)
+                Button.renderSimple "Cancel" <| fun () -> this.DialogService.Close(null)
             }
         }
 

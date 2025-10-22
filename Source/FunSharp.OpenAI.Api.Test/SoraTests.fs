@@ -20,7 +20,7 @@ module ``Sora Tests`` =
             baking "chocolate chip cookies"
             """
             
-        let client = Client()
+        use client = new Client()
         client.UpdateAuthTokens() |> Async.RunSynchronously
         
         // Act

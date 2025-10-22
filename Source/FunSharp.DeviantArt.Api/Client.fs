@@ -20,7 +20,7 @@ type Client(persistence: IPersistence, clientId: string, clientSecret: string) =
     let authentication = OAuthAuthentication(persistence, tokenEndpoint, redirectUrl, clientId, clientSecret) :> IAuthentication
     
     let httpClient = new HttpClient()
-    let httpSender = HttpSender(httpClient, authentication)
+    let httpSender =  HttpSender(httpClient, authentication)
     
     member private this.SubmitToStash(destination: SubmitDestination, file: File, submission: StashSubmission) =
         

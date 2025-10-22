@@ -3,25 +3,73 @@
 open System.Threading.Tasks
 open Bolero.Html
 open Microsoft.AspNetCore.Components.Web
+open Radzen
 open Radzen.Blazor
+
+type ClickAction =
+    | Sync of action: (unit -> unit)
+    | Async of action: (unit -> Task)
+
+type ButtonProps ={
+    Shade: Shade 
+    Variant: Variant
+    ButtonStyle: ButtonStyle
+    Disabled: bool
+    Action: ClickAction
+    Text: string
+    Icon: string
+    IsBusy: bool
+    BusyText: string
+}
+
+[<RequireQualifiedAccess>]
+module ButtonProps =
+    
+    let defaults = {
+        Shade = Shade.Default
+        Variant = Variant.Filled
+        ButtonStyle = ButtonStyle.Primary
+        Disabled = false
+        Action = ClickAction.Sync <| fun () -> ()
+        Text = ""
+        Icon = ""
+        IsBusy = false
+        BusyText = ""
+    }
+
 
 [<RequireQualifiedAccess>]
 module Button =
     
-    let render (label: string) onClick (disabled: bool) =
+    let render (properties: ButtonProps) =
         
         comp<RadzenButton> {
-            "Text" => label
-            "Disabled" => disabled
+            "Variant" => properties.Variant
+            "ButtonStyle" => properties.ButtonStyle
+            "Disabled" => properties.Disabled
+            "Shade" => properties.Shade
+            "Text" => properties.Text
+            "Icon" => properties.Icon
+            "IsBusy" => properties.IsBusy
+            "BusyText" => properties.BusyText
             
-            attr.callback "Click" (fun (_: MouseEventArgs) -> onClick())
+            match properties.Action with
+            | Sync action -> attr.callback "Click" (fun (_: MouseEventArgs) -> action())
+            | Async action -> attr.task.callback "Click" (fun (_: MouseEventArgs) -> action())
+       }
+        
+    let renderSimple text action =
+        
+        render <| {
+            ButtonProps.defaults with
+                Text = text
+                Action = ClickAction.Sync action
         }
         
-    let renderAsync (label: string) (onClick: unit -> Task) (disabled: bool) =
+    let renderSimpleAsync text action =
         
-        comp<RadzenButton> {
-            "Text" => label
-            "Disabled" => disabled
-            
-            attr.task.callback "Click" (fun (_: MouseEventArgs) -> onClick())
+        render <| {
+            ButtonProps.defaults with
+                Text = text
+                Action = ClickAction.Async action
         }

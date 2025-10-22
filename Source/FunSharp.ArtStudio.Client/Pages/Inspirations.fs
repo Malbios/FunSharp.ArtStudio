@@ -54,8 +54,8 @@ type Inspirations() =
                     concat {
                         inspiration.Timestamp.ToString() |> text
                         
-                        Button.renderAsync "To Prompt" (fun () -> openPromptDialog inspiration) false
-                        Button.render "Forget" (fun () -> forgetInspiration inspiration) false
+                        Button.renderSimpleAsync "To Prompt" <| fun () -> openPromptDialog inspiration
+                        Button.renderSimple "Forget" <| fun () -> forgetInspiration inspiration
                     }
                     |> Deviation.renderWithContent inspiration.ImageUrl None
                 )

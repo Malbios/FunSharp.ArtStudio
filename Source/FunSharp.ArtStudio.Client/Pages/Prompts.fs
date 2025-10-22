@@ -107,9 +107,26 @@ type Prompts() =
                             comp<RadzenStack> {
                                 "Orientation" => Orientation.Horizontal
                                 
-                                Button.render "Copy Prompt" (fun () -> Helpers.copyToClipboard this.JSRuntime prompt.Text) isBusy
-                                Button.renderAsync "Edit Prompt" (fun () -> openEditPromptDialog prompt) isBusy
-                                Button.render "Forget" (fun () -> forgetPrompt prompt) isBusy
+                                Button.render <| {
+                                    ButtonProps.defaults with
+                                        Text = "Copy Prompt"
+                                        Action = ClickAction.Sync <| fun () -> Helpers.copyToClipboard this.JSRuntime prompt.Text
+                                        IsBusy = isBusy
+                                }
+                                
+                                Button.render <| {
+                                    ButtonProps.defaults with
+                                        Text = "Edit Prompt"
+                                        Action = ClickAction.Async <| fun () -> openEditPromptDialog prompt
+                                        IsBusy = isBusy
+                                }
+                                
+                                Button.render <| {
+                                    ButtonProps.defaults with
+                                        Text = "Forget"
+                                        Action = ClickAction.Sync <| fun () -> forgetPrompt prompt
+                                        IsBusy = isBusy
+                                }
                             }
                             
                             FileInput.renderAsync false processUpload isBusy
