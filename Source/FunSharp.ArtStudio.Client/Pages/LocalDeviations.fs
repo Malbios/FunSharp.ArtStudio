@@ -177,6 +177,11 @@ type LocalDeviations() =
                     
                     let galleries = LocalDeviations.galleries model
                     
+                    div {
+                        attr.style "margin-top: 2rem;"
+                        Pager.render page.total pageSize page.offset changePage
+                    }
+                    
                     page.items
                     |> Array.map (LocalDeviations.deviationWidget dispatch this.JSRuntime galleries)
                     |> Helpers.renderArray
