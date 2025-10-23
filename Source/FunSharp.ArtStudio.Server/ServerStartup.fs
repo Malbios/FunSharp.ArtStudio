@@ -20,9 +20,16 @@ module ServerStartup =
     let serverAddress = "127.0.0.1"
     let serverPort = 5123
     let apiBase = "/api/v1"
-            
-    let randomDelay_Test = (3000, 6000)
-    let randomDelay_Prod = (10000, 20000)
+    
+    let randomDelay_Test = (
+        TimeSpan.FromSeconds(3).TotalMilliseconds |> int,
+        TimeSpan.FromSeconds(9).TotalMilliseconds |> int
+    )
+    
+    let randomDelay_Prod = (
+        TimeSpan.FromMinutes(1).Add(TimeSpan.FromSeconds(23)).TotalMilliseconds |> int,
+        TimeSpan.FromMinutes(4).Add(TimeSpan.FromSeconds(48)).TotalMilliseconds |> int
+    )
     
     let secrets = Secrets.load ()
     let cts = new CancellationTokenSource()
@@ -85,17 +92,17 @@ module ServerStartup =
         with
         | :? System.Net.Sockets.SocketException as ex ->
             printfn $"Socket bind failed: %s{ex.Message}"
+        
+    let startBackgroundWorker (cts: CancellationTokenSource) task =
+        
+        printfn "Starting background worker..."
+        
+        let backgroundJob = BackgroundWorker(cts.Token, randomDelay_Test, task)
+        backgroundJob.Work () |> ignore
             
     let processPendingPrompts () =
         
         Async.returnM ()
-        
-    let startBackgroundWorker (cts: CancellationTokenSource) =
-        
-        printfn "Starting background worker..."
-        
-        let backgroundJob = BackgroundWorker(cts.Token, randomDelay_Test, processPendingPrompts)
-        backgroundJob.Work () |> ignore
         
     [<EntryPoint>]
     let main _ =
@@ -107,7 +114,7 @@ module ServerStartup =
         if deviantArtClient.NeedsInteraction then
             deviantArtClient.StartInteractiveLogin() |> Async.RunSynchronously
             
-        startBackgroundWorker cts
+        startBackgroundWorker cts processPendingPrompts
         
         Async.Start(async { do tryStartServer persistence deviantArtClient }, cancellationToken = cts.Token)
         

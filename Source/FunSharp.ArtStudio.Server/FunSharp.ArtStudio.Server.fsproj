@@ -12,9 +12,9 @@
         <Compile Include="Secrets.fs" />
         <Compile Include="Helpers.fs" />
         <Compile Include="BackgroundWorker.fs" />
+        <Compile Include="SoraTaskManager.fs" />
         <Compile Include="WebParts.fs" />
         <Compile Include="ServerStartup.fs" />
-        <Compile Include="SoraTaskManager.fs" />
     </ItemGroup>
 
     <ItemGroup>
