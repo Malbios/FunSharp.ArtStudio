@@ -233,7 +233,7 @@ module WebParts =
                     persistence.Delete(dbKey_LocalDeviations, key) |> ignore
                     persistence.Insert(dbKey_StashedDeviations, key, stashedDeviation)
                     
-                    printfn "Submission done!"
+                    // printfn "Submission done!"
                     
                     stashedDeviation |> asOkJsonResponse ctx
                 )
@@ -261,7 +261,7 @@ module WebParts =
                     persistence.Delete(dbKey_StashedDeviations, key) |> ignore
                     persistence.Insert(dbKey_PublishedDeviations, key, publishedDeviation)
                     
-                    printfn "Publishing done!"
+                    // printfn "Publishing done!"
                     
                     publishedDeviation |> asOkJsonResponse ctx
                 )
