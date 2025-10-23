@@ -13,7 +13,7 @@ module ``Sora Tests`` =
     let ``Create image`` () =
     
         // Arrange
-        let variant = ImageType.Square
+        let variant = AspectRatio.Square
         let prompt =
             """
             hyperrealistic cat baker

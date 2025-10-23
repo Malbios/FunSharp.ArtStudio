@@ -2,7 +2,7 @@
 
 open FunSharp.OpenAI.Api.Model.Sora
 
-type SoraTask = {
+type SoraGenerationTask = {
     Details: TaskDetails
     Deviation: LocalDeviation
 }
@@ -17,3 +17,7 @@ module SoraTask =
     let identifier t1 t2 =
         
         keyOf t1 = keyOf t2
+
+type BackgroundTask =
+    | SoraGeneration of SoraGenerationTask
+    | NewInspiration of url: string

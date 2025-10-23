@@ -38,7 +38,7 @@ module Helpers =
     let dbKey_DeletedItems = "DeletedItems"
     
     [<Literal>]
-    let dbKey_SoraTasks = "SoraTasks"
+    let dbKey_BackgroundTasks = "BackgroundTasks"
     
     [<Literal>]
     let imagesLocation = @"C:\Files\FunSharp.DeviantArt\images"

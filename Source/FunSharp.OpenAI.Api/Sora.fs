@@ -5,6 +5,7 @@ open System.Diagnostics
 open System.Net.Http
 open System.Text
 open System.Text.Json
+open System.Threading.Tasks
 open FunSharp.Common
 open FunSharp.Common.JsonSerializer
 open FunSharp.OpenAI.Api.Model.Sora
@@ -13,6 +14,9 @@ module Sora =
     
     [<Literal>]
     let private puppeteerPath = "C:/dev/fsharp/FunSharp.ArtStudio/Utilities/puppeteer"
+    
+    [<Literal>]
+    let private imageOutputPath = "C:/Files/FunSharp.DeviantArt/automated"
     
     let private generateEndpoint = "https://sora.chatgpt.com/backend/video_gen"
     let private checkTaskEndpoint taskId = $"https://sora.chatgpt.com/backend/video_gen/{taskId}"
@@ -96,12 +100,6 @@ module Sora =
         [| authTokens.Sentinel; authTokens.Bearer |]
         |> runScript $"{puppeteerPath}/get-tasks.js"
         
-    let private runScript_DeleteForever authTokens (generationIds: string array) =
-        
-        [| authTokens.Sentinel; authTokens.Bearer; serialize generationIds |]
-        |> runScript $"{puppeteerPath}/delete-forever.js"
-        |> Async.ignore
-        
     let serializerOptionsCustomizer (options: JsonSerializerOptions) =
         options.Converters.Add(NullTolerantFloatConverter())
         options.Converters.Add(CaseInsensitiveEnumConverter<TaskStatus>())
@@ -141,7 +139,7 @@ module Sora =
                 )
             )
         
-        member _.CreateImage(prompt: string, variant) =
+        member _.StartTask(prompt: string, variant) =
             
             let prompt =
                 prompt.Split([| "\r\n"; "\n" |], StringSplitOptions.RemoveEmptyEntries ||| StringSplitOptions.TrimEntries)
@@ -171,7 +169,7 @@ module Sora =
             |}
             |> serialize
             |> (runScript_CreateImage authTokens)
-            |> Async.map deserializeResponse<Task>
+            |> Async.map deserializeResponse<TaskResponse>
             |> Async.map _.id
             
         member _.CheckTask(taskId) =
@@ -184,17 +182,83 @@ module Sora =
             runScript_GetTasks authTokens
             |> Async.map deserializeResponse<TaskDetails array>
             
-        member _.DeleteGenerations(generationIds: string array) =
+        member _.DeleteTask(task: TaskDetails) =
             
-            match generationIds.Length with
-            | 0 -> Async.returnM ()
-            | _ -> runScript_DeleteForever authTokens generationIds
+            let generationIds = [|for generation in task.generations do generation.id|]
+            
+            [| authTokens.Sentinel; authTokens.Bearer; serialize task.id; serialize generationIds |]
+            |> runScript $"{puppeteerPath}/delete-task.js"
+            |> Async.ignore
 
         member _.DownloadImage(imageUrl: string) =
             
             imageUrl
             |> httpClient.GetByteArrayAsync
             |> Async.AwaitTask
+            
+        member this.WaitForFinish(taskId: string, delay: TimeSpan) = async {
+            
+            let mutable taskDetails = TaskDetails.empty
+            let mutable taskIsDone = false
+            
+            while (not taskIsDone) do
+                let! newDetails = this.CheckTask(taskId)
+                taskDetails <- newDetails
+                
+                match taskDetails.status with
+                | TaskStatus.PreProcessing
+                | TaskStatus.Queued
+                | TaskStatus.Running ->
+                    do! Task.Delay(delay.TotalMilliseconds |> int)
+                | _ ->
+                    taskIsDone <- true
+            
+            return taskDetails
+        }
+        
+        member this.WaitForFinish(taskId: string) =
+            
+            this.WaitForFinish(taskId, TimeSpan.FromSeconds(30))
+            
+        member this.CreateImage(prompt, aspectRatio) =
+            
+            let getFiles taskDetails =
+                
+                try
+                    match taskDetails.status with
+                    | TaskStatus.Succeeded ->
+                        taskDetails.generations
+                        |> Seq.map (fun generation -> async {
+                            let fileName = $"{imageOutputPath}/{Guid.NewGuid ()}.png"
+                            let! fileContent = this.DownloadImage(generation.url)
+                            do! File.writeAllBytesAsync fileName fileContent
+                            return fileName
+                        })
+                        |> Async.Parallel
+                        |> Ok
+
+                    | _ -> Error $"task did not succeed, status: {taskDetails.status}"
+                        
+                with exn ->
+                    Error exn.Message
+            
+            async {
+                do! this.UpdateAuthTokens()
+                
+                let! taskId = this.StartTask(prompt, aspectRatio)
+                let! taskDetails = this.WaitForFinish(taskId)
+                
+                let result = getFiles taskDetails
+                
+                do! this.DeleteTask(taskDetails)
+                
+                match result with
+                | Ok filesResult ->
+                    let! files = filesResult
+                    return Ok { Files = files }
+                    
+                | Error message -> return Error message
+            }
 
         interface IDisposable with
         

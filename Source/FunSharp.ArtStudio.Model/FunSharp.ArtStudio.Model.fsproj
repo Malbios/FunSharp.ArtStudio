@@ -11,7 +11,7 @@
         <Compile Include="Metadata.fs" />
         <Compile Include="DeviationOrigin.fs" />
         <Compile Include="LocalDeviation.fs" />
-        <Compile Include="SoraTask.fs" />
+        <Compile Include="BackgroundTask.fs" />
         <Compile Include="StashedDeviation.fs" />
         <Compile Include="PublishedDeviation.fs" />
         <Compile Include="Gallery.fs" />

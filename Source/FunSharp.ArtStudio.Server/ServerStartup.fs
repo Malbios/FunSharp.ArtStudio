@@ -107,9 +107,9 @@ module ServerStartup =
     [<EntryPoint>]
     let main _ =
         
-        use persistence = new NewLiteDbPersistence(@"C:\Files\FunSharp.DeviantArt\persistence.db") :> IPersistence
-        use deviantArtClient = new FunSharp.DeviantArt.Api.Client(persistence, secrets.client_id, secrets.client_secret)
-        use soraClient = new FunSharp.OpenAI.Api.Sora.Client()
+        let persistence = new NewLiteDbPersistence(@"C:\Files\FunSharp.DeviantArt\persistence.db") :> IPersistence
+        let deviantArtClient = new FunSharp.DeviantArt.Api.Client(persistence, secrets.client_id, secrets.client_secret)
+        let soraClient = new FunSharp.OpenAI.Api.Sora.Client()
         
         if deviantArtClient.NeedsInteraction then
             deviantArtClient.StartInteractiveLogin() |> Async.RunSynchronously
@@ -123,5 +123,9 @@ module ServerStartup =
 
         printfn "Shutting down..."
         cts.Cancel()
+        
+        persistence.Dispose()
+        (deviantArtClient :> IDisposable).Dispose()
+        (soraClient :> IDisposable).Dispose()
         
         0

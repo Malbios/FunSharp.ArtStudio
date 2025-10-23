@@ -4,7 +4,7 @@ open System.Text.Json.Serialization
 
 module Sora =
 
-    type ImageType =
+    type AspectRatio =
         | Landscape
         | Square
         | Portrait
@@ -28,7 +28,7 @@ module Sora =
         accessToken: string
     }
 
-    type Task = {
+    type TaskResponse = {
         id: string
     }
 
@@ -126,3 +126,7 @@ module Sora =
             failure_reason = None
             needs_user_review = false
         }
+
+    type TaskResult = {
+        Files: string array
+    }

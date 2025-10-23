@@ -38,6 +38,21 @@ async function main() {
 	await page.goto('https://sora.chatgpt.com', { waitUntil: 'networkidle2' })
 }
 
+async function withTimeout(promise, ms) {
+	let timeout
+	const timer = new Promise((_, reject) => {
+		timeout = setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms)
+	})
+	const result = await Promise.race([promise, timer])
+	clearTimeout(timeout)
+	return result
+}
+
 (async () => {
-	await main()
+	try {
+		await withTimeout(main(), 60_000) // 60 seconds
+	} catch (err) {
+		console.error('❌ Timeout or error:', err.message)
+		process.exit(1)
+	}
 })()
