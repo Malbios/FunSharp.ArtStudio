@@ -2,6 +2,7 @@
 open System.IO
 open System.Net.Http
 open System.Text.Json
+open FunSharp.ArtStudio.Server.Helpers
 open FunSharp.Common
 open FunSharp.Common.JsonSerializer
 open FunSharp.Data
@@ -11,6 +12,7 @@ open FunSharp.ArtStudio.Model
 open FunSharp.ArtStudio.Utilities
 open FunSharp.OpenAI.Api.Model.Sora
 open FunSharp.OpenAI.Api.Sora
+open Microsoft.Extensions.Logging
 
 let adHocTest () =
     
@@ -194,7 +196,49 @@ let adHocTest () =
 //     
 //     persistence.FindAll<LocalDeviation>(dbKey_LocalDeviations)
 //     |> fun x -> printfn $"items: {x.Length}"
+
+[<RequireQualifiedAccess>]
+module LookForCreator =
     
+    let find<'T when 'T: not struct and 'T: not null> (persistence: IPersistence) (dbKey: string) (getOrigin: 'T -> DeviationOrigin) (keyOf: 'T -> string) (searchText: string) =
+        
+        persistence.FindAll<'T>(dbKey)
+        |> Array.choose(fun item ->
+            match DeviationOrigin.inspiration (getOrigin item) with
+            | Some inspiration -> (keyOf item, inspiration.Url.ToString()) |> Some
+            | None -> None
+        )
+        |> Array.filter (fun (_, inspiration) ->
+            inspiration.ToLower().Contains(searchText.ToLower())
+        )
+        |> Array.iter (fun (key, inspiration) -> printfn $"{key} based on {inspiration}")
+
+let lookForCreator (creator: string) =
+    
+    use persistence = new NewLiteDbPersistence(@"C:\Files\FunSharp.DeviantArt\test\persistence.db") :> IPersistence
+    
+    LookForCreator.find<PublishedDeviation> persistence dbKey_PublishedDeviations _.Origin (fun i -> (PublishedDeviation.keyOf i).ToString()) creator
+    
+    LookForCreator.find<LocalDeviation> persistence dbKey_LocalDeviations _.Origin (fun i -> (LocalDeviation.keyOf i).ToString()) creator
+    
+    persistence.FindAll<Prompt>(dbKey_Prompts)
+        |> Array.choose(fun item ->
+            match item.Inspiration with
+            | Some inspiration -> Some ((Prompt.keyOf item).ToString(), inspiration.Url.ToString())
+            | None -> None
+        )
+        |> Array.filter (fun (_, inspiration) ->
+            inspiration.ToLower().Contains(creator.ToLower())
+        )
+        |> Array.iter (fun (key, inspiration) -> printfn $"prompt {key} based on {inspiration}")
+        
+    persistence.FindAll<Inspiration>(dbKey_Inspirations)
+        |> Array.map(fun item ->
+            (Inspiration.keyOf item).ToString()
+        )
+        |> Array.filter _.ToLower().Contains(creator.ToLower())
+        |> Array.iter (fun inspiration -> printfn $"inspiration {inspiration}")
+
 let testNewApiClient () =
     
     let realDatabasePath = @"C:\Files\FunSharp.DeviantArt\persistence.db"
@@ -235,7 +279,8 @@ let genImageTest () =
         baking a ton of "chocolate chip cookies"
         """
         
-    use client = new Client()
+    let loggerFactory = new LoggerFactory()
+    let client = new Client(Logger<Client>(loggerFactory))
     
     let result =
         client.UpdateAuthTokens()
@@ -243,10 +288,14 @@ let genImageTest () =
         |> Async.RunSynchronously
     
     printfn $"{result}"
+            
+    (client :> IDisposable).Dispose()
+    loggerFactory.Dispose()
     
 let checkTaskTest () =
     
-    use client = new Client()
+    let loggerFactory = new LoggerFactory()
+    let client = new Client(Logger<Client>(loggerFactory))
     
     let result =
         client.UpdateAuthTokens()
@@ -254,10 +303,14 @@ let checkTaskTest () =
         |> Async.RunSynchronously
         
     printfn $"{result}"
+            
+    (client :> IDisposable).Dispose()
+    loggerFactory.Dispose()
     
 let getTasksTest () =
     
-    use client = new Client()
+    let loggerFactory = new LoggerFactory()
+    let client = new Client(Logger<Client>(loggerFactory))
     
     let result =
         client.UpdateAuthTokens()
@@ -265,10 +318,14 @@ let getTasksTest () =
         |> Async.RunSynchronously
 
     printfn $"%A{result}"
+            
+    (client :> IDisposable).Dispose()
+    loggerFactory.Dispose()
     
 let getTasksWithGenerationsTest () =
     
-    use client = new Client()
+    let loggerFactory = new LoggerFactory()
+    let client = new Client(Logger<Client>(loggerFactory))
     
     let result =
         client.UpdateAuthTokens()
@@ -276,16 +333,20 @@ let getTasksWithGenerationsTest () =
         |> Async.RunSynchronously
 
     printfn $"%A{result |> Array.filter (fun x -> x.generations.Length > 0)}"
+            
+    (client :> IDisposable).Dispose()
+    loggerFactory.Dispose()
     
 let fullProcessTest () =
     
-    let client = new Client()
+    let loggerFactory = new LoggerFactory()
+    let client = new Client(Logger<Client>(loggerFactory))
     
-    let prompt = "a stunningly beautiful young woman inviting the viewer into her home, pov, hyperrealistic"
+    let prompt = "a beautiful couple is camping out in the woods at night, pov from across the campfire, hyperrealistic"
     
     async {
         
-        match! client.CreateImage(prompt, AspectRatio.Portrait) with
+        match! client.CreateImage(prompt, AspectRatio.Landscape) with
         | Ok result ->
             let files = result.Files |> String.concat ", "
             printfn $"files: {files}"
@@ -293,6 +354,7 @@ let fullProcessTest () =
             printfn $"error: {error}"
             
         (client :> IDisposable).Dispose()
+        loggerFactory.Dispose()
     }
 
 [<EntryPoint>]
@@ -302,6 +364,8 @@ let main _ =
     
     // migrateToTimestamps ()
     //testNewDb ()
+    
+    // lookForCreator "abc"
     
     // testNewApiClient()
 
@@ -317,6 +381,6 @@ let main _ =
     
     // getTasksWithGenerationsTest ()
     
-    fullProcessTest () |> Async.RunSynchronously
+    // fullProcessTest () |> Async.RunSynchronously
     
     0

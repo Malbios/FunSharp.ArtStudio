@@ -3,6 +3,7 @@
 open System
 open System.IO
 open System.Threading
+open Microsoft.Extensions.Logging
 open Suave
 open Suave.Files
 open Suave.Filters
@@ -107,9 +108,11 @@ module ServerStartup =
     [<EntryPoint>]
     let main _ =
         
+        let loggerFactory = new LoggerFactory()
+        
         let persistence = new NewLiteDbPersistence(@"C:\Files\FunSharp.DeviantArt\persistence.db") :> IPersistence
         let deviantArtClient = new FunSharp.DeviantArt.Api.Client(persistence, secrets.client_id, secrets.client_secret)
-        let soraClient = new FunSharp.OpenAI.Api.Sora.Client()
+        let soraClient = new FunSharp.OpenAI.Api.Sora.Client(Logger<FunSharp.OpenAI.Api.Sora.Client>(loggerFactory))
         
         if deviantArtClient.NeedsInteraction then
             deviantArtClient.StartInteractiveLogin() |> Async.RunSynchronously
@@ -127,5 +130,6 @@ module ServerStartup =
         persistence.Dispose()
         (deviantArtClient :> IDisposable).Dispose()
         (soraClient :> IDisposable).Dispose()
+        loggerFactory.Dispose()
         
         0

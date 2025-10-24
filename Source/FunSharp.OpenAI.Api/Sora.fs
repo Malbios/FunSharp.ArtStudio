@@ -9,6 +9,7 @@ open System.Threading.Tasks
 open FunSharp.Common
 open FunSharp.Common.JsonSerializer
 open FunSharp.OpenAI.Api.Model.Sora
+open Microsoft.Extensions.Logging
 
 module Sora =
     
@@ -21,7 +22,7 @@ module Sora =
     let private generateEndpoint = "https://sora.chatgpt.com/backend/video_gen"
     let private checkTaskEndpoint taskId = $"https://sora.chatgpt.com/backend/video_gen/{taskId}"
     
-    let private runScript scriptPath (arguments: string array) =
+    let private runScript (logger: ILogger) scriptPath (arguments: string array) =
         
         let psi =
             ProcessStartInfo(
@@ -50,6 +51,8 @@ module Sora =
         let exited = Event<unit>()
         proc.Exited.Add(fun _ -> exited.Trigger())
         proc.EnableRaisingEvents <- true
+        
+        logger.LogTrace($"Starting script: {scriptPath}")
 
         proc.Start() |> ignore
         proc.BeginOutputReadLine()
@@ -60,45 +63,47 @@ module Sora =
         |> Async.map (fun _ ->
             try
                 if proc.ExitCode = 0 then
+                    logger.LogTrace($"Script {scriptPath} is done!")
                     output.ToString().Trim()
                 else
+                    logger.LogError($"Script {scriptPath} failed: {error.ToString()}")
                     failwith (error.ToString())
             finally
                 proc.Dispose()
         )
         
-    let private runScript_SentinelAndCookies () =
+    let private runScript_SentinelAndCookies (logger: ILogger) =
         
         Array.empty
-        |> runScript $"{puppeteerPath}/sentinel-and-cookies.js"
+        |> runScript logger $"{puppeteerPath}/sentinel-and-cookies.js"
         |> Async.map (fun output ->
             let lines = output.Trim().Split(Environment.NewLine)
             (lines[0], lines[1])
         )
         
-    let private runScript_BearerToken cookies =
+    let private runScript_BearerToken (logger: ILogger) cookies =
         
         [|cookies|]
-        |> runScript $"{puppeteerPath}/bearer.js"
+        |> runScript logger $"{puppeteerPath}/bearer.js"
         |> Async.map (fun output ->
             let bearer = deserialize<BearerToken> output
             bearer.accessToken
         )
         
-    let private runScript_CreateImage authTokens body =
+    let private runScript_CreateImage (logger: ILogger) authTokens body =
         
         [| authTokens.Sentinel; authTokens.Bearer; body |]
-        |> runScript $"{puppeteerPath}/create-image.js"
+        |> runScript logger $"{puppeteerPath}/create-image.js"
         
-    let private runScript_CheckTask authTokens taskId =
+    let private runScript_CheckTask (logger: ILogger) authTokens taskId =
         
         [| authTokens.Sentinel; authTokens.Bearer; taskId |]
-        |> runScript $"{puppeteerPath}/check-task.js"
+        |> runScript logger $"{puppeteerPath}/check-task.js"
         
-    let private runScript_GetTasks authTokens =
+    let private runScript_GetTasks (logger: ILogger) authTokens =
         
         [| authTokens.Sentinel; authTokens.Bearer |]
-        |> runScript $"{puppeteerPath}/get-tasks.js"
+        |> runScript logger $"{puppeteerPath}/get-tasks.js"
         
     let serializerOptionsCustomizer (options: JsonSerializerOptions) =
         options.Converters.Add(NullTolerantFloatConverter())
@@ -119,7 +124,7 @@ module Sora =
         | _ ->
             failwith $"could not deserialize this value:\n\n{value}"
         
-    type Client() =
+    type Client(logger: ILogger<Client>) =
         
         let httpClient = new HttpClient()
         
@@ -127,9 +132,9 @@ module Sora =
         
         member _.UpdateAuthTokens() =
             
-            runScript_SentinelAndCookies ()
+            runScript_SentinelAndCookies logger
             |> Async.bind (fun (sentinelToken, cookies) ->
-                runScript_BearerToken cookies
+                runScript_BearerToken logger cookies
                 |> Async.map (fun bearerToken ->
                     authTokens <- {
                         Sentinel = sentinelToken
@@ -168,18 +173,18 @@ module Sora =
                 inpaint_items = []
             |}
             |> serialize
-            |> (runScript_CreateImage authTokens)
+            |> (runScript_CreateImage logger authTokens)
             |> Async.map deserializeResponse<TaskResponse>
             |> Async.map _.id
             
         member _.CheckTask(taskId) =
             
-            runScript_CheckTask authTokens taskId
+            runScript_CheckTask logger authTokens taskId
             |> Async.map deserializeResponse<TaskDetails>
             
         member _.GetTasks() =
             
-            runScript_GetTasks authTokens
+            runScript_GetTasks logger authTokens
             |> Async.map deserializeResponse<TaskDetails array>
             
         member _.DeleteTask(task: TaskDetails) =
@@ -187,7 +192,7 @@ module Sora =
             let generationIds = [|for generation in task.generations do generation.id|]
             
             [| authTokens.Sentinel; authTokens.Bearer; serialize task.id; serialize generationIds |]
-            |> runScript $"{puppeteerPath}/delete-task.js"
+            |> runScript logger $"{puppeteerPath}/delete-task.js"
             |> Async.ignore
 
         member _.DownloadImage(imageUrl: string) =
@@ -209,6 +214,7 @@ module Sora =
                 | TaskStatus.PreProcessing
                 | TaskStatus.Queued
                 | TaskStatus.Running ->
+                    logger.LogDebug("waiting for task...")
                     do! Task.Delay(delay.TotalMilliseconds |> int)
                 | _ ->
                     taskIsDone <- true
@@ -227,6 +233,8 @@ module Sora =
                 try
                     match taskDetails.status with
                     | TaskStatus.Succeeded ->
+                        logger.LogDebug("downloading images...")
+                        
                         taskDetails.generations
                         |> Seq.map (fun generation -> async {
                             let fileName = $"{imageOutputPath}/{Guid.NewGuid ()}.png"
@@ -243,13 +251,16 @@ module Sora =
                     Error exn.Message
             
             async {
+                logger.LogDebug("updating auth tokens...")
                 do! this.UpdateAuthTokens()
                 
+                logger.LogDebug("starting task...")
                 let! taskId = this.StartTask(prompt, aspectRatio)
                 let! taskDetails = this.WaitForFinish(taskId)
                 
                 let result = getFiles taskDetails
                 
+                logger.LogDebug("deleting task...")
                 do! this.DeleteTask(taskDetails)
                 
                 match result with

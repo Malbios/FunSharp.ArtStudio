@@ -4,7 +4,7 @@ open System
 open System.Threading
 open System.Threading.Tasks
 
-type BackgroundWorker(ct: CancellationToken, randomDelay: (int * int), action: unit -> Async<unit>) =
+type BackgroundWorker(ct: CancellationToken, randomDelay: int * int, action: unit -> Async<unit>) =
     
     let rng = Random()
     
