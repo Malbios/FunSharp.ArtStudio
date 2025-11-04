@@ -58,6 +58,14 @@ module Update =
     let private loadPrompts client =
         
         loadStatefulItems<Prompt> client "/local/prompts"
+    
+    let private loadSoraTasks client =
+        
+        loadStatefulItems<SoraTask> client "/local/sora-tasks"
+    
+    let private loadSoraResults client =
+        
+        loadStatefulItems<SoraResult> client "/local/sora-results"
         
     let private loadLocalDeviations client offset limit =
         
@@ -161,6 +169,8 @@ module Update =
                 Cmd.ofMsg LoadSettings
                 Cmd.ofMsg LoadInspirations
                 Cmd.ofMsg LoadPrompts
+                Cmd.ofMsg LoadSoraTasks
+                Cmd.ofMsg LoadSoraResults
                 Cmd.ofMsg LoadLocalDeviations
                 Cmd.ofMsg LoadStashedDeviations
                 Cmd.ofMsg LoadPublishedDeviations
@@ -175,9 +185,9 @@ module Update =
             
             { model with Settings = Loadable.Loading }, Cmd.OfAsync.either load () LoadedSettings failed
             
-        | LoadedSettings loadable ->
+        | LoadedSettings settings ->
            
-           { model with Settings = loadable }, Cmd.none
+           { model with Settings = settings }, Cmd.none
            
         | LoadInspirations ->
             
@@ -186,9 +196,9 @@ module Update =
             
             { model with Inspirations = Loadable.Loading }, Cmd.OfAsync.either load () LoadedInspirations failed
             
-        | LoadedInspirations loadable ->
+        | LoadedInspirations inspirations ->
             
-            { model with Inspirations = loadable }, Cmd.none
+            { model with Inspirations = inspirations }, Cmd.none
             
         | LoadPrompts ->
             
@@ -197,10 +207,32 @@ module Update =
             
             { model with Prompts = Loadable.Loading }, Cmd.OfAsync.either load () LoadedPrompts failed
             
-        | LoadedPrompts loadable ->
+        | LoadedPrompts prompts ->
             
-            { model with Prompts = loadable }, Cmd.none
+            { model with Prompts = prompts }, Cmd.none
             
+        | LoadSoraTasks ->
+            
+            let load () = loadSoraTasks client
+            let failed ex = LoadedSoraTasks (Loadable.LoadingFailed ex)
+            
+            { model with SoraTasks = Loadable.Loading }, Cmd.OfAsync.either load () LoadedSoraTasks failed
+        
+        | LoadedSoraTasks tasks ->
+            
+            { model with SoraTasks = tasks }, Cmd.none
+        
+        | LoadSoraResults ->
+            
+            let load () = loadSoraResults client
+            let failed ex = LoadedSoraResults (Loadable.LoadingFailed ex)
+            
+            { model with SoraResults = Loadable.Loading }, Cmd.OfAsync.either load () LoadedSoraResults failed
+        
+        | LoadedSoraResults results ->
+            
+            { model with SoraResults = results }, Cmd.none
+        
         | LoadLocalDeviations ->
             
             model, Cmd.ofMsg <| LoadLocalDeviationsPage (0, Helpers.localDeviationsPageSize)
@@ -418,6 +450,34 @@ module Update =
             
             { model with Prompts = prompts }, Cmd.none
             
+        | Prompt2SoraTask(prompt, aspectRatio) ->
+            
+            failwith "todo" // TODO
+        
+        | Prompt2SoraTaskDone(prompt, soraTask) ->
+            
+            let batch = Cmd.batch [
+                RemovePrompt prompt |> Cmd.ofMsg
+                AddedSoraTask soraTask |> Cmd.ofMsg
+            ]
+            
+            model, batch
+        
+        | Prompt2SoraTaskFailed(prompt, error) ->
+            
+            let prompts = model.Prompts |> LoadableStatefulItems.setDefault (Prompt.identifier prompt)
+            
+            printfn $"prompt2SoraTask failed for: {Prompt.keyOf prompt}"
+            printfn $"error: {error}"
+            
+            { model with Prompts = prompts }, Cmd.none
+        
+        | AddedSoraTask task ->
+            
+            let currentOffset = LoadableStatefulItemsPage.offset model.LocalDeviations
+            
+            model, LoadLocalDeviationsPage (currentOffset, Helpers.localDeviationsPageSize) |> Cmd.ofMsg
+        
         | AddedLocalDeviation _ ->
             
             let currentOffset = LoadableStatefulItemsPage.offset model.LocalDeviations

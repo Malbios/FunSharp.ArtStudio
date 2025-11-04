@@ -107,6 +107,28 @@ module WebParts =
         }
         |> tryCatch (nameof putImages)
         
+    let processNewInspiration (serverAddress: string) (serverPort: int) (persistence: IPersistence) (apiClient: Client) (url: Uri) = async {
+        let! id = apiClient.GetDeviationId url |> Async.getOrFail
+        let! deviation = apiClient.GetDeviation id |> Async.getOrFail
+        
+        let fileName = $"{id}.jpg"
+        
+        let! imageContent = apiClient.DownloadFile(deviation.preview.src)
+        do! File.writeAllBytesAsync $"{imagesLocation}/{fileName}" imageContent
+        
+        let imageUrl = imageUrl serverAddress serverPort fileName
+        
+        let inspiration = {
+            Url = url
+            Timestamp = DateTimeOffset.Now
+            ImageUrl = Some imageUrl
+        }
+        
+        persistence.Insert(dbKey_Inspirations, url, inspiration)
+        
+        return inspiration
+    }
+        
     let rec putInspiration (serverAddress: string) (serverPort: int) (persistence: IPersistence) (apiClient: Client) =
         
         fun ctx ->
@@ -116,27 +138,9 @@ module WebParts =
             | true ->
                 badRequestMessage ctx (nameof putInspiration) "This inspiration url already has a published deviation."
                 
-            | false -> async {
-                let! id = apiClient.GetDeviationId url |> Async.getOrFail
-                let! deviation = apiClient.GetDeviation id |> Async.getOrFail
-                
-                let fileName = $"{id}.jpg"
-                
-                let! imageContent = apiClient.DownloadFile(deviation.preview.src)
-                do! File.writeAllBytesAsync $"{imagesLocation}/{fileName}" imageContent
-                
-                let imageUrl = imageUrl serverAddress serverPort fileName
-                
-                let inspiration = {
-                    Url = url
-                    Timestamp = DateTimeOffset.Now
-                    ImageUrl = Some imageUrl
-                }
-                
-                do persistence.Insert(dbKey_Inspirations, url, inspiration)
-                
-                return! inspiration |> asOkJsonResponse ctx
-            }
+            | false ->
+                processNewInspiration serverAddress serverPort persistence apiClient url
+                |> asOkJsonResponse ctx
         |> tryCatch (nameof putInspiration)
         
     let rec patchPrompt (persistence: IPersistence) =
@@ -188,6 +192,26 @@ module WebParts =
         |> tryCatch (nameof inspiration2Prompt)
         
     let rec prompt2Deviation (persistence: IPersistence) =
+        
+        fun ctx ->
+            let payload = ctx.request |> asJson<Prompt2LocalDeviation>
+            
+            let prompt = persistence.Find(dbKey_Prompts, payload.Prompt.ToString()) |> Option.get
+            
+            let deviation : LocalDeviation = {
+                ImageUrl = payload.ImageUrl
+                Timestamp = DateTimeOffset.Now
+                Metadata = Metadata.defaults
+                Origin = DeviationOrigin.Prompt prompt
+            }
+            
+            persistence.Delete(dbKey_Prompts, prompt.Id.ToString()) |> ignore
+            persistence.Insert(dbKey_LocalDeviations, deviation.ImageUrl.ToString(), deviation)
+            
+            deviation |> asOkJsonResponse ctx
+        |> tryCatch (nameof prompt2Deviation)
+        
+    let rec prompt2Stash (persistence: IPersistence) =
         
         fun ctx ->
             let payload = ctx.request |> asJson<Prompt2LocalDeviation>

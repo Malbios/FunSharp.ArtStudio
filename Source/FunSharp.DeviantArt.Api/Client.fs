@@ -124,9 +124,9 @@ type Client(persistence: IPersistence, clientId: string, clientSecret: string) =
         |> Async.bind Helpers.ensureSuccess
         |> Async.bind Helpers.toRecord<DeviationResponse>
         
-    member this.GetAllDeviations(user: string) =
-    
-        failwith "todo" // TODO: implement
+    // member this.GetAllDeviations(user: string) =
+    //
+    //     failwith "todo" // TODO: implement
     
     interface IDisposable with
         

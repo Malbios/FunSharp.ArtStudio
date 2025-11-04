@@ -52,6 +52,8 @@
         <Content Include="Pages\Inspirations.bolero.css" />
         <Compile Include="Pages\Prompts.fs" />
         <Content Include="Pages\Prompts.bolero.css" />
+        <Compile Include="Pages\Sora.fs" />
+        <Content Include="Pages\Sora.bolero.css" />
         <Compile Include="Pages\LocalDeviations.fs" />
         <Content Include="Pages\LocalDeviations.bolero.css" />
         <Compile Include="Pages\StashedDeviations.fs" />

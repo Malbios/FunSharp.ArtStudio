@@ -41,7 +41,13 @@ module Helpers =
     let dbKey_BackgroundTasks = "BackgroundTasks"
     
     [<Literal>]
+    let dbKey_SoraResults = "SoraResults"
+    
+    [<Literal>]
     let imagesLocation = @"C:\Files\FunSharp.DeviantArt\images"
+    
+    [<Literal>]
+    let automatedImagesLocation = @"C:\Files\FunSharp.DeviantArt\automated"
         
     let private asStashed (local: LocalDeviation) (response: StashSubmissionResponse) =
         

@@ -4,6 +4,7 @@ open System
 open FunSharp.Blazor.Components
 open FunSharp.ArtStudio.Model
 open FunSharp.ArtStudio.Client
+open FunSharp.OpenAI.Api.Model.Sora
 
 type Image = {
     Name: string
@@ -232,6 +233,8 @@ type State = {
     
     Inspirations: Loadable<StatefulItem<Inspiration> array>
     Prompts: Loadable<StatefulItem<Prompt> array>
+    SoraTasks: Loadable<StatefulItem<SoraTask> array>
+    SoraResults: Loadable<StatefulItem<SoraResult> array>
     LocalDeviations: Loadable<Page<StatefulItem<LocalDeviation>>>
     StashedDeviations: Loadable<StatefulItem<StashedDeviation> array>
     PublishedDeviations: Loadable<StatefulItem<PublishedDeviation> array>
@@ -248,6 +251,8 @@ module State =
         
         Inspirations = Loadable.NotLoaded
         Prompts = Loadable.NotLoaded
+        SoraTasks = Loadable.NotLoaded
+        SoraResults = Loadable.NotLoaded
         LocalDeviations = Loadable.NotLoaded
         StashedDeviations = Loadable.NotLoaded
         PublishedDeviations = Loadable.NotLoaded
@@ -266,6 +271,12 @@ type Message =
     
     | LoadPrompts
     | LoadedPrompts of Loadable<StatefulItem<Prompt> array>
+    
+    | LoadSoraTasks
+    | LoadedSoraTasks of Loadable<StatefulItem<SoraTask> array>
+    
+    | LoadSoraResults
+    | LoadedSoraResults of Loadable<StatefulItem<SoraResult> array>
     
     | LoadLocalDeviations
     | LoadLocalDeviationsPage of offset: int * limit: int
@@ -304,6 +315,12 @@ type Message =
     | Prompt2LocalDeviation of Prompt * Image
     | Prompt2LocalDeviationDone of Prompt * local: LocalDeviation
     | Prompt2LocalDeviationFailed of Prompt * Image * error: exn
+    
+    | Prompt2SoraTask of Prompt * AspectRatio
+    | Prompt2SoraTaskDone of Prompt * SoraTask
+    | Prompt2SoraTaskFailed of Prompt * error: exn
+    
+    | AddedSoraTask of SoraTask
     
     | AddedLocalDeviation of local: LocalDeviation
     

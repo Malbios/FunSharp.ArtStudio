@@ -8,6 +8,7 @@ type Page =
     | [<EndPoint "/add-inspiration">] AddInspiration
     | [<EndPoint "/inspirations">] Inspirations
     | [<EndPoint "/prompts">] Prompts
+    | [<EndPoint "/sora">] Sora
     | [<EndPoint "/local-deviations">] LocalDeviations
     | [<EndPoint "/stashed-deviations">] StashedDeviations
     | [<EndPoint "/published-deviations">] PublishedDeviations

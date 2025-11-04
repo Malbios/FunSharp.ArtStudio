@@ -24,6 +24,16 @@ module Navigation =
             | Loadable.Loaded prompts -> prompts.Length
             | _ -> -1
         
+        let soraTasksCount =
+            match model.SoraTasks with
+            | Loadable.Loaded soraTasks -> soraTasks.Length
+            | _ -> -1
+        
+        let soraResultsCount =
+            match model.SoraResults with
+            | Loadable.Loaded soraResults -> soraResults.Length
+            | _ -> -1
+        
         let localDeviationsCount =
             match model.LocalDeviations with
             | Loadable.Loaded deviations -> deviations.total
@@ -49,6 +59,7 @@ module Navigation =
             | "/add-inspiration" -> fun () -> ()
             | "/inspirations" -> fun () -> dispatch LoadInspirations
             | "/prompts" -> fun () -> dispatch LoadPrompts
+            | "/sora-tasks" -> fun () -> dispatch LoadSoraTasks; dispatch LoadSoraResults
             | "/local-deviations" -> fun () -> dispatch LoadLocalDeviations
             | "/stashed-deviations" -> fun () -> dispatch LoadStashedDeviations
             | "/published-deviations" -> fun () -> dispatch LoadPublishedDeviations
@@ -78,6 +89,7 @@ module Navigation =
                     ("/add-inspiration", $"Add Inspiration")
                     ("/inspirations", $"Inspirations ({inspirationsCount})")
                     ("/prompts", $"Prompts ({promptsCount})")
+                    ("/sora", $"Sora ({soraTasksCount},{soraResultsCount})")
                     ("/local-deviations", $"Local Deviations ({localDeviationsCount})")
                     ("/stashed-deviations", $"Stashed Deviations ({stashedDeviationsCount})")
                     ("/published-deviations", $"Published Deviations ({publishedDeviationsCount})")
