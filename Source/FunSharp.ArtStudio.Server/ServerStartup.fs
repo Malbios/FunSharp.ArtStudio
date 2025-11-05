@@ -69,6 +69,7 @@ module ServerStartup =
             POST >=> path $"{apiBase}/inspiration2prompt" >=> inspiration2Prompt persistence
             POST >=> path $"{apiBase}/prompt2deviation" >=> prompt2Deviation persistence
             POST >=> path $"{apiBase}/prompt2sora" >=> prompt2SoraTask persistence
+            POST >=> path $"{apiBase}/sora2deviation" >=> sora2Deviation persistence
             
             PATCH >=> path $"{apiBase}/local/prompt" >=> patchPrompt persistence
             PATCH >=> path $"{apiBase}/local/deviation" >=> patchLocalDeviation persistence
@@ -106,7 +107,7 @@ module ServerStartup =
         
         printfn "Starting background worker..."
         
-        let backgroundJob = BackgroundWorker(cts.Token, randomDelay_Test, task)
+        let backgroundJob = BackgroundWorker(cts.Token, randomDelay_Prod, task)
         backgroundJob.Work () |> ignore
                 
     [<EntryPoint>]

@@ -360,6 +360,46 @@ let tasksCleanup () =
         persistence.Insert(dbKey_BackgroundTasks, soraTask.Id.ToString(), soraTask |> BackgroundTask.Sora)
         
     printfn "cleanup is done"
+    
+type OldSoraResult = {
+    Id: Guid
+    Timestamp: DateTimeOffset
+    Task: SoraTask
+    Images: string array
+}
+    
+let soraResultsCleanup () =
+    
+    let realDatabasePath = @"C:\Files\FunSharp.DeviantArt\persistence.db"
+    
+    use persistence = new NewLiteDbPersistence(realDatabasePath) :> IPersistence
+    
+    let soraResults = persistence.FindAll<OldSoraResult>(dbKey_SoraResults)
+    
+    for soraResult in soraResults do
+        let result = persistence.Delete(dbKey_SoraResults, soraResult.Id.ToString())
+        printfn $"{result}"
+        
+        let imageUrls =
+            soraResult.Images
+            |> Array.map (fun imagePath ->
+                imagePath
+                |> String.split '/'
+                |> List.last
+                |> fun x -> $"http://127.0.0.1:5123/automated/{x}"
+                |> Uri
+            )
+        
+        let newSoraResult : SoraResult = {
+            Id = soraResult.Id
+            Timestamp = soraResult.Timestamp
+            Task = soraResult.Task
+            Images = imageUrls
+        }
+        
+        persistence.Insert(dbKey_SoraResults, soraResult.Id.ToString(), newSoraResult)
+        
+    printfn "cleanup is done"
 
 [<EntryPoint>]
 let main _ =
@@ -385,8 +425,10 @@ let main _ =
     
     // getTasksWithGenerationsTest ()
     
-    fullProcessTest () |> Async.RunSynchronously
+    // fullProcessTest () |> Async.RunSynchronously
     
     // tasksCleanup ()
+    
+    soraResultsCleanup ()
     
     0

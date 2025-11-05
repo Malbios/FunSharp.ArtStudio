@@ -49,6 +49,11 @@ type Prompt2SoraTask = {
     AspectRatio: AspectRatio
 }
 
+type SoraResult2LocalDeviation = {
+    SoraResultId: Guid
+    PickedIndex: int
+}
+
 [<RequireQualifiedAccess>]
 type StatefulItem<'T> =
     | Default of 'T
@@ -322,10 +327,18 @@ type Message =
     | Prompt2LocalDeviationFailed of Prompt * Image * error: exn
     
     | Prompt2SoraTask of Prompt * AspectRatio
-    | Prompt2SoraTaskDone of SoraTask
+    | Prompt2SoraTaskDone of task: SoraTask
     | Prompt2SoraTaskFailed of Prompt * error: exn
     
-    | AddedSoraTask of SoraTask
+    | AddedSoraTask of task: SoraTask
+    
+    | RetrySoraResult of result: SoraResult
+    
+    | RemoveSoraResult of result: SoraResult
+    
+    | SoraResult2LocalDeviation of result: SoraResult * pickedIndex: int
+    | SoraResult2LocalDeviationDone of result: SoraResult * local: LocalDeviation
+    | SoraResult2LocalDeviationFailed of result: SoraResult * pickedIndex: int * error: exn
     
     | AddedLocalDeviation of local: LocalDeviation
     

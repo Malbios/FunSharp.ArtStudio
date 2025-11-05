@@ -187,8 +187,8 @@ module WebParts =
                 Text = payload.Text
             }
             
-            persistence.Delete(dbKey_Inspirations, inspiration.Url.ToString()) |> ignore
             persistence.Insert(dbKey_Prompts, prompt.Id.ToString(), prompt)
+            persistence.Delete(dbKey_Inspirations, inspiration.Url.ToString()) |> ignore
             
             prompt |> asOkJsonResponse ctx
         |> tryCatch (nameof inspiration2Prompt)
@@ -207,8 +207,8 @@ module WebParts =
                 Origin = DeviationOrigin.Prompt prompt
             }
             
-            persistence.Delete(dbKey_Prompts, prompt.Id.ToString()) |> ignore
             persistence.Insert(dbKey_LocalDeviations, deviation.ImageUrl.ToString(), deviation)
+            persistence.Delete(dbKey_Prompts, prompt.Id.ToString()) |> ignore
             
             deviation |> asOkJsonResponse ctx
         |> tryCatch (nameof prompt2Deviation)
@@ -227,11 +227,31 @@ module WebParts =
                 AspectRatio = payload.AspectRatio
             }
             
-            persistence.Delete(dbKey_Prompts, prompt.Id.ToString()) |> ignore
             persistence.Insert(dbKey_BackgroundTasks, task.Id.ToString(), task |> BackgroundTask.Sora)
+            persistence.Delete(dbKey_Prompts, prompt.Id.ToString()) |> ignore
             
             task |> asOkJsonResponse ctx
         |> tryCatch (nameof prompt2SoraTask)
+        
+    let rec sora2Deviation (persistence: IPersistence) = // TODO
+        
+        fun ctx ->
+            let payload = ctx.request |> asJson<SoraResult2LocalDeviation>
+            
+            let result = persistence.Find(dbKey_SoraResults, payload.SoraResultId.ToString()) |> Option.get
+            
+            let deviation : LocalDeviation = {
+                ImageUrl = result.Images[payload.PickedIndex]
+                Timestamp = DateTimeOffset.Now
+                Metadata = Metadata.defaults
+                Origin = DeviationOrigin.Prompt result.Task.Prompt
+            }
+            
+            persistence.Insert(dbKey_LocalDeviations, deviation.ImageUrl.ToString(), deviation)
+            persistence.Delete(dbKey_SoraResults, result.Id.ToString()) |> ignore
+            
+            deviation |> asOkJsonResponse ctx
+        |> tryCatch (nameof prompt2Deviation)
         
     let rec prompt2Stash (persistence: IPersistence) =
         
@@ -247,8 +267,8 @@ module WebParts =
                 Origin = DeviationOrigin.Prompt prompt
             }
             
-            persistence.Delete(dbKey_Prompts, prompt.Id.ToString()) |> ignore
             persistence.Insert(dbKey_LocalDeviations, deviation.ImageUrl.ToString(), deviation)
+            persistence.Delete(dbKey_Prompts, prompt.Id.ToString()) |> ignore
             
             deviation |> asOkJsonResponse ctx
         |> tryCatch (nameof prompt2Deviation)
@@ -276,8 +296,8 @@ module WebParts =
                     submitToStash apiClient imageContent mimeType local
                 )
                 |> Async.bind (fun stashedDeviation ->
-                    persistence.Delete(dbKey_LocalDeviations, key) |> ignore
                     persistence.Insert(dbKey_StashedDeviations, key, stashedDeviation)
+                    persistence.Delete(dbKey_LocalDeviations, key) |> ignore
                     
                     // printfn "Submission done!"
                     
@@ -304,8 +324,8 @@ module WebParts =
                 
                 publishFromStash apiClient galleryId stashedDeviation
                 |> Async.bind (fun publishedDeviation ->
-                    persistence.Delete(dbKey_StashedDeviations, key) |> ignore
                     persistence.Insert(dbKey_PublishedDeviations, key, publishedDeviation)
+                    persistence.Delete(dbKey_StashedDeviations, key) |> ignore
                     
                     // printfn "Publishing done!"
                     

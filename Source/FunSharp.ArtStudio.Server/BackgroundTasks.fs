@@ -44,11 +44,22 @@ module BackgroundTasks =
             printfn $"SoraTask failed: {errorMessage}"
             
         | Ok taskResult ->
+            
+            let imageUrls =
+                taskResult.Files
+                |> Array.map (fun imagePath ->
+                    imagePath
+                    |> String.split '/'
+                    |> List.last
+                    |> fun x -> $"http://127.0.0.1:5123/automated/{x}"
+                    |> Uri
+                )
+            
             let soraResult = {
                 Id = Guid.NewGuid()
                 Timestamp = DateTimeOffset.Now
                 Task = task
-                Images = taskResult.Files
+                Images = imageUrls
             }
             
             persistence.Insert(dbKey_SoraResults, soraResult.Id, soraResult)

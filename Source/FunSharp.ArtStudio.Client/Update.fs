@@ -139,6 +139,14 @@ module Update =
         |> Async.bind Http.contentAsString
         |> Async.map JsonSerializer.deserialize<SoraTask>
         
+    let private soraResult2LocalDeviation client (result: SoraResult, pickedIndex: int) =
+        
+        { SoraResultId = result.Id; PickedIndex = pickedIndex }
+        |> Http.postObject client $"{apiRoot}/sora2deviation"
+        |> Async.bind Http.contentAsString
+        |> Async.map JsonSerializer.deserialize<LocalDeviation>
+        |> Async.map (fun local -> result, local)
+        
     let private stashDeviation client (local: LocalDeviation) =
         
         local
@@ -458,7 +466,7 @@ module Update =
             
         | Prompt2SoraTask (prompt, aspectRatio) ->
             
-            let prompts = model.Prompts |> LoadableStatefulItems.setBusy (fun x ->  x.Id = prompt.Id)
+            let prompts = model.Prompts |> LoadableStatefulItems.setBusy (Prompt.identifier prompt)
         
             let prompt2SoraTask = prompt2SoraTask client
             let failed ex = Prompt2SoraTaskFailed (prompt, ex)
@@ -476,7 +484,7 @@ module Update =
             
             model, batch
         
-        | Prompt2SoraTaskFailed(prompt, error) ->
+        | Prompt2SoraTaskFailed (prompt, error) ->
             
             let prompts = model.Prompts |> LoadableStatefulItems.setDefault (Prompt.identifier prompt)
             
@@ -490,6 +498,45 @@ module Update =
             let tasks = model.SoraTasks |> LoadableStatefulItems.withNew task
             
             { model with SoraTasks = tasks }, Cmd.none
+            
+        | RetrySoraResult result ->
+            
+            failwith "todo"
+            
+        | RemoveSoraResult result ->
+            
+            let soraResults = model.SoraResults |> LoadableStatefulItems.without (SoraResult.identifier result)
+                
+            { model with SoraResults = soraResults }, Cmd.none
+        
+        | SoraResult2LocalDeviation (result, pickedIndex) ->
+            
+            let soraResults = model.SoraResults |> LoadableStatefulItems.setBusy (SoraResult.identifier result)
+        
+            let soraResult2LocalDeviation = soraResult2LocalDeviation client
+            let failed ex = SoraResult2LocalDeviationFailed (result, pickedIndex, ex)
+            
+            let cmd = Cmd.OfAsync.either soraResult2LocalDeviation (result, pickedIndex) SoraResult2LocalDeviationDone failed
+            
+            { model with SoraResults = soraResults }, cmd
+            
+        | SoraResult2LocalDeviationDone (result, local) ->
+            
+            let batch = Cmd.batch [
+                RemoveSoraResult result |> Cmd.ofMsg
+                AddedLocalDeviation local |> Cmd.ofMsg
+            ]
+            
+            model, batch
+            
+        | SoraResult2LocalDeviationFailed (result, pickedIndex, error) ->
+            
+            let soraResults = model.SoraResults |> LoadableStatefulItems.setDefault (SoraResult.identifier result)
+            
+            printfn $"sora2local failed for: {SoraResult.keyOf result} -> {pickedIndex}"
+            printfn $"error: {error}"
+            
+            { model with SoraResults = soraResults }, Cmd.none
         
         | AddedLocalDeviation _ ->
             

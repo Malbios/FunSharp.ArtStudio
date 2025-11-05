@@ -1,6 +1,5 @@
 ﻿namespace FunSharp.ArtStudio.Client.Pages
 
-open System
 open Bolero
 open Bolero.Html
 open FunSharp.ArtStudio.Model
@@ -12,6 +11,25 @@ open FunSharp.ArtStudio.Client.Components
 
 type Sora() =
     inherit ElmishComponent<State, Message>()
+    
+    let inspirationWidget (inspiration: Inspiration option) =
+        
+        match inspiration with
+        | None -> Node.Empty ()
+        | Some inspiration ->
+            comp<RadzenStack> {
+                "Orientation" => Orientation.Vertical
+                "JustifyContent" => JustifyContent.Center
+                "AlignItems" => AlignItems.Center
+                "Gap" => "0.2rem"
+                
+                comp<FunSharp.Blazor.Components.Image> {
+                    "ImageUrl" => inspiration.ImageUrl
+                    "ClickUrl" => Some inspiration.Url
+                }
+                
+                Link.renderSimple (Some "DA Link") inspiration.Url
+            }
     
     override _.CssScope = CssScopes.``FunSharp.ArtStudio.Client``
     
@@ -31,18 +49,33 @@ type Sora() =
                         LoadingWidget.render ()
                         
                     | StatefulItem.HasError (task, error) ->
-                        concat {
-                            text $"task: {task.Id}"
-                            text $"prompt: {task.Prompt}"
-                            text $"error: {error}"
+                        comp<RadzenStack> {
+                            "Orientation" => Orientation.Vertical
+                            "Gap" => "0.5rem"
+                            
+                            div { $"task: {task.Id}" }
+                            div { $"timestamp: {task.Timestamp}" }
+                            div { $"prompt: {task.Prompt.Text}" }
+                            div { $"aspect ratio: {task.AspectRatio}" }
+                            div { $"error: {error}" }
                         }
                         
                     | StatefulItem.Default task ->
-                        concat {
-                            text $"task: {task.Id}"
-                            text $"timestamp: {task.Timestamp}"
-                            text $"prompt: {task.Prompt}"
-                            text $"aspect ratio: {task.AspectRatio}"
+                        comp<RadzenStack> {
+                            "Orientation" => Orientation.Horizontal
+                            "JustifyContent" => JustifyContent.Center
+                            "AlignItems" => AlignItems.Center
+                            "Gap" => "0.5rem"
+                            
+                            inspirationWidget task.Prompt.Inspiration
+                                
+                            comp<RadzenStack> {
+                                "Orientation" => Orientation.Vertical
+                                "Gap" => "0.5rem"
+                                
+                                div { $"{task.Id} ({task.AspectRatio})" }
+                                div { $"{task.Timestamp}" }
+                            }
                         }
                 )
                 |> Helpers.renderArray
@@ -58,57 +91,46 @@ type Sora() =
                         LoadingWidget.render ()
                         
                     | StatefulItem.HasError (result, error) ->
-                        concat {
-                            p {  $"result: {result.Task.Id}" }
-                            p {  $"prompt: {result.Task.Prompt}" }
-                            p {  $"error: {error}" }
+                        comp<RadzenStack> {
+                            "Orientation" => Orientation.Vertical
+                            "Gap" => "0.5rem"
+                            
+                            div { $"result: {result.Id}" }
+                            div { $"timestamp: {result.Timestamp}" }
+                            div { $"prompt: {result.Task.Prompt.Text}" }
+                            div { $"aspect ratio: {result.Task.AspectRatio}" }
+                            div { $"error: {error}" }
                         }
                         
                     | StatefulItem.Default result ->
                         comp<RadzenStack> {
-                            "Orientation" => Orientation.Horizontal
+                            "Orientation" => Orientation.Vertical
                             "JustifyContent" => JustifyContent.Center
                             "AlignItems" => AlignItems.Center
+                            "Gap" => "0.5rem"
+                            
+                            inspirationWidget result.Task.Prompt.Inspiration
+                                
+                            Button.renderSimple "Retry" (fun () -> Message.RetrySoraResult result |> dispatch)
                             
                             comp<RadzenStack> {
-                                "Orientation" => Orientation.Vertical
-                                "JustifyContent" => JustifyContent.Center
-                                "AlignItems" => AlignItems.Center
+                                "Orientation" => Orientation.Horizontal
                                 "Gap" => "0.5rem"
                                 
-                                match result.Task.Prompt.Inspiration with
-                                | None -> Node.Empty ()
-                                | Some inspiration ->
-                                    comp<FunSharp.Blazor.Components.Image> {
-                                        "ImageUrl" => inspiration.ImageUrl
-                                        "ClickUrl" => Some inspiration.Url
-                                    }
-                                        
-                                comp<RadzenStack> {
-                                    "Orientation" => Orientation.Horizontal
-                                    "Gap" => "0.2rem"
+                                for i, imageUrl in result.Images |> Array.indexed do
                                     
-                                    for imagePath in result.Images do
+                                    comp<RadzenStack> {
+                                        "Orientation" => Orientation.Vertical
+                                        "Gap" => "0.2rem"
                                         
-                                        let imageUrl =
-                                            imagePath
-                                            |> String.split '/'
-                                            |> List.last
-                                            |> fun x -> $"http://127.0.0.1:5123/automated/{x}"
-                                            |> Uri
-                                            
                                         comp<FunSharp.Blazor.Components.Image> {
                                             "ImageUrl" => Some imageUrl
+                                            "ClickUrl" => Some imageUrl
                                         }
-                                }
-                            }
-                            
-                            comp<RadzenStack> {
-                                "Orientation" => Orientation.Vertical
-                                "Gap" => "0.2rem"
-                                
-                                div { $"{result.Timestamp}" }
-                                div { $"{result.Task.Prompt.Text}" }
+                                        
+                                        Button.renderSimple $"Pick {i}" <| fun () ->
+                                            Message.SoraResult2LocalDeviation (result, i) |> dispatch
+                                    }
                             }
                         }
                 )
