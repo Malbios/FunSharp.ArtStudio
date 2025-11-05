@@ -28,8 +28,8 @@ module ServerStartup =
     )
     
     let randomDelay_Prod = (
-        TimeSpan.FromMinutes(1).Add(TimeSpan.FromSeconds(23)).TotalMilliseconds |> int,
-        TimeSpan.FromMinutes(4).Add(TimeSpan.FromSeconds(48)).TotalMilliseconds |> int
+        TimeSpan.FromSeconds(31).TotalMilliseconds |> int,
+        TimeSpan.FromMinutes(2).Add(TimeSpan.FromSeconds(14)).TotalMilliseconds |> int
     )
     
     let secrets = Secrets.load ()

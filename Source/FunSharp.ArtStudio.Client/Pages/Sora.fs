@@ -80,6 +80,8 @@ type Sora() =
                 )
                 |> Helpers.renderArray
                 |> Deviations.render
+                
+            hr { attr.style "width: 100%;" }
             
             Loadable.render model.SoraResults
             <| fun results ->
