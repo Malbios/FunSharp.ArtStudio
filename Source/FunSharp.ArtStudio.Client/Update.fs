@@ -139,6 +139,14 @@ module Update =
         |> Async.bind Http.contentAsString
         |> Async.map JsonSerializer.deserialize<SoraTask>
         
+    let private retrySora client (result: SoraResult) =
+        
+        { SoraResultId = result.Id }
+        |> Http.postObject client $"{apiRoot}/retry-sora"
+        |> Async.bind Http.contentAsString
+        |> Async.map JsonSerializer.deserialize<SoraTask>
+        |> Async.map (fun task -> result, task)
+        
     let private soraResult2LocalDeviation client (result: SoraResult, pickedIndex: int) =
         
         { SoraResultId = result.Id; PickedIndex = pickedIndex }
@@ -501,7 +509,32 @@ module Update =
             
         | RetrySoraResult result ->
             
-            failwith "todo"
+            let results = model.SoraResults |> LoadableStatefulItems.setBusy (SoraResult.identifier result)
+        
+            let retrySora = retrySora client
+            let failed ex = RetrySoraResultFailed (result, ex)
+            
+            let cmd = Cmd.OfAsync.either retrySora result RetriedSoraResult failed
+            
+            { model with SoraResults = results }, cmd
+            
+        | RetriedSoraResult (result, task) ->
+            
+            let batch = Cmd.batch [
+                RemoveSoraResult result |> Cmd.ofMsg
+                AddedSoraTask task |> Cmd.ofMsg
+            ]
+            
+            model, batch
+        
+        | RetrySoraResultFailed (result, error) ->
+            
+            let results = model.SoraResults |> LoadableStatefulItems.setDefault (SoraResult.identifier result)
+            
+            printfn $"retrySora failed for: {SoraResult.keyOf result}"
+            printfn $"error: {error}"
+            
+            { model with SoraResults = results }, Cmd.none
             
         | RemoveSoraResult result ->
             

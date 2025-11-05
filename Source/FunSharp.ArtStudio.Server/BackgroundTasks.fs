@@ -63,29 +63,30 @@ module BackgroundTasks =
             }
             
             persistence.Insert(dbKey_SoraResults, soraResult.Id, soraResult)
-            printfn $"processed sora task: {task.Id}"
     }
         
     let processBackgroundTasks serverAddress serverPort (persistence: IPersistence) (deviantArtClient: FunSharp.DeviantArt.Api.Client) (soraClient: FunSharp.OpenAI.Api.Sora.Client) =
-        
-        let cleanup (key: string) (task: BackgroundTask) =
-            persistence.Insert(dbKey_DeletedItems, key, task)
-            persistence.Delete(dbKey_BackgroundTasks, key) |> ignore
-            Async.returnM ()
             
         let sortTasksByKind_NewInspiration_Sora =
             function
             | Inspiration u -> 0, u
             | Sora soraTask -> 1, soraTask.Timestamp.Ticks.ToString()
-
-        let pendingTask =
+            
+        let pendingTasks =
             persistence.FindAll<BackgroundTask>(dbKey_BackgroundTasks)
             |> Array.sortBy sortTasksByKind_NewInspiration_Sora
-            |> Array.tryHead
+        
+        let cleanup (key: string) (task: BackgroundTask) =
+            persistence.Insert(dbKey_DeletedItems, key, task)
+            persistence.Delete(dbKey_BackgroundTasks, key) |> ignore
             
-        match pendingTask with
-        | None ->
+            let remainingTasks = pendingTasks.Length - 1 |> fun x -> Math.Max(0, x)
+            printfn $"processed {Union.toString task} ({remainingTasks} remaining)"
+            
             Async.returnM ()
+            
+        match pendingTasks |> Array.tryHead with
+        | None -> Async.returnM ()
             
         | Some task ->
             match task with

@@ -225,6 +225,7 @@ module WebParts =
                 Timestamp = DateTimeOffset.Now
                 Prompt = prompt
                 AspectRatio = payload.AspectRatio
+                ExistingImages = Array.empty
             }
             
             persistence.Insert(dbKey_BackgroundTasks, task.Id.ToString(), task |> BackgroundTask.Sora)
@@ -233,7 +234,28 @@ module WebParts =
             task |> asOkJsonResponse ctx
         |> tryCatch (nameof prompt2SoraTask)
         
-    let rec sora2Deviation (persistence: IPersistence) = // TODO
+    let rec retrySora (persistence: IPersistence) =
+        
+        fun ctx ->
+            let payload = ctx.request |> asJson<RetrySora>
+            
+            let result = persistence.Find(dbKey_SoraResults, payload.SoraResultId.ToString()) |> Option.get
+            
+            let task = {
+                Id = Guid.NewGuid()
+                Timestamp = DateTimeOffset.Now
+                Prompt = result.Task.Prompt
+                AspectRatio = result.Task.AspectRatio
+                ExistingImages = result.Images
+            }
+            
+            persistence.Insert(dbKey_BackgroundTasks, task.Id.ToString(), task |> BackgroundTask.Sora)
+            persistence.Delete(dbKey_SoraResults, result.Id.ToString()) |> ignore
+            
+            task |> asOkJsonResponse ctx
+        |> tryCatch (nameof prompt2SoraTask)
+        
+    let rec sora2Deviation (persistence: IPersistence) =
         
         fun ctx ->
             let payload = ctx.request |> asJson<SoraResult2LocalDeviation>

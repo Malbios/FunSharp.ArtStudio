@@ -35,8 +35,7 @@ module ``Sora Tests`` =
             baking "chocolate chip cookies"
             """
             
-        use logger = new Logger<Client>()
-        use client = new Client(logger)
+        use client = new Client()
         
         client.UpdateAuthTokens() |> Async.RunSynchronously
         

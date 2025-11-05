@@ -8,6 +8,7 @@ type SoraTask = {
     Timestamp: DateTimeOffset
     Prompt: Prompt
     AspectRatio: AspectRatio
+    ExistingImages: Uri array
 }
 
 [<RequireQualifiedAccess>]

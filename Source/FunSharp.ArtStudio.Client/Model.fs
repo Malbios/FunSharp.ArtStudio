@@ -49,6 +49,10 @@ type Prompt2SoraTask = {
     AspectRatio: AspectRatio
 }
 
+type RetrySora = {
+    SoraResultId: Guid
+}
+
 type SoraResult2LocalDeviation = {
     SoraResultId: Guid
     PickedIndex: int
@@ -333,6 +337,8 @@ type Message =
     | AddedSoraTask of task: SoraTask
     
     | RetrySoraResult of result: SoraResult
+    | RetriedSoraResult of result: SoraResult * task: SoraTask
+    | RetrySoraResultFailed of result: SoraResult * error: exn
     
     | RemoveSoraResult of result: SoraResult
     
