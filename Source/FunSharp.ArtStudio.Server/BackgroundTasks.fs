@@ -64,24 +64,40 @@ module BackgroundTasks =
             
             persistence.Insert(dbKey_SoraResults, soraResult.Id, soraResult)
     }
+    
+    let processNewInspirationBackgroundTasks serverAddress serverPort (persistence: IPersistence) (deviantArtClient: FunSharp.DeviantArt.Api.Client) =
         
-    let processBackgroundTasks serverAddress serverPort (persistence: IPersistence) (deviantArtClient: FunSharp.DeviantArt.Api.Client) (soraClient: FunSharp.OpenAI.Api.Sora.Client) =
-            
-        let sortTasksByKind_NewInspiration_Sora =
-            function
-            | Inspiration u -> 0, u
-            | Sora soraTask -> 1, soraTask.Timestamp.Ticks.ToString()
-            
         let pendingTasks =
             persistence.FindAll<BackgroundTask>(dbKey_BackgroundTasks)
-            |> Array.sortBy sortTasksByKind_NewInspiration_Sora
+            |> Array.choose (function Inspiration url -> Some url | _ -> None)
+            |> Array.sort
         
-        let cleanup (key: string) (task: BackgroundTask) =
-            persistence.Insert(dbKey_DeletedItems, key, task)
+        let cleanup (key: string) =
             persistence.Delete(dbKey_BackgroundTasks, key) |> ignore
             
             let remainingTasks = pendingTasks.Length - 1 |> fun x -> Math.Max(0, x)
-            printfn $"processed {Union.toString task} ({remainingTasks} remaining)"
+            printfn $"processed BackgroundTask.Inspiration ({remainingTasks} remaining)"
+            
+            Async.returnM ()
+            
+        match pendingTasks |> Array.tryHead with
+        | None -> Async.returnM ()
+        | Some url ->
+            processNewInspirationTask serverAddress serverPort persistence deviantArtClient (url |> Uri)
+            |> Async.bind (fun _ -> cleanup url)
+    
+    let processSoraBackgroundTasks (persistence: IPersistence) (soraClient: FunSharp.OpenAI.Api.Sora.Client) =
+            
+        let pendingTasks =
+            persistence.FindAll<BackgroundTask>(dbKey_BackgroundTasks)
+            |> Array.choose (function Sora task -> Some task | _ -> None)
+            |> Array.sortBy _.Timestamp.Ticks.ToString()
+        
+        let cleanup (task: SoraTask) =
+            persistence.Delete(dbKey_BackgroundTasks, task.Id.ToString()) |> ignore
+            
+            let remainingTasks = pendingTasks.Length - 1 |> fun x -> Math.Max(0, x)
+            printfn $"processed BackgroundTask.Sora ({remainingTasks} remaining)"
             
             Async.returnM ()
             
@@ -89,11 +105,5 @@ module BackgroundTasks =
         | None -> Async.returnM ()
             
         | Some task ->
-            match task with
-            | Inspiration url ->
-                processNewInspirationTask serverAddress serverPort persistence deviantArtClient (url |> Uri)
-                |> Async.bind (fun _ -> cleanup url task)
-                
-            | Sora soraTask ->
-                processSoraTask persistence soraClient soraTask
-                |> Async.bind (fun _ -> cleanup (soraTask.Id.ToString()) task)
+            processSoraTask persistence soraClient task
+            |> Async.bind (fun _ -> cleanup task)

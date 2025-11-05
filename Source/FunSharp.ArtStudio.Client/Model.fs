@@ -292,6 +292,8 @@ type Message =
     | LoadSoraResults
     | LoadedSoraResults of Loadable<StatefulItem<SoraResult> array>
     
+    | LoadSoraTasksAndResults
+    
     | LoadLocalDeviations
     | LoadLocalDeviationsPage of offset: int * limit: int
     | LoadedLocalDeviationsPage of Loadable<Page<StatefulItem<LocalDeviation>>>

@@ -191,8 +191,6 @@ module Update =
                 Cmd.ofMsg LoadSettings
                 Cmd.ofMsg LoadInspirations
                 Cmd.ofMsg LoadPrompts
-                Cmd.ofMsg LoadSoraTasks
-                Cmd.ofMsg LoadSoraResults
                 Cmd.ofMsg LoadLocalDeviations
                 Cmd.ofMsg LoadStashedDeviations
                 Cmd.ofMsg LoadPublishedDeviations
@@ -254,6 +252,10 @@ module Update =
         | LoadedSoraResults results ->
             
             { model with SoraResults = results }, Cmd.none
+            
+        | LoadSoraTasksAndResults ->
+            
+            model, Cmd.batch [ Cmd.ofMsg LoadSoraTasks; Cmd.ofMsg LoadSoraResults ]
         
         | LoadLocalDeviations ->
             

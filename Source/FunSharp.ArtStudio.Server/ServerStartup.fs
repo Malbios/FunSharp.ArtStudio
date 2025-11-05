@@ -3,6 +3,7 @@
 open System
 open System.IO
 open System.Threading
+open FunSharp.ArtStudio.Server.BackgroundTasks
 open Suave
 open Suave.Files
 open Suave.Filters
@@ -13,7 +14,6 @@ open FunSharp.Data
 open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.Api.Model
 open FunSharp.ArtStudio.Server.Helpers
-open FunSharp.ArtStudio.Server.BackgroundTasks
 open FunSharp.ArtStudio.Server.WebParts
 
 module ServerStartup =
@@ -22,12 +22,12 @@ module ServerStartup =
     let serverPort = 5123
     let apiBase = "/api/v1"
     
-    let randomDelay_Test = (
+    let randomDelay_Fast = (
         TimeSpan.FromSeconds(3).TotalMilliseconds |> int,
         TimeSpan.FromSeconds(9).TotalMilliseconds |> int
     )
     
-    let randomDelay_Prod = (
+    let randomDelay_Slow = (
         TimeSpan.FromSeconds(31).TotalMilliseconds |> int,
         TimeSpan.FromMinutes(2).Add(TimeSpan.FromSeconds(14)).TotalMilliseconds |> int
     )
@@ -48,6 +48,7 @@ module ServerStartup =
             
             GET >=> path $"{apiBase}/user/name" >=> getUsername deviantArtClient
             GET >=> path $"{apiBase}/settings" >=> getSettings secrets
+            GET >=> path $"{apiBase}/current/sora-task" >=> getCurrentSoraTask secrets
             
             GET >=> path $"{apiBase}/local/inspirations" >=> getInspirations persistence
             GET >=> path $"{apiBase}/local/prompts" >=> getPrompts persistence
@@ -104,11 +105,18 @@ module ServerStartup =
         | :? System.Net.Sockets.SocketException as ex ->
             printfn $"Socket bind failed: %s{ex.Message}"
             
-    let startBackgroundWorker (cts: CancellationTokenSource) task =
+    let startBackgroundWorker (cts: CancellationTokenSource) (persistence: IPersistence) (deviantArtClient: FunSharp.DeviantArt.Api.Client) (soraClient: FunSharp.OpenAI.Api.Sora.Client) =
         
-        printfn "Starting background worker..."
+        printfn "Starting background worker (new inspirations)..."
         
-        let backgroundJob = BackgroundWorker(cts.Token, randomDelay_Prod, task)
+        let backgroundJob = BackgroundWorker(cts.Token, randomDelay_Fast, fun () ->
+            processNewInspirationBackgroundTasks serverAddress serverPort persistence deviantArtClient)
+        backgroundJob.Work () |> ignore
+        
+        printfn "Starting background worker (sora)..."
+        
+        let backgroundJob = BackgroundWorker(cts.Token, randomDelay_Slow, fun () ->
+            processSoraBackgroundTasks persistence soraClient)
         backgroundJob.Work () |> ignore
                 
     [<EntryPoint>]
@@ -122,7 +130,7 @@ module ServerStartup =
         if deviantArtClient.NeedsInteraction then
             deviantArtClient.StartInteractiveLogin() |> Async.RunSynchronously
             
-        startBackgroundWorker cts (fun () -> processBackgroundTasks serverAddress serverPort persistence deviantArtClient soraClient)
+        startBackgroundWorker cts persistence deviantArtClient soraClient
         
         Async.Start(async { do tryStartServer persistence deviantArtClient }, cancellationToken = cts.Token)
         

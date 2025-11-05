@@ -40,6 +40,12 @@ module WebParts =
             {| Galleries = secrets.galleries; Snippets = secrets.snippets |}
             |> asOkJsonResponse ctx
         |> tryCatch (nameof getSettings)
+
+    let rec getCurrentSoraTask (secrets: Secrets) =
+        
+        fun ctx -> // TODO
+            failwith "todo"
+        |> tryCatch (nameof getSettings)
         
     let rec getInspirations (persistence: IPersistence) =
         
@@ -308,7 +314,12 @@ module WebParts =
             
             | Some local ->
                 let fileName = Uri key |> FunSharp.Common.Uri.lastSegment |> HttpUtility.UrlDecode
-                let imagePath = $"{imagesLocation}\\{fileName}"
+                
+                let imagePath =
+                    match key with
+                    | s when s.Contains("automated") -> $"{automatedImagesLocation}\\{fileName}"
+                    | s -> $"{imagesLocation}\\{fileName}"
+                
                 let mimeType = Helpers.mimeType imagePath
                 
                 File.readAllBytesAsync imagePath
