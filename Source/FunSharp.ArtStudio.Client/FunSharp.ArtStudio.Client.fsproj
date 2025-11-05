@@ -40,6 +40,7 @@
         <Compile Include="Http.fs" />
         <Compile Include="Components\Dialogs\PromptDialog.fs" />
         <Compile Include="Components\Dialogs\ImageUploadDialog.fs" />
+        <Compile Include="Components\Dialogs\ToSoraDialog.fs" />
         <Compile Include="Components\Navigation.fs" />
         <Compile Include="Components\Page.fs" />
         <Compile Include="Components\ItemEditor.fs" />

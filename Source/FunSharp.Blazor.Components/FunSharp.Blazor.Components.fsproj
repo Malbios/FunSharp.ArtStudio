@@ -12,6 +12,7 @@
         <Compile Include="Loadable.fs"/>
         <Compile Include="Link.fs" />
         <Compile Include="ImageUrl.fs"/>
+        <Compile Include="Image.fs" />
         <Compile Include="ImagePreview.fs"/>
         <Compile Include="CheckBox.fs"/>
         <Compile Include="TextInput.fs"/>

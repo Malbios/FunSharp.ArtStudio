@@ -20,6 +20,12 @@ module Async =
         return! f v
     }
     
+    let tee f a = async {
+        let! result = a
+        f result
+        return result
+    }
+    
     let catch<'T> (input: Async<'T>) =
         input
         |> Async.Catch

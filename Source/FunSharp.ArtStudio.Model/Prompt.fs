@@ -12,6 +12,13 @@ type Prompt = {
 [<RequireQualifiedAccess>]
 module Prompt =
     
+    let empty = {
+        Id = Guid.Empty
+        Timestamp = DateTimeOffset.MinValue
+        Text = ""
+        Inspiration = None
+    }
+    
     let keyOf prompt =
         
         prompt.Id

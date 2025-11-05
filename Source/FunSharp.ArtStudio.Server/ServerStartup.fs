@@ -3,7 +3,6 @@
 open System
 open System.IO
 open System.Threading
-open Microsoft.Extensions.Logging
 open Suave
 open Suave.Files
 open Suave.Filters
@@ -13,8 +12,8 @@ open FunSharp.Common
 open FunSharp.Data
 open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.Api.Model
-open FunSharp.ArtStudio.Model
 open FunSharp.ArtStudio.Server.Helpers
+open FunSharp.ArtStudio.Server.BackgroundTasks
 open FunSharp.ArtStudio.Server.WebParts
 
 module ServerStartup =
@@ -52,12 +51,14 @@ module ServerStartup =
             
             GET >=> path $"{apiBase}/local/inspirations" >=> getInspirations persistence
             GET >=> path $"{apiBase}/local/prompts" >=> getPrompts persistence
+            GET >=> path $"{apiBase}/local/sora-tasks" >=> getSoraTasks persistence
+            GET >=> path $"{apiBase}/local/sora-results" >=> getSoraResults persistence
             GET >=> path $"{apiBase}/local/deviations" >=> getLocalDeviations persistence
             GET >=> path $"{apiBase}/stash" >=> getStashedDeviations persistence
             GET >=> path $"{apiBase}/publish" >=> getPublishedDeviations persistence
             
             PUT >=> path $"{apiBase}/local/images" >=> putImages serverAddress serverPort
-            PUT >=> path $"{apiBase}/local/inspiration" >=> putInspiration serverAddress serverPort persistence deviantArtClient
+            PUT >=> path $"{apiBase}/local/inspiration" >=> putInspiration persistence
 
             PUT >=> path $"{apiBase}/local/prompt" >=> (fun ctx -> badRequestMessage ctx "addPrompt()" "not implemented yet")
             PUT >=> path $"{apiBase}/local/deviation" >=> (fun ctx -> badRequestMessage ctx "addDeviation()" "not implemented yet")
@@ -107,81 +108,19 @@ module ServerStartup =
         
         let backgroundJob = BackgroundWorker(cts.Token, randomDelay_Test, task)
         backgroundJob.Work () |> ignore
-        
-    let processNewInspirationTask (persistence: IPersistence) (deviantArtClient: FunSharp.DeviantArt.Api.Client) (url: Uri) =
-        
-        match urlAlreadyExists persistence url with
-        | true ->
-            printfn $"NewInspirationTask failed: url already exists: {url}"
-            Async.returnM ()
-            
-        | false ->
-            processNewInspiration serverAddress serverPort persistence deviantArtClient url
-            |> Async.ignore
-            
-    let processSoraTask (persistence: IPersistence) (soraClient: FunSharp.OpenAI.Api.Sora.Client) prompt aspectRatio =
-        
-        soraClient.CreateImage(prompt, aspectRatio)
-        |> Async.bind (fun result ->
-            match result with
-            | Error errorMessage ->
-                printfn $"SoraTask failed: {errorMessage}"
-                Async.returnM ()
-                
-            | Ok taskResult ->
-                let soraResult = {
-                    Id = Guid.NewGuid ()
-                    Prompt = prompt
-                    AspectRatio = aspectRatio
-                    Images = taskResult.Files
-                }
-                
-                persistence.Insert(dbKey_SoraResults, soraResult.Id, soraResult)
-                Async.returnM ()
-        )
-        
-    let processBackgroundTasks (persistence: IPersistence) (deviantArtClient: FunSharp.DeviantArt.Api.Client) (soraClient: FunSharp.OpenAI.Api.Sora.Client) =
-        
-        let cleanup (key: string) (task: BackgroundTask) =
-            persistence.Insert(dbKey_DeletedItems, key, task)
-            persistence.Delete(dbKey_BackgroundTasks, key) |> ignore
-            Async.returnM ()
-            
-        let sortTasksByKind_NewInspiration_Sora =
-            function
-            | Inspiration u -> 0, u
-            | Sora (_, _, key) -> 1, key.ToString()
-            
-        let pendingTask =
-            persistence.FindAll<BackgroundTask>(dbKey_BackgroundTasks)
-            |> Array.sortBy sortTasksByKind_NewInspiration_Sora
-            |> Array.tryHead
-            
-        match pendingTask with
-        | None -> Async.returnM ()
-        | Some task ->
-            match task with
-            | Inspiration url ->
-                processNewInspirationTask persistence deviantArtClient (url |> Uri)
-                |> Async.bind (fun _ -> cleanup url task)
-                
-            | Sora (id, prompt, aspectRatio) ->
-                processSoraTask persistence soraClient prompt aspectRatio
-                |> Async.bind (fun _ -> cleanup id task)
                 
     [<EntryPoint>]
     let main _ =
         
-        let loggerFactory = new LoggerFactory()
-        
         let persistence = new NewLiteDbPersistence(@"C:\Files\FunSharp.DeviantArt\persistence.db") :> IPersistence
         let deviantArtClient = new FunSharp.DeviantArt.Api.Client(persistence, secrets.client_id, secrets.client_secret)
-        let soraClient = new FunSharp.OpenAI.Api.Sora.Client(Logger<FunSharp.OpenAI.Api.Sora.Client>(loggerFactory))
+        let soraClient = new FunSharp.OpenAI.Api.Sora.Client()
         
+        // deviantArtClient.StartInteractiveLogin() |> Async.RunSynchronously
         if deviantArtClient.NeedsInteraction then
             deviantArtClient.StartInteractiveLogin() |> Async.RunSynchronously
             
-        startBackgroundWorker cts (fun () -> processBackgroundTasks persistence deviantArtClient soraClient)
+        startBackgroundWorker cts (fun () -> processBackgroundTasks serverAddress serverPort persistence deviantArtClient soraClient)
         
         Async.Start(async { do tryStartServer persistence deviantArtClient }, cancellationToken = cts.Token)
         
@@ -194,6 +133,5 @@ module ServerStartup =
         persistence.Dispose()
         (deviantArtClient :> IDisposable).Dispose()
         (soraClient :> IDisposable).Dispose()
-        loggerFactory.Dispose()
         
         0

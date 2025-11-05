@@ -1,5 +1,6 @@
 ﻿namespace FunSharp.ArtStudio.Client.Pages
 
+open System
 open Bolero
 open Bolero.Html
 open FunSharp.ArtStudio.Model
@@ -58,24 +59,57 @@ type Sora() =
                         
                     | StatefulItem.HasError (result, error) ->
                         concat {
-                            text $"result: {result.Task.Id}"
-                            text $"prompt: {result.Task.Prompt}"
-                            text $"error: {error}"
+                            p {  $"result: {result.Task.Id}" }
+                            p {  $"prompt: {result.Task.Prompt}" }
+                            p {  $"error: {error}" }
                         }
                         
                     | StatefulItem.Default result ->
                         comp<RadzenStack> {
                             "Orientation" => Orientation.Horizontal
+                            "JustifyContent" => JustifyContent.Center
+                            "AlignItems" => AlignItems.Center
                             
-                            concat {
-                                text $"result: {result.Task.Id}"
-                                text $"timestamp: {result.Task.Timestamp}"
-                                text $"prompt: {result.Task.Prompt}"
-                                text $"aspect ratio: {result.Task.AspectRatio}"
+                            comp<RadzenStack> {
+                                "Orientation" => Orientation.Vertical
+                                "JustifyContent" => JustifyContent.Center
+                                "AlignItems" => AlignItems.Center
+                                "Gap" => "0.5rem"
+                                
+                                match result.Task.Prompt.Inspiration with
+                                | None -> Node.Empty ()
+                                | Some inspiration ->
+                                    comp<FunSharp.Blazor.Components.Image> {
+                                        "ImageUrl" => inspiration.ImageUrl
+                                        "ClickUrl" => Some inspiration.Url
+                                    }
+                                        
+                                comp<RadzenStack> {
+                                    "Orientation" => Orientation.Horizontal
+                                    "Gap" => "0.2rem"
+                                    
+                                    for imagePath in result.Images do
+                                        
+                                        let imageUrl =
+                                            imagePath
+                                            |> String.split '/'
+                                            |> List.last
+                                            |> fun x -> $"http://127.0.0.1:5123/automated/{x}"
+                                            |> Uri
+                                            
+                                        comp<FunSharp.Blazor.Components.Image> {
+                                            "ImageUrl" => Some imageUrl
+                                        }
+                                }
                             }
                             
-                            [ for image in result.Images do text image ]
-                            |> Helpers.renderList
+                            comp<RadzenStack> {
+                                "Orientation" => Orientation.Vertical
+                                "Gap" => "0.2rem"
+                                
+                                div { $"{result.Timestamp}" }
+                                div { $"{result.Task.Prompt.Text}" }
+                            }
                         }
                 )
                 |> Helpers.renderArray

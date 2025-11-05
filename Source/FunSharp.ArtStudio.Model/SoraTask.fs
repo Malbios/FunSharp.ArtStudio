@@ -6,7 +6,7 @@ open FunSharp.OpenAI.Api.Model.Sora
 type SoraTask = {
     Id: Guid
     Timestamp: DateTimeOffset
-    Prompt: string
+    Prompt: Prompt
     AspectRatio: AspectRatio
 }
 

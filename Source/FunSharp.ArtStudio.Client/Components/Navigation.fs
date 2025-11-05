@@ -59,7 +59,7 @@ module Navigation =
             | "/add-inspiration" -> fun () -> ()
             | "/inspirations" -> fun () -> dispatch LoadInspirations
             | "/prompts" -> fun () -> dispatch LoadPrompts
-            | "/sora-tasks" -> fun () -> dispatch LoadSoraTasks; dispatch LoadSoraResults
+            | "/sora" -> fun () -> dispatch LoadSoraTasks; dispatch LoadSoraResults
             | "/local-deviations" -> fun () -> dispatch LoadLocalDeviations
             | "/stashed-deviations" -> fun () -> dispatch LoadStashedDeviations
             | "/published-deviations" -> fun () -> dispatch LoadPublishedDeviations

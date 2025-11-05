@@ -2,17 +2,16 @@
 open System.IO
 open System.Net.Http
 open System.Text.Json
-open FunSharp.ArtStudio.Server.Helpers
 open FunSharp.Common
 open FunSharp.Common.JsonSerializer
 open FunSharp.Data
 open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.Api.Model
+open FunSharp.OpenAI.Api.Sora
+open FunSharp.OpenAI.Api.Model.Sora
 open FunSharp.ArtStudio.Model
 open FunSharp.ArtStudio.Utilities
-open FunSharp.OpenAI.Api.Model.Sora
-open FunSharp.OpenAI.Api.Sora
-open Microsoft.Extensions.Logging
+open FunSharp.ArtStudio.Server.Helpers
 
 let adHocTest () =
     
@@ -279,8 +278,7 @@ let genImageTest () =
         baking a ton of "chocolate chip cookies"
         """
         
-    let loggerFactory = new LoggerFactory()
-    let client = new Client(Logger<Client>(loggerFactory))
+    let client = new Client()
     
     let result =
         client.UpdateAuthTokens()
@@ -290,12 +288,10 @@ let genImageTest () =
     printfn $"{result}"
             
     (client :> IDisposable).Dispose()
-    loggerFactory.Dispose()
     
 let checkTaskTest () =
     
-    let loggerFactory = new LoggerFactory()
-    let client = new Client(Logger<Client>(loggerFactory))
+    let client = new Client()
     
     let result =
         client.UpdateAuthTokens()
@@ -305,12 +301,10 @@ let checkTaskTest () =
     printfn $"{result}"
             
     (client :> IDisposable).Dispose()
-    loggerFactory.Dispose()
     
 let getTasksTest () =
     
-    let loggerFactory = new LoggerFactory()
-    let client = new Client(Logger<Client>(loggerFactory))
+    let client = new Client()
     
     let result =
         client.UpdateAuthTokens()
@@ -320,12 +314,10 @@ let getTasksTest () =
     printfn $"%A{result}"
             
     (client :> IDisposable).Dispose()
-    loggerFactory.Dispose()
     
 let getTasksWithGenerationsTest () =
     
-    let loggerFactory = new LoggerFactory()
-    let client = new Client(Logger<Client>(loggerFactory))
+    let client = new Client()
     
     let result =
         client.UpdateAuthTokens()
@@ -335,12 +327,10 @@ let getTasksWithGenerationsTest () =
     printfn $"%A{result |> Array.filter (fun x -> x.generations.Length > 0)}"
             
     (client :> IDisposable).Dispose()
-    loggerFactory.Dispose()
     
 let fullProcessTest () =
     
-    let loggerFactory = new LoggerFactory()
-    let client = new Client(Logger<Client>(loggerFactory))
+    let client = new Client()
     
     let prompt = "a beautiful couple is camping out in the woods at night, pov from across the campfire, hyperrealistic"
     
@@ -354,8 +344,22 @@ let fullProcessTest () =
             printfn $"error: {error}"
             
         (client :> IDisposable).Dispose()
-        loggerFactory.Dispose()
     }
+    
+let tasksCleanup () =
+    
+    let realDatabasePath = @"C:\Files\FunSharp.DeviantArt\persistence.db"
+    
+    use persistence = new NewLiteDbPersistence(realDatabasePath) :> IPersistence
+    
+    let soraTasks = persistence.FindAll<SoraTask>(dbKey_BackgroundTasks)
+    
+    for soraTask in soraTasks do
+        let result = persistence.Delete(dbKey_BackgroundTasks, soraTask.Id.ToString())
+        printfn $"{result}"
+        persistence.Insert(dbKey_BackgroundTasks, soraTask.Id.ToString(), soraTask |> BackgroundTask.Sora)
+        
+    printfn "cleanup is done"
 
 [<EntryPoint>]
 let main _ =
@@ -381,6 +385,8 @@ let main _ =
     
     // getTasksWithGenerationsTest ()
     
-    // fullProcessTest () |> Async.RunSynchronously
+    fullProcessTest () |> Async.RunSynchronously
+    
+    // tasksCleanup ()
     
     0

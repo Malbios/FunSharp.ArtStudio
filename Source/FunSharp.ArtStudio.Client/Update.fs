@@ -3,6 +3,7 @@
 open System
 open System.Web
 open FunSharp.ArtStudio.Client.Model.AddInspiration
+open FunSharp.OpenAI.Api.Model.Sora
 open Microsoft.Extensions.Logging
 open Elmish
 open FunSharp.Common
@@ -84,8 +85,6 @@ module Update =
         inspirationUrl.ToString()
         |> HttpUtility.HtmlEncode
         |> Http.putString client $"{apiRoot}/local/inspiration"
-        |> Async.bind Http.contentAsString
-        |> Async.map JsonSerializer.deserialize<Inspiration>
         
     let private addPrompt client promptText =
         
@@ -114,7 +113,7 @@ module Update =
         
     let private inspiration2Prompt client (inspiration: Inspiration, promptText: string) =
         
-        { Inspiration = inspiration.Url; Text = promptText }
+        { InspirationId = inspiration.Url; Text = promptText }
         |> Http.postObject client $"{apiRoot}/inspiration2prompt"
         |> Async.bind Http.contentAsString
         |> Async.map JsonSerializer.deserialize<Prompt>
@@ -126,12 +125,19 @@ module Update =
         |> Async.bind Http.contentAsString
         |> Async.map (JsonSerializer.deserialize<Uri array> >> Array.head)
         |> Async.bind (fun imageUrl ->
-            { Prompt = prompt.Id; ImageUrl = imageUrl }
+            { PromptId = prompt.Id; ImageUrl = imageUrl }
             |> Http.postObject client $"{apiRoot}/prompt2deviation"
             |> Async.bind Http.contentAsString
             |> Async.map JsonSerializer.deserialize<LocalDeviation>
             |> Async.map (fun local -> prompt, local)
         )
+        
+    let private prompt2SoraTask client (prompt: Prompt, aspectRatio: AspectRatio) =
+        
+        { PromptId = prompt.Id; AspectRatio = aspectRatio }
+        |> Http.postObject client $"{apiRoot}/prompt2sora"
+        |> Async.bind Http.contentAsString
+        |> Async.map JsonSerializer.deserialize<SoraTask>
         
     let private stashDeviation client (local: LocalDeviation) =
         
@@ -283,6 +289,7 @@ module Update =
         | AddInspiration ->
             
             let add = addInspiration client
+            let succeeded _ = AddInspirationDone
             let failed ex = AddInspirationFailed ex
             
             let cmd = 
@@ -290,16 +297,15 @@ module Update =
                 | None ->
                     InvalidOperationException("no url set") |> failed |> Cmd.ofMsg
                 | Some url ->
-                    Cmd.OfAsync.either add url AddedInspiration failed
+                    Cmd.OfAsync.either add url succeeded failed
                     
             { model with AddInspirationState.IsBusy = true; AddInspirationState.Url = None }, cmd
             
-        | AddedInspiration inspiration ->
+        | AddInspirationDone ->
             
             let subState = { model.AddInspirationState with IsBusy = false; Url = None; Error = None }
-            let inspirations = model.Inspirations |> LoadableStatefulItems.withNew inspiration
             
-            { model with Inspirations = inspirations; AddInspirationState = subState }, Cmd.none
+            { model with AddInspirationState = subState }, Cmd.none
             
         | AddInspirationFailed error ->
             
@@ -450,15 +456,22 @@ module Update =
             
             { model with Prompts = prompts }, Cmd.none
             
-        | Prompt2SoraTask(prompt, aspectRatio) ->
+        | Prompt2SoraTask (prompt, aspectRatio) ->
             
-            failwith "todo" // TODO
+            let prompts = model.Prompts |> LoadableStatefulItems.setBusy (fun x ->  x.Id = prompt.Id)
         
-        | Prompt2SoraTaskDone(prompt, soraTask) ->
+            let prompt2SoraTask = prompt2SoraTask client
+            let failed ex = Prompt2SoraTaskFailed (prompt, ex)
+            
+            let cmd = Cmd.OfAsync.either prompt2SoraTask (prompt, aspectRatio) Prompt2SoraTaskDone failed
+            
+            { model with Prompts = prompts }, cmd
+        
+        | Prompt2SoraTaskDone task->
             
             let batch = Cmd.batch [
-                RemovePrompt prompt |> Cmd.ofMsg
-                AddedSoraTask soraTask |> Cmd.ofMsg
+                RemovePrompt task.Prompt |> Cmd.ofMsg
+                AddedSoraTask task |> Cmd.ofMsg
             ]
             
             model, batch
@@ -474,9 +487,9 @@ module Update =
         
         | AddedSoraTask task ->
             
-            let currentOffset = LoadableStatefulItemsPage.offset model.LocalDeviations
+            let tasks = model.SoraTasks |> LoadableStatefulItems.withNew task
             
-            model, LoadLocalDeviationsPage (currentOffset, Helpers.localDeviationsPageSize) |> Cmd.ofMsg
+            { model with SoraTasks = tasks }, Cmd.none
         
         | AddedLocalDeviation _ ->
             

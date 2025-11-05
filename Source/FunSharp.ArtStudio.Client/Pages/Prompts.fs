@@ -6,6 +6,7 @@ open System.Threading.Tasks
 open Bolero
 open Bolero.Html
 open FunSharp.ArtStudio.Model
+open FunSharp.OpenAI.Api.Model.Sora
 open Microsoft.AspNetCore.Components
 open Microsoft.AspNetCore.Components.Forms
 open Radzen
@@ -63,6 +64,15 @@ type Prompts() =
                 | :? string as promptText -> Message.UpdatePrompt { prompt with Text = promptText } |> dispatch
                 | _ -> ()
             )
+            
+        let openToSoraDialog (prompt: Prompt) =
+            
+            ToSoraDialog.OpenAsync(this.DialogService, prompt)
+            |> Task.map (
+                function
+                | :? AspectRatio as aspectRatio -> Message.Prompt2SoraTask (prompt, aspectRatio) |> dispatch
+                | _ -> ()
+            )
         
         comp<RadzenStack> {
             "Orientation" => Orientation.Vertical
@@ -118,6 +128,13 @@ type Prompts() =
                                     ButtonProps.defaults with
                                         Text = "Edit Prompt"
                                         Action = ClickAction.Async <| fun () -> openEditPromptDialog prompt
+                                        IsBusy = isBusy
+                                }
+                                
+                                Button.render <| {
+                                    ButtonProps.defaults with
+                                        Text = "To Sora"
+                                        Action = ClickAction.Async <| fun () -> openToSoraDialog prompt
                                         IsBusy = isBusy
                                 }
                                 

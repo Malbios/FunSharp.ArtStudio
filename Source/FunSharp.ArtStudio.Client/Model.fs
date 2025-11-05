@@ -35,13 +35,18 @@ module AddInspiration =
         }
         
 type Inspiration2Prompt = {
-    Inspiration: Uri
+    InspirationId: Uri
     Text: string
 }
 
 type Prompt2LocalDeviation = {
-    Prompt: Guid
+    PromptId: Guid
     ImageUrl: Uri
+}
+
+type Prompt2SoraTask = {
+    PromptId: Guid
+    AspectRatio: AspectRatio
 }
 
 [<RequireQualifiedAccess>]
@@ -291,7 +296,7 @@ type Message =
     | ChangeNewInspirationUrl of url: string
     
     | AddInspiration
-    | AddedInspiration of Inspiration
+    | AddInspirationDone
     | AddInspirationFailed of error: exn
     
     | RemoveInspiration of Inspiration
@@ -317,7 +322,7 @@ type Message =
     | Prompt2LocalDeviationFailed of Prompt * Image * error: exn
     
     | Prompt2SoraTask of Prompt * AspectRatio
-    | Prompt2SoraTaskDone of Prompt * SoraTask
+    | Prompt2SoraTaskDone of SoraTask
     | Prompt2SoraTaskFailed of Prompt * error: exn
     
     | AddedSoraTask of SoraTask

@@ -55,6 +55,25 @@ module WebParts =
             |> asOkJsonResponse ctx
         |> tryCatch (nameof getPrompts)
         
+    let rec getSoraTasks (persistence: IPersistence) =
+        
+        fun ctx ->
+            persistence.FindAll<BackgroundTask>(dbKey_BackgroundTasks)
+            |> Array.choose (
+                function
+                | BackgroundTask.Inspiration _ -> None
+                | BackgroundTask.Sora soraTask -> Some soraTask
+            )
+            |> asOkJsonResponse ctx
+        |> tryCatch (nameof getSoraTasks)
+        
+    let rec getSoraResults (persistence: IPersistence) =
+        
+        fun ctx ->
+            persistence.FindAll<SoraResult>(dbKey_SoraResults)
+            |> asOkJsonResponse ctx
+        |> tryCatch (nameof getSoraResults)
+        
     let private sortLocalDeviations (options: SortOptions) (items: LocalDeviation array) =
         
         match options.Property, options.Direction with
@@ -106,41 +125,24 @@ module WebParts =
                 return! items |> asOkJsonResponse ctx
         }
         |> tryCatch (nameof putImages)
-        
-    let processNewInspiration (serverAddress: string) (serverPort: int) (persistence: IPersistence) (apiClient: Client) (url: Uri) = async {
-        let! id = apiClient.GetDeviationId url |> Async.getOrFail
-        let! deviation = apiClient.GetDeviation id |> Async.getOrFail
-        
-        let fileName = $"{id}.jpg"
-        
-        let! imageContent = apiClient.DownloadFile(deviation.preview.src)
-        do! File.writeAllBytesAsync $"{imagesLocation}/{fileName}" imageContent
-        
-        let imageUrl = imageUrl serverAddress serverPort fileName
-        
-        let inspiration = {
-            Url = url
-            Timestamp = DateTimeOffset.Now
-            ImageUrl = Some imageUrl
-        }
-        
-        persistence.Insert(dbKey_Inspirations, url, inspiration)
-        
-        return inspiration
-    }
-        
-    let rec putInspiration (serverAddress: string) (serverPort: int) (persistence: IPersistence) (apiClient: Client) =
+    
+    let rec putInspiration (persistence: IPersistence) =
         
         fun ctx ->
             let url = ctx.request |> asString |> HttpUtility.HtmlDecode |> Uri
             
+            // TODO: try to make urlAlreadyExists faster
             match urlAlreadyExists persistence url with
             | true ->
-                badRequestMessage ctx (nameof putInspiration) "This inspiration url already has a published deviation."
+                badRequestMessage ctx (nameof putInspiration) "This inspiration url already exists in the database."
                 
             | false ->
-                processNewInspiration serverAddress serverPort persistence apiClient url
-                |> asOkJsonResponse ctx
+                let newInspirationTask = url.ToString() |> BackgroundTask.Inspiration
+                
+                printfn $"<{DateTime.Now}> adding new inspiration url task: {url}"
+                persistence.Insert(dbKey_BackgroundTasks, url.ToString(), newInspirationTask)
+                
+                () |> asOkJsonResponse ctx
         |> tryCatch (nameof putInspiration)
         
     let rec patchPrompt (persistence: IPersistence) =
@@ -176,7 +178,7 @@ module WebParts =
         fun ctx ->
             let payload = ctx.request |> asJson<Inspiration2Prompt>
             
-            let inspiration = persistence.Find(dbKey_Inspirations, payload.Inspiration.ToString()) |> Option.get
+            let inspiration = persistence.Find(dbKey_Inspirations, payload.InspirationId.ToString()) |> Option.get
             
             let prompt: Prompt = {
                 Id = Guid.NewGuid()
@@ -196,7 +198,7 @@ module WebParts =
         fun ctx ->
             let payload = ctx.request |> asJson<Prompt2LocalDeviation>
             
-            let prompt = persistence.Find(dbKey_Prompts, payload.Prompt.ToString()) |> Option.get
+            let prompt = persistence.Find(dbKey_Prompts, payload.PromptId.ToString()) |> Option.get
             
             let deviation : LocalDeviation = {
                 ImageUrl = payload.ImageUrl
@@ -211,12 +213,32 @@ module WebParts =
             deviation |> asOkJsonResponse ctx
         |> tryCatch (nameof prompt2Deviation)
         
+    let rec prompt2SoraTask (persistence: IPersistence) =
+        
+        fun ctx ->
+            let payload = ctx.request |> asJson<Prompt2SoraTask>
+            
+            let prompt = persistence.Find(dbKey_Prompts, payload.PromptId.ToString()) |> Option.get
+            
+            let task = {
+                Id = Guid.NewGuid()
+                Timestamp = DateTimeOffset.Now
+                Prompt = prompt
+                AspectRatio = payload.AspectRatio
+            }
+            
+            persistence.Delete(dbKey_Prompts, prompt.Id.ToString()) |> ignore
+            persistence.Insert(dbKey_BackgroundTasks, task.Id.ToString(), task |> BackgroundTask.Sora)
+            
+            task |> asOkJsonResponse ctx
+        |> tryCatch (nameof prompt2SoraTask)
+        
     let rec prompt2Stash (persistence: IPersistence) =
         
         fun ctx ->
             let payload = ctx.request |> asJson<Prompt2LocalDeviation>
             
-            let prompt = persistence.Find(dbKey_Prompts, payload.Prompt.ToString()) |> Option.get
+            let prompt = persistence.Find(dbKey_Prompts, payload.PromptId.ToString()) |> Option.get
             
             let deviation : LocalDeviation = {
                 ImageUrl = payload.ImageUrl
