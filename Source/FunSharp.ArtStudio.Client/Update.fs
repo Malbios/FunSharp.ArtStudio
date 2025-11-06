@@ -191,6 +191,8 @@ module Update =
                 Cmd.ofMsg LoadSettings
                 Cmd.ofMsg LoadInspirations
                 Cmd.ofMsg LoadPrompts
+                Cmd.ofMsg LoadSoraTasks
+                Cmd.ofMsg LoadSoraResults
                 Cmd.ofMsg LoadLocalDeviations
                 Cmd.ofMsg LoadStashedDeviations
                 Cmd.ofMsg LoadPublishedDeviations
@@ -252,10 +254,6 @@ module Update =
         | LoadedSoraResults results ->
             
             { model with SoraResults = results }, Cmd.none
-            
-        | LoadSoraTasksAndResults ->
-            
-            model, Cmd.batch [ Cmd.ofMsg LoadSoraTasks; Cmd.ofMsg LoadSoraResults ]
         
         | LoadLocalDeviations ->
             
@@ -382,6 +380,41 @@ module Update =
             
             { model with Inspirations = inspirations }, Cmd.none
             
+        | Inspiration2SoraTask (inspiration, promptText, aspectRatio) ->
+            
+            let inspirations = model.Inspirations |> LoadableStatefulItems.setBusy (Inspiration.identifier inspiration)
+            
+            let action () = async {
+                let! _, prompt = inspiration2Prompt client (inspiration, promptText)
+                let! task = prompt2SoraTask client (prompt, aspectRatio)
+                
+                return inspiration, task
+            }
+            
+            let failed ex = Inspiration2SoraTaskFailed (inspiration, promptText, ex)
+            
+            let cmd = Cmd.OfAsync.either action () Inspiration2SoraTaskDone failed
+            
+            { model with Inspirations = inspirations }, cmd
+        
+        | Inspiration2SoraTaskDone (inspiration, task) ->
+            
+            let batch = Cmd.batch [
+                RemoveInspiration inspiration |> Cmd.ofMsg
+                AddedSoraTask task |> Cmd.ofMsg
+            ]
+            
+            model, batch
+        
+        | Inspiration2SoraTaskFailed (inspiration, promptText, error) ->
+            
+            let inspirations = model.Inspirations |> LoadableStatefulItems.setDefault (Inspiration.identifier inspiration)
+            
+            printfn $"inspiration2SoraTask failed for: {Inspiration.keyOf inspiration} -> {promptText}"
+            printfn $"error: {error}"
+            
+            { model with Inspirations = inspirations }, Cmd.none
+            
         | AddPrompt promptText ->
             
             let add = addPrompt client
@@ -398,6 +431,32 @@ module Update =
         | AddPromptFailed (promptText, error) ->
             
             printfn $"adding prompt failed for: {promptText}"
+            printfn $"error: {error}"
+            
+            model, Cmd.none
+            
+        | NewPrompt2SoraTask (promptText, aspectRatio) ->
+            
+            let action () = async {
+                let! prompt = addPrompt client promptText
+                let! task = prompt2SoraTask client (prompt, aspectRatio)
+                
+                return task
+            }
+            
+            let failed ex = NewPrompt2SoraTaskFailed (promptText, ex)
+            
+            let cmd = Cmd.OfAsync.either action () NewPrompt2SoraTaskDone failed
+            
+            model, cmd
+        
+        | NewPrompt2SoraTaskDone task ->
+            
+            model, Cmd.ofMsg (AddedSoraTask task)
+        
+        | NewPrompt2SoraTaskFailed (promptText, error) ->
+            
+            printfn $"newPrompt2SoraTask failed for: {promptText}"
             printfn $"error: {error}"
             
             model, Cmd.none
@@ -543,6 +602,14 @@ module Update =
             let soraResults = model.SoraResults |> LoadableStatefulItems.without (SoraResult.identifier result)
                 
             { model with SoraResults = soraResults }, Cmd.none
+            
+        | ForgetSoraResult result ->
+            
+            let action () =
+                $"{apiRoot}/local/sora-result?key={SoraResult.keyOf result |> fun x -> x.ToString() |> HttpUtility.UrlEncode}"
+                |> forget client result
+            
+            model, Cmd.OfAsync.perform action () RemoveSoraResult
         
         | SoraResult2LocalDeviation (result, pickedIndex) ->
             

@@ -11,18 +11,6 @@ open FunSharp.ArtStudio.Client.View
 
 type ClientApplication() =
     inherit ProgramComponent<State, Message>()
-    
-    let startBackgroundReload dispatch =
-        
-        let rec loop () =
-            async {
-                printfn "dispatching LoadSoraTasksAndResults..."
-                dispatch LoadSoraTasksAndResults
-                do! Async.Sleep (TimeSpan.FromSeconds(30).TotalMilliseconds |> int)
-                return! loop ()
-            }
-            
-        Async.StartImmediate (loop ())
 
     override _.CssScope = CssScopes.``FunSharp.ArtStudio.Client``
     
@@ -40,7 +28,7 @@ type ClientApplication() =
 
     override this.Program =
         
-        let initialState _ = State.empty, Cmd.batch [ Cmd.ofMsg LoadAll; Cmd.ofEffect startBackgroundReload ]
+        let initialState _ = State.empty, Cmd.ofMsg LoadAll
 
         let update = Update.update this.Logger this.HttpClient
         

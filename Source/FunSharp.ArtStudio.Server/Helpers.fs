@@ -309,6 +309,8 @@ module Helpers =
         fun ctx ->
             let key = getKey ctx
             
+            // printfn $"{id}: trying to delete {key} in {dbKey}..."
+            
             match persistence.Find<string, 'T>(dbKey, key) with
             | None -> ()
             

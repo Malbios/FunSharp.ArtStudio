@@ -55,6 +55,8 @@ type Sora() =
                     
                 | StatefulItem.Default result ->
                     comp<RadzenStack> {
+                        attr.style (if result.Images.Length < 2 || result.Images.Length > 2 then "" else "")
+                        
                         "Orientation" => Orientation.Vertical
                         "JustifyContent" => JustifyContent.Center
                         "AlignItems" => AlignItems.Center
@@ -62,7 +64,12 @@ type Sora() =
                         
                         inspirationWidget result.Task.Prompt.Inspiration
                             
-                        Button.renderSimple "Retry" (fun () -> Message.RetrySoraResult result |> dispatch)
+                        comp<RadzenStack> {
+                            "Orientation" => Orientation.Horizontal
+                            
+                            Button.renderSimple "Retry" (fun () -> Message.RetrySoraResult result |> dispatch)
+                            Button.renderSimple "Forget" (fun () -> Message.ForgetSoraResult result |> dispatch)
+                        }
                         
                         comp<RadzenStack> {
                             "Orientation" => Orientation.Horizontal
@@ -124,7 +131,7 @@ type Sora() =
             )
             |> Helpers.renderArray
             |> Deviations.render
-    
+            
     override _.CssScope = CssScopes.``FunSharp.ArtStudio.Client``
     
     override this.View model dispatch =

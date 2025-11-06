@@ -368,6 +368,10 @@ module WebParts =
         
         deleteItem<Prompt> persistence dbKey_Prompts (nameof deletePrompt)
 
+    let rec deleteSoraResult (persistence: IPersistence) =
+        
+        deleteItem<SoraResult> persistence dbKey_SoraResults (nameof deleteSoraResult)
+
     let rec deleteLocalDeviation (persistence: IPersistence) =
         
         deleteItem<LocalDeviation> persistence dbKey_LocalDeviations (nameof deleteLocalDeviation)

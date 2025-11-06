@@ -2,6 +2,7 @@
 
 open System
 open System.Collections.Generic
+open FunSharp.OpenAI.Api.Model.Sora
 open Microsoft.AspNetCore.Components
 open Bolero
 open Bolero.Html
@@ -77,7 +78,19 @@ type PromptDialog() =
             comp<RadzenStack> {
                 "Orientation" => Orientation.Horizontal
                 
-                Button.renderSimple "Ok" <| fun () -> this.DialogService.Close(this.Prompt)
+                let landscape = PromptDialogResult.Inspiration2SoraTask (this.Prompt, AspectRatio.Landscape)
+                let square = PromptDialogResult.Inspiration2SoraTask (this.Prompt, AspectRatio.Square)
+                let portrait = PromptDialogResult.Inspiration2SoraTask (this.Prompt, AspectRatio.Portrait)
+                
+                Button.renderSimple "Portrait (2:3)" <| fun () -> this.DialogService.Close(portrait)
+                Button.renderSimple "Square (1:1)" <| fun () -> this.DialogService.Close(square)
+                Button.renderSimple "Landscape (3:2)" <| fun () -> this.DialogService.Close(landscape)
+            }
+            
+            comp<RadzenStack> {
+                "Orientation" => Orientation.Horizontal
+                
+                Button.renderSimple "Ok" <| fun () -> this.DialogService.Close(PromptDialogResult.Inspiration2Prompt this.Prompt)
                 Button.renderSimple "Cancel" <| fun () -> this.DialogService.Close(null)
             }
         }

@@ -75,7 +75,6 @@ module BackgroundTasks =
         let pendingTasks =
             persistence.FindAll<BackgroundTask>(dbKey_BackgroundTasks)
             |> Array.choose (function Inspiration url -> Some url | _ -> None)
-            |> Array.sort
         
         let cleanup (key: string) =
             persistence.Delete(dbKey_BackgroundTasks, key) |> ignore

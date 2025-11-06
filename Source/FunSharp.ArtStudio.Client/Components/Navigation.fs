@@ -71,7 +71,12 @@ module Navigation =
             
             PromptDialog.OpenAsync(dialogService, model.Settings, "New Prompt")
             |> Task.map (function
-                | :? string as promptText -> Message.AddPrompt promptText |> dispatch
+                | :? PromptDialogResult as result ->
+                    match result with
+                    | PromptDialogResult.Inspiration2Prompt promptText ->
+                        Message.AddPrompt promptText |> dispatch
+                    | PromptDialogResult.Inspiration2SoraTask (promptText, aspectRatio) ->
+                        Message.NewPrompt2SoraTask (promptText, aspectRatio) |> dispatch
                 | _ -> ()
             )
         

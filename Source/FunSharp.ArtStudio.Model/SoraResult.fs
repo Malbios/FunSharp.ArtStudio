@@ -14,7 +14,7 @@ module SoraResult =
     
     let keyOf result =
         
-        SoraTask.keyOf result.Task
+        result.Id
         
     let identifier sr1 sr2 =
         

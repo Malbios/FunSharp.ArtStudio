@@ -23,8 +23,8 @@ module ServerStartup =
     let apiBase = "/api/v1"
     
     let randomDelay_Fast = (
-        TimeSpan.FromSeconds(30).TotalMilliseconds |> int,
-        TimeSpan.FromSeconds(30).TotalMilliseconds |> int
+        TimeSpan.FromSeconds(10).TotalMilliseconds |> int,
+        TimeSpan.FromSeconds(10).TotalMilliseconds |> int
     )
     
     let randomDelay_Slow = (
@@ -78,6 +78,7 @@ module ServerStartup =
             
             DELETE >=> path $"{apiBase}/local/inspiration" >=> deleteInspiration persistence
             DELETE >=> path $"{apiBase}/local/prompt" >=> deletePrompt persistence
+            DELETE >=> path $"{apiBase}/local/sora-result" >=> deleteSoraResult persistence
             DELETE >=> path $"{apiBase}/local/deviation" >=> deleteLocalDeviation persistence
             DELETE >=> path $"{apiBase}/stash" >=> deleteStashedDeviation persistence
             

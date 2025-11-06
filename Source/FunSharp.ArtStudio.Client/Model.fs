@@ -58,6 +58,10 @@ type SoraResult2LocalDeviation = {
     PickedIndex: int
 }
 
+type PromptDialogResult =
+    | Inspiration2Prompt of promptText: string
+    | Inspiration2SoraTask of promptText: string * AspectRatio
+
 [<RequireQualifiedAccess>]
 type StatefulItem<'T> =
     | Default of 'T
@@ -292,8 +296,6 @@ type Message =
     | LoadSoraResults
     | LoadedSoraResults of Loadable<StatefulItem<SoraResult> array>
     
-    | LoadSoraTasksAndResults
-    
     | LoadLocalDeviations
     | LoadLocalDeviationsPage of offset: int * limit: int
     | LoadedLocalDeviationsPage of Loadable<Page<StatefulItem<LocalDeviation>>>
@@ -317,9 +319,17 @@ type Message =
     | Inspiration2PromptDone of Inspiration * Prompt
     | Inspiration2PromptFailed of Inspiration * promptText: string * error: exn
     
+    | Inspiration2SoraTask of Inspiration * promptText: string * AspectRatio
+    | Inspiration2SoraTaskDone of Inspiration * task: SoraTask
+    | Inspiration2SoraTaskFailed of Inspiration * promptText: string * error: exn
+    
     | AddPrompt of promptText: string
     | AddedPrompt of Prompt
     | AddPromptFailed of promptText: string * error: exn
+    
+    | NewPrompt2SoraTask of promptText: string * AspectRatio
+    | NewPrompt2SoraTaskDone of task: SoraTask
+    | NewPrompt2SoraTaskFailed of promptText: string * error: exn
     
     | UpdatePrompt of Prompt
     | UpdatedPrompt of Prompt
@@ -343,6 +353,7 @@ type Message =
     | RetrySoraResultFailed of result: SoraResult * error: exn
     
     | RemoveSoraResult of result: SoraResult
+    | ForgetSoraResult of result: SoraResult
     
     | SoraResult2LocalDeviation of result: SoraResult * pickedIndex: int
     | SoraResult2LocalDeviationDone of result: SoraResult * local: LocalDeviation

@@ -33,7 +33,12 @@ type Inspirations() =
                 PromptDialog.OpenAsync(this.DialogService, model.Settings, "Inspiration2Prompt", text)
                 |> Task.map (
                     function
-                    | :? string as promptText -> Message.Inspiration2Prompt (inspiration, promptText) |> dispatch
+                    | :? PromptDialogResult as result ->
+                        match result with
+                        | PromptDialogResult.Inspiration2Prompt promptText ->
+                            Message.Inspiration2Prompt (inspiration, promptText) |> dispatch
+                        | PromptDialogResult.Inspiration2SoraTask (promptText, aspectRatio) ->
+                            Message.Inspiration2SoraTask (inspiration, promptText, aspectRatio) |> dispatch
                     | _ -> ()
                 )
                 |> Async.AwaitTask
