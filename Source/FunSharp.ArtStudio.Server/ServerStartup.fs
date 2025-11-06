@@ -23,8 +23,8 @@ module ServerStartup =
     let apiBase = "/api/v1"
     
     let randomDelay_Fast = (
-        TimeSpan.FromSeconds(3).TotalMilliseconds |> int,
-        TimeSpan.FromSeconds(9).TotalMilliseconds |> int
+        TimeSpan.FromSeconds(30).TotalMilliseconds |> int,
+        TimeSpan.FromSeconds(30).TotalMilliseconds |> int
     )
     
     let randomDelay_Slow = (
@@ -42,7 +42,7 @@ module ServerStartup =
     }
     
     let routing persistence deviantArtClient =
-            
+        
         allowCors >=> choose [
             corsPreflight
             

@@ -170,7 +170,7 @@ module Helpers =
         |> Array.find(fun x -> x.name = galleryName)
         |> _.id
         
-    let urlAlreadyExists (persistence: IPersistence) (url: Uri) =
+    let urlAlreadyExists (persistence: IPersistence) (url: Uri) = // TODO: try to make this faster
         
         let inspirationHasUrl inspiration =
             inspiration.Url.ToString() = url.ToString()

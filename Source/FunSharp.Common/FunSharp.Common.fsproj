@@ -19,6 +19,7 @@
         <Compile Include="File.fs" />
         <Compile Include="Uri.fs" />
         <Compile Include="Int.fs" />
+        <Compile Include="BackgroundWorker.fs" />
     </ItemGroup>
 
     <ItemGroup>

@@ -12,23 +12,28 @@ module BackgroundTasks =
         
         // printfn $"starting to process new inspiration task: {url}"
         
-        let! id = deviantArtClient.GetDeviationId url |> Async.getOrFail
-        let! deviation = deviantArtClient.GetDeviation id |> Async.getOrFail
-        
-        let fileName = $"{id}.jpg"
-        
-        let! imageContent = deviantArtClient.DownloadFile(deviation.preview.src)
-        do! File.writeAllBytesAsync $"{imagesLocation}/{fileName}" imageContent
-        
-        let imageUrl = imageUrl serverAddress serverPort fileName
-        
-        let inspiration = {
-            Url = url
-            Timestamp = DateTimeOffset.Now
-            ImageUrl = Some imageUrl
-        }
-        
-        persistence.Insert(dbKey_Inspirations, url, inspiration)
+        match urlAlreadyExists persistence url with
+        | true ->
+            printfn $"This inspiration url already exists in the database: {url}"
+            
+        | false ->
+            let! id = deviantArtClient.GetDeviationId url |> Async.getOrFail
+            let! deviation = deviantArtClient.GetDeviation id |> Async.getOrFail
+            
+            let fileName = $"{id}.jpg"
+            
+            let! imageContent = deviantArtClient.DownloadFile(deviation.preview.src)
+            do! File.writeAllBytesAsync $"{imagesLocation}/{fileName}" imageContent
+            
+            let imageUrl = imageUrl serverAddress serverPort fileName
+            
+            let inspiration = {
+                Url = url
+                Timestamp = DateTimeOffset.Now
+                ImageUrl = Some imageUrl
+            }
+            
+            persistence.Insert(dbKey_Inspirations, url, inspiration)
         
         // printfn $"finished new inspiration task: {url}"
     }

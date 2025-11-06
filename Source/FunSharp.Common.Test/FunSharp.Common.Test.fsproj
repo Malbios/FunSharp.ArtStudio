@@ -9,6 +9,7 @@
     <ItemGroup>
         <Compile Include="StringTests.fs" />
         <Compile Include="JsonSerializer.Tests.fs" />
+        <Compile Include="BackgroundWorkerTests.fs" />
         <Compile Include="Program.fs"/>
     </ItemGroup>
 

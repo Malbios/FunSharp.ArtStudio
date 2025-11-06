@@ -137,18 +137,12 @@ module WebParts =
         fun ctx ->
             let url = ctx.request |> asString |> HttpUtility.HtmlDecode |> Uri
             
-            // TODO: try to make urlAlreadyExists faster
-            match urlAlreadyExists persistence url with
-            | true ->
-                badRequestMessage ctx (nameof putInspiration) "This inspiration url already exists in the database."
-                
-            | false ->
-                let newInspirationTask = url.ToString() |> BackgroundTask.Inspiration
-                
-                printfn $"<{DateTime.Now}> adding new inspiration url task: {url}"
-                persistence.Insert(dbKey_BackgroundTasks, url.ToString(), newInspirationTask)
-                
-                () |> asOkJsonResponse ctx
+            let newInspirationTask = url.ToString() |> BackgroundTask.Inspiration
+            
+            printfn $"<{DateTime.Now}> adding new inspiration url task: {url}"
+            persistence.Insert(dbKey_BackgroundTasks, url.ToString(), newInspirationTask)
+            
+            () |> asOkJsonResponse ctx
         |> tryCatch (nameof putInspiration)
         
     let rec patchPrompt (persistence: IPersistence) =
@@ -318,7 +312,7 @@ module WebParts =
                 let imagePath =
                     match key with
                     | s when s.Contains("automated") -> $"{automatedImagesLocation}\\{fileName}"
-                    | s -> $"{imagesLocation}\\{fileName}"
+                    | _ -> $"{imagesLocation}\\{fileName}"
                 
                 let mimeType = Helpers.mimeType imagePath
                 

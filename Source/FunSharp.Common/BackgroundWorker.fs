@@ -1,4 +1,4 @@
-﻿namespace FunSharp.ArtStudio.Server
+﻿namespace FunSharp.Common
 
 open System
 open System.Threading

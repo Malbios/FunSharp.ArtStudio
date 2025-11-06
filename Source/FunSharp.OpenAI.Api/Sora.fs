@@ -61,13 +61,18 @@ module Sora =
         |> Async.AwaitEvent
         |> Async.map (fun _ ->
             try
+                let output = output.ToString().Trim()
+                
                 if proc.ExitCode = 0 then
-                    printfn $"Script {scriptPath} is done!"
-                    printfn $"{output.ToString().Trim()}"
-                    output.ToString().Trim()
+                    match tryDeserialize<ErrorContainer> output with
+                    | Some error -> failwith $"Script {scriptPath} failed: {error.error.message}"
+                    | None ->
+                        printfn $"Script {scriptPath} is done!"
+                        printfn $"{output}"
+                        output
                 else
                     printfn $"Script {scriptPath} failed: {error.ToString()}"
-                    printfn $"{output.ToString().Trim()}"
+                    printfn $"{output}"
                     failwith (error.ToString())
             finally
                 proc.Dispose()
@@ -121,7 +126,7 @@ module Sora =
         | Some value, _ ->
             value
         | None, Some error ->
-            failwith $"{error.error.message}"
+            failwith $"error response: {error.error.message}"
         | _ ->
             failwith $"could not deserialize this value:\n\n{value}"
         
