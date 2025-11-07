@@ -64,7 +64,7 @@ module BackgroundTasks =
                 Id = Guid.NewGuid()
                 Timestamp = DateTimeOffset.Now
                 Task = task
-                Images = imageUrls
+                Images = imageUrls |> Array.append task.ExistingImages
             }
             
             persistence.Insert(dbKey_SoraResults, soraResult.Id, soraResult)
