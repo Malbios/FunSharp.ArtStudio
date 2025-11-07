@@ -35,9 +35,9 @@ type Inspirations() =
                     function
                     | :? PromptDialogResult as result ->
                         match result with
-                        | PromptDialogResult.Inspiration2Prompt promptText ->
+                        | PromptDialogResult.Prompt promptText ->
                             Message.Inspiration2Prompt (inspiration, promptText) |> dispatch
-                        | PromptDialogResult.Inspiration2SoraTask (promptText, aspectRatio) ->
+                        | PromptDialogResult.SoraTask (promptText, aspectRatio) ->
                             Message.Inspiration2SoraTask (inspiration, promptText, aspectRatio) |> dispatch
                     | _ -> ()
                 )

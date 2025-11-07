@@ -78,9 +78,9 @@ type PromptDialog() =
             comp<RadzenStack> {
                 "Orientation" => Orientation.Horizontal
                 
-                let landscape = PromptDialogResult.Inspiration2SoraTask (this.Prompt, AspectRatio.Landscape)
-                let square = PromptDialogResult.Inspiration2SoraTask (this.Prompt, AspectRatio.Square)
-                let portrait = PromptDialogResult.Inspiration2SoraTask (this.Prompt, AspectRatio.Portrait)
+                let landscape = PromptDialogResult.SoraTask (this.Prompt, AspectRatio.Landscape)
+                let square = PromptDialogResult.SoraTask (this.Prompt, AspectRatio.Square)
+                let portrait = PromptDialogResult.SoraTask (this.Prompt, AspectRatio.Portrait)
                 
                 Button.renderSimple "Portrait (2:3)" <| fun () -> this.DialogService.Close(portrait)
                 Button.renderSimple "Square (1:1)" <| fun () -> this.DialogService.Close(square)
@@ -90,7 +90,7 @@ type PromptDialog() =
             comp<RadzenStack> {
                 "Orientation" => Orientation.Horizontal
                 
-                Button.renderSimple "Ok" <| fun () -> this.DialogService.Close(PromptDialogResult.Inspiration2Prompt this.Prompt)
+                Button.renderSimple "Ok" <| fun () -> this.DialogService.Close(PromptDialogResult.Prompt this.Prompt)
                 Button.renderSimple "Cancel" <| fun () -> this.DialogService.Close(null)
             }
         }

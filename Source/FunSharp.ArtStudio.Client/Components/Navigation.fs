@@ -73,9 +73,9 @@ module Navigation =
             |> Task.map (function
                 | :? PromptDialogResult as result ->
                     match result with
-                    | PromptDialogResult.Inspiration2Prompt promptText ->
+                    | PromptDialogResult.Prompt promptText ->
                         Message.AddPrompt promptText |> dispatch
-                    | PromptDialogResult.Inspiration2SoraTask (promptText, aspectRatio) ->
+                    | PromptDialogResult.SoraTask (promptText, aspectRatio) ->
                         Message.NewPrompt2SoraTask (promptText, aspectRatio) |> dispatch
                 | _ -> ()
             )

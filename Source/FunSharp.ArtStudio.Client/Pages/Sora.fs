@@ -15,7 +15,8 @@ type Sora() =
     let inspirationWidget (inspiration: Inspiration option) =
         
         match inspiration with
-        | None -> Node.Empty ()
+        | None -> div { attr.style "width: 50px; height: 50px; background-color: grey;" }
+            
         | Some inspiration ->
             comp<RadzenStack> {
                 "Orientation" => Orientation.Vertical

@@ -145,6 +145,23 @@ module WebParts =
             () |> asOkJsonResponse ctx
         |> tryCatch (nameof putInspiration)
         
+    let rec addPrompt (persistence: IPersistence) =
+        
+        fun ctx ->
+            let payload = ctx.request |> asJson<AddPrompt>
+            
+            let prompt: Prompt = {
+                Id = Guid.NewGuid()
+                Timestamp = DateTimeOffset.Now
+                Inspiration = None
+                Text = payload.Text
+            }
+            
+            persistence.Insert(dbKey_Prompts, prompt.Id.ToString(), prompt)
+            
+            prompt |> asOkJsonResponse ctx
+        |> tryCatch (nameof addPrompt)
+        
     let rec patchPrompt (persistence: IPersistence) =
         
         fun ctx ->

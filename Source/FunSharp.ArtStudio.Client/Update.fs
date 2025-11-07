@@ -88,9 +88,8 @@ module Update =
         
     let private addPrompt client promptText =
         
-        promptText
-        |> HttpUtility.HtmlEncode
-        |> Http.putString client $"{apiRoot}/local/prompt"
+        { Text = promptText }
+        |> Http.putObject client $"{apiRoot}/local/prompt"
         |> Async.bind Http.contentAsString
         |> Async.map JsonSerializer.deserialize<Prompt>
         

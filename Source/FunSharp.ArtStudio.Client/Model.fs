@@ -34,6 +34,10 @@ module AddInspiration =
             Error = None
         }
         
+type AddPrompt = {
+    Text: string
+}
+        
 type Inspiration2Prompt = {
     InspirationId: Uri
     Text: string
@@ -59,8 +63,8 @@ type SoraResult2LocalDeviation = {
 }
 
 type PromptDialogResult =
-    | Inspiration2Prompt of promptText: string
-    | Inspiration2SoraTask of promptText: string * AspectRatio
+    | Prompt of promptText: string
+    | SoraTask of promptText: string * AspectRatio
 
 [<RequireQualifiedAccess>]
 type StatefulItem<'T> =
