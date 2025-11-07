@@ -46,7 +46,7 @@ module Navigation =
             
         let publishedDeviationsCount =
             match model.PublishedDeviations with
-            | Loadable.Loaded deviations -> deviations.Length
+            | Loadable.Loaded deviations -> deviations.total
             | _ -> -1
             
         let currentLocation = (Uri nav.Uri).AbsolutePath

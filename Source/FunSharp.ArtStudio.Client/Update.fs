@@ -76,9 +76,9 @@ module Update =
         
         loadStatefulItems<StashedDeviation> client "/stash"
         
-    let private loadPublishedDeviations client =
+    let private loadPublishedDeviations client offset limit =
         
-        loadStatefulItems<PublishedDeviation> client "/publish"
+        loadStatefulItemsPage<PublishedDeviation> client "/publish" offset limit
         
     let private addInspiration client inspirationUrl =
         
@@ -282,12 +282,16 @@ module Update =
             
         | LoadPublishedDeviations ->
             
-            let load () = loadPublishedDeviations client
-            let failed ex = LoadedPublishedDeviations (Loadable.LoadingFailed ex)
+            model, Cmd.ofMsg <| LoadPublishedDeviationsPage (0, Helpers.publishedDeviationsPageSize)
+        
+        | LoadPublishedDeviationsPage(offset, limit) ->
             
-            { model with PublishedDeviations = Loadable.Loading }, Cmd.OfAsync.either load () LoadedPublishedDeviations failed
+            let load () = loadPublishedDeviations client offset limit
+            let failed ex = LoadedPublishedDeviationsPage (Loadable.LoadingFailed ex)
             
-        | LoadedPublishedDeviations loadable ->
+            { model with PublishedDeviations = Loadable.Loading }, Cmd.OfAsync.either load () LoadedPublishedDeviationsPage failed
+            
+        | LoadedPublishedDeviationsPage loadable ->
             
             { model with PublishedDeviations = loadable }, Cmd.none
             
@@ -747,8 +751,8 @@ module Update =
             
             { model with StashedDeviations = deviations }, Cmd.none
             
-        | AddedPublishedDeviation published ->
+        | AddedPublishedDeviation _ ->
             
-            let deviations = model.PublishedDeviations |> LoadableStatefulItems.withNew published
+            let currentOffset = LoadableStatefulItemsPage.offset model.PublishedDeviations
             
-            { model with PublishedDeviations = deviations }, Cmd.none
+            model, LoadPublishedDeviationsPage (currentOffset, Helpers.publishedDeviationsPageSize) |> Cmd.ofMsg

@@ -41,9 +41,9 @@ module WebParts =
             |> asOkJsonResponse ctx
         |> tryCatch (nameof getSettings)
 
-    let rec getCurrentSoraTask (secrets: Secrets) =
+    let rec getCurrentSoraTask (_: Secrets) =
         
-        fun ctx -> // TODO
+        fun _ -> // TODO
             failwith "todo"
         |> tryCatch (nameof getSettings)
         
@@ -101,11 +101,18 @@ module WebParts =
             |> asOkJsonResponse ctx
         |> tryCatch (nameof getStashedDeviations)
         
+    let private sortPublishedDeviations (options: SortOptions) (items: PublishedDeviation array) =
+        
+        match options.Property, options.Direction with
+        | "timestamp", SortDirection.Ascending -> items |> Array.sortBy _.Timestamp
+        | "timestamp", SortDirection.Descending -> items |> Array.sortByDescending _.Timestamp
+        | property, _ -> failwith $"unsupported sort property: '{property}'"
+        
     let rec getPublishedDeviations (persistence: IPersistence) =
         
         fun ctx ->
             persistence.FindAll<PublishedDeviation>(dbKey_PublishedDeviations)
-            |> asOkJsonResponse ctx
+            |> withPagination ctx sortPublishedDeviations
         |> tryCatch (nameof getPublishedDeviations)
         
     let rec putImages (serverAddress: string) (serverPort: int) =

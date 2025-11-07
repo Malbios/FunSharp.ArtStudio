@@ -6,6 +6,7 @@ open FunSharp.Common
 module Helpers =
         
     let localDeviationsPageSize = 10
+    let publishedDeviationsPageSize = 20
     
     let stashUrl itemId =
         

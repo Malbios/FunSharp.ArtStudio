@@ -259,7 +259,7 @@ type State = {
     SoraResults: Loadable<StatefulItem<SoraResult> array>
     LocalDeviations: Loadable<Page<StatefulItem<LocalDeviation>>>
     StashedDeviations: Loadable<StatefulItem<StashedDeviation> array>
-    PublishedDeviations: Loadable<StatefulItem<PublishedDeviation> array>
+    PublishedDeviations: Loadable<Page<StatefulItem<PublishedDeviation>>>
 }
 
 [<RequireQualifiedAccess>]
@@ -308,7 +308,8 @@ type Message =
     | LoadedStashedDeviations of Loadable<StatefulItem<StashedDeviation> array>
     
     | LoadPublishedDeviations
-    | LoadedPublishedDeviations of Loadable<StatefulItem<PublishedDeviation> array>
+    | LoadPublishedDeviationsPage of offset: int * limit: int
+    | LoadedPublishedDeviationsPage of Loadable<Page<StatefulItem<PublishedDeviation>>>
     
     | ChangeNewInspirationUrl of url: string
     
