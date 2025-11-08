@@ -32,7 +32,13 @@ module Inspiration =
                 ImageUrl = Some imageUrl
             }
             
-            persistence.Insert(dbKey_Inspirations, url, inspiration)
+            let task : ChatGPTTask = {
+                Id = Guid.NewGuid()
+                Timestamp = DateTimeOffset.Now
+                Inspiration = inspiration
+            }
+            
+            persistence.Insert(dbKey_BackgroundTasks, task.Id.ToString(), task |> BackgroundTask.ChatGPT)
     }
     
     let processTasks serverAddress serverPort (persistence: IPersistence) (deviantArtClient: FunSharp.DeviantArt.Api.Client) =
