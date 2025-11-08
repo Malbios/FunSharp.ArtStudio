@@ -21,6 +21,8 @@ module ServerStartup =
     let serverPort = 5123
     let apiBase = "/api/v1"
     
+    let mutable backgroundWorkerState = false
+    
     let randomDelay_Fast = (
         TimeSpan.FromSeconds(10).TotalMilliseconds |> int,
         TimeSpan.FromSeconds(10).TotalMilliseconds |> int
@@ -121,11 +123,16 @@ module ServerStartup =
         fun () -> BackgroundTasks.Inspiration.processTasks serverAddress serverPort persistence deviantArtClient
         |> startBackgroundWorker "Inspiration" cts randomDelay_Fast
         
-        fun () -> BackgroundTasks.Sora.processTasks persistence soraClient
-        |> startBackgroundWorker "Sora" cts randomDelay_Slow
-        
-        fun () -> BackgroundTasks.ChatGPT.processTasks persistence soraClient
-        |> startBackgroundWorker "ChatGPT" cts randomDelay_Slow
+        fun () ->
+            match backgroundWorkerState with
+            | false ->
+                BackgroundTasks.ChatGPT.processTasks persistence soraClient |> ignore
+            | true ->
+                BackgroundTasks.Sora.processTasks persistence soraClient |> ignore
+                
+            backgroundWorkerState <- not backgroundWorkerState
+            Async.returnM ()
+        |> startBackgroundWorker "ChatGPT + Sora" cts randomDelay_Slow
                 
     [<EntryPoint>]
     let main _ =
