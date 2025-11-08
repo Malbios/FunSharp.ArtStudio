@@ -41,9 +41,9 @@ module WebParts =
             |> asOkJsonResponse ctx
         |> tryCatch (nameof getSettings)
 
-    let rec getCurrentSoraTask (_: Secrets) =
+    let rec getBackgroundTasksStatus () = // TODO
         
-        fun _ -> // TODO
+        fun _ ->
             failwith "todo"
         |> tryCatch (nameof getSettings)
         
@@ -61,17 +61,19 @@ module WebParts =
             |> asOkJsonResponse ctx
         |> tryCatch (nameof getPrompts)
         
-    let rec getSoraTasks (persistence: IPersistence) =
+    let rec getTasks (persistence: IPersistence) =
         
         fun ctx ->
             persistence.FindAll<BackgroundTask>(dbKey_BackgroundTasks)
-            |> Array.choose (
-                function
-                | BackgroundTask.Inspiration _ -> None
-                | BackgroundTask.Sora soraTask -> Some soraTask
-            )
             |> asOkJsonResponse ctx
-        |> tryCatch (nameof getSoraTasks)
+        |> tryCatch (nameof getTasks)
+        
+    let rec getChatGPTResults (persistence: IPersistence) =
+        
+        fun ctx ->
+            persistence.FindAll<ChatGPTResult>(dbKey_ChatGPTResults)
+            |> asOkJsonResponse ctx
+        |> tryCatch (nameof getChatGPTResults)
         
     let rec getSoraResults (persistence: IPersistence) =
         
@@ -157,16 +159,8 @@ module WebParts =
         fun ctx ->
             let payload = ctx.request |> asJson<AddPrompt>
             
-            let prompt: Prompt = {
-                Id = Guid.NewGuid()
-                Timestamp = DateTimeOffset.Now
-                Inspiration = None
-                Text = payload.Text
-            }
-            
-            persistence.Insert(dbKey_Prompts, prompt.Id.ToString(), prompt)
-            
-            prompt |> asOkJsonResponse ctx
+            createPrompt persistence payload.Inspiration payload.Text
+            |> asOkJsonResponse ctx
         |> tryCatch (nameof addPrompt)
         
     let rec patchPrompt (persistence: IPersistence) =
@@ -204,18 +198,32 @@ module WebParts =
             
             let inspiration = persistence.Find(dbKey_Inspirations, payload.InspirationId.ToString()) |> Option.get
             
-            let prompt: Prompt = {
-                Id = Guid.NewGuid()
-                Timestamp = DateTimeOffset.Now
-                Inspiration = Some inspiration
-                Text = payload.Text
-            }
+            let prompt = createPrompt persistence (Some inspiration) payload.Text
             
-            persistence.Insert(dbKey_Prompts, prompt.Id.ToString(), prompt)
             persistence.Delete(dbKey_Inspirations, inspiration.Url.ToString()) |> ignore
             
             prompt |> asOkJsonResponse ctx
         |> tryCatch (nameof inspiration2Prompt)
+        
+    let rec inspiration2ChatGPTTask (persistence: IPersistence) =
+        
+        fun ctx ->
+            let payload = ctx.request |> asJson<Inspiration2ChatGPTTask>
+            
+            let inspiration : Inspiration = persistence.Find(dbKey_Inspirations, payload.InspirationId.ToString()) |> Option.get
+            
+            let task = {
+                Id = Guid.NewGuid()
+                Timestamp = DateTimeOffset.Now
+                Inspiration = inspiration
+            }
+            
+            persistence.Insert(dbKey_BackgroundTasks, task.Id.ToString(), task |> BackgroundTask.ChatGPT)
+            persistence.Delete(dbKey_Inspirations, inspiration.Url.ToString()) |> ignore
+            
+            task |> asOkJsonResponse ctx
+            
+        |> tryCatch (nameof inspiration2ChatGPTTask)
         
     let rec prompt2Deviation (persistence: IPersistence) =
         
@@ -263,7 +271,7 @@ module WebParts =
         fun ctx ->
             let payload = ctx.request |> asJson<RetrySora>
             
-            let result = persistence.Find(dbKey_SoraResults, payload.SoraResultId.ToString()) |> Option.get
+            let result : SoraResult = persistence.Find(dbKey_SoraResults, payload.SoraResultId.ToString()) |> Option.get
             
             let task = {
                 Id = Guid.NewGuid()
@@ -387,6 +395,10 @@ module WebParts =
     let rec deleteInspiration (persistence: IPersistence) =
         
         deleteItem<Inspiration> persistence dbKey_Inspirations (nameof deleteInspiration)
+
+    let rec deleteChatGPTResult (persistence: IPersistence) =
+        
+        deleteItem<ChatGPTResult> persistence dbKey_ChatGPTResults (nameof deleteChatGPTResult)
 
     let rec deletePrompt (persistence: IPersistence) =
         

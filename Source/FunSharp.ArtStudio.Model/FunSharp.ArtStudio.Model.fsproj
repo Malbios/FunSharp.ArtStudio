@@ -11,6 +11,8 @@
         <Compile Include="Metadata.fs" />
         <Compile Include="DeviationOrigin.fs" />
         <Compile Include="LocalDeviation.fs" />
+        <Compile Include="ChatGPTTask.fs" />
+        <Compile Include="ChatGPTResult.fs" />
         <Compile Include="SoraTask.fs" />
         <Compile Include="SoraResult.fs" />
         <Compile Include="BackgroundTask.fs" />

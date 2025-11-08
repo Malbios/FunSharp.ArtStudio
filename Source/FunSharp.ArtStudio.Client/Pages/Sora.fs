@@ -11,28 +11,11 @@ open FunSharp.ArtStudio.Client.Components
 
 type Sora() =
     inherit ElmishComponent<State, Message>()
+            
+    override _.CssScope = CssScopes.``FunSharp.ArtStudio.Client``
     
-    let inspirationWidget (inspiration: Inspiration option) =
+    override this.View model dispatch =
         
-        match inspiration with
-        | None -> div { attr.style "width: 50px; height: 50px; background-color: grey;" }
-            
-        | Some inspiration ->
-            comp<RadzenStack> {
-                "Orientation" => Orientation.Vertical
-                "JustifyContent" => JustifyContent.Center
-                "AlignItems" => AlignItems.Center
-                "Gap" => "0.2rem"
-                
-                comp<FunSharp.Blazor.Components.Image> {
-                    "ImageUrl" => inspiration.ImageUrl
-                    "ClickUrl" => Some inspiration.Url
-                }
-                
-                Link.renderSimple (Some "DA Link") inspiration.Url
-            }
-            
-    let soraResultsWidget model dispatch =
         Loadable.render model.SoraResults
         <| fun results ->
             results
@@ -47,6 +30,8 @@ type Sora() =
                         "Orientation" => Orientation.Vertical
                         "Gap" => "0.5rem"
                         
+                        Inspiration.render result.Task.Prompt.Inspiration
+                        
                         div { $"result: {result.Id}" }
                         div { $"timestamp: {result.Timestamp}" }
                         div { $"prompt: {result.Task.Prompt.Text}" }
@@ -56,14 +41,15 @@ type Sora() =
                     
                 | StatefulItem.Default result ->
                     comp<RadzenStack> {
-                        attr.style (if result.Images.Length < 2 || result.Images.Length > 2 then "" else "")
+                        // TODO: make a border to make it easier to spot non-doubles
+                        //attr.style (if result.Images.Length < 2 || result.Images.Length > 2 then "" else "")
                         
                         "Orientation" => Orientation.Vertical
                         "JustifyContent" => JustifyContent.Center
                         "AlignItems" => AlignItems.Center
                         "Gap" => "0.5rem"
                         
-                        inspirationWidget result.Task.Prompt.Inspiration
+                        Inspiration.render result.Task.Prompt.Inspiration
                             
                         comp<RadzenStack> {
                             "Orientation" => Orientation.Horizontal
@@ -95,56 +81,4 @@ type Sora() =
             )
             |> Helpers.renderArray
             |> Deviations.render
-            
-    let soraTasksWidget model =
-        Loadable.render model.SoraTasks
-        <| fun tasks ->
-            tasks
-            |> StatefulItems.sortBy _.Timestamp
-            |> Array.map (fun task ->
-                match task with
-                | StatefulItem.IsBusy _ ->
-                    LoadingWidget.render ()
-                    
-                | StatefulItem.HasError (task, error) ->
-                    comp<RadzenStack> {
-                        "Orientation" => Orientation.Vertical
-                        "Gap" => "0.5rem"
-                        
-                        div { $"task: {task.Id}" }
-                        div { $"timestamp: {task.Timestamp}" }
-                        div { $"prompt: {task.Prompt.Text}" }
-                        div { $"aspect ratio: {task.AspectRatio}" }
-                        div { $"error: {error}" }
-                    }
-                    
-                | StatefulItem.Default task ->
-                    comp<RadzenStack> {
-                        "Orientation" => Orientation.Vertical
-                        "JustifyContent" => JustifyContent.Center
-                        "AlignItems" => AlignItems.Center
-                        "Gap" => "0.2rem"
-                        
-                        inspirationWidget task.Prompt.Inspiration
-                            
-                        div { $"{task.Timestamp}" }
-                    }
-            )
-            |> Helpers.renderArray
-            |> Deviations.render
-            
-    override _.CssScope = CssScopes.``FunSharp.ArtStudio.Client``
-    
-    override this.View model dispatch =
-        
-        comp<RadzenStack> {
-            "Orientation" => Orientation.Vertical
-            "Gap" => "2rem"
-            
-            soraResultsWidget model dispatch
-            
-            hr { attr.style "width: 100%;" }
-            
-            soraTasksWidget model
-        }
         |> Page.render model dispatch

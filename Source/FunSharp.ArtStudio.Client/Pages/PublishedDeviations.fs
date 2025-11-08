@@ -42,9 +42,6 @@ type PublishedDeviations() =
     
     override _.CssScope = CssScopes.PublishedDeviations
     
-    [<Inject>]
-    member val JSRuntime = Unchecked.defaultof<_> with get, set
-    
     override this.View model dispatch =
         
         let pageSize = FunSharp.ArtStudio.Client.Helpers.publishedDeviationsPageSize

@@ -23,7 +23,9 @@ module View =
                     | Page.AddInspiration -> ecomp<Pages.AddInspiration,_,_> model dispatch { attr.empty() }
                     | Page.Inspirations -> ecomp<Pages.Inspirations,_,_> model dispatch { attr.empty() }
                     | Page.Prompts -> ecomp<Pages.Prompts,_,_> model dispatch { attr.empty() }
-                    | Page.Sora -> ecomp<Pages.Sora,_,_> model dispatch { attr.empty() }
+                    | Page.Tasks -> ecomp<Pages.Tasks,_,_> model dispatch { attr.empty() }
+                    | Page.ChatGPTResults -> ecomp<Pages.ChatGPT,_,_> model dispatch { attr.empty() }
+                    | Page.SoraResults -> ecomp<Pages.Sora,_,_> model dispatch { attr.empty() }
                     | Page.LocalDeviations -> ecomp<Pages.LocalDeviations,_,_> model dispatch { attr.empty() }
                     | Page.StashedDeviations -> ecomp<Pages.StashedDeviations,_,_> model dispatch { attr.empty() }
                     | Page.PublishedDeviations -> ecomp<Pages.PublishedDeviations,_,_> model dispatch { attr.empty() }

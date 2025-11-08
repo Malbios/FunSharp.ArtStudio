@@ -41,6 +41,9 @@ module Helpers =
     let dbKey_BackgroundTasks = "BackgroundTasks"
     
     [<Literal>]
+    let dbKey_ChatGPTResults = "ChatGPTResults"
+    
+    [<Literal>]
     let dbKey_SoraResults = "SoraResults"
     
     [<Literal>]
@@ -48,6 +51,12 @@ module Helpers =
     
     [<Literal>]
     let automatedImagesLocation = @"C:\Files\FunSharp.DeviantArt\automated"
+    
+    [<RequireQualifiedAccess>]
+    type TaskResult =
+        | Succeeded
+        | Failed
+        | Skip
         
     let private asStashed (local: LocalDeviation) (response: StashSubmissionResponse) =
         
@@ -373,3 +382,16 @@ module Helpers =
         let existingOrigin = existingDeviation |> Option.map _.Origin
         
         originHasDuplicateInspiration persistence newDeviation.Origin existingOrigin
+
+    let createPrompt (persistence: IPersistence) inspiration text =
+        
+        let prompt: Prompt = {
+            Id = Guid.NewGuid()
+            Timestamp = DateTimeOffset.Now
+            Inspiration = inspiration
+            Text = text
+        }
+        
+        persistence.Insert(dbKey_Prompts, prompt.Id.ToString(), prompt)
+        
+        prompt

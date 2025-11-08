@@ -36,16 +36,27 @@ module AddInspiration =
         
 type AddPrompt = {
     Text: string
+    Inspiration: Inspiration option
 }
-        
+
 type Inspiration2Prompt = {
     InspirationId: Uri
     Text: string
 }
 
+type Inspiration2ChatGPTTask = {
+    InspirationId: Uri
+}
+
 type Prompt2LocalDeviation = {
     PromptId: Guid
     ImageUrl: Uri
+}
+
+type ChatGPTResult2SoraTask = {
+    ResultId: Guid
+    PromptText: string
+    AspectRatio: AspectRatio
 }
 
 type Prompt2SoraTask = {
@@ -255,6 +266,9 @@ type State = {
     
     Inspirations: Loadable<StatefulItem<Inspiration> array>
     Prompts: Loadable<StatefulItem<Prompt> array>
+    InspirationTasks: Loadable<StatefulItem<string> array>
+    ChatGPTTasks: Loadable<StatefulItem<ChatGPTTask> array>
+    ChatGPTResults: Loadable<StatefulItem<ChatGPTResult> array>
     SoraTasks: Loadable<StatefulItem<SoraTask> array>
     SoraResults: Loadable<StatefulItem<SoraResult> array>
     LocalDeviations: Loadable<Page<StatefulItem<LocalDeviation>>>
@@ -273,6 +287,9 @@ module State =
         
         Inspirations = Loadable.NotLoaded
         Prompts = Loadable.NotLoaded
+        InspirationTasks = Loadable.NotLoaded
+        ChatGPTTasks = Loadable.NotLoaded
+        ChatGPTResults = Loadable.NotLoaded
         SoraTasks = Loadable.NotLoaded
         SoraResults = Loadable.NotLoaded
         LocalDeviations = Loadable.NotLoaded
@@ -288,14 +305,17 @@ type Message =
     | LoadSettings
     | LoadedSettings of Loadable<Settings>
     
+    | LoadTasks
+    | LoadedTasks of Loadable<BackgroundTask array>
+    
     | LoadInspirations
     | LoadedInspirations of Loadable<StatefulItem<Inspiration> array>
     
     | LoadPrompts
     | LoadedPrompts of Loadable<StatefulItem<Prompt> array>
     
-    | LoadSoraTasks
-    | LoadedSoraTasks of Loadable<StatefulItem<SoraTask> array>
+    | LoadChatGPTResults
+    | LoadedChatGPTResults of Loadable<StatefulItem<ChatGPTResult> array>
     
     | LoadSoraResults
     | LoadedSoraResults of Loadable<StatefulItem<SoraResult> array>
@@ -323,6 +343,19 @@ type Message =
     | Inspiration2Prompt of Inspiration * promptText: string
     | Inspiration2PromptDone of Inspiration * Prompt
     | Inspiration2PromptFailed of Inspiration * promptText: string * error: exn
+    
+    | Inspiration2ChatGPTTask of Inspiration
+    | Inspiration2ChatGPTTaskDone of task: ChatGPTTask
+    | Inspiration2ChatGPTTaskFailed of Inspiration * error: exn
+    
+    | AddedChatGPTTask of task: ChatGPTTask
+    
+    | ChatGPTResult2SoraTask of result: ChatGPTResult * promptText: string * AspectRatio
+    | ChatGPTResult2SoraTaskDone of result: ChatGPTResult * task: SoraTask
+    | ChatGPTResult2SoraTaskFailed of result: ChatGPTResult * error: exn
+    
+    | RemoveChatGPTResult of result: ChatGPTResult
+    | ForgetChatGPTResult of result: ChatGPTResult
     
     | Inspiration2SoraTask of Inspiration * promptText: string * AspectRatio
     | Inspiration2SoraTaskDone of Inspiration * task: SoraTask

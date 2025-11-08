@@ -64,12 +64,19 @@ module Sora =
                 let output = output.ToString().Trim()
                 
                 if proc.ExitCode = 0 then
-                    match tryDeserialize<ErrorContainer> output with
-                    | Some error -> failwith $"Script {scriptPath} failed: {error.error.message}"
-                    | None ->
-                        printfn $"Script {scriptPath} is done!"
-                        printfn $"{output}"
-                        output
+                    match output with
+                    | output when output = "" ->
+                        failwith $"Script {scriptPath} failed: no output"
+                        
+                    | output ->
+                        match tryDeserialize<ErrorContainer> output with
+                        | Some error ->
+                            failwith $"Script {scriptPath} failed: {error.error.message}"
+                            
+                        | None ->
+                            printfn $"Script {scriptPath} is done!"
+                            printfn $"{output}"
+                            output
                 else
                     printfn $"Script {scriptPath} failed: {error.ToString()}"
                     printfn $"{output}"
@@ -110,7 +117,7 @@ module Sora =
         
         [| authTokens.Sentinel; authTokens.Bearer |]
         |> runScript $"{puppeteerPath}/get-tasks.js"
-        
+
     let serializerOptionsCustomizer (options: JsonSerializerOptions) =
         options.Converters.Add(NullTolerantFloatConverter())
         options.Converters.Add(CaseInsensitiveEnumConverter<TaskStatus>())
@@ -276,6 +283,16 @@ module Sora =
                     
                 | Error message -> return Error message
             }
+            
+        member _.Image2Prompt(imageFilePath) =
+            
+            try
+                [| imageFilePath |]
+                |> runScript $"{puppeteerPath}/image2prompt.js"
+                |> Async.map (_.Trim() >> Ok)
+                
+            with exn ->
+                exn.Message |> Error |> Async.returnM
 
         interface IDisposable with
         

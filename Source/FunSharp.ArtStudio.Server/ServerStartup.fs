@@ -3,7 +3,6 @@
 open System
 open System.IO
 open System.Threading
-open FunSharp.ArtStudio.Server.BackgroundTasks
 open Suave
 open Suave.Files
 open Suave.Filters
@@ -48,11 +47,12 @@ module ServerStartup =
             
             GET >=> path $"{apiBase}/user/name" >=> getUsername deviantArtClient
             GET >=> path $"{apiBase}/settings" >=> getSettings secrets
-            GET >=> path $"{apiBase}/current/sora-task" >=> getCurrentSoraTask secrets
+            GET >=> path $"{apiBase}/local/tasks/status" >=> getBackgroundTasksStatus ()
             
             GET >=> path $"{apiBase}/local/inspirations" >=> getInspirations persistence
             GET >=> path $"{apiBase}/local/prompts" >=> getPrompts persistence
-            GET >=> path $"{apiBase}/local/sora-tasks" >=> getSoraTasks persistence
+            GET >=> path $"{apiBase}/local/tasks" >=> getTasks persistence
+            GET >=> path $"{apiBase}/local/gpt-results" >=> getChatGPTResults persistence
             GET >=> path $"{apiBase}/local/sora-results" >=> getSoraResults persistence
             GET >=> path $"{apiBase}/local/deviations" >=> getLocalDeviations persistence
             GET >=> path $"{apiBase}/stash" >=> getStashedDeviations persistence
@@ -67,7 +67,9 @@ module ServerStartup =
             POST >=> path $"{apiBase}/stash" >=> stash persistence deviantArtClient
             POST >=> path $"{apiBase}/publish" >=> publish persistence deviantArtClient secrets
             
+            // TODO: can client just do all the calls for any of these?
             POST >=> path $"{apiBase}/inspiration2prompt" >=> inspiration2Prompt persistence
+            POST >=> path $"{apiBase}/inspiration2gpt" >=> inspiration2ChatGPTTask persistence
             POST >=> path $"{apiBase}/prompt2deviation" >=> prompt2Deviation persistence
             POST >=> path $"{apiBase}/prompt2sora" >=> prompt2SoraTask persistence
             POST >=> path $"{apiBase}/retry-sora" >=> retrySora persistence
@@ -77,6 +79,7 @@ module ServerStartup =
             PATCH >=> path $"{apiBase}/local/deviation" >=> patchLocalDeviation persistence
             
             DELETE >=> path $"{apiBase}/local/inspiration" >=> deleteInspiration persistence
+            DELETE >=> path $"{apiBase}/local/gpt-result" >=> deleteChatGPTResult persistence
             DELETE >=> path $"{apiBase}/local/prompt" >=> deletePrompt persistence
             DELETE >=> path $"{apiBase}/local/sora-result" >=> deleteSoraResult persistence
             DELETE >=> path $"{apiBase}/local/deviation" >=> deleteLocalDeviation persistence
@@ -106,19 +109,23 @@ module ServerStartup =
         | :? System.Net.Sockets.SocketException as ex ->
             printfn $"Socket bind failed: %s{ex.Message}"
             
-    let startBackgroundWorker (cts: CancellationTokenSource) (persistence: IPersistence) (deviantArtClient: FunSharp.DeviantArt.Api.Client) (soraClient: FunSharp.OpenAI.Api.Sora.Client) =
+    let startBackgroundWorker label (cts: CancellationTokenSource) delay workerAction =
         
-        printfn "Starting background worker (new inspirations)..."
+        printfn $"Starting background worker ({label})..."
         
-        let backgroundJob = BackgroundWorker(cts.Token, randomDelay_Fast, fun () ->
-            processNewInspirationBackgroundTasks serverAddress serverPort persistence deviantArtClient)
+        let backgroundJob = BackgroundWorker(cts.Token, delay, workerAction)
         backgroundJob.Work () |> ignore
         
-        printfn "Starting background worker (sora)..."
+    let startBackgroundWorkers cts persistence deviantArtClient soraClient =
         
-        let backgroundJob = BackgroundWorker(cts.Token, randomDelay_Slow, fun () ->
-            processSoraBackgroundTasks persistence soraClient)
-        backgroundJob.Work () |> ignore
+        fun () -> BackgroundTasks.Inspiration.processTasks serverAddress serverPort persistence deviantArtClient
+        |> startBackgroundWorker "Inspiration" cts randomDelay_Fast
+        
+        fun () -> BackgroundTasks.Sora.processTasks persistence soraClient
+        |> startBackgroundWorker "Sora" cts randomDelay_Slow
+        
+        fun () -> BackgroundTasks.ChatGPT.processTasks persistence soraClient
+        |> startBackgroundWorker "ChatGPT" cts randomDelay_Slow
                 
     [<EntryPoint>]
     let main _ =
@@ -131,7 +138,7 @@ module ServerStartup =
         if deviantArtClient.NeedsInteraction then
             deviantArtClient.StartInteractiveLogin() |> Async.RunSynchronously
             
-        startBackgroundWorker cts persistence deviantArtClient soraClient
+        startBackgroundWorkers cts persistence deviantArtClient soraClient
         
         Async.Start(async { do tryStartServer persistence deviantArtClient }, cancellationToken = cts.Token)
         

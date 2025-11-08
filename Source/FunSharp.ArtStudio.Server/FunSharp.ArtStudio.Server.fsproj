@@ -11,7 +11,9 @@
         </Content>
         <Compile Include="Secrets.fs" />
         <Compile Include="Helpers.fs" />
-        <Compile Include="BackgroundTasks.fs" />
+        <Compile Include="BackgroundTasks\Inspiration.fs" />
+        <Compile Include="BackgroundTasks\ChatGPT.fs" />
+        <Compile Include="BackgroundTasks\Sora.fs" />
         <Compile Include="ConsoleLogger.fs" />
         <Compile Include="WebParts.fs" />
         <Compile Include="ServerStartup.fs" />

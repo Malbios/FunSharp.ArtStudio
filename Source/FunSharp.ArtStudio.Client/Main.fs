@@ -1,6 +1,5 @@
 module FunSharp.ArtStudio.Client.Main
 
-open System
 open System.Net.Http
 open Microsoft.AspNetCore.Components
 open Microsoft.Extensions.Logging

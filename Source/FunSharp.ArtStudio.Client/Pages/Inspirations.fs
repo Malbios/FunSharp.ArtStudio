@@ -24,9 +24,6 @@ type Inspirations() =
     
     override this.View model dispatch =
             
-        let forgetInspiration inspiration =
-            Message.ForgetInspiration inspiration |> dispatch
-            
         let openPromptDialog inspiration =
             Helpers.readClipboard this.JSRuntime
             |> Async.bind (fun text ->
@@ -59,8 +56,9 @@ type Inspirations() =
                     concat {
                         inspiration.Timestamp.ToString() |> text
                         
+                        Button.renderSimple "To ChatGPT" <| fun () ->  Message.Inspiration2ChatGPTTask inspiration |> dispatch
                         Button.renderSimpleAsync "To Prompt" <| fun () -> openPromptDialog inspiration
-                        Button.renderSimple "Forget" <| fun () -> forgetInspiration inspiration
+                        Button.renderSimple "Forget" <| fun () -> Message.ForgetInspiration inspiration |> dispatch
                     }
                     |> Deviation.renderWithContent inspiration.ImageUrl None
                 )

@@ -24,14 +24,29 @@ module Navigation =
             | Loadable.Loaded prompts -> prompts.Length
             | _ -> -1
         
+        let inspirationTasksCount =
+            match model.InspirationTasks with
+            | Loadable.Loaded tasks -> tasks.Length
+            | _ -> -1
+            
+        let chatGPTTasksCount =
+            match model.ChatGPTTasks with
+            | Loadable.Loaded tasks -> tasks.Length
+            | _ -> -1
+        
         let soraTasksCount =
             match model.SoraTasks with
-            | Loadable.Loaded soraTasks -> soraTasks.Length
+            | Loadable.Loaded tasks -> tasks.Length
+            | _ -> -1
+        
+        let chatGPTResultsCount =
+            match model.ChatGPTResults with
+            | Loadable.Loaded results -> results.Length
             | _ -> -1
         
         let soraResultsCount =
             match model.SoraResults with
-            | Loadable.Loaded soraResults -> soraResults.Length
+            | Loadable.Loaded results -> results.Length
             | _ -> -1
         
         let localDeviationsCount =
@@ -59,7 +74,9 @@ module Navigation =
             | "/add-inspiration" -> fun () -> ()
             | "/inspirations" -> fun () -> dispatch LoadInspirations
             | "/prompts" -> fun () -> dispatch LoadPrompts
-            | "/sora" -> fun () -> dispatch LoadSoraTasks; dispatch LoadSoraResults
+            | "/task" -> fun () -> dispatch LoadTasks
+            | "/gpt" -> fun () -> dispatch LoadChatGPTResults
+            | "/sora" -> fun () -> dispatch LoadSoraResults
             | "/local-deviations" -> fun () -> dispatch LoadLocalDeviations
             | "/stashed-deviations" -> fun () -> dispatch LoadStashedDeviations
             | "/published-deviations" -> fun () -> dispatch LoadPublishedDeviations
@@ -94,7 +111,9 @@ module Navigation =
                     ("/add-inspiration", $"Add Inspiration")
                     ("/inspirations", $"Inspirations ({inspirationsCount})")
                     ("/prompts", $"Prompts ({promptsCount})")
-                    ("/sora", $"Sora ({soraTasksCount},{soraResultsCount})")
+                    ("/tasks", $"Tasks ({inspirationTasksCount}|{chatGPTTasksCount}|{soraTasksCount})")
+                    ("/gpt", $"ChatGPT ({chatGPTResultsCount})")
+                    ("/sora", $"Sora ({soraResultsCount})")
                     ("/local-deviations", $"Local Deviations ({localDeviationsCount})")
                     ("/stashed-deviations", $"Stashed Deviations ({stashedDeviationsCount})")
                     ("/published-deviations", $"Published Deviations ({publishedDeviationsCount})")

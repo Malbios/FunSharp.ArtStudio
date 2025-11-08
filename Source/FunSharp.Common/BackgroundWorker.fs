@@ -17,10 +17,13 @@ type BackgroundWorker(ct: CancellationToken, randomDelay: int * int, action: uni
             Task.FromResult(())
             
     member this.Work() = task {
+        try
+            do! action ()
+        with ex ->
+            printfn $"background worker action failed: {ex}"
+        
         let delayMs = rng.Next(fst randomDelay, snd randomDelay)
         do! Task.Delay(delayMs, ct)
         
-        do! action ()
-            
         return! this.RepeatOrFinish()
     }

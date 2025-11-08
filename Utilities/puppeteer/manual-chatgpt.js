@@ -1,0 +1,43 @@
+const puppeteer = require('puppeteer-extra')
+const StealthPlugin = require('puppeteer-extra-plugin-stealth')
+
+puppeteer.use(StealthPlugin())
+
+async function main() {
+	const config = {
+		headless: false,
+		executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe',
+		userDataDir: 'C:/dev/fsharp/FunSharp.ArtStudio/Utilities/puppeteer/ChromeProfiles',
+		args: [
+			'--start-maximized',
+			`--user-data-dir='C:/dev/fsharp/FunSharp.ArtStudio/Utilities/puppeteer/ChromeProfiles'`,
+			`--profile-dir='Profile 2'`
+		]
+	}
+
+	const browser = await puppeteer.launch(config)
+	const page = await browser.newPage()
+
+	await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36')
+
+	await page.goto('https://chatgpt.com', { waitUntil: 'networkidle2' })
+}
+
+async function withTimeout(promise, ms) {
+	let timeout
+	const timer = new Promise((_, reject) => {
+		timeout = setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms)
+	})
+	const result = await Promise.race([promise, timer])
+	clearTimeout(timeout)
+	return result
+}
+
+(async () => {
+	try {
+		await withTimeout(main(), 5_000_000)
+	} catch (err) {
+		console.error('❌ Timeout or error:', err.message)
+		process.exit(1)
+	}
+})()

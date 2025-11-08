@@ -30,14 +30,24 @@ async function main() {
 
 		const response = await fetch("https://sora.chatgpt.com/backend/video_gen", request)
 
-		const output = await response.json()
+		const output = (await response.json())
+		const outputAsString = JSON.stringify(output).trim()
 
-		console.log(JSON.stringify(output))
+		if (!response.ok || outputAsString === "") {
+			throw {
+				"status": response.status,
+				"response": response,
+				"message": "Non-OK response or empty output"
+			}
+		}
+
+		console.log(outputAsString)
 	} catch (err) {
 		const status = err.status ?? err.response?.status
 		console.error("STATUS:", status)
 		console.error("TYPE:", err.error?.type || err.response?.data?.error?.type)
-		console.error("MESSAGE:", err.message || err.response?.data?.error?.message)
+		console.error("RESPONSE:", err.response?.data?.error?.message)
+		console.error("MESSAGE:", err.message)
 	}
 }
 

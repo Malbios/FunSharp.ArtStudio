@@ -22,12 +22,17 @@ open FunSharp.ArtStudio.Client.Model
 module Update =
     let private apiRoot = "http://localhost:5123/api/v1"
     
-    let private loadStatefulItems<'T> client endpoint =
+    let private loadItems<'T> client endpoint =
         
         $"{apiRoot}{endpoint}"
         |> Http.get client
         |> Async.bind Http.contentAsString
-        |> Async.map (JsonSerializer.deserialize<'T array> >> Array.map StatefulItem.Default >> Loadable.Loaded)
+        |> Async.map JsonSerializer.deserialize<'T array>
+
+    let private loadStatefulItems<'T> client endpoint =
+        
+        loadItems<'T> client endpoint
+        |> Async.map (Array.map StatefulItem.Default >> Loadable.Loaded)
         
     let private loadStatefulItemsPage<'T> client endpoint offset limit =
         
@@ -60,10 +65,15 @@ module Update =
         
         loadStatefulItems<Prompt> client "/local/prompts"
     
-    let private loadSoraTasks client =
+    let private loadTasks client =
         
-        loadStatefulItems<SoraTask> client "/local/sora-tasks"
-    
+        loadItems<BackgroundTask> client "/local/tasks"
+        |> Async.map Loadable.Loaded
+
+    let private loadChatGPTResults client =
+        
+        loadStatefulItems<ChatGPTResult> client "/local/gpt-results"
+
     let private loadSoraResults client =
         
         loadStatefulItems<SoraResult> client "/local/sora-results"
@@ -86,9 +96,9 @@ module Update =
         |> HttpUtility.HtmlEncode
         |> Http.putString client $"{apiRoot}/local/inspiration"
         
-    let private addPrompt client promptText =
+    let private addPrompt client inspiration promptText =
         
-        { Text = promptText }
+        { Text = promptText; Inspiration = inspiration }
         |> Http.putObject client $"{apiRoot}/local/prompt"
         |> Async.bind Http.contentAsString
         |> Async.map JsonSerializer.deserialize<Prompt>
@@ -130,6 +140,13 @@ module Update =
             |> Async.map JsonSerializer.deserialize<LocalDeviation>
             |> Async.map (fun local -> prompt, local)
         )
+        
+    let private inspiration2ChatGPTTask client inspiration =
+        
+        { InspirationId = Inspiration.keyOf inspiration }
+        |> Http.postObject client $"{apiRoot}/inspiration2gpt"
+        |> Async.bind Http.contentAsString
+        |> Async.map JsonSerializer.deserialize<ChatGPTTask>
         
     let private prompt2SoraTask client (prompt: Prompt, aspectRatio: AspectRatio) =
         
@@ -176,6 +193,13 @@ module Update =
         |> Async.map JsonSerializer.deserialize<PublishedDeviation>
         |> Async.map (fun published -> (stashed, published))
         
+    let private filter filter tasks =
+        
+        tasks
+        |> Array.choose filter
+        |> Array.map StatefulItem.Default
+        |> Loadable.Loaded
+        
     let update (_: ILogger) client message model =
         
         match message with
@@ -190,7 +214,8 @@ module Update =
                 Cmd.ofMsg LoadSettings
                 Cmd.ofMsg LoadInspirations
                 Cmd.ofMsg LoadPrompts
-                Cmd.ofMsg LoadSoraTasks
+                Cmd.ofMsg LoadTasks
+                Cmd.ofMsg LoadChatGPTResults
                 Cmd.ofMsg LoadSoraResults
                 Cmd.ofMsg LoadLocalDeviations
                 Cmd.ofMsg LoadStashedDeviations
@@ -209,6 +234,33 @@ module Update =
         | LoadedSettings settings ->
            
            { model with Settings = settings }, Cmd.none
+            
+        | LoadTasks ->
+            
+            let load () = loadTasks client
+            let failed ex = LoadedTasks (Loadable.LoadingFailed ex)
+            
+            let cmd = Cmd.OfAsync.either load () LoadedTasks failed
+            
+            { model with ChatGPTTasks = Loadable.Loading; SoraTasks = Loadable.Loading }, cmd
+        
+        | LoadedTasks tasks ->
+
+            let inspirationTasks, gptTasks, soraTasks =
+                match tasks with
+                | Loadable.NotLoaded
+                | Loadable.Loading ->
+                    failwith $"LoadedTasks: tasks should never have this state: {tasks}"
+                
+                | Loadable.LoadingFailed error ->
+                    Loadable.LoadingFailed error, Loadable.LoadingFailed error, Loadable.LoadingFailed error
+                
+                | Loadable.Loaded tasks ->
+                    tasks |> filter (function | BackgroundTask.Inspiration x -> Some x | _ -> None),
+                    tasks |> filter (function | BackgroundTask.ChatGPT x -> Some x | _ -> None),
+                    tasks |> filter (function | BackgroundTask.Sora x -> Some x | _ -> None)
+            
+            { model with InspirationTasks = inspirationTasks; ChatGPTTasks = gptTasks; SoraTasks = soraTasks }, Cmd.none
            
         | LoadInspirations ->
             
@@ -220,6 +272,17 @@ module Update =
         | LoadedInspirations inspirations ->
             
             { model with Inspirations = inspirations }, Cmd.none
+        
+        | LoadChatGPTResults ->
+            
+            let load () = loadChatGPTResults client
+            let failed ex = LoadedChatGPTResults (Loadable.LoadingFailed ex)
+            
+            { model with SoraResults = Loadable.Loading }, Cmd.OfAsync.either load () LoadedChatGPTResults failed
+        
+        | LoadedChatGPTResults results ->
+            
+            { model with ChatGPTResults = results }, Cmd.none
             
         | LoadPrompts ->
             
@@ -231,17 +294,6 @@ module Update =
         | LoadedPrompts prompts ->
             
             { model with Prompts = prompts }, Cmd.none
-            
-        | LoadSoraTasks ->
-            
-            let load () = loadSoraTasks client
-            let failed ex = LoadedSoraTasks (Loadable.LoadingFailed ex)
-            
-            { model with SoraTasks = Loadable.Loading }, Cmd.OfAsync.either load () LoadedSoraTasks failed
-        
-        | LoadedSoraTasks tasks ->
-            
-            { model with SoraTasks = tasks }, Cmd.none
         
         | LoadSoraResults ->
             
@@ -383,6 +435,76 @@ module Update =
             
             { model with Inspirations = inspirations }, Cmd.none
             
+        | Inspiration2ChatGPTTask inspiration ->
+            
+            let inspirations = model.Inspirations |> LoadableStatefulItems.setBusy (Inspiration.identifier inspiration)
+            
+            let action = inspiration2ChatGPTTask client
+            let failed ex = Inspiration2ChatGPTTaskFailed (inspiration, ex)
+            
+            let cmd = Cmd.OfAsync.either action inspiration Inspiration2ChatGPTTaskDone failed
+            
+            { model with Inspirations = inspirations }, cmd
+        
+        | Inspiration2ChatGPTTaskDone task ->
+            
+            let batch = Cmd.batch [
+                RemoveInspiration task.Inspiration |> Cmd.ofMsg
+                AddedChatGPTTask task |> Cmd.ofMsg
+            ]
+            
+            model, batch
+        
+        | Inspiration2ChatGPTTaskFailed (inspiration, error) ->
+            
+            let inspirations = model.Inspirations |> LoadableStatefulItems.setDefault (Inspiration.identifier inspiration)
+            
+            printfn $"Inspiration2ChatGPTTask failed for: {Inspiration.keyOf inspiration}"
+            printfn $"error: {error}"
+            
+            { model with Inspirations = inspirations }, Cmd.none
+        
+        | AddedChatGPTTask task ->
+            
+            let tasks = model.ChatGPTTasks |> LoadableStatefulItems.withNew task
+            
+            { model with ChatGPTTasks = tasks }, Cmd.none
+        
+        | ChatGPTResult2SoraTask (result, promptText, aspectRatio) ->
+            
+            let results = model.ChatGPTResults |> LoadableStatefulItems.setBusy (ChatGPTResult.identifier result)
+            
+            let action () = async {
+                let! prompt = addPrompt client (Some result.Task.Inspiration) promptText
+                let! task = prompt2SoraTask client (prompt, aspectRatio)
+                
+                return result, task
+            }
+            
+            let failed ex = ChatGPTResult2SoraTaskFailed (result, ex)
+            
+            let cmd = Cmd.OfAsync.either action () ChatGPTResult2SoraTaskDone failed
+            
+            { model with ChatGPTResults = results }, cmd
+            
+        | ChatGPTResult2SoraTaskDone (result, task) ->
+            
+            let batch = Cmd.batch [
+                ForgetChatGPTResult result |> Cmd.ofMsg
+                AddedSoraTask task |> Cmd.ofMsg
+            ]
+            
+            model, batch
+        
+        | ChatGPTResult2SoraTaskFailed (result, error) ->
+            
+            let results = model.ChatGPTResults |> LoadableStatefulItems.setDefault (ChatGPTResult.identifier result)
+            
+            printfn $"ChatGPTResult2SoraTask failed for: {ChatGPTResult.keyOf result}"
+            printfn $"error: {error}"
+            
+            { model with ChatGPTResults = results }, Cmd.none
+            
         | Inspiration2SoraTask (inspiration, promptText, aspectRatio) ->
             
             let inspirations = model.Inspirations |> LoadableStatefulItems.setBusy (Inspiration.identifier inspiration)
@@ -418,9 +540,25 @@ module Update =
             
             { model with Inspirations = inspirations }, Cmd.none
             
+        | RemoveChatGPTResult result ->
+            
+            let results = model.ChatGPTResults |> LoadableStatefulItems.without (ChatGPTResult.identifier result)
+                
+            { model with ChatGPTResults = results }, Cmd.none
+            
+        | ForgetChatGPTResult result ->
+            
+            let results = model.ChatGPTResults |> LoadableStatefulItems.setBusy (ChatGPTResult.identifier result)
+            
+            let action () =
+                $"{apiRoot}/local/gpt-result?key={ChatGPTResult.keyOf result |> fun x -> x.ToString() |> HttpUtility.UrlEncode}"
+                |> forget client result
+            
+            { model with ChatGPTResults = results }, Cmd.OfAsync.perform action () RemoveChatGPTResult
+            
         | AddPrompt promptText ->
             
-            let add = addPrompt client
+            let add = addPrompt client None
             let failed ex = AddPromptFailed (promptText, ex)
             
             model, Cmd.OfAsync.either add promptText AddedPrompt failed
@@ -441,7 +579,7 @@ module Update =
         | NewPrompt2SoraTask (promptText, aspectRatio) ->
             
             let action () = async {
-                let! prompt = addPrompt client promptText
+                let! prompt = addPrompt client None promptText
                 let! task = prompt2SoraTask client (prompt, aspectRatio)
                 
                 return task
