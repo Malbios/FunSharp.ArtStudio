@@ -75,10 +75,10 @@ module Sora =
                             
                         | None ->
                             printfn $"Script {scriptPath} is done!"
-                            printfn $"{output}"
+                            // printfn $"{output}"
                             output
                 else
-                    printfn $"Script {scriptPath} failed: {error.ToString()}"
+                    printfn $"Script {scriptPath} failed with exit code '{proc.ExitCode}': {error.ToString()}"
                     printfn $"{output}"
                     failwith (error.ToString())
             finally
@@ -286,7 +286,7 @@ module Sora =
             try
                 [| imageFilePath |]
                 |> runScript $"{puppeteerPath}/image2prompt.js"
-                |> Async.map (_.Trim())
+                |> Async.map _.Trim()
                 |> Async.Catch
                 |> Async.map (function
                     | Choice1Of2 result -> Ok result
