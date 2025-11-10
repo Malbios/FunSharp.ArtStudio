@@ -26,9 +26,13 @@ module ChatGPT =
             
             match result with
             | Error errorMessage ->
-                printfn $"ChatGPTTask failed: {errorMessage}"
                 
-                return TaskResult.Failed
+                if errorMessage.Contains("no output") then
+                    printfn $"ChatGPTTask '{task.Id}' failed: {errorMessage}, skipping..."
+                    return TaskResult.Skip
+                else
+                    printfn $"ChatGPTTask failed: {errorMessage}, retrying later..."
+                    return TaskResult.Failed
                 
             | Ok promptText ->
                 

@@ -69,8 +69,10 @@ async function main() {
 	// wait for thumbs up button to appear (response is done)
 	await page.waitForSelector('[data-testid="good-response-turn-action-button"]', { visible: true, timeout: 120000 })
 
+	// gather prompt from code element or work with empty prompt (-> no prompt generated)
+	const prompt = await page.$eval('code.whitespace-pre\\! span', el => el.innerText, { timeout: 20000 }).catch(() => '')
+
 	// select the "..." top right and click it
-	const prompt = await page.$eval('code.whitespace-pre\\! span', el => el.innerText)
 	await page.click('[data-testid="conversation-options-button"]')
 
 	await waitForAndClickMenuItem(page, 'div[role="menuitem"]', 'Delete')

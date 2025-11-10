@@ -286,7 +286,11 @@ module Sora =
             try
                 [| imageFilePath |]
                 |> runScript $"{puppeteerPath}/image2prompt.js"
-                |> Async.map (_.Trim() >> Ok)
+                |> Async.map (_.Trim())
+                |> Async.Catch
+                |> Async.map (function
+                    | Choice1Of2 result -> Ok result
+                    | Choice2Of2 exn -> Error exn.Message)
                 
             with exn ->
                 exn.Message |> Error |> Async.returnM
