@@ -51,7 +51,7 @@ module Sora =
         proc.Exited.Add(fun _ -> exited.Trigger())
         proc.EnableRaisingEvents <- true
         
-        printfn $"Starting script: {scriptPath}"
+        // printfn $"Starting script: {scriptPath}"
 
         proc.Start() |> ignore
         proc.BeginOutputReadLine()
@@ -74,7 +74,7 @@ module Sora =
                             failwith $"Script {scriptPath} failed: {error.error.message}"
                             
                         | None ->
-                            printfn $"Script {scriptPath} is done!"
+                            // printfn $"Script {scriptPath} is done!"
                             // printfn $"{output}"
                             output
                 else
