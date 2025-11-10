@@ -14,16 +14,6 @@ module Navigation =
     
     let private renderInternal (model: State) dispatch (nav: NavigationManager) (dialogService: DialogService) =
         
-        let inspirationsCount =
-            match model.Inspirations with
-            | Loadable.Loaded inspirations -> inspirations.Length
-            | _ -> -1
-        
-        let promptsCount =
-            match model.Prompts with
-            | Loadable.Loaded prompts -> prompts.Length
-            | _ -> -1
-        
         let inspirationTasksCount =
             match model.InspirationTasks with
             | Loadable.Loaded tasks -> tasks.Length
@@ -71,12 +61,10 @@ module Navigation =
             
         let reloadCurrent =
             match currentLocation with
-            | "/add-inspiration" -> fun () -> ()
-            | "/inspirations" -> fun () -> dispatch LoadInspirations
-            | "/prompts" -> fun () -> dispatch LoadPrompts
-            | "/task" -> fun () -> dispatch LoadTasks
-            | "/gpt" -> fun () -> dispatch LoadChatGPTResults
-            | "/sora" -> fun () -> dispatch LoadSoraResults
+            | "/add-inspiration" -> fun () -> dispatch LoadTasks
+            // | "/prompts" -> fun () -> dispatch LoadPrompts
+            | "/gpt" -> fun () -> dispatch LoadChatGPTResults; dispatch LoadTasks
+            | "/sora" -> fun () -> dispatch LoadSoraResults; dispatch LoadTasks
             | "/local-deviations" -> fun () -> dispatch LoadLocalDeviations
             | "/stashed-deviations" -> fun () -> dispatch LoadStashedDeviations
             | "/published-deviations" -> fun () -> dispatch LoadPublishedDeviations
@@ -108,12 +96,10 @@ module Navigation =
                 "Gap" => "0.5rem"
                 
                 [
-                    ("/add-inspiration", $"Add Inspiration")
-                    ("/inspirations", $"Inspirations ({inspirationsCount})")
-                    ("/prompts", $"Prompts ({promptsCount})")
-                    ("/tasks", $"Tasks ({inspirationTasksCount}|{chatGPTTasksCount}|{soraTasksCount})")
-                    ("/gpt", $"ChatGPT ({chatGPTResultsCount})")
-                    ("/sora", $"Sora ({soraResultsCount})")
+                    ("/add-inspiration", $"Add Inspiration ({inspirationTasksCount}")
+                    // ("/prompts", $"Prompts ({promptsCount})")
+                    ("/gpt", $"ChatGPT ({chatGPTResultsCount}|{chatGPTTasksCount})")
+                    ("/sora", $"Sora ({soraResultsCount}|{soraTasksCount})")
                     ("/local-deviations", $"Local Deviations ({localDeviationsCount})")
                     ("/stashed-deviations", $"Stashed Deviations ({stashedDeviationsCount})")
                     ("/published-deviations", $"Published Deviations ({publishedDeviationsCount})")

@@ -37,45 +37,54 @@ type ChatGPT() =
             |> Async.AwaitTask
             |> Async.StartAsTask
         
-        Loadable.render model.ChatGPTResults
-        <| fun results ->
-            results
-            |> StatefulItems.sortBy _.Timestamp
-            |> Array.map (fun result ->
-                match result with
-                | StatefulItem.IsBusy _ ->
-                    LoadingWidget.render ()
-                    
-                | StatefulItem.HasError (result, error) ->
-                    comp<RadzenStack> {
-                        "Orientation" => Orientation.Vertical
-                        "Gap" => "0.5rem"
+        comp<RadzenStack> {
+            "Orientation" => Orientation.Vertical
+            "Gap" => "1rem"
+            
+            Loadable.render model.ChatGPTResults
+            <| fun results ->
+                results
+                |> StatefulItems.sortBy _.Timestamp
+                |> Array.map (fun result ->
+                    match result with
+                    | StatefulItem.IsBusy _ ->
+                        LoadingWidget.render ()
                         
-                        div { $"result: {result.Id}" }
-                        div { $"timestamp: {result.Timestamp}" }
-                        div { $"text: {result.Text}" }
-                        div { $"error: {error}" }
-                        
-                        Inspiration.render (Some result.Task.Inspiration)
-                    }
-                    
-                | StatefulItem.Default result ->
-                    comp<RadzenStack> {
-                        "Orientation" => Orientation.Vertical
-                        "JustifyContent" => JustifyContent.Center
-                        "AlignItems" => AlignItems.Center
-                        "Gap" => "0.5rem"
-                        
-                        Inspiration.render (Some result.Task.Inspiration)
-                            
+                    | StatefulItem.HasError (result, error) ->
                         comp<RadzenStack> {
-                            "Orientation" => Orientation.Horizontal
+                            "Orientation" => Orientation.Vertical
+                            "Gap" => "0.5rem"
                             
-                            Button.renderSimple "Forget" (fun () -> Message.ForgetChatGPTResult result |> dispatch)
-                            Button.renderSimpleAsync "To Sora Task" (fun () -> openPromptDialog result)
+                            div { $"result: {result.Id}" }
+                            div { $"timestamp: {result.Timestamp}" }
+                            div { $"text: {result.Text}" }
+                            div { $"error: {error}" }
+                            
+                            Inspiration.render (Some result.Task.Inspiration)
                         }
-                    }
-            )
-            |> Helpers.renderArray
-            |> Deviations.render
+                        
+                    | StatefulItem.Default result ->
+                        comp<RadzenStack> {
+                            "Orientation" => Orientation.Vertical
+                            "JustifyContent" => JustifyContent.Center
+                            "AlignItems" => AlignItems.Center
+                            "Gap" => "0.5rem"
+                            
+                            Inspiration.render (Some result.Task.Inspiration)
+                                
+                            comp<RadzenStack> {
+                                "Orientation" => Orientation.Horizontal
+                                
+                                Button.renderSimple "Forget" (fun () -> Message.ForgetChatGPTResult result |> dispatch)
+                                Button.renderSimpleAsync "To Sora Task" (fun () -> openPromptDialog result)
+                            }
+                        }
+                )
+                |> Helpers.renderArray
+                |> Deviations.render
+                
+            hr { attr.style "width: 100%;" }
+            
+            Tasks.render model.ChatGPTTasks _.Timestamp Tasks.chatGPTTaskErrorDetails Tasks.chatGPTTaskDetails
+        }
         |> Page.render model dispatch

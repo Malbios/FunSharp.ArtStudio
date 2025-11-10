@@ -28,6 +28,11 @@ module ServerStartup =
         TimeSpan.FromSeconds(10).TotalMilliseconds |> int
     )
     
+    let randomDelay_Medium = (
+        TimeSpan.FromSeconds(11).TotalMilliseconds |> int,
+        TimeSpan.FromSeconds(34).TotalMilliseconds |> int
+    )
+    
     let randomDelay_Slow = (
         TimeSpan.FromSeconds(31).TotalMilliseconds |> int,
         TimeSpan.FromMinutes(2).Add(TimeSpan.FromSeconds(14)).TotalMilliseconds |> int
@@ -126,13 +131,13 @@ module ServerStartup =
         fun () ->
             match backgroundWorkerState with
             | false ->
-                BackgroundTasks.ChatGPT.processTasks persistence soraClient |> ignore
+                BackgroundTasks.ChatGPT.processTasks persistence soraClient |> Async.RunSynchronously
             | true ->
-                BackgroundTasks.Sora.processTasks persistence soraClient |> ignore
+                BackgroundTasks.Sora.processTasks persistence soraClient |> Async.RunSynchronously
                 
             backgroundWorkerState <- not backgroundWorkerState
             Async.returnM ()
-        |> startBackgroundWorker "ChatGPT + Sora" cts randomDelay_Slow
+        |> startBackgroundWorker "ChatGPT + Sora" cts randomDelay_Medium
                 
     [<EntryPoint>]
     let main _ =
@@ -145,8 +150,7 @@ module ServerStartup =
         if deviantArtClient.NeedsInteraction then
             deviantArtClient.StartInteractiveLogin() |> Async.RunSynchronously
             
-        startBackgroundWorkers cts persistence deviantArtClient soraClient
-        
+        Async.Start(async { do startBackgroundWorkers cts persistence deviantArtClient soraClient }, cancellationToken = cts.Token)
         Async.Start(async { do tryStartServer persistence deviantArtClient }, cancellationToken = cts.Token)
         
         printfn "Press Enter to stop..."

@@ -243,25 +243,21 @@ module Sora =
             
             let getFiles taskDetails =
                 
-                try
-                    match taskDetails.status with
-                    | TaskStatus.Succeeded ->
-                        printfn "downloading images..."
-                        
-                        taskDetails.generations
-                        |> Seq.map (fun generation -> async {
-                            let fileName = $"{imageOutputPath}/{Guid.NewGuid ()}.png"
-                            let! fileContent = this.DownloadImage(generation.url)
-                            do! File.writeAllBytesAsync fileName fileContent
-                            return fileName
-                        })
-                        |> Async.Parallel
-                        |> Ok
+                match taskDetails.status with
+                | TaskStatus.Succeeded ->
+                    printfn "downloading images..."
+                    
+                    taskDetails.generations
+                    |> Seq.map (fun generation -> async {
+                        let fileName = $"{imageOutputPath}/{Guid.NewGuid ()}.png"
+                        let! fileContent = this.DownloadImage(generation.url)
+                        do! File.writeAllBytesAsync fileName fileContent
+                        return fileName
+                    })
+                    |> Async.Parallel
+                    |> Ok
 
-                    | _ -> Error $"task did not succeed, status: {taskDetails.status}"
-                        
-                with exn ->
-                    Error exn.Message
+                | _ -> Error taskDetails.status
             
             async {
                 printfn "updating auth tokens..."
@@ -281,7 +277,8 @@ module Sora =
                     let! files = filesResult
                     return Ok { Files = files }
                     
-                | Error message -> return Error message
+                | Error taskStatus ->
+                    return Error taskStatus
             }
             
         member _.Image2Prompt(imageFilePath) =

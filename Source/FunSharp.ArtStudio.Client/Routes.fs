@@ -6,9 +6,9 @@ open Bolero
 type Page =
     | [<EndPoint "/">] Home
     | [<EndPoint "/add-inspiration">] AddInspiration
-    | [<EndPoint "/inspirations">] Inspirations
-    | [<EndPoint "/prompts">] Prompts
-    | [<EndPoint "/tasks">] Tasks
+    // | [<EndPoint "/inspirations">] Inspirations
+    // | [<EndPoint "/prompts">] Prompts
+    // | [<EndPoint "/tasks">] Tasks
     | [<EndPoint "/gpt">] ChatGPTResults
     | [<EndPoint "/sora">] SoraResults
     | [<EndPoint "/local-deviations">] LocalDeviations

@@ -1,10 +1,12 @@
 ﻿namespace FunSharp.ArtStudio.Server.BackgroundTasks
 
 open System
+open FunSharp.ArtStudio.Server
 open FunSharp.Common
 open FunSharp.Data.Abstraction
 open FunSharp.ArtStudio.Model
 open FunSharp.ArtStudio.Server.Helpers
+open FunSharp.OpenAI.Api.Model.Sora
 
 [<RequireQualifiedAccess>]
 module Sora =
@@ -16,10 +18,16 @@ module Sora =
         let! result = soraClient.CreateImage(task.Prompt.Text, task.AspectRatio)
         
         match result with
-        | Error errorMessage ->
-            printfn $"SoraTask failed: {errorMessage}"
-            
-            return TaskResult.Failed
+        | Error taskStatus ->
+            match taskStatus with
+            | TaskStatus.Failed
+            | TaskStatus.Cancelled ->
+                printfn $"SoraTask '{task.Id}' failed: {taskStatus}, skipping..."
+                return TaskResult.Skip
+                
+            | _ ->
+                printfn $"SoraTask '{task.Id}' failed: {taskStatus}, retrying later..."
+                return TaskResult.Failed
             
         | Ok taskResult ->
             
@@ -52,7 +60,7 @@ module Sora =
             |> Array.choose (function Sora task -> Some task | _ -> None)
             |> Array.sortBy _.Timestamp.Ticks.ToString()
         
-        let cleanup (taskResult: TaskResult) (task: SoraTask) =
+        let cleanup (taskResult: Helpers.TaskResult) (task: SoraTask) =
             match taskResult with
             | TaskResult.Failed -> ()
             

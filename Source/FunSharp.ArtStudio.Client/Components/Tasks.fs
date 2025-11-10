@@ -1,16 +1,14 @@
-﻿namespace FunSharp.ArtStudio.Client.Pages
+﻿namespace FunSharp.ArtStudio.Client.Components
 
-open Bolero
 open Bolero.Html
+open FunSharp.ArtStudio.Client.Model
 open FunSharp.ArtStudio.Model
+open FunSharp.Blazor.Components
 open Radzen
 open Radzen.Blazor
-open FunSharp.Blazor.Components
-open FunSharp.ArtStudio.Client.Model
-open FunSharp.ArtStudio.Client.Components
 
-type Tasks() =
-    inherit ElmishComponent<State, Message>()
+[<RequireQualifiedAccess>]
+module Tasks =
     
     let chatGPTTaskErrorDetails (task: ChatGPTTask) (error: exn) =
         comp<RadzenStack> {
@@ -60,7 +58,7 @@ type Tasks() =
             div { $"{task.Timestamp}" }
         }
             
-    member _.TasksWidget<'T>(tasks: Loadable<StatefulItem<'T> array>, sortProp, errorDetails, taskDetails) =
+    let render<'T> (tasks: Loadable<StatefulItem<'T> array>) sortProp errorDetails taskDetails =
         Loadable.render tasks
         <| fun tasks ->
             tasks
@@ -78,19 +76,3 @@ type Tasks() =
             )
             |> Helpers.renderArray
             |> Deviations.render
-            
-    override _.CssScope = CssScopes.``FunSharp.ArtStudio.Client``
-    
-    override this.View model dispatch =
-        
-        comp<RadzenStack> {
-            "Orientation" => Orientation.Vertical
-            "Gap" => "2rem"
-            
-            this.TasksWidget(model.ChatGPTTasks, _.Timestamp, chatGPTTaskErrorDetails, chatGPTTaskDetails)
-            
-            hr { attr.style "width: 100%;" }
-            
-            this.TasksWidget(model.SoraTasks, _.Timestamp, soraTaskErrorDetails, soraTaskDetails)
-        }
-        |> Page.render model dispatch

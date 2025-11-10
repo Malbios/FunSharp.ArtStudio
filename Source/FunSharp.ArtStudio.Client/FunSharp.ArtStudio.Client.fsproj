@@ -48,14 +48,13 @@
         <Compile Include="Components\Deviations.fs" />
         <Compile Include="Components\CopyPrompt.fs" />
         <Compile Include="Components\Inspiration.fs" />
+        <Compile Include="Components\Tasks.fs" />
         <Compile Include="Pages\AddInspiration.fs" />
         <Content Include="Pages\AddInspiration.bolero.css" />
         <Compile Include="Pages\Inspirations.fs" />
         <Content Include="Pages\Inspirations.bolero.css" />
         <Compile Include="Pages\Prompts.fs" />
         <Content Include="Pages\Prompts.bolero.css" />
-        <Compile Include="Pages\Tasks.fs" />
-        <Content Include="Pages\Tasks.bolero.css" />
         <Compile Include="Pages\ChatGPT.fs" />
         <Content Include="Pages\ChatGPT.bolero.css" />
         <Compile Include="Pages\Sora.fs" />
