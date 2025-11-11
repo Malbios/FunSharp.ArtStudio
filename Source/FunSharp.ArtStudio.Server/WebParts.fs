@@ -366,7 +366,7 @@ module WebParts =
                         soraClient.UpdateStash(stashEditUrl, inspiration.Url.ToString())
                         |> Async.map (fun result ->
                             match result with
-                            | Ok _ -> ()
+                            | Ok _ -> printfn $"Updated stash description for '{stashEditUrl}'..."
                             | Error error -> printfn $"UpdateStash error: {error}"
                             
                             stashedDeviation
