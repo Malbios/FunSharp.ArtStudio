@@ -53,7 +53,7 @@ async function main() {
 	await page.keyboard.type('Inspired by ')
 
 	// Paste text at the cursor position
-	await page.evaluate(() => navigator.clipboard.writeText(inspirationUrl))
+	await page.evaluate((url) => navigator.clipboard.writeText(url), inspirationUrl)
 	await page.keyboard.down('Control')
 	await page.keyboard.press('KeyV')
 	await page.keyboard.up('Control')
