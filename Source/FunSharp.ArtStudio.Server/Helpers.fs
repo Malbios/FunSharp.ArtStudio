@@ -229,11 +229,7 @@ module Helpers =
         
     let private upsertItem<'Key, 'Value> (ctx: HttpContext) (persistence: IPersistence) (key: 'Key) dbKey (item: 'Value)=
         
-        printfn $"Updating '{key}'..."
-        
         do persistence.Upsert(dbKey, key, item) |> ignore
-        
-        printfn "Update done!"
         
         item |> asOkJsonResponse ctx
         
@@ -327,7 +323,7 @@ module Helpers =
         fun ctx ->
             let key = getKey ctx
             
-            // printfn $"{id}: trying to delete {key} in {dbKey}..."
+            printfn $"Forgetting '{key}' in '{dbKey}'..."
             
             match persistence.Find<string, 'T>(dbKey, key) with
             | None -> ()

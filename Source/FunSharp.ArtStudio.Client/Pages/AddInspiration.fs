@@ -29,13 +29,8 @@ type AddInspiration() =
         let currentValue = model.AddInspirationState.Url |> Option.map _.ToString() |> Option.defaultValue ""
         let isBusy = model.AddInspirationState.IsBusy
         
-        comp<RadzenStack> {
-            "Orientation" => Orientation.Vertical
-            "Gap" => "2rem"
-            
+        let widget () =
             comp<RadzenStack> {
-                style "padding: 1rem; border: 2px solid gray; border-radius: 8px;"
-                
                 "Orientation" => Orientation.Horizontal
                 
                 TextInput.render onChange_NewInspirationUrl (fun _ -> ()) isBusy "Enter inspiration url..." currentValue
@@ -57,6 +52,20 @@ type AddInspiration() =
                         style "color: red; visibility: visible;"
                         text error.Message
                 }
+            }
+        
+        comp<RadzenStack> {
+            "Orientation" => Orientation.Vertical
+            "Gap" => "2rem"
+            
+            comp<RadzenStack> {
+                style "padding: 1rem; border: 2px solid gray; border-radius: 8px;"
+                
+                "Orientation" => Orientation.Horizontal
+                "JustifyContent" => JustifyContent.SpaceBetween
+                
+                widget ()
+                widget ()
             }
             
             Loadable.render model.Inspirations
