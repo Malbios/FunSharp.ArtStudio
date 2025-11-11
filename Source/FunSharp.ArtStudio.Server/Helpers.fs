@@ -52,6 +52,15 @@ module Helpers =
     [<Literal>]
     let automatedImagesLocation = @"C:\Files\FunSharp.DeviantArt\automated"
     
+    [<Literal>]
+    let serverAddress = "127.0.0.1"
+    
+    [<Literal>]
+    let serverPort = 5123
+    
+    [<Literal>]
+    let apiBase = "/api/v1"
+    
     [<RequireQualifiedAccess>]
     type TaskResult =
         | Succeeded

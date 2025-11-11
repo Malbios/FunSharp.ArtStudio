@@ -1,27 +1,16 @@
 ﻿namespace FunSharp.ArtStudio.Server
 
 open System
-open System.IO
 open System.Threading
+open FunSharp.ArtStudio.Server.Helpers
+open FunSharp.ArtStudio.Server.Routing
 open Suave
-open Suave.Files
-open Suave.Filters
-open Suave.Operators
-open Suave.RequestErrors
 open FunSharp.Common
 open FunSharp.Data
 open FunSharp.Data.Abstraction
 open FunSharp.DeviantArt.Api.Model
-open FunSharp.ArtStudio.Server.Helpers
-open FunSharp.ArtStudio.Server.WebParts
 
 module ServerStartup =
-    
-    let serverAddress = "127.0.0.1"
-    let serverPort = 5123
-    let apiBase = "/api/v1"
-    
-    let mutable backgroundWorkerState = false
     
     let randomDelay_Fast = (
         TimeSpan.FromSeconds(10).TotalMilliseconds |> int,
@@ -38,80 +27,23 @@ module ServerStartup =
         TimeSpan.FromMinutes(2).Add(TimeSpan.FromSeconds(14)).TotalMilliseconds |> int
     )
     
-    let secrets = Secrets.load ()
     let cts = new CancellationTokenSource()
+    let secrets = Secrets.load ()
+    let mutable backgroundWorkerState = false
     
     let serverConfiguration = {
         defaultConfig with
             cancellationToken = cts.Token
             bindings = [ HttpBinding.createSimple HTTP serverAddress serverPort ] 
     }
-    
-    let routing persistence deviantArtClient =
         
-        allowCors >=> choose [
-            corsPreflight
-            
-            GET >=> path $"{apiBase}/user/name" >=> getUsername deviantArtClient
-            GET >=> path $"{apiBase}/settings" >=> getSettings secrets
-            GET >=> path $"{apiBase}/local/tasks/status" >=> getBackgroundTasksStatus ()
-            
-            GET >=> path $"{apiBase}/local/inspirations" >=> getInspirations persistence
-            GET >=> path $"{apiBase}/local/prompts" >=> getPrompts persistence
-            GET >=> path $"{apiBase}/local/tasks" >=> getTasks persistence
-            GET >=> path $"{apiBase}/local/gpt-results" >=> getChatGPTResults persistence
-            GET >=> path $"{apiBase}/local/sora-results" >=> getSoraResults persistence
-            GET >=> path $"{apiBase}/local/deviations" >=> getLocalDeviations persistence
-            GET >=> path $"{apiBase}/stash" >=> getStashedDeviations persistence
-            GET >=> path $"{apiBase}/publish" >=> getPublishedDeviations persistence
-            
-            PUT >=> path $"{apiBase}/local/images" >=> putImages serverAddress serverPort
-            PUT >=> path $"{apiBase}/local/inspiration" >=> putInspiration persistence
-
-            PUT >=> path $"{apiBase}/local/prompt" >=> addPrompt persistence
-            PUT >=> path $"{apiBase}/local/deviation" >=> (fun ctx -> badRequestMessage ctx "addDeviation()" "not implemented yet")
-            
-            POST >=> path $"{apiBase}/stash" >=> stash persistence deviantArtClient
-            POST >=> path $"{apiBase}/publish" >=> publish persistence deviantArtClient secrets
-            
-            // TODO: can client just do all the calls for any of these?
-            POST >=> path $"{apiBase}/inspiration2prompt" >=> inspiration2Prompt persistence
-            POST >=> path $"{apiBase}/inspiration2gpt" >=> inspiration2ChatGPTTask persistence
-            POST >=> path $"{apiBase}/prompt2deviation" >=> prompt2Deviation persistence
-            POST >=> path $"{apiBase}/prompt2sora" >=> prompt2SoraTask persistence
-            POST >=> path $"{apiBase}/retry-sora" >=> retrySora persistence
-            POST >=> path $"{apiBase}/sora2deviation" >=> sora2Deviation persistence
-            
-            PATCH >=> path $"{apiBase}/local/prompt" >=> patchPrompt persistence
-            PATCH >=> path $"{apiBase}/local/deviation" >=> patchLocalDeviation persistence
-            
-            DELETE >=> path $"{apiBase}/local/inspiration" >=> deleteInspiration persistence
-            DELETE >=> path $"{apiBase}/local/gpt-result" >=> deleteChatGPTResult persistence
-            DELETE >=> path $"{apiBase}/local/prompt" >=> deletePrompt persistence
-            DELETE >=> path $"{apiBase}/local/sora-result" >=> deleteSoraResult persistence
-            DELETE >=> path $"{apiBase}/local/deviation" >=> deleteLocalDeviation persistence
-            DELETE >=> path $"{apiBase}/stash" >=> deleteStashedDeviation persistence
-            
-            pathScan "/images/%s" (fun filename ->
-                let filepath = Path.Combine(imagesLocation, filename)
-                file filepath
-            )
-            
-            pathScan "/automated/%s" (fun filename ->
-                let filepath = Path.Combine(automatedImagesLocation, filename)
-                file filepath
-            )
-            
-            NOT_FOUND "unknown path"
-        ]
-        
-    let tryStartServer persistence (deviantArtClient: FunSharp.DeviantArt.Api.Client) =
+    let tryStartServer persistence (deviantArtClient: FunSharp.DeviantArt.Api.Client) soraClient=
         
         try
             let who = deviantArtClient.WhoAmI() |> Async.getOrFail |> Async.RunSynchronously
             printfn $"Hello, {who.username}!"
             
-            startWebServer serverConfiguration (routing persistence deviantArtClient)
+            startWebServer serverConfiguration (routing secrets persistence deviantArtClient soraClient)
         with
         | :? System.Net.Sockets.SocketException as ex ->
             printfn $"Socket bind failed: %s{ex.Message}"
@@ -151,7 +83,7 @@ module ServerStartup =
             deviantArtClient.StartInteractiveLogin() |> Async.RunSynchronously
             
         Async.Start(async { do startBackgroundWorkers cts persistence deviantArtClient soraClient }, cancellationToken = cts.Token)
-        Async.Start(async { do tryStartServer persistence deviantArtClient }, cancellationToken = cts.Token)
+        Async.Start(async { do tryStartServer persistence deviantArtClient soraClient }, cancellationToken = cts.Token)
         
         printfn "Press Enter to stop..."
         Console.ReadLine() |> ignore

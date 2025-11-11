@@ -6,8 +6,8 @@ open Microsoft.AspNetCore.Components
 open Radzen
 open Radzen.Blazor
 open FunSharp.Blazor.Components
+open FunSharp.DeviantArt.Api.Model.Helpers
 open FunSharp.ArtStudio.Model
-open FunSharp.ArtStudio.Client
 open FunSharp.ArtStudio.Client.Model
 open FunSharp.ArtStudio.Client.Components
 
@@ -75,7 +75,7 @@ type StashedDeviations() =
                             deviation.Timestamp.ToString() |> text
                             
                             Link.render copyInspirationToClipboard (Some "Open in Sta.sh")
-                                $"{Helpers.stashEditUrl deviation.StashId}"
+                                $"{stashEditUrl deviation.StashId}"
                             
                             comp<RadzenStack> {
                                 "Orientation" => Orientation.Horizontal

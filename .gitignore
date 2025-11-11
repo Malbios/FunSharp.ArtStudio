@@ -4,6 +4,7 @@
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
 Utilities/puppeteer/ChromeProfiles
+Utilities/puppeteer/ManualChromeProfiles
 
 Source/FunSharp.ArtStudio.Server/secrets.json
 Source/FunSharp.ArtStudio.Utilities/secrets.json

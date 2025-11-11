@@ -2,6 +2,8 @@
 
 open System
 open System.Web
+open FunSharp.DeviantArt.Api.Model.Helpers
+open FunSharp.OpenAI.Api
 open Suave
 open Suave.Filters
 open Suave.Operators
@@ -327,7 +329,7 @@ module WebParts =
             deviation |> asOkJsonResponse ctx
         |> tryCatch (nameof prompt2Deviation)
         
-    let rec stash (persistence: IPersistence) apiClient =
+    let rec stash (persistence: IPersistence) apiClient (soraClient: Sora.Client) =
         
         fun ctx ->
             let key = getKey ctx
@@ -355,10 +357,24 @@ module WebParts =
                     submitToStash apiClient imageContent mimeType local
                 )
                 |> Async.bind (fun stashedDeviation ->
+                    let stashEditUrl = stashEditUrl stashedDeviation.StashId
+                    let inspiration = DeviationOrigin.inspiration stashedDeviation.Origin
+                    
+                    match inspiration with
+                    | None -> Async.returnM stashedDeviation
+                    | Some inspiration ->
+                        soraClient.UpdateStash(stashEditUrl, inspiration.Url.ToString())
+                        |> Async.map (fun result ->
+                            match result with
+                            | Ok _ -> ()
+                            | Error error -> printfn $"UpdateStash error: {error}"
+                            
+                            stashedDeviation
+                        )
+                )
+                |> Async.bind (fun stashedDeviation ->
                     persistence.Insert(dbKey_StashedDeviations, key, stashedDeviation)
                     persistence.Delete(dbKey_LocalDeviations, key) |> ignore
-                    
-                    // printfn "Submission done!"
                     
                     stashedDeviation |> asOkJsonResponse ctx
                 )

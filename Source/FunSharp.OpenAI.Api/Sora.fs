@@ -294,6 +294,20 @@ module Sora =
                 
             with exn ->
                 exn.Message |> Error |> Async.returnM
+            
+        member _.UpdateStash(stashUrl, inspirationUrl) =
+            
+            try
+                [| stashUrl; inspirationUrl |]
+                |> runScript $"{puppeteerPath}/update-DA-stash.js"
+                |> Async.map _.Trim()
+                |> Async.Catch
+                |> Async.map (function
+                    | Choice1Of2 result -> Ok result
+                    | Choice2Of2 exn -> Error exn.Message)
+                
+            with exn ->
+                exn.Message |> Error |> Async.returnM
 
         interface IDisposable with
         
