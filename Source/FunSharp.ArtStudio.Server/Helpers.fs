@@ -193,11 +193,32 @@ module Helpers =
         let inspirationHasUrl inspiration =
             inspiration.Url.ToString() = url.ToString()
             
+        let gptTaskHasUrl (task: ChatGPTTask) =
+            inspirationHasUrl task.Inspiration
+            
+        let gptResultHasUrl (result: ChatGPTResult) =
+            gptTaskHasUrl result.Task
+            
         let promptHasUrl prompt =
             match prompt.Inspiration with
             | None -> false
             | Some inspiration -> inspirationHasUrl inspiration
             
+        let soraTaskHasUrl (task: SoraTask) =
+            promptHasUrl task.Prompt
+            
+        let soraResultHasUrl (result: SoraResult) =
+            soraTaskHasUrl result.Task
+            
+        let taskHasUrl (task: BackgroundTask) =
+            match task with
+            | Inspiration inspirationUrl ->
+                inspirationUrl.ToString() = url.ToString()
+            | ChatGPT task ->
+                gptTaskHasUrl task
+            | Sora task ->
+                soraTaskHasUrl task
+
         let localHasUrl local =
             match local.Origin with
             | DeviationOrigin.None -> false
@@ -218,8 +239,13 @@ module Helpers =
 
         (persistence.FindAny<Inspiration>(dbKey_Inspirations, inspirationHasUrl) |> Array.isEmpty |> not) ||
         (persistence.FindAny<Inspiration>(dbKey_DeletedItems, inspirationHasUrl) |> Array.isEmpty |> not) ||
+        (persistence.FindAny<BackgroundTask>(dbKey_BackgroundTasks, taskHasUrl) |> Array.isEmpty |> not) ||
+        (persistence.FindAny<ChatGPTResult>(dbKey_ChatGPTResults, gptResultHasUrl) |> Array.isEmpty |> not) ||
+        (persistence.FindAny<ChatGPTResult>(dbKey_DeletedItems, gptResultHasUrl) |> Array.isEmpty |> not) ||
         (persistence.FindAny<Prompt>(dbKey_Prompts, promptHasUrl) |> Array.isEmpty |> not) ||
         (persistence.FindAny<Prompt>(dbKey_DeletedItems, promptHasUrl) |> Array.isEmpty |> not) ||
+        (persistence.FindAny<SoraResult>(dbKey_SoraResults, soraResultHasUrl) |> Array.isEmpty |> not) ||
+        (persistence.FindAny<SoraResult>(dbKey_DeletedItems, soraResultHasUrl) |> Array.isEmpty |> not) ||
         (persistence.FindAny<LocalDeviation>(dbKey_LocalDeviations, localHasUrl) |> Array.isEmpty |> not) ||
         (persistence.FindAny<LocalDeviation>(dbKey_DeletedItems, localHasUrl) |> Array.isEmpty |> not) ||
         (persistence.FindAny<StashedDeviation>(dbKey_StashedDeviations, stashedHasUrl) |> Array.isEmpty |> not) ||

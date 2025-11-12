@@ -45,8 +45,7 @@ type Sora() =
                         
                     | StatefulItem.Default result ->
                         comp<RadzenStack> {
-                            // TODO: make a border to make it easier to spot non-doubles
-                            //attr.style (if result.Images.Length < 2 || result.Images.Length > 2 then "" else "")
+                            attr.style (if result.Images.Length < 2 || result.Images.Length > 2 then "border: 1px solid red;" else "")
                             
                             "Orientation" => Orientation.Vertical
                             "JustifyContent" => JustifyContent.Center
