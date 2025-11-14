@@ -289,6 +289,27 @@ module WebParts =
             task |> asOkJsonResponse ctx
         |> tryCatch (nameof prompt2SoraTask)
         
+    let rec abortTask (persistence: IPersistence) =
+        
+        fun ctx ->
+            let key = getKey ctx
+            
+            let task = persistence.Find(dbKey_BackgroundTasks, key) |> Option.get
+            
+            match task with
+            | Inspiration _ ->
+                failwith "aborting inspiration task not implemented"
+            
+            | ChatGPT _ ->
+                failwith "aborting ChatGPT task not implemented"
+            
+            | Sora task ->
+                persistence.Insert(dbKey_Prompts, task.Prompt.Id.ToString(), task.Prompt)
+                persistence.Delete(dbKey_BackgroundTasks, task.Id.ToString()) |> ignore
+                
+                task.Prompt |> asOkJsonResponse ctx
+        |> tryCatch (nameof abortTask)
+        
     let rec sora2Deviation (persistence: IPersistence) =
         
         fun ctx ->

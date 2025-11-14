@@ -17,3 +17,7 @@ module SoraTask =
     let keyOf task =
         
         task.Id
+        
+    let identifier st1 st2 =
+        
+        keyOf st1 = keyOf st2

@@ -212,8 +212,7 @@ module Helpers =
             
         let taskHasUrl (task: BackgroundTask) =
             match task with
-            | Inspiration inspirationUrl ->
-                inspirationUrl.ToString() = url.ToString()
+            | Inspiration _ -> false
             | ChatGPT task ->
                 gptTaskHasUrl task
             | Sora task ->

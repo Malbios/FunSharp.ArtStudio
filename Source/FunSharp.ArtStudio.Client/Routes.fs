@@ -7,7 +7,7 @@ type Page =
     | [<EndPoint "/">] Home
     | [<EndPoint "/add-inspiration">] AddInspiration
     // | [<EndPoint "/inspirations">] Inspirations
-    // | [<EndPoint "/prompts">] Prompts
+    | [<EndPoint "/prompts">] Prompts
     // | [<EndPoint "/tasks">] Tasks
     | [<EndPoint "/gpt">] ChatGPTResults
     | [<EndPoint "/sora">] SoraResults

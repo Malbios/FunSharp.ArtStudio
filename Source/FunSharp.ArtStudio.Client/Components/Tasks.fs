@@ -46,7 +46,7 @@ module Tasks =
             div { $"error: {error}" }
         }
         
-    let soraTaskDetails (task: SoraTask) =
+    let soraTaskDetails dispatch (task: SoraTask) =
         comp<RadzenStack> {
             "Orientation" => Orientation.Vertical
             "JustifyContent" => JustifyContent.Center
@@ -56,6 +56,8 @@ module Tasks =
             Inspiration.render task.Prompt.Inspiration
                             
             div { $"{task.Timestamp}" }
+            
+            Button.renderSimple "Abort" (fun () -> Message.AbortSoraTask task |> dispatch)
         }
             
     let render<'T> (tasks: Loadable<StatefulItem<'T> array>) sortProp errorDetails taskDetails =

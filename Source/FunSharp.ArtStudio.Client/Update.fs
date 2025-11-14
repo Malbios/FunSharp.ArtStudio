@@ -163,6 +163,13 @@ module Update =
         |> Async.map JsonSerializer.deserialize<SoraTask>
         |> Async.map (fun task -> result, task)
         
+    let private abortSoraTask client (task: SoraTask) =
+        
+        Http.post client $"{apiRoot}/abort-task?key={SoraTask.keyOf task}" None
+        |> Async.bind Http.contentAsString
+        |> Async.map JsonSerializer.deserialize<Prompt>
+        |> Async.map (fun prompt -> task, prompt)
+        
     let private soraResult2LocalDeviation client (result: SoraResult, pickedIndex: int) =
         
         { SoraResultId = result.Id; PickedIndex = pickedIndex }
@@ -708,6 +715,12 @@ module Update =
             let tasks = model.SoraTasks |> LoadableStatefulItems.withNew task
             
             { model with SoraTasks = tasks }, Cmd.none
+        
+        | RemovedSoraTask task ->
+            
+            let tasks = model.SoraTasks |> LoadableStatefulItems.without (SoraTask.identifier task)
+            
+            { model with SoraTasks = tasks }, Cmd.none
             
         | RetrySoraResult result ->
             
@@ -737,6 +750,35 @@ module Update =
             printfn $"error: {error}"
             
             { model with SoraResults = results }, Cmd.none
+            
+        | AbortSoraTask task ->
+            
+            let tasks = model.SoraTasks |> LoadableStatefulItems.setBusy (SoraTask.identifier task)
+        
+            let abortSoraTask = abortSoraTask client
+            let failed ex = AbortSoraTaskFailed (task, ex)
+            
+            let cmd = Cmd.OfAsync.either abortSoraTask task AbortSoraTaskDone failed
+            
+            { model with SoraTasks = tasks }, cmd
+            
+        | AbortSoraTaskDone (task, prompt) ->
+            
+            let batch = Cmd.batch [
+                RemovedSoraTask task |> Cmd.ofMsg
+                AddedPrompt prompt |> Cmd.ofMsg
+            ]
+            
+            model, batch
+        
+        | AbortSoraTaskFailed (task, error) ->
+            
+            let tasks = model.SoraTasks |> LoadableStatefulItems.setDefault (SoraTask.identifier task)
+            
+            printfn $"abortSoraTask failed for: {SoraTask.keyOf task}"
+            printfn $"error: {error}"
+            
+            { model with SoraTasks = tasks }, Cmd.none
             
         | RemoveSoraResult result ->
             

@@ -385,10 +385,15 @@ type Message =
     | Prompt2SoraTaskFailed of Prompt * error: exn
     
     | AddedSoraTask of task: SoraTask
+    | RemovedSoraTask of task: SoraTask
     
     | RetrySoraResult of result: SoraResult
     | RetriedSoraResult of result: SoraResult * task: SoraTask
     | RetrySoraResultFailed of result: SoraResult * error: exn
+    
+    | AbortSoraTask of task: SoraTask
+    | AbortSoraTaskDone of task: SoraTask * Prompt
+    | AbortSoraTaskFailed of task: SoraTask * error: exn
     
     | RemoveSoraResult of result: SoraResult
     | ForgetSoraResult of result: SoraResult

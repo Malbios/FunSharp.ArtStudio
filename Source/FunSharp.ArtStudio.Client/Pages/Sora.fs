@@ -87,6 +87,6 @@ type Sora() =
                 
             hr { attr.style "width: 100%;" }
             
-            Tasks.render model.SoraTasks _.Timestamp Tasks.soraTaskErrorDetails Tasks.soraTaskDetails
+            Tasks.render model.SoraTasks _.Timestamp Tasks.soraTaskErrorDetails (Tasks.soraTaskDetails dispatch)
         }
         |> Page.render model dispatch
