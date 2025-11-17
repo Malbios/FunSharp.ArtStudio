@@ -96,7 +96,7 @@ module Navigation =
                 "Gap" => "0.5rem"
                 
                 [
-                    ("/add-inspiration", $"Add Inspiration ({inspirationTasksCount}")
+                    ("/add-inspiration", $"Add Inspiration ({inspirationTasksCount})")
                     // ("/prompts", $"Prompts ({promptsCount})")
                     ("/gpt", $"ChatGPT ({chatGPTResultsCount}|{chatGPTTasksCount})")
                     ("/sora", $"Sora ({soraResultsCount}|{soraTasksCount})")

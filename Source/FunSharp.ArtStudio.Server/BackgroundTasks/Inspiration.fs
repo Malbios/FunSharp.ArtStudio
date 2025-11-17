@@ -11,6 +11,8 @@ module Inspiration =
     
     let private processItem serverAddress serverPort (persistence: IPersistence) (deviantArtClient: FunSharp.DeviantArt.Api.Client) (url: Uri) = async {
         
+        printfn $"processing Inspiration task: {url.ToString()}"
+        
         match urlAlreadyExists persistence url with
         | true ->
             printfn $"This inspiration url already exists in the database: {url}"
