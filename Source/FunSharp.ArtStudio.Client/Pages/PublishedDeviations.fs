@@ -71,7 +71,6 @@ type PublishedDeviations() =
                     
                     page.items
                     |> Array.map PublishedDeviations.deviationWidget
-                    |> Helpers.renderArray
                     |> Deviations.render
                     
                     Pager.render page.total pageSize page.offset changePage

@@ -67,6 +67,8 @@ module LocalDeviations =
             |> update
             
         comp<RadzenStack> {
+            attr.style "max-width: 400px;"
+            
             "Orientation" => Orientation.Vertical
             
             TextInput.render (editTitle deviation) (fun _ -> ()) isBusy "Enter title..." deviation.Metadata.Title
@@ -184,7 +186,6 @@ type LocalDeviations() =
                     
                     page.items
                     |> Array.map (LocalDeviations.deviationWidget dispatch this.JSRuntime galleries)
-                    |> Helpers.renderArray
                     |> Deviations.render
                     
                     Pager.render page.total pageSize page.offset changePage

@@ -62,7 +62,6 @@ type Inspirations() =
                     }
                     |> Deviation.renderWithContent inspiration.ImageUrl None
                 )
-                |> Helpers.renderArray
                 |> Deviations.render
         }
         |> Page.render model dispatch

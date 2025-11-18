@@ -89,6 +89,5 @@ type StashedDeviations() =
                             }
                         }
                 )
-                |> Helpers.renderArray
                 |> Deviations.render
         |> Page.render model dispatch

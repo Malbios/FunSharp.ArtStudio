@@ -80,7 +80,6 @@ type ChatGPT() =
                             }
                         }
                 )
-                |> Helpers.renderArray
                 |> Deviations.render
                 
             hr { attr.style "width: 100%;" }

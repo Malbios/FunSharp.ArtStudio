@@ -76,5 +76,4 @@ module Tasks =
                 | StatefulItem.Default task ->
                     taskDetails task
             )
-            |> Helpers.renderArray
             |> Deviations.render

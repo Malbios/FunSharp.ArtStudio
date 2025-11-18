@@ -150,7 +150,6 @@ type Prompts() =
                         }
                         |> Deviation.renderWithContent (prompt.Inspiration |> Option.bind _.ImageUrl) None
                 )
-                |> Helpers.renderArray
                 |> Deviations.render
         }
         |> Page.render model dispatch

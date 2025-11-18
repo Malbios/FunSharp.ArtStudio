@@ -82,7 +82,6 @@ type Sora() =
                             }
                         }
                 )
-                |> Helpers.renderArray
                 |> Deviations.render
                 
             hr { attr.style "width: 100%;" }

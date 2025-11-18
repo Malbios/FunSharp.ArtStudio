@@ -2,13 +2,14 @@
 
 open Bolero
 open Bolero.Html
+open FunSharp.Blazor.Components
 open Radzen
 open Radzen.Blazor
 
 [<RequireQualifiedAccess>]
 module Deviations =
     
-    let render (content: Node) =
+    let render (children: Node array) =
         
         comp<RadzenStack> {
             "Orientation" => Orientation.Horizontal
@@ -17,5 +18,5 @@ module Deviations =
             "Wrap" => FlexWrap.Wrap
             "Gap" => "1rem"
             
-            content
+            children |> Helpers.renderArray
         }

@@ -98,8 +98,8 @@ module Navigation =
                 [
                     ("/add-inspiration", $"Add Inspiration ({inspirationTasksCount})")
                     // ("/prompts", $"Prompts ({promptsCount})")
-                    ("/gpt", $"ChatGPT ({chatGPTResultsCount}|{chatGPTTasksCount})")
-                    ("/sora", $"Sora ({soraResultsCount}|{soraTasksCount})")
+                    ("/gpt", $"ChatGPT ({chatGPTTasksCount}|{chatGPTResultsCount})")
+                    ("/sora", $"Sora ({soraTasksCount}|{soraResultsCount})")
                     ("/local-deviations", $"Local Deviations ({localDeviationsCount})")
                     ("/stashed-deviations", $"Stashed Deviations ({stashedDeviationsCount})")
                     ("/published-deviations", $"Published Deviations ({publishedDeviationsCount})")
