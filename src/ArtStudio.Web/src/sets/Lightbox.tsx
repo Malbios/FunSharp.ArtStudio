@@ -54,26 +54,28 @@ export function Lightbox({ images, index, sourceImageUrl, selectedImageId, onInd
           Close
         </button>
       </div>
-      <div className="lightbox-images">
-        {sourceImageUrl && (
-          <figure>
-            <img src={sourceImageUrl} alt="Base image" />
-            <figcaption>Base image</figcaption>
+      <div className="lightbox-body">
+        <div className="lightbox-images">
+          <figure className="generated">
+            <img src={image.url} alt={`Generated image ${index + 1}`} />
+            <figcaption>{isSelected ? 'Generated (picked)' : 'Generated'}</figcaption>
           </figure>
-        )}
-        <figure>
-          <img src={image.url} alt={`Generated image ${index + 1}`} />
-          <figcaption>{isSelected ? 'Generated (picked)' : 'Generated'}</figcaption>
-        </figure>
-      </div>
-      <div className="lightbox-prompt">
-        <p>{image.prompt}</p>
-        <div className="job-meta">
-          <span>{image.resolution}</span>
-          <span>seed {image.seed}</span>
-          <button type="button" className="link-button" onClick={() => void copyPrompt()}>
-            {copiedImageId === image.id ? 'Copied!' : 'Copy prompt'}
-          </button>
+          {sourceImageUrl && (
+            <figure>
+              <img src={sourceImageUrl} alt="Base image" />
+              <figcaption>Base image</figcaption>
+            </figure>
+          )}
+        </div>
+        <div className="lightbox-prompt">
+          <p>{image.prompt}</p>
+          <div className="job-meta">
+            <span>{image.resolution}</span>
+            <span>seed {image.seed}</span>
+            <button type="button" className="link-button" onClick={() => void copyPrompt()}>
+              {copiedImageId === image.id ? 'Copied!' : 'Copy prompt'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
