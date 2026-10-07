@@ -62,10 +62,7 @@ public sealed class SetService(
                 await AttachSourceImageAsync(set, file.Kind, file.Content, file.Extension, ct);
                 break;
             case SetSource.DeviantArtUrl when deviation is not null:
-                set.DeviantArtUrl = deviation.Preview.Url;
-                set.DeviationId = deviation.Preview.DeviationId;
-                set.DeviantArtAuthor = deviation.Preview.Author;
-                await AttachSourceImageAsync(set, SourceKind.DeviantArt, new MemoryStream(deviation.Content), deviation.Extension, ct);
+                await AttachDeviationAsync(set, deviation, ct);
                 break;
         }
 
@@ -74,6 +71,35 @@ public sealed class SetService(
         else
             await queueService.EnqueueAsync(set.Id, request.Count, prompt: null, resolution: null, ct);
         return set;
+    }
+
+    public async Task<PromptSet> CreateDeviantArtDraftAsync(string url, CancellationToken ct)
+    {
+        var deviation = await deviantArtService.DownloadAsync(url, imageIndex: 0, ct);
+        var mainImage = deviation.Preview.Images[0];
+
+        var set = new PromptSet
+        {
+            Prompt = "",
+            Resolution = Resolutions.ClosestTo(mainImage.Width, mainImage.Height).Name,
+            SourceKind = SourceKind.None,
+            CreatedAt = clock.GetUtcNow(),
+            IsDraft = true,
+        };
+        db.PromptSets.Add(set);
+        await db.SaveChangesAsync(ct);
+
+        await AttachDeviationAsync(set, deviation, ct);
+        await notifier.SetUpdated(set.Id);
+        return set;
+    }
+
+    private async Task AttachDeviationAsync(PromptSet set, DownloadedDeviation deviation, CancellationToken ct)
+    {
+        set.DeviantArtUrl = deviation.Preview.Url;
+        set.DeviationId = deviation.Preview.DeviationId;
+        set.DeviantArtAuthor = deviation.Preview.Author;
+        await AttachSourceImageAsync(set, SourceKind.DeviantArt, new MemoryStream(deviation.Content), deviation.Extension, ct);
     }
 
     public async Task QueueDraftAsync(int setId, string prompt, string resolution, int count, CancellationToken ct)

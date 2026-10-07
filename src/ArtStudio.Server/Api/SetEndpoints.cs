@@ -32,6 +32,8 @@ public static class SetEndpoints
         sets.MapDelete("{id:int}", async (int id, SetService setService, CancellationToken ct) =>
             await setService.DeleteAsync(id, ct) ? Results.NoContent() : Results.NotFound());
         app.MapGet("/api/images/{id:int}", GetImageAsync);
+        app.MapPost("/api/drafts/deviantart", async (DeviantArtDraftRequest request, SetService setService, CancellationToken ct) =>
+            Results.Ok(new { (await setService.CreateDeviantArtDraftAsync(request.Url ?? "", ct)).Id }));
     }
 
     private static async Task<IReadOnlyList<SetSummaryDto>> ListSetsAsync(string? stage, StudioDbContext db, CancellationToken ct)

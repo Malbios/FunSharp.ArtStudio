@@ -132,6 +132,49 @@ public sealed class DraftTests : IDisposable
         Assert.True((await GetSetAsync(_client, setId)).IsDraft);
     }
 
+    private Task<HttpResponseMessage> PostDeviantArtDraftAsync(string url) =>
+        _client.PostAsJsonAsync("/api/drafts/deviantart", new { url });
+
+    [Fact]
+    public async Task DeviantArtDraft_UsesMainImage_AndClosestResolution()
+    {
+        _factory.DeviantArt.ExtraImages = 2;
+
+        var response = await PostDeviantArtDraftAsync(DeviationLink);
+
+        response.EnsureSuccessStatusCode();
+        var setId = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        var set = await GetSetAsync(_client, setId);
+        Assert.True(set.IsDraft);
+        Assert.Empty(set.Jobs);
+        Assert.Equal(SourceKind.DeviantArt, set.SourceKind);
+        Assert.Equal("someartist", set.DeviantArtAuthor);
+        Assert.Equal("Wide", set.Resolution);
+        Assert.Equal(FakeDeviantArt.JpegBytes, await _client.GetByteArrayAsync(set.SourceImageUrl));
+        Assert.Equal([setId], await SetIdsAsync("draft"));
+    }
+
+    [Fact]
+    public async Task DeviantArtDraft_SameDeviationTwice_IsReportedAsDuplicate()
+    {
+        var first = await PostDeviantArtDraftAsync(DeviationLink);
+        var firstId = (await first.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        var again = await PostDeviantArtDraftAsync(DeviationLink);
+
+        Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
+        Assert.Equal(firstId, (await again.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("existingSetId").GetInt32());
+    }
+
+    [Fact]
+    public async Task DeviantArtDraft_WithOtherUrl_IsRejected()
+    {
+        var response = await PostDeviantArtDraftAsync("https://example.com/art/thing-123");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(await SetIdsAsync("draft"));
+    }
+
     [Fact]
     public async Task DeviationInDraft_IsReportedAsDuplicate()
     {

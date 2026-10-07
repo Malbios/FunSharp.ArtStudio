@@ -84,6 +84,8 @@ public sealed record MoreImagesRequest(int Count, string? Prompt, string? Resolu
 
 public sealed record QueueDraftRequest(string Prompt, string Resolution, int Count);
 
+public sealed record DeviantArtDraftRequest(string Url);
+
 public sealed record PickImageRequest(int ImageId);
 
 public sealed record ReorderPicksRequest(IReadOnlyList<int> ImageIds);
