@@ -18,7 +18,17 @@ describe('cleanPrompt', () => {
 
   it('tidies spacing left behind without touching line breaks', () => {
     expect(cleanPrompt('a fox, adult , in snow\nsecond line')).toBe('a fox, in snow\nsecond line')
-    expect(cleanPrompt('line one\n\nline   two')).toBe('line one\n\nline two')
+    expect(cleanPrompt('first line\nadult fox\nlast adult')).toBe('first line\nfox\nlast')
+  })
+
+  it('leaves surrounding whitespace of pasted text alone', () => {
+    expect(cleanPrompt(' She has a hyper-sized bust.')).toBe(' She has a hyper-sized bust.')
+    expect(cleanPrompt('  two leading spaces, trailing ')).toBe('  two leading spaces, trailing ')
+    expect(cleanPrompt('line one\n\nline   two')).toBe('line one\n\nline   two')
+  })
+
+  it('keeps a leading space while removing a word elsewhere', () => {
+    expect(cleanPrompt(' She is an adult woman.')).toBe(' She is an woman.')
   })
 
   it('leaves clean text unchanged', () => {
