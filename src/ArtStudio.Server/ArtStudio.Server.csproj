@@ -14,4 +14,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Comfy\krea2_t2i.json" LogicalName="ArtStudio.Server.Comfy.krea2_t2i.json" />
+  </ItemGroup>
+
 </Project>
