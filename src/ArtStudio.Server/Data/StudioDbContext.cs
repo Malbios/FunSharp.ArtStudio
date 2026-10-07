@@ -9,6 +9,7 @@ public class StudioDbContext(DbContextOptions<StudioDbContext> options) : DbCont
     public DbSet<PromptSet> PromptSets => Set<PromptSet>();
     public DbSet<GenerationJob> Jobs => Set<GenerationJob>();
     public DbSet<GeneratedImage> Images => Set<GeneratedImage>();
+    public DbSet<PickedImage> Picks => Set<PickedImage>();
     public DbSet<BuildingBlock> BuildingBlocks => Set<BuildingBlock>();
     public DbSet<BlockedArtist> BlockedArtists => Set<BlockedArtist>();
     public DbSet<StudioSettings> Settings => Set<StudioSettings>();
@@ -27,6 +28,7 @@ public class StudioDbContext(DbContextOptions<StudioDbContext> options) : DbCont
             set.HasIndex(s => s.DeviationId);
             set.HasMany(s => s.Jobs).WithOne(j => j.PromptSet).HasForeignKey(j => j.PromptSetId);
             set.HasMany(s => s.Images).WithOne().HasForeignKey(i => i.PromptSetId);
+            set.HasMany(s => s.Picks).WithOne().HasForeignKey(p => p.PromptSetId);
         });
 
         modelBuilder.Entity<GenerationJob>(job =>
@@ -37,6 +39,12 @@ public class StudioDbContext(DbContextOptions<StudioDbContext> options) : DbCont
 
         modelBuilder.Entity<GeneratedImage>()
             .HasOne<GenerationJob>().WithMany().HasForeignKey(i => i.GenerationJobId);
+
+        modelBuilder.Entity<PickedImage>(pick =>
+        {
+            pick.HasOne<GeneratedImage>().WithMany().HasForeignKey(p => p.GeneratedImageId);
+            pick.HasIndex(p => new { p.PromptSetId, p.GeneratedImageId }).IsUnique();
+        });
 
         modelBuilder.Entity<BlockedArtist>(artist =>
         {

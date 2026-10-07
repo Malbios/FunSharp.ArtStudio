@@ -533,13 +533,101 @@ main {
   display: block;
 }
 
-.image-tile .badge {
+.image-tile-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+}
+
+.image-tile-pick {
   position: absolute;
   top: 0.5rem;
-  left: 0.5rem;
+  right: 0.5rem;
+  padding: 0.15rem 0.6rem;
+  background: rgb(0 0 0 / 0.6);
+  border-color: transparent;
+  font-weight: 600;
+}
+
+.image-tile.selected .image-tile-pick {
   background: var(--success);
   color: #000;
+}
+
+/* Picked strip */
+
+.picked-strip {
+  margin-top: 1.5rem;
+}
+
+.picked-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+}
+
+.picked-item {
+  width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.3rem;
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+  cursor: grab;
+}
+
+.picked-item.dragging {
+  opacity: 0.4;
+}
+
+.picked-item.drop-target {
+  border-color: var(--accent);
+}
+
+.picked-thumb {
+  position: relative;
+  display: block;
+  padding: 0;
   border: none;
+  background: none;
+}
+
+.picked-thumb img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.picked-number {
+  position: absolute;
+  top: 0.3rem;
+  left: 0.3rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--success);
+  color: #000;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.picked-controls {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.picked-controls button {
+  flex: 1;
+  padding: 0.2rem 0;
 }
 
 /* Lightbox */

@@ -59,7 +59,7 @@ public sealed record SetSummaryDto(
     int ImageCount,
     bool HasActiveJob,
     bool HasFailedJob,
-    int? SelectedImageId,
+    int PickedCount,
     DateTimeOffset CreatedAt);
 
 public sealed record SetDetailDto(
@@ -70,14 +70,16 @@ public sealed record SetDetailDto(
     string? SourceImageUrl,
     string? DeviantArtUrl,
     string? DeviantArtAuthor,
-    int? SelectedImageId,
+    IReadOnlyList<int> PickedImageIds,
     DateTimeOffset CreatedAt,
     IReadOnlyList<ImageDto> Images,
     IReadOnlyList<JobDto> Jobs);
 
 public sealed record MoreImagesRequest(int Count, string? Prompt, string? Resolution);
 
-public sealed record SelectImageRequest(int? ImageId);
+public sealed record PickImageRequest(int ImageId);
+
+public sealed record ReorderPicksRequest(IReadOnlyList<int> ImageIds);
 
 public static class ApiUrls
 {

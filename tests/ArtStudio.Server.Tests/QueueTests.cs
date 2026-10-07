@@ -297,16 +297,4 @@ public sealed class QueueTests : IDisposable
     {
         Assert.Equal(HttpStatusCode.NotFound, (await _client.DeleteAsync("/api/sets/999")).StatusCode);
     }
-
-    [Fact]
-    public async Task SelectImage_StoresSelection()
-    {
-        var setId = await _factory.CreateSetAsync(_client, "fox", count: 2);
-        await WaitForJobStatusAsync(setId, JobStatus.Completed);
-        var imageId = (await GetSetAsync(_client, setId)).Images[1].Id;
-
-        (await _client.PostAsJsonAsync($"/api/sets/{setId}/select", new { imageId })).EnsureSuccessStatusCode();
-
-        Assert.Equal(imageId, (await GetSetAsync(_client, setId)).SelectedImageId);
-    }
 }

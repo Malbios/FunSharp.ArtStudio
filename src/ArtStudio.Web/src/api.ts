@@ -50,7 +50,7 @@ export interface SetSummary {
   imageCount: number
   hasActiveJob: boolean
   hasFailedJob: boolean
-  selectedImageId: number | null
+  pickedCount: number
   createdAt: string
 }
 
@@ -62,7 +62,7 @@ export interface SetDetail {
   sourceImageUrl: string | null
   deviantArtUrl: string | null
   deviantArtAuthor: string | null
-  selectedImageId: number | null
+  pickedImageIds: number[]
   createdAt: string
   images: ImageInfo[]
   jobs: Job[]
@@ -141,8 +141,10 @@ export const api = {
   createSet: (form: FormData) => request<{ id: number }>('POST', '/api/sets', form),
   moreImages: (setId: number, count: number, prompt?: string, resolution?: string) =>
     request<{ id: number }>('POST', `/api/sets/${setId}/more`, { count, prompt, resolution }),
-  selectImage: (setId: number, imageId: number | null) =>
-    request<void>('POST', `/api/sets/${setId}/select`, { imageId }),
+  pickImage: (setId: number, imageId: number) => request<void>('POST', `/api/sets/${setId}/picks`, { imageId }),
+  unpickImage: (setId: number, imageId: number) => request<void>('DELETE', `/api/sets/${setId}/picks/${imageId}`),
+  reorderPicks: (setId: number, imageIds: number[]) =>
+    request<void>('PUT', `/api/sets/${setId}/picks`, { imageIds }),
   deleteSet: (setId: number) => request<void>('DELETE', `/api/sets/${setId}`),
 
   queue: () => request<QueueState>('GET', '/api/queue'),

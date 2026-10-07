@@ -18,9 +18,9 @@ public class PromptSet
     public string? DeviantArtUrl { get; set; }
     public string? DeviationId { get; set; }
     public string? DeviantArtAuthor { get; set; }
-    public int? SelectedImageId { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 
     public List<GenerationJob> Jobs { get; set; } = [];
     public List<GeneratedImage> Images { get; set; } = [];
+    public List<PickedImage> Picks { get; set; } = [];
 }

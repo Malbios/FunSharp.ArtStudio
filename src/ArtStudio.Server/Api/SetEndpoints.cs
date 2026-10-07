@@ -16,7 +16,12 @@ public static class SetEndpoints
         sets.MapGet("{id:int}", GetSetAsync);
         sets.MapPost("", CreateSetAsync).DisableAntiforgery();
         sets.MapPost("{id:int}/more", RequestMoreImagesAsync);
-        sets.MapPost("{id:int}/select", SelectImageAsync);
+        sets.MapPost("{id:int}/picks", async (int id, PickImageRequest request, SetService setService, CancellationToken ct) =>
+            await setService.PickAsync(id, request.ImageId, ct));
+        sets.MapDelete("{id:int}/picks/{imageId:int}", async (int id, int imageId, SetService setService, CancellationToken ct) =>
+            await setService.UnpickAsync(id, imageId, ct));
+        sets.MapPut("{id:int}/picks", async (int id, ReorderPicksRequest request, SetService setService, CancellationToken ct) =>
+            await setService.ReorderPicksAsync(id, request.ImageIds, ct));
         sets.MapGet("{id:int}/source", GetSourceImageAsync);
         sets.MapDelete("{id:int}", async (int id, SetService setService, CancellationToken ct) =>
             await setService.DeleteAsync(id, ct) ? Results.NoContent() : Results.NotFound());
@@ -33,6 +38,8 @@ public static class SetEndpoints
                 Set = s,
                 ImageCount = s.Images.Count,
                 LatestImageId = s.Images.OrderByDescending(i => i.Id).Select(i => (int?)i.Id).FirstOrDefault(),
+                FirstPickedImageId = s.Picks.OrderBy(p => p.Position).Select(p => (int?)p.GeneratedImageId).FirstOrDefault(),
+                PickedCount = s.Picks.Count,
                 HasActiveJob = s.Jobs.Any(j => activeStatuses.Contains(j.Status)),
                 HasFailedJob = s.Jobs.Any(j => j.Status == JobStatus.Failed),
             })
@@ -44,11 +51,11 @@ public static class SetEndpoints
                 s.Set.Resolution,
                 s.Set.SourceKind,
                 ApiUrls.SourceImage(s.Set),
-                (s.Set.SelectedImageId ?? s.LatestImageId) is int previewId ? ApiUrls.Image(previewId) : null,
+                (s.FirstPickedImageId ?? s.LatestImageId) is int previewId ? ApiUrls.Image(previewId) : null,
                 s.ImageCount,
                 s.HasActiveJob,
                 s.HasFailedJob,
-                s.Set.SelectedImageId,
+                s.PickedCount,
                 s.Set.CreatedAt))
             .ToList();
     }
@@ -58,6 +65,7 @@ public static class SetEndpoints
         var set = await db.PromptSets
             .Include(s => s.Images.OrderBy(i => i.Id))
             .Include(s => s.Jobs.OrderBy(j => j.Id))
+            .Include(s => s.Picks.OrderBy(p => p.Position))
             .AsSplitQuery()
             .SingleOrDefaultAsync(s => s.Id == id, ct);
         if (set is null)
@@ -72,7 +80,7 @@ public static class SetEndpoints
             ApiUrls.SourceImage(set),
             set.DeviantArtUrl,
             set.DeviantArtAuthor,
-            set.SelectedImageId,
+            set.Picks.Select(p => p.GeneratedImageId).ToList(),
             set.CreatedAt,
             set.Images.Select(image => ImageDto.From(image, jobsById[image.GenerationJobId])).ToList(),
             set.Jobs.Select(JobDto.From).ToList()));
@@ -123,13 +131,6 @@ public static class SetEndpoints
             return Results.NotFound();
         var job = await queueService.EnqueueAsync(id, request.Count, request.Prompt, request.Resolution, ct);
         return Results.Ok(new { job.Id });
-    }
-
-    private static async Task<IResult> SelectImageAsync(
-        int id, SelectImageRequest request, SetService setService, CancellationToken ct)
-    {
-        await setService.SelectImageAsync(id, request.ImageId, ct);
-        return Results.NoContent();
     }
 
     private static async Task<IResult> GetSourceImageAsync(int id, StudioDbContext db, CancellationToken ct)

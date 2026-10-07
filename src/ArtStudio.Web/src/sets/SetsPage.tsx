@@ -31,7 +31,7 @@ export function SetsPage() {
                   <span>{set.imageCount} images</span>
                   {set.hasActiveJob && <span className="badge status-Running">generating</span>}
                   {set.hasFailedJob && <span className="badge status-Failed">failed</span>}
-                  {set.selectedImageId !== null && <span className="badge status-Completed">picked</span>}
+                  {set.pickedCount > 0 && <span className="badge status-Completed">{set.pickedCount} picked</span>}
                 </div>
               </div>
             </Link>

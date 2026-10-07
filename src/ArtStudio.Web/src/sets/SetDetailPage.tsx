@@ -5,6 +5,7 @@ import { useStudioEvents, type JobEventPayload } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { JobRow } from '../queue/JobRow'
 import { Lightbox } from './Lightbox'
+import { PickedStrip } from './PickedStrip'
 
 const DEFAULT_MORE_COUNT = 2
 
@@ -38,14 +39,19 @@ export function SetDetailPage() {
     }
   }
 
-  async function toggleSelect(image: ImageInfo) {
-    const nextSelection = set.data?.selectedImageId === image.id ? null : image.id
+  async function changePicks(action: () => Promise<void>) {
+    setError(undefined)
     try {
-      await api.selectImage(setId, nextSelection)
+      await action()
       set.reload()
     } catch (failure) {
       setError((failure as Error).message)
     }
+  }
+
+  function togglePick(image: ImageInfo) {
+    const picked = set.data?.pickedImageIds.includes(image.id)
+    void changePicks(() => (picked ? api.unpickImage(setId, image.id) : api.pickImage(setId, image.id)))
   }
 
   async function deleteSet() {
@@ -64,7 +70,6 @@ export function SetDetailPage() {
     }
   }
 
-
   if (deletedElsewhere && !deleting)
     return (
       <p className="hint">
@@ -77,6 +82,9 @@ export function SetDetailPage() {
   const data = set.data
   const hasInspiration = Boolean(data.sourceImageUrl || data.deviantArtUrl)
   const activeJobs = data.jobs.filter((job) => job.status === 'Queued' || job.status === 'Running' || job.status === 'Failed')
+  const imagesById = new Map(data.images.map((image) => [image.id, image]))
+  const pickedImages = data.pickedImageIds.flatMap((id) => imagesById.get(id) ?? [])
+  const pickNumber = (image: ImageInfo) => data.pickedImageIds.indexOf(image.id) + 1
 
   return (
     <div>
@@ -108,17 +116,24 @@ export function SetDetailPage() {
       <div className={hasInspiration ? 'set-compare' : 'set-compare single'}>
         <section>
           <div className="image-grid">
-            {data.images.map((image, index) => (
-              <button
-                key={image.id}
-                type="button"
-                className={image.id === data.selectedImageId ? 'image-tile selected' : 'image-tile'}
-                onClick={() => setLightboxIndex(index)}
-              >
-                {image.id === data.selectedImageId && <span className="badge">Picked</span>}
-                <img src={image.url} alt={`Generated image ${index + 1}`} loading="lazy" />
-              </button>
-            ))}
+            {data.images.map((image, index) => {
+              const number = pickNumber(image)
+              return (
+                <div key={image.id} className={number > 0 ? 'image-tile selected' : 'image-tile'}>
+                  <button type="button" className="image-tile-open" onClick={() => setLightboxIndex(index)}>
+                    <img src={image.url} alt={`Generated image ${index + 1}`} loading="lazy" />
+                  </button>
+                  <button
+                    type="button"
+                    className="image-tile-pick"
+                    title={number > 0 ? 'Remove from picks' : 'Pick this image'}
+                    onClick={() => togglePick(image)}
+                  >
+                    {number > 0 ? `★ #${number}` : '☆'}
+                  </button>
+                </div>
+              )
+            })}
           </div>
           {data.images.length === 0 && <p className="hint">No images yet.</p>}
         </section>
@@ -143,7 +158,6 @@ export function SetDetailPage() {
         )}
       </div>
 
-
       {activeJobs.length > 0 && (
         <div className="job-list">
           {activeJobs.map((job) => (
@@ -152,14 +166,21 @@ export function SetDetailPage() {
         </div>
       )}
 
+      <PickedStrip
+        pickedImages={pickedImages}
+        onReorder={(imageIds) => void changePicks(() => api.reorderPicks(setId, imageIds))}
+        onUnpick={(image) => void changePicks(() => api.unpickImage(setId, image.id))}
+        onOpen={(image) => setLightboxIndex(data.images.indexOf(image))}
+      />
+
       {lightboxIndex !== null && data.images[lightboxIndex] && (
         <Lightbox
           images={data.images}
           index={lightboxIndex}
           sourceImageUrl={data.sourceImageUrl}
-          selectedImageId={data.selectedImageId}
+          pickedImageIds={data.pickedImageIds}
           onIndexChange={setLightboxIndex}
-          onToggleSelect={(image) => void toggleSelect(image)}
+          onTogglePick={togglePick}
           onClose={closeLightbox}
         />
       )}

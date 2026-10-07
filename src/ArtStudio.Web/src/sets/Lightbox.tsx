@@ -5,15 +5,15 @@ interface Props {
   images: ImageInfo[]
   index: number
   sourceImageUrl: string | null
-  selectedImageId: number | null
+  pickedImageIds: number[]
   onIndexChange: (index: number) => void
-  onToggleSelect: (image: ImageInfo) => void
+  onTogglePick: (image: ImageInfo) => void
   onClose: () => void
 }
 
-export function Lightbox({ images, index, sourceImageUrl, selectedImageId, onIndexChange, onToggleSelect, onClose }: Props) {
+export function Lightbox({ images, index, sourceImageUrl, pickedImageIds, onIndexChange, onTogglePick, onClose }: Props) {
   const image = images[index]
-  const isSelected = image.id === selectedImageId
+  const pickNumber = pickedImageIds.indexOf(image.id) + 1
   const [copiedImageId, setCopiedImageId] = useState<number>()
 
   async function copyPrompt() {
@@ -44,8 +44,8 @@ export function Lightbox({ images, index, sourceImageUrl, selectedImageId, onInd
           Next →
         </button>
         <span className="spacer" />
-        <button type="button" className={isSelected ? '' : 'primary'} onClick={() => onToggleSelect(image)}>
-          {isSelected ? 'Unpick' : 'Pick this image'}
+        <button type="button" className={pickNumber > 0 ? '' : 'primary'} onClick={() => onTogglePick(image)}>
+          {pickNumber > 0 ? `Unpick (#${pickNumber})` : 'Pick this image'}
         </button>
         <a href={image.url} target="_blank" rel="noreferrer">
           Open original
@@ -58,7 +58,7 @@ export function Lightbox({ images, index, sourceImageUrl, selectedImageId, onInd
         <div className="lightbox-images">
           <figure className="generated">
             <img src={image.url} alt={`Generated image ${index + 1}`} />
-            <figcaption>{isSelected ? 'Generated (picked)' : 'Generated'}</figcaption>
+            <figcaption>{pickNumber > 0 ? `Generated (picked #${pickNumber})` : 'Generated'}</figcaption>
           </figure>
           {sourceImageUrl && (
             <figure>

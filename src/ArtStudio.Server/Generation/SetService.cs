@@ -70,15 +70,49 @@ public sealed class SetService(
         return set;
     }
 
-    public async Task SelectImageAsync(int setId, int? imageId, CancellationToken ct)
+    public async Task PickAsync(int setId, int imageId, CancellationToken ct)
     {
-        var set = await db.PromptSets.SingleOrDefaultAsync(s => s.Id == setId, ct)
-            ?? throw new UserFacingException("Set not found.");
-        if (imageId is not null && !await db.Images.AnyAsync(i => i.Id == imageId && i.PromptSetId == setId, ct))
+        if (!await db.Images.AnyAsync(i => i.Id == imageId && i.PromptSetId == setId, ct))
             throw new UserFacingException("That image does not belong to this set.");
+        if (await db.Picks.AnyAsync(p => p.PromptSetId == setId && p.GeneratedImageId == imageId, ct))
+            return;
 
-        set.SelectedImageId = imageId;
+        var lastPosition = await db.Picks.Where(p => p.PromptSetId == setId).MaxAsync(p => (int?)p.Position, ct) ?? 0;
+        db.Picks.Add(new PickedImage { PromptSetId = setId, GeneratedImageId = imageId, Position = lastPosition + 1 });
         await db.SaveChangesAsync(ct);
+    }
+
+    public async Task UnpickAsync(int setId, int imageId, CancellationToken ct)
+    {
+        var picks = await LoadPicksAsync(setId, ct);
+        var removed = picks.FirstOrDefault(p => p.GeneratedImageId == imageId);
+        if (removed is null)
+            return;
+
+        db.Picks.Remove(removed);
+        Renumber(picks.Where(p => p != removed));
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task ReorderPicksAsync(int setId, IReadOnlyList<int> imageIds, CancellationToken ct)
+    {
+        var picks = await LoadPicksAsync(setId, ct);
+        if (imageIds.Count != picks.Count || !imageIds.Order().SequenceEqual(picks.Select(p => p.GeneratedImageId).Order()))
+            throw new UserFacingException("The new order must contain exactly the picked images. Reload and try again.");
+
+        var picksByImageId = picks.ToDictionary(p => p.GeneratedImageId);
+        Renumber(imageIds.Select(id => picksByImageId[id]));
+        await db.SaveChangesAsync(ct);
+    }
+
+    private Task<List<PickedImage>> LoadPicksAsync(int setId, CancellationToken ct) =>
+        db.Picks.Where(p => p.PromptSetId == setId).OrderBy(p => p.Position).ToListAsync(ct);
+
+    private static void Renumber(IEnumerable<PickedImage> picksInOrder)
+    {
+        var position = 1;
+        foreach (var pick in picksInOrder)
+            pick.Position = position++;
     }
 
     public async Task<bool> DeleteAsync(int setId, CancellationToken ct)
@@ -95,6 +129,7 @@ public sealed class SetService(
 
         await using (var transaction = await db.Database.BeginTransactionAsync(ct))
         {
+            await db.Picks.Where(p => p.PromptSetId == setId).ExecuteDeleteAsync(ct);
             await db.Images.Where(i => i.PromptSetId == setId).ExecuteDeleteAsync(ct);
             await db.Jobs.Where(j => j.PromptSetId == setId).ExecuteDeleteAsync(ct);
             await db.PromptSets.Where(s => s.Id == setId).ExecuteDeleteAsync(ct);
