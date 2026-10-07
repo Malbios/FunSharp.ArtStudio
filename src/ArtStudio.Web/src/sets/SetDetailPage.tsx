@@ -106,6 +106,23 @@ export function SetDetailPage() {
       {error && <p className="error">{error}</p>}
 
       <div className={hasInspiration ? 'set-compare' : 'set-compare single'}>
+        <section>
+          <div className="image-grid">
+            {data.images.map((image, index) => (
+              <button
+                key={image.id}
+                type="button"
+                className={image.id === data.selectedImageId ? 'image-tile selected' : 'image-tile'}
+                onClick={() => setLightboxIndex(index)}
+              >
+                {image.id === data.selectedImageId && <span className="badge">Picked</span>}
+                <img src={image.url} alt={`Generated image ${index + 1}`} loading="lazy" />
+              </button>
+            ))}
+          </div>
+          {data.images.length === 0 && <p className="hint">No images yet.</p>}
+        </section>
+
         {hasInspiration && (
           <section className="set-inspiration-column">
             {data.sourceImageUrl && (
@@ -124,23 +141,6 @@ export function SetDetailPage() {
             )}
           </section>
         )}
-
-        <section>
-          <div className="image-grid">
-            {data.images.map((image, index) => (
-              <button
-                key={image.id}
-                type="button"
-                className={image.id === data.selectedImageId ? 'image-tile selected' : 'image-tile'}
-                onClick={() => setLightboxIndex(index)}
-              >
-                {image.id === data.selectedImageId && <span className="badge">Picked</span>}
-                <img src={image.url} alt={`Generated image ${index + 1}`} loading="lazy" />
-              </button>
-            ))}
-          </div>
-          {data.images.length === 0 && <p className="hint">No images yet.</p>}
-        </section>
       </div>
 
 
