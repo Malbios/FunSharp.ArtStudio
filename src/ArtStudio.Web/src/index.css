@@ -962,3 +962,8 @@ code {
   margin-bottom: 1rem;
   white-space: nowrap;
 }
+
+.ready-banner {
+  border-color: var(--success);
+  color: var(--success);
+}

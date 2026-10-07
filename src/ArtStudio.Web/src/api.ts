@@ -51,7 +51,9 @@ export interface SetSummary {
   hasActiveJob: boolean
   hasFailedJob: boolean
   pickedCount: number
+  deviantArtAuthor: string | null
   createdAt: string
+  readyToPostAt: string | null
 }
 
 export interface SetDetail {
@@ -64,6 +66,7 @@ export interface SetDetail {
   deviantArtAuthor: string | null
   pickedImageIds: number[]
   createdAt: string
+  readyToPostAt: string | null
   images: ImageInfo[]
   jobs: Job[]
 }
@@ -142,7 +145,7 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
 export const api = {
   resolutions: () => request<ResolutionPreset[]>('GET', '/api/resolutions'),
 
-  sets: () => request<SetSummary[]>('GET', '/api/sets'),
+  sets: (stage: 'working' | 'ready') => request<SetSummary[]>('GET', `/api/sets?stage=${stage}`),
   set: (id: number) => request<SetDetail>('GET', `/api/sets/${id}`),
   createSet: (form: FormData) => request<{ id: number }>('POST', '/api/sets', form),
   moreImages: (setId: number, count: number, prompt?: string, resolution?: string) =>
@@ -151,6 +154,8 @@ export const api = {
   unpickImage: (setId: number, imageId: number) => request<void>('DELETE', `/api/sets/${setId}/picks/${imageId}`),
   reorderPicks: (setId: number, imageIds: number[]) =>
     request<void>('PUT', `/api/sets/${setId}/picks`, { imageIds }),
+  markReadyToPost: (setId: number) => request<void>('POST', `/api/sets/${setId}/ready`),
+  moveBackToSets: (setId: number) => request<void>('DELETE', `/api/sets/${setId}/ready`),
   deleteSet: (setId: number) => request<void>('DELETE', `/api/sets/${setId}`),
 
   queue: () => request<QueueState>('GET', '/api/queue'),

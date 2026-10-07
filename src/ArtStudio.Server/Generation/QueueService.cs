@@ -21,6 +21,8 @@ public sealed class QueueService(
 
         var set = await db.PromptSets.SingleOrDefaultAsync(s => s.Id == setId, ct)
             ?? throw new UserFacingException("Set not found.");
+        if (set.ReadyToPostAt is not null)
+            throw new UserFacingException("This set is ready to post. Move it back to Sets to generate more images.");
         var jobPrompt = prompt ?? set.Prompt;
         if (string.IsNullOrWhiteSpace(jobPrompt))
             throw new UserFacingException("The prompt must not be empty.");

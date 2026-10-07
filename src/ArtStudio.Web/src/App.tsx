@@ -5,6 +5,7 @@ import { SettingsPage } from './settings/SettingsPage'
 import { useStudioEvents } from './live/studioHub'
 import { useLoad } from './live/useLoad'
 import { NewSetPage } from './newset/NewSetPage'
+import { PostPage } from './post/PostPage'
 import { QueuePage } from './queue/QueuePage'
 import { SetDetailPage } from './sets/SetDetailPage'
 import { SetsPage } from './sets/SetsPage'
@@ -41,6 +42,7 @@ export default function App() {
           </NavLink>
           <QueueNavLink />
           <NavLink to="/sets">Sets</NavLink>
+          <NavLink to="/post">Post</NavLink>
           <NavLink to="/settings">Settings</NavLink>
         </nav>
       </header>
@@ -51,6 +53,7 @@ export default function App() {
           <Route path="/queue" element={<QueuePage />} />
           <Route path="/sets" element={<SetsPage />} />
           <Route path="/sets/:id" element={<SetDetailPage />} />
+          <Route path="/post" element={<PostPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>

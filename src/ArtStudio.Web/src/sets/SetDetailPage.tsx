@@ -19,7 +19,7 @@ export function SetDetailPage() {
   const [deletedElsewhere, setDeletedElsewhere] = useState(false)
   const navigate = useNavigate()
 
-  useStudioEvents(['JobUpdated', 'ImageAdded', 'SetDeleted'], (event, payload) => {
+  useStudioEvents(['JobUpdated', 'ImageAdded', 'SetDeleted', 'SetUpdated'], (event, payload) => {
     const affectsThisSet = event === 'Reconnected' || (payload as JobEventPayload).setId === setId
     if (!affectsThisSet) return
     if (event === 'SetDeleted') setDeletedElsewhere(true)
@@ -54,6 +54,16 @@ export function SetDetailPage() {
     void changePicks(() => (picked ? api.unpickImage(setId, image.id) : api.pickImage(setId, image.id)))
   }
 
+  async function changeStage(action: () => Promise<void>, destination: string) {
+    setError(undefined)
+    try {
+      await action()
+      navigate(destination)
+    } catch (failure) {
+      setError((failure as Error).message)
+    }
+  }
+
   async function deleteSet() {
     const confirmed = window.confirm(
       `Delete set #${setId}? Image files stay in the folder. Queued or running jobs of this set are cancelled.`,
@@ -85,6 +95,14 @@ export function SetDetailPage() {
   const imagesById = new Map(data.images.map((image) => [image.id, image]))
   const pickedImages = data.pickedImageIds.flatMap((id) => imagesById.get(id) ?? [])
   const pickNumber = (image: ImageInfo) => data.pickedImageIds.indexOf(image.id) + 1
+  const isReadyToPost = data.readyToPostAt !== null
+  const readyBlocker =
+    data.pickedImageIds.length === 0
+      ? 'Pick at least one image first.'
+      : data.jobs.some((job) => job.status === 'Queued' || job.status === 'Running')
+        ? 'Wait for or cancel the queued and running jobs first.'
+        : null
+  const generatingBlocked = isReadyToPost ? 'Move the set back to Sets to generate more images.' : undefined
 
   return (
     <div>
@@ -99,19 +117,43 @@ export function SetDetailPage() {
             aria-label="Number of additional images"
             onChange={(e) => setMoreCount(Math.max(1, Number(e.target.value) || 1))}
           />
-          <button type="submit" className="primary">
+          <button type="submit" className="primary" disabled={isReadyToPost} title={generatingBlocked}>
             More images
           </button>
         </form>
-        <Link to={`/?basedOn=${data.id}`} className="button-link inline">
-          Edit &amp; requeue
-        </Link>
+        {isReadyToPost ? (
+          <button type="button" disabled title={generatingBlocked}>
+            Edit &amp; requeue
+          </button>
+        ) : (
+          <Link to={`/?basedOn=${data.id}`} className="button-link inline">
+            Edit &amp; requeue
+          </Link>
+        )}
+        {!isReadyToPost && (
+          <button
+            type="button"
+            disabled={readyBlocker !== null}
+            title={readyBlocker ?? 'Move this set to Post'}
+            onClick={() => void changeStage(() => api.markReadyToPost(setId), '/post')}
+          >
+            Ready to post
+          </button>
+        )}
         <button type="button" className="danger" disabled={deleting} onClick={() => void deleteSet()}>
           {deleting ? 'Deleting…' : 'Delete set'}
         </button>
-        <Link to="/sets">All sets</Link>
+        <Link to={isReadyToPost ? '/post' : '/sets'}>{isReadyToPost ? 'All posts' : 'All sets'}</Link>
       </div>
       {error && <p className="error">{error}</p>}
+      {isReadyToPost && (
+        <div className="queue-banner ready-banner">
+          <span>Ready to post since {new Date(data.readyToPostAt!).toLocaleString()}.</span>
+          <button type="button" onClick={() => void changeStage(() => api.moveBackToSets(setId), '/sets')}>
+            Back to sets
+          </button>
+        </div>
+      )}
 
       <div className={hasInspiration ? 'set-compare' : 'set-compare single'}>
         <section>

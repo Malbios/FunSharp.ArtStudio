@@ -23,16 +23,28 @@ public static class SetEndpoints
         sets.MapPut("{id:int}/picks", async (int id, ReorderPicksRequest request, SetService setService, CancellationToken ct) =>
             await setService.ReorderPicksAsync(id, request.ImageIds, ct));
         sets.MapGet("{id:int}/source", GetSourceImageAsync);
+        sets.MapPost("{id:int}/ready", async (int id, SetService setService, CancellationToken ct) =>
+            await setService.MarkReadyToPostAsync(id, ct));
+        sets.MapDelete("{id:int}/ready", async (int id, SetService setService, CancellationToken ct) =>
+            await setService.MoveBackToSetsAsync(id, ct));
         sets.MapDelete("{id:int}", async (int id, SetService setService, CancellationToken ct) =>
             await setService.DeleteAsync(id, ct) ? Results.NoContent() : Results.NotFound());
         app.MapGet("/api/images/{id:int}", GetImageAsync);
     }
 
-    private static async Task<IReadOnlyList<SetSummaryDto>> ListSetsAsync(StudioDbContext db, CancellationToken ct)
+    private static async Task<IReadOnlyList<SetSummaryDto>> ListSetsAsync(string? stage, StudioDbContext db, CancellationToken ct)
     {
+        var readyToPost = stage switch
+        {
+            null or "working" => false,
+            "ready" => true,
+            _ => throw new UserFacingException($"Unknown stage '{stage}'. Use 'working' or 'ready'."),
+        };
         var activeStatuses = new[] { JobStatus.Queued, JobStatus.Running };
-        var sets = await db.PromptSets
-            .OrderByDescending(s => s.Id)
+        var inStage = readyToPost
+            ? db.PromptSets.Where(s => s.ReadyToPostAt != null).OrderByDescending(s => s.ReadyToPostAt).ThenByDescending(s => s.Id)
+            : db.PromptSets.Where(s => s.ReadyToPostAt == null).OrderByDescending(s => s.Id);
+        var sets = await inStage
             .Select(s => new
             {
                 Set = s,
@@ -56,7 +68,9 @@ public static class SetEndpoints
                 s.HasActiveJob,
                 s.HasFailedJob,
                 s.PickedCount,
-                s.Set.CreatedAt))
+                s.Set.DeviantArtAuthor,
+                s.Set.CreatedAt,
+                s.Set.ReadyToPostAt))
             .ToList();
     }
 
@@ -82,6 +96,7 @@ public static class SetEndpoints
             set.DeviantArtAuthor,
             set.Picks.Select(p => p.GeneratedImageId).ToList(),
             set.CreatedAt,
+            set.ReadyToPostAt,
             set.Images.Select(image => ImageDto.From(image, jobsById[image.GenerationJobId])).ToList(),
             set.Jobs.Select(JobDto.From).ToList()));
     }

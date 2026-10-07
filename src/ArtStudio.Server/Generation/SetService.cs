@@ -82,12 +82,38 @@ public sealed class SetService(
         await db.SaveChangesAsync(ct);
     }
 
+    public async Task MarkReadyToPostAsync(int setId, CancellationToken ct)
+    {
+        var set = await FindSetAsync(setId, ct);
+        if (!await db.Picks.AnyAsync(p => p.PromptSetId == setId, ct))
+            throw new UserFacingException("Pick at least one image before moving the set to Post.");
+        if (await db.Jobs.AnyAsync(j => j.PromptSetId == setId && (j.Status == JobStatus.Queued || j.Status == JobStatus.Running), ct))
+            throw new UserFacingException("Wait for or cancel the set's queued and running jobs first.");
+
+        set.ReadyToPostAt = clock.GetUtcNow();
+        await db.SaveChangesAsync(ct);
+        await notifier.SetUpdated(setId);
+    }
+
+    public async Task MoveBackToSetsAsync(int setId, CancellationToken ct)
+    {
+        var set = await FindSetAsync(setId, ct);
+        set.ReadyToPostAt = null;
+        await db.SaveChangesAsync(ct);
+        await notifier.SetUpdated(setId);
+    }
+
+    private async Task<PromptSet> FindSetAsync(int setId, CancellationToken ct) =>
+        await db.PromptSets.SingleOrDefaultAsync(s => s.Id == setId, ct) ?? throw new UserFacingException("Set not found.");
+
     public async Task UnpickAsync(int setId, int imageId, CancellationToken ct)
     {
         var picks = await LoadPicksAsync(setId, ct);
         var removed = picks.FirstOrDefault(p => p.GeneratedImageId == imageId);
         if (removed is null)
             return;
+        if (picks.Count == 1 && await db.PromptSets.AnyAsync(s => s.Id == setId && s.ReadyToPostAt != null, ct))
+            throw new UserFacingException("A set that is ready to post needs at least one pick. Move it back to Sets first.");
 
         db.Picks.Remove(removed);
         Renumber(picks.Where(p => p != removed));

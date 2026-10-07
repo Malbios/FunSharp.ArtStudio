@@ -18,6 +18,9 @@ public sealed class StudioNotifier(IHubContext<StudioHub> hub)
     public Task QueueStateChanged(bool paused) =>
         hub.Clients.All.SendAsync("QueueStateChanged", new { paused });
 
+    public Task SetUpdated(int setId) =>
+        hub.Clients.All.SendAsync("SetUpdated", new { setId });
+
     public Task SetDeleted(int setId) =>
         hub.Clients.All.SendAsync("SetDeleted", new { setId });
 

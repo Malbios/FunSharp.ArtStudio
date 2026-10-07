@@ -1,7 +1,7 @@
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr'
 import { useEffect, useRef } from 'react'
 
-export type StudioEvent = 'JobUpdated' | 'ImageAdded' | 'JobCompleted' | 'QueueStateChanged' | 'QueueEmpty' | 'SetDeleted'
+export type StudioEvent = 'JobUpdated' | 'ImageAdded' | 'JobCompleted' | 'QueueStateChanged' | 'QueueEmpty' | 'SetDeleted' | 'SetUpdated'
 
 export interface JobEventPayload {
   jobId: number
@@ -11,7 +11,7 @@ export interface JobEventPayload {
 
 type Listener = (event: StudioEvent | 'Reconnected', payload: unknown) => void
 
-const ALL_EVENTS: StudioEvent[] = ['JobUpdated', 'ImageAdded', 'JobCompleted', 'QueueStateChanged', 'QueueEmpty', 'SetDeleted']
+const ALL_EVENTS: StudioEvent[] = ['JobUpdated', 'ImageAdded', 'JobCompleted', 'QueueStateChanged', 'QueueEmpty', 'SetDeleted', 'SetUpdated']
 const listeners = new Set<Listener>()
 
 const connection = new HubConnectionBuilder()

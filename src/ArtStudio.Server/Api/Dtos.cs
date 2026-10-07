@@ -60,7 +60,9 @@ public sealed record SetSummaryDto(
     bool HasActiveJob,
     bool HasFailedJob,
     int PickedCount,
-    DateTimeOffset CreatedAt);
+    string? DeviantArtAuthor,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? ReadyToPostAt);
 
 public sealed record SetDetailDto(
     int Id,
@@ -72,6 +74,7 @@ public sealed record SetDetailDto(
     string? DeviantArtAuthor,
     IReadOnlyList<int> PickedImageIds,
     DateTimeOffset CreatedAt,
+    DateTimeOffset? ReadyToPostAt,
     IReadOnlyList<ImageDto> Images,
     IReadOnlyList<JobDto> Jobs);
 

@@ -4,8 +4,8 @@ import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 
 export function SetsPage() {
-  const sets = useLoad(api.sets)
-  useStudioEvents(['JobUpdated', 'ImageAdded', 'SetDeleted'], sets.reload)
+  const sets = useLoad(() => api.sets('working'))
+  useStudioEvents(['JobUpdated', 'ImageAdded', 'SetDeleted', 'SetUpdated'], sets.reload)
 
   return (
     <div>
