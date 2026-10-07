@@ -23,7 +23,11 @@ public static class ServiceRegistration
             options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
         services.AddSingleton(TimeProvider.System);
-        services.AddHttpClient(ComfyClient.HttpClientName);
+        services.AddSingleton(sp => new FakeComfyUiHandler(TimeSpan.FromSeconds(2), sp.GetRequiredService<TimeProvider>()));
+        services.AddHttpClient(ComfyClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(sp =>
+            sp.GetRequiredService<IConfiguration>().GetValue<bool>(FakeComfyUiHandler.ConfigurationKey)
+                ? sp.GetRequiredService<FakeComfyUiHandler>()
+                : new SocketsHttpHandler());
         services.AddSingleton<ComfyClientFactory>();
         services.AddSingleton(ComfyWorkflowBuilder.FromEmbeddedTemplate());
         services.AddSingleton<SeedGenerator>();

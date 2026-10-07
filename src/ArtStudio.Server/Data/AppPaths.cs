@@ -17,7 +17,7 @@ public class AppPaths
         var configured = configuration["ArtStudio:DataDirectory"];
         var dataDirectory = string.IsNullOrWhiteSpace(configured)
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ArtStudio")
-            : configured;
+            : Environment.ExpandEnvironmentVariables(configured);
         return new AppPaths(dataDirectory);
     }
 }
