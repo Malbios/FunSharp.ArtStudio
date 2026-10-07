@@ -37,6 +37,12 @@
   <Target Name="BuildWeb" BeforeTargets="BeforeBuild" DependsOnTargets="InstallWebDependencies"
           Inputs="@(WebSources);$(WebInstallStamp)" Outputs="$(WebBuildOutput)">
     <Exec Command="npm run build" WorkingDirectory="$(WebProjectDir)" />
+    <!-- Content was globbed at evaluation time, before Vite replaced the hashed bundle files. A wildcard Remove
+         inside a target only matches files that still exist, so stale entries are dropped by an Exists check. -->
+    <ItemGroup>
+      <Content Remove="@(Content)" Condition="!Exists('%(FullPath)')" />
+      <Content Include="wwwroot\**" Exclude="@(Content)" />
+    </ItemGroup>
   </Target>
 
 </Project>
