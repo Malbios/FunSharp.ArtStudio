@@ -140,23 +140,7 @@ export function NewSetPage() {
           <p className="hint">New images are added to set #{baseSet.id} with this prompt and resolution.</p>
         )}
 
-        <label className="field">
-          <span>Prompt</span>
-          <textarea
-            value={prompt}
-            rows={8}
-            onChange={(e) => setPrompt(e.target.value)}
-            onPaste={pastePromptText}
-            placeholder="Describe the image…"
-          />
-        </label>
-
-        <div className="field">
-          <span>Image (optional)</span>
-          <ImageSourcePicker key={pickerVersion} source={source} initialTab={pickerTab} onChange={changeSource} />
-        </div>
-
-        <div className="field-row">
+        <div className="field-row submit-row">
           <label className="field">
             <span>
               Resolution {resolutionIsAuto && <em className="badge">auto from image</em>}
@@ -189,6 +173,9 @@ export function NewSetPage() {
               onChange={(e) => setCount(Math.max(1, Number(e.target.value) || 1))}
             />
           </label>
+          <button type="submit" className="primary submit-in-row" disabled={submitting}>
+            {submitting ? 'Queuing…' : 'Add to queue'}
+          </button>
         </div>
 
         {error && <p className="error">{error}</p>}
@@ -198,9 +185,21 @@ export function NewSetPage() {
           </p>
         )}
 
-        <button type="submit" className="primary" disabled={submitting}>
-          {submitting ? 'Queuing…' : 'Add to queue'}
-        </button>
+        <label className="field">
+          <span>Prompt</span>
+          <textarea
+            value={prompt}
+            rows={8}
+            onChange={(e) => setPrompt(e.target.value)}
+            onPaste={pastePromptText}
+            placeholder="Describe the image…"
+          />
+        </label>
+
+        <div className="field">
+          <span>Image (optional)</span>
+          <ImageSourcePicker key={pickerVersion} source={source} initialTab={pickerTab} onChange={changeSource} />
+        </div>
       </form>
 
       <BuildingBlockChips />

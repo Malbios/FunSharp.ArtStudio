@@ -953,3 +953,12 @@ code {
   background: rgb(0 0 0 / 0.65);
   font-size: 0.75rem;
 }
+
+.submit-row {
+  align-items: flex-end;
+}
+
+.submit-in-row {
+  margin-bottom: 1rem;
+  white-space: nowrap;
+}
