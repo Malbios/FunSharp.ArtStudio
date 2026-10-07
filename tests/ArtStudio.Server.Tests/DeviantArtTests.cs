@@ -88,6 +88,62 @@ public sealed class DeviantArtTests : IDisposable
     }
 
     [Fact]
+    public async Task MatureDeviation_WithoutLogin_IsRejectedWithConnectHint()
+    {
+        _factory.DeviantArt.Mature = true;
+
+        var response = await _client.PostAsJsonAsync("/api/deviantart/preview", new { url = DeviationLink });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("Connect DeviantArt", (await ReadJsonAsync(response)).GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task MatureDeviation_WhenConnected_UsesApiImage()
+    {
+        _factory.DeviantArt.Mature = true;
+        await _factory.ConnectDeviantArtAsync();
+
+        var response = await PostSetFromDeviationAsync(DeviationLink);
+
+        response.EnsureSuccessStatusCode();
+        var set = await GetSetAsync(_client, (await ReadJsonAsync(response)).GetProperty("id").GetInt32());
+        Assert.Equal(FakeDeviantArt.ApiJpegBytes, await _client.GetByteArrayAsync(set.SourceImageUrl));
+        Assert.Equal("someartist", set.DeviantArtAuthor);
+        Assert.Equal(0, _factory.DeviantArt.OEmbedCalls);
+        Assert.NotEmpty(_factory.DeviantArt.DeviationApiRequests);
+        Assert.All(_factory.DeviantArt.DeviationApiRequests, call =>
+        {
+            Assert.StartsWith("Bearer access-1 ", call);
+            Assert.Contains($"/deviation/{FakeDeviantArt.DeviationUuid}?mature_content=true", call);
+        });
+    }
+
+    [Fact]
+    public async Task Preview_WhenConnected_ReturnsApiDimensions()
+    {
+        await _factory.ConnectDeviantArtAsync();
+
+        var preview = await ReadJsonAsync(await _client.PostAsJsonAsync("/api/deviantart/preview", new { url = DeviationLink }));
+
+        Assert.Equal(FakeDeviantArt.ApiImageUrl, preview.GetProperty("imageUrl").GetString());
+        Assert.Equal(3000, preview.GetProperty("width").GetInt32());
+        Assert.Equal(2000, preview.GetProperty("height").GetInt32());
+    }
+
+    [Fact]
+    public async Task BlockedAuthorFromApi_IsRejected()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        _factory.DeviantArt.Author = "HiddenAuthor";
+        (await _client.PostAsJsonAsync("/api/blocked-artists", new { username = "hiddenauthor" })).EnsureSuccessStatusCode();
+
+        var response = await _client.PostAsJsonAsync("/api/deviantart/preview", new { url = DeviationLink });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task BlockedArtistFromUrl_IsRejectedBeforeFetching()
     {
         (await _client.PostAsJsonAsync("/api/blocked-artists", new { username = "SomeArtist" })).EnsureSuccessStatusCode();

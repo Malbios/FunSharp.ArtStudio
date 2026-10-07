@@ -54,6 +54,18 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
         return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
     }
 
+    public async Task ConnectDeviantArtAsync()
+    {
+        using var client = CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        (await client.PutAsJsonAsync("/api/deviantart/app", new { clientId = "12345", clientSecret = "secret" }))
+            .EnsureSuccessStatusCode();
+        var authorize = (await client.GetAsync("/api/deviantart/login")).Headers.Location!;
+        var state = System.Web.HttpUtility.ParseQueryString(authorize.Query)["state"];
+        var callback = await client.GetAsync($"/api/deviantart/callback?code=the-code&state={state}");
+        if (!callback.Headers.Location!.ToString().Contains("deviantart=connected"))
+            throw new InvalidOperationException($"DeviantArt login failed: {callback.Headers.Location}");
+    }
+
     public static async Task<SetDetailDto> GetSetAsync(HttpClient client, int setId) =>
         (await client.GetFromJsonAsync<SetDetailDto>($"/api/sets/{setId}", Json))!;
 
