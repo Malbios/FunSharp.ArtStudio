@@ -6,7 +6,7 @@ import { cleanPrompt } from '../prompt/cleanPrompt'
 import { closestResolution } from '../prompt/closestResolution'
 import { BuildingBlockChips } from './BuildingBlockChips'
 import { imageFileFrom, loadImageFile, NO_SOURCE, sourceDimensions, type ImageSource } from './imageSource'
-import { ImageSourcePicker } from './ImageSourcePicker'
+import { ImageSourcePicker, type SourceTab } from './ImageSourcePicker'
 
 const DEFAULT_COUNT = 2
 
@@ -21,6 +21,8 @@ export function NewSetPage() {
   const [resolution, setResolution] = useState('')
   const [resolutionIsAuto, setResolutionIsAuto] = useState(false)
   const [count, setCount] = useState(DEFAULT_COUNT)
+  const [pickerVersion, setPickerVersion] = useState(0)
+  const [pickerTab, setPickerTab] = useState<SourceTab>('None')
   const [baseSet, setBaseSet] = useState<SetDetail>()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string>()
@@ -75,6 +77,8 @@ export function NewSetPage() {
   }
 
   function resetForm() {
+    setPickerTab(source.kind === 'BasedOn' ? 'None' : source.kind)
+    setPickerVersion((version) => version + 1)
     changeSource(NO_SOURCE)
     setPrompt('')
     setResolution('')
@@ -148,7 +152,7 @@ export function NewSetPage() {
 
         <div className="field">
           <span>Image (optional)</span>
-          <ImageSourcePicker source={source} onChange={changeSource} />
+          <ImageSourcePicker key={pickerVersion} source={source} initialTab={pickerTab} onChange={changeSource} />
         </div>
 
         <div className="field-row">

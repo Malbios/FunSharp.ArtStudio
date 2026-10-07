@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom'
 import { api, ApiError } from '../api'
 import { imageFileFrom, loadImageFile, sourceDimensions, sourceImageUrl, type ImageSource } from './imageSource'
 
-type Tab = 'None' | 'Upload' | 'Paste' | 'DeviantArt'
+export type SourceTab = 'None' | 'Upload' | 'Paste' | 'DeviantArt'
 
-const TABS: { tab: Tab; label: string }[] = [
+const TABS: { tab: SourceTab; label: string }[] = [
   { tab: 'None', label: 'No image' },
   { tab: 'Upload', label: 'Upload' },
   { tab: 'Paste', label: 'Clipboard' },
@@ -14,6 +14,7 @@ const TABS: { tab: Tab; label: string }[] = [
 
 interface Props {
   source: ImageSource
+  initialTab?: SourceTab
   onChange: (source: ImageSource) => void
 }
 
@@ -22,15 +23,15 @@ interface DeviationError {
   existingSetId: number | null
 }
 
-export function ImageSourcePicker({ source, onChange }: Props) {
-  const [tab, setTab] = useState<Tab>(source.kind === 'BasedOn' ? 'None' : source.kind)
+export function ImageSourcePicker({ source, initialTab = 'None', onChange }: Props) {
+  const [tab, setTab] = useState<SourceTab>(source.kind === 'BasedOn' || source.kind === 'None' ? initialTab : source.kind)
   const [deviationUrl, setDeviationUrl] = useState('')
   const [deviationError, setDeviationError] = useState<DeviationError>()
   const [loadingDeviation, setLoadingDeviation] = useState(false)
   const [fileError, setFileError] = useState<string>()
   const [dragging, setDragging] = useState(false)
 
-  const activeTab: Tab = source.kind === 'None' || source.kind === 'BasedOn' ? tab : source.kind
+  const activeTab: SourceTab = source.kind === 'None' || source.kind === 'BasedOn' ? tab : source.kind
 
   async function attachFile(kind: 'Upload' | 'Paste', file: File | null) {
     if (!file) return
@@ -58,7 +59,7 @@ export function ImageSourcePicker({ source, onChange }: Props) {
     }
   }
 
-  function selectTab(next: Tab) {
+  function selectTab(next: SourceTab) {
     setTab(next)
     setFileError(undefined)
     setDeviationError(undefined)
