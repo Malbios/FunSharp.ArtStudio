@@ -105,6 +105,11 @@ public static class SetEndpoints
                 var extension = ImageStore.ExtensionFor(file.ContentType)
                     ?? throw new UserFacingException($"Unsupported image type '{file.ContentType}'.");
                 return new SetSource.ImageFile(sourceKind, fileStream!, extension);
+            case SourceKind.DeviantArt:
+                var url = form["deviantArtUrl"].ToString();
+                if (string.IsNullOrWhiteSpace(url))
+                    throw new UserFacingException("No DeviantArt URL was given.");
+                return new SetSource.DeviantArtUrl(url);
             default:
                 throw new UserFacingException($"Unsupported image source '{sourceKind}'.");
         }

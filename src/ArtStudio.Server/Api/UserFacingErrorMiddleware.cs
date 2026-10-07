@@ -1,3 +1,4 @@
+using ArtStudio.Server.DeviantArt;
 using ArtStudio.Server.Generation;
 
 namespace ArtStudio.Server.Api;
@@ -17,5 +18,9 @@ public sealed class UserFacingErrorMiddleware(RequestDelegate next)
         }
     }
 
-    private static object ErrorBody(UserFacingException ex) => new { error = ex.Message };
+    private static object ErrorBody(UserFacingException ex) => ex switch
+    {
+        DuplicateDeviationException duplicate => new { error = ex.Message, existingSetId = duplicate.ExistingSetId },
+        _ => new { error = ex.Message },
+    };
 }

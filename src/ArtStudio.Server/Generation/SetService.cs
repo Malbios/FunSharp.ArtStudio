@@ -1,4 +1,5 @@
 using ArtStudio.Server.Data;
+using ArtStudio.Server.DeviantArt;
 using ArtStudio.Server.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,11 +12,14 @@ public abstract record SetSource
     public sealed record ImageFile(SourceKind Kind, Stream Content, string Extension) : SetSource;
 
     public sealed record CopyOf(int SetId) : SetSource;
+
+    public sealed record DeviantArtUrl(string Url) : SetSource;
 }
 
 public sealed record NewSetRequest(string Prompt, string Resolution, int Count, SetSource Source);
 
-public sealed class SetService(StudioDbContext db, AppPaths paths, QueueService queueService, TimeProvider clock)
+public sealed class SetService(
+    StudioDbContext db, AppPaths paths, QueueService queueService, DeviantArtService deviantArtService, TimeProvider clock)
 {
     public async Task<PromptSet> CreateAsync(NewSetRequest request, CancellationToken ct)
     {
@@ -35,15 +39,24 @@ public sealed class SetService(StudioDbContext db, AppPaths paths, QueueService 
         if (request.Source is SetSource.CopyOf copyOf)
             await CopySourceAsync(set, copyOf.SetId, ct);
 
+        var deviation = request.Source is SetSource.DeviantArtUrl deviantArt
+            ? await deviantArtService.DownloadAsync(deviantArt.Url, ct)
+            : null;
+
         db.PromptSets.Add(set);
         await db.SaveChangesAsync(ct);
 
-        if (request.Source is SetSource.ImageFile file)
+        switch (request.Source)
         {
-            var settings = await SettingsStore.LoadAsync(db, paths, ct);
-            set.SourceKind = file.Kind;
-            set.SourceImagePath = await ImageStore.SaveSourceAsync(settings.OutputDirectory, set.Id, file.Content, file.Extension, ct);
-            await db.SaveChangesAsync(ct);
+            case SetSource.ImageFile file:
+                await AttachSourceImageAsync(set, file.Kind, file.Content, file.Extension, ct);
+                break;
+            case SetSource.DeviantArtUrl when deviation is not null:
+                set.DeviantArtUrl = deviation.Preview.Url;
+                set.DeviationId = deviation.Preview.DeviationId;
+                set.DeviantArtAuthor = deviation.Preview.Author;
+                await AttachSourceImageAsync(set, SourceKind.DeviantArt, new MemoryStream(deviation.Content), deviation.Extension, ct);
+                break;
         }
 
         await queueService.EnqueueAsync(set.Id, request.Count, ct);
@@ -58,6 +71,15 @@ public sealed class SetService(StudioDbContext db, AppPaths paths, QueueService 
             throw new UserFacingException("That image does not belong to this set.");
 
         set.SelectedImageId = imageId;
+        await db.SaveChangesAsync(ct);
+    }
+
+    private async Task AttachSourceImageAsync(
+        PromptSet set, SourceKind kind, Stream content, string extension, CancellationToken ct)
+    {
+        var settings = await SettingsStore.LoadAsync(db, paths, ct);
+        set.SourceKind = kind;
+        set.SourceImagePath = await ImageStore.SaveSourceAsync(settings.OutputDirectory, set.Id, content, extension, ct);
         await db.SaveChangesAsync(ct);
     }
 

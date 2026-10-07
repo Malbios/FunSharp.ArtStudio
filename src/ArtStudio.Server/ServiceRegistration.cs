@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using ArtStudio.Server.Comfy;
 using ArtStudio.Server.Data;
+using ArtStudio.Server.DeviantArt;
 using ArtStudio.Server.Generation;
 using ArtStudio.Server.Hubs;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,12 @@ public static class ServiceRegistration
         services.AddSingleton<StudioNotifier>();
         services.AddScoped<QueueService>();
         services.AddScoped<SetService>();
+        services.AddHttpClient(DeviantArtService.HttpClientName, http =>
+        {
+            http.Timeout = TimeSpan.FromSeconds(30);
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("ArtStudio/1.0");
+        });
+        services.AddScoped<DeviantArtService>();
         services.AddHostedService<QueueWorker>();
         return services;
     }

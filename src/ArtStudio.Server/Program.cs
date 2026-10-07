@@ -22,6 +22,7 @@ app.UseStaticFiles();
 
 app.MapSetEndpoints();
 app.MapQueueEndpoints();
+app.MapDeviantArtEndpoints();
 app.MapHub<StudioHub>("/hubs/studio");
 app.MapFallbackToFile("index.html");
 

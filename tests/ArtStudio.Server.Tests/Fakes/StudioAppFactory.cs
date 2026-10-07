@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using ArtStudio.Server.Api;
 using ArtStudio.Server.Comfy;
+using ArtStudio.Server.DeviantArt;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -24,6 +25,8 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
 
     public FakeComfyServer Comfy { get; } = new();
 
+    public FakeDeviantArt DeviantArt { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("ArtStudio:DataDirectory", DataDirectory);
@@ -32,6 +35,7 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
             services.RemoveAll<GenerationTiming>();
             services.AddSingleton(new GenerationTiming(TimeSpan.FromMilliseconds(10), TimeSpan.FromSeconds(30)));
             services.AddHttpClient(ComfyClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Comfy);
+            services.AddHttpClient(DeviantArtService.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => DeviantArt);
         });
     }
 
