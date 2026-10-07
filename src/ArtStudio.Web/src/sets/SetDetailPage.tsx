@@ -85,22 +85,38 @@ export function SetDetailPage() {
 
   return (
     <div>
-      <div className="toolbar">
+      <div className="toolbar set-toolbar">
         <h2>Set #{data.id}</h2>
+        <form className="inline-form" onSubmit={(e) => void requestMore(e)}>
+          <input
+            type="number"
+            min={1}
+            max={100}
+            value={moreCount}
+            aria-label="Number of additional images"
+            onChange={(e) => setMoreCount(Math.max(1, Number(e.target.value) || 1))}
+          />
+          <button type="submit" className="primary">
+            More images
+          </button>
+        </form>
+        <Link to={`/?basedOn=${data.id}`} className="button-link inline">
+          Edit &amp; requeue
+        </Link>
+        <button type="button" className="danger" disabled={deleting} onClick={() => void deleteSet()}>
+          {deleting ? 'Deleting…' : 'Delete set'}
+        </button>
         <Link to="/sets">All sets</Link>
       </div>
+      {error && <p className="error">{error}</p>}
 
-      <div className="set-header">
-        <div className="panel">
-          <p className="set-prompt">{data.prompt}</p>
-          <div className="job-meta">
-            <span>{data.resolution}</span>
-            <span>{new Date(data.createdAt).toLocaleString()}</span>
-            <span>{data.images.length} images</span>
-            <button type="button" className="link-button" onClick={() => void copyPrompt(data.prompt)}>
-              {copied ? 'Copied!' : 'Copy prompt'}
-            </button>
-          </div>
+      {(data.sourceImageUrl || data.deviantArtUrl) && (
+        <section className="set-section">
+          {data.sourceImageUrl && (
+            <a href={data.sourceImageUrl} target="_blank" rel="noreferrer">
+              <img className="set-inspiration" src={data.sourceImageUrl} alt="Inspiration image" />
+            </a>
+          )}
           {data.deviantArtUrl && (
             <p className="hint">
               Inspired by{' '}
@@ -110,35 +126,8 @@ export function SetDetailPage() {
               {data.deviantArtAuthor && ` (${data.deviantArtAuthor})`}
             </p>
           )}
-          {data.sourceImageUrl && (
-            <a href={data.sourceImageUrl} target="_blank" rel="noreferrer">
-              <img className="source-preview set-source" src={data.sourceImageUrl} alt="Base image" />
-            </a>
-          )}
-        </div>
-
-        <div className="panel set-actions">
-          <form className="inline-form" onSubmit={(e) => void requestMore(e)}>
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={moreCount}
-              onChange={(e) => setMoreCount(Math.max(1, Number(e.target.value) || 1))}
-            />
-            <button type="submit" className="primary">
-              More images
-            </button>
-          </form>
-          <Link to={`/?basedOn=${data.id}`} className="button-link">
-            Edit &amp; requeue
-          </Link>
-          <button type="button" className="danger" disabled={deleting} onClick={() => void deleteSet()}>
-            {deleting ? 'Deleting…' : 'Delete set'}
-          </button>
-          {error && <p className="error">{error}</p>}
-        </div>
-      </div>
+        </section>
+      )}
 
       {activeJobs.length > 0 && (
         <div className="job-list">
@@ -161,7 +150,19 @@ export function SetDetailPage() {
           </button>
         ))}
       </div>
-      {data.images.length === 0 && <p className="hint">No images yet.</p>}
+      {data.images.length === 0 && <p className="hint set-section">No images yet.</p>}
+
+      <section className="panel">
+        <p className="set-prompt">{data.prompt}</p>
+        <div className="job-meta">
+          <span>{data.resolution}</span>
+          <span>{new Date(data.createdAt).toLocaleString()}</span>
+          <span>{data.images.length} images</span>
+          <button type="button" className="link-button" onClick={() => void copyPrompt(data.prompt)}>
+            {copied ? 'Copied!' : 'Copy prompt'}
+          </button>
+        </div>
+      </section>
 
       {lightboxIndex !== null && data.images[lightboxIndex] && (
         <Lightbox
