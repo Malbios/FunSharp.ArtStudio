@@ -16,6 +16,8 @@ public static class SetEndpoints
         sets.MapGet("{id:int}", GetSetAsync);
         sets.MapPost("", CreateSetAsync).DisableAntiforgery();
         sets.MapPost("{id:int}/more", RequestMoreImagesAsync);
+        sets.MapPost("{id:int}/queue", async (int id, QueueDraftRequest request, SetService setService, CancellationToken ct) =>
+            await setService.QueueDraftAsync(id, request.Prompt, request.Resolution, request.Count, ct));
         sets.MapPost("{id:int}/picks", async (int id, PickImageRequest request, SetService setService, CancellationToken ct) =>
             await setService.PickAsync(id, request.ImageId, ct));
         sets.MapDelete("{id:int}/picks/{imageId:int}", async (int id, int imageId, SetService setService, CancellationToken ct) =>
@@ -34,16 +36,14 @@ public static class SetEndpoints
 
     private static async Task<IReadOnlyList<SetSummaryDto>> ListSetsAsync(string? stage, StudioDbContext db, CancellationToken ct)
     {
-        var readyToPost = stage switch
-        {
-            null or "working" => false,
-            "ready" => true,
-            _ => throw new UserFacingException($"Unknown stage '{stage}'. Use 'working' or 'ready'."),
-        };
         var activeStatuses = new[] { JobStatus.Queued, JobStatus.Running };
-        var inStage = readyToPost
-            ? db.PromptSets.Where(s => s.ReadyToPostAt != null).OrderByDescending(s => s.ReadyToPostAt).ThenByDescending(s => s.Id)
-            : db.PromptSets.Where(s => s.ReadyToPostAt == null).OrderByDescending(s => s.Id);
+        IQueryable<PromptSet> inStage = stage switch
+        {
+            "draft" => db.PromptSets.Where(s => s.IsDraft).OrderByDescending(s => s.Id),
+            null or "working" => db.PromptSets.Where(s => !s.IsDraft && s.ReadyToPostAt == null).OrderByDescending(s => s.Id),
+            "ready" => db.PromptSets.Where(s => s.ReadyToPostAt != null).OrderByDescending(s => s.ReadyToPostAt).ThenByDescending(s => s.Id),
+            _ => throw new UserFacingException($"Unknown stage '{stage}'. Use 'draft', 'working' or 'ready'."),
+        };
         var sets = await inStage
             .Select(s => new
             {
@@ -70,6 +70,7 @@ public static class SetEndpoints
                 s.PickedCount,
                 s.Set.DeviantArtAuthor,
                 s.Set.CreatedAt,
+                s.Set.IsDraft,
                 s.Set.ReadyToPostAt))
             .ToList();
     }
@@ -96,6 +97,7 @@ public static class SetEndpoints
             set.DeviantArtAuthor,
             set.Picks.Select(p => p.GeneratedImageId).ToList(),
             set.CreatedAt,
+            set.IsDraft,
             set.ReadyToPostAt,
             set.Images.Select(image => ImageDto.From(image, jobsById[image.GenerationJobId])).ToList(),
             set.Jobs.Select(JobDto.From).ToList()));
@@ -112,7 +114,9 @@ public static class SetEndpoints
         await using var fileStream = form.Files.GetFile("image")?.OpenReadStream();
         var source = ReadSource(form, fileStream);
 
-        var set = await setService.CreateAsync(new NewSetRequest(prompt, resolution, count, source), ct);
+        var asDraft = bool.TryParse(form["draft"], out var draft) && draft;
+
+        var set = await setService.CreateAsync(new NewSetRequest(prompt, resolution, count, source, asDraft), ct);
         return Results.Created($"/api/sets/{set.Id}", new { set.Id });
     }
 

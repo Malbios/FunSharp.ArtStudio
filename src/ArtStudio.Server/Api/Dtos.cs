@@ -62,6 +62,7 @@ public sealed record SetSummaryDto(
     int PickedCount,
     string? DeviantArtAuthor,
     DateTimeOffset CreatedAt,
+    bool IsDraft,
     DateTimeOffset? ReadyToPostAt);
 
 public sealed record SetDetailDto(
@@ -74,11 +75,14 @@ public sealed record SetDetailDto(
     string? DeviantArtAuthor,
     IReadOnlyList<int> PickedImageIds,
     DateTimeOffset CreatedAt,
+    bool IsDraft,
     DateTimeOffset? ReadyToPostAt,
     IReadOnlyList<ImageDto> Images,
     IReadOnlyList<JobDto> Jobs);
 
 public sealed record MoreImagesRequest(int Count, string? Prompt, string? Resolution);
+
+public sealed record QueueDraftRequest(string Prompt, string Resolution, int Count);
 
 public sealed record PickImageRequest(int ImageId);
 

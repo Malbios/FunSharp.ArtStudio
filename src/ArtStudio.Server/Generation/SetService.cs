@@ -16,7 +16,7 @@ public abstract record SetSource
     public sealed record DeviantArtUrl(string Url, int ImageIndex) : SetSource;
 }
 
-public sealed record NewSetRequest(string Prompt, string Resolution, int Count, SetSource Source);
+public sealed record NewSetRequest(string Prompt, string Resolution, int Count, SetSource Source, bool AsDraft = false);
 
 public sealed class SetService(
     StudioDbContext db,
@@ -32,7 +32,9 @@ public sealed class SetService(
 
     public async Task<PromptSet> CreateAsync(NewSetRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.Prompt))
+        if (request.AsDraft && request.Source is SetSource.None)
+            throw new UserFacingException("Attach an image to save a draft.");
+        if (!request.AsDraft && string.IsNullOrWhiteSpace(request.Prompt))
             throw new UserFacingException("The prompt must not be empty.");
         var resolution = Resolutions.Find(request.Resolution)
             ?? throw new UserFacingException($"Unknown resolution '{request.Resolution}'.");
@@ -43,6 +45,7 @@ public sealed class SetService(
             Resolution = resolution.Name,
             SourceKind = SourceKind.None,
             CreatedAt = clock.GetUtcNow(),
+            IsDraft = request.AsDraft,
         };
 
 
@@ -66,8 +69,22 @@ public sealed class SetService(
                 break;
         }
 
-        await queueService.EnqueueAsync(set.Id, request.Count, prompt: null, resolution: null, ct);
+        if (set.IsDraft)
+            await notifier.SetUpdated(set.Id);
+        else
+            await queueService.EnqueueAsync(set.Id, request.Count, prompt: null, resolution: null, ct);
         return set;
+    }
+
+    public async Task QueueDraftAsync(int setId, string prompt, string resolution, int count, CancellationToken ct)
+    {
+        var set = await FindSetAsync(setId, ct);
+        if (!set.IsDraft)
+            throw new UserFacingException("This set is not a draft.");
+
+        set.IsDraft = false;
+        await queueService.EnqueueAsync(setId, count, prompt, resolution, ct);
+        await notifier.SetUpdated(setId);
     }
 
     public async Task PickAsync(int setId, int imageId, CancellationToken ct)
