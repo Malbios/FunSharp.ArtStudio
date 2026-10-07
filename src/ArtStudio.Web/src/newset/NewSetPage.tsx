@@ -11,9 +11,16 @@ import { ImageSourcePicker, type SourceTab } from './ImageSourcePicker'
 const DEFAULT_COUNT = 2
 const CREATED_MESSAGE_DURATION_MS = 5000
 
+interface CreatedSet {
+  id: number
+  asDraft: boolean
+}
+
 export function NewSetPage() {
   const [searchParams] = useSearchParams()
-  const basedOnId = Number(searchParams.get('basedOn')) || null
+  const draftId = Number(searchParams.get('draft')) || null
+  const baseSetId = draftId ?? (Number(searchParams.get('basedOn')) || null)
+  const isDraft = draftId !== null
   const navigate = useNavigate()
   const resolutions = useLoad(api.resolutions)
 
@@ -27,29 +34,29 @@ export function NewSetPage() {
   const [baseSet, setBaseSet] = useState<SetDetail>()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string>()
-  const [createdSetId, setCreatedSetId] = useState<number>()
+  const [created, setCreated] = useState<CreatedSet>()
 
   useEffect(() => {
-    if (createdSetId === undefined) return
-    const timer = setTimeout(() => setCreatedSetId(undefined), CREATED_MESSAGE_DURATION_MS)
+    if (created === undefined) return
+    const timer = setTimeout(() => setCreated(undefined), CREATED_MESSAGE_DURATION_MS)
     return () => clearTimeout(timer)
-  }, [createdSetId])
+  }, [created])
 
   useEffect(() => {
-    if (basedOnId === null) return
-    api.set(basedOnId).then((set) => {
+    if (baseSetId === null) return
+    api.set(baseSetId).then((set) => {
       setBaseSet(set)
       setPrompt(set.prompt)
       setResolution(set.resolution)
       setResolutionIsAuto(false)
       setSource({ kind: 'BasedOn', setId: set.id, imageUrl: set.sourceImageUrl })
     }, (failure: Error) => setError(failure.message))
-  }, [basedOnId])
+  }, [baseSetId])
 
   useEffect(() => {
     function pasteImage(event: globalThis.ClipboardEvent) {
       const file = imageFileFrom(event.clipboardData)
-      if (!file || basedOnId !== null) return
+      if (!file || baseSetId !== null) return
       event.preventDefault()
       loadImageFile('Paste', file).then(changeSource, (failure: Error) => setError(failure.message))
     }
@@ -95,22 +102,40 @@ export function NewSetPage() {
 
   async function submit(event: FormEvent) {
     event.preventDefault()
-    setError(undefined)
-    setCreatedSetId(undefined)
     if (!prompt.trim()) return setError('Enter a prompt.')
+    await send(async () => {
+      if (baseSet && isDraft) {
+        await api.queueDraft(baseSet.id, prompt, resolution, count)
+        navigate('/drafts')
+      } else if (baseSet) {
+        await api.moreImages(baseSet.id, count, prompt, resolution)
+        navigate(`/sets/${baseSet.id}`)
+      } else {
+        const { id } = await api.createSet(buildForm())
+        resetForm()
+        setCreated({ id, asDraft: false })
+      }
+    })
+  }
+
+  async function saveDraft() {
+    await send(async () => {
+      const form = buildForm()
+      form.append('draft', 'true')
+      const { id } = await api.createSet(form)
+      resetForm()
+      setCreated({ id, asDraft: true })
+    })
+  }
+
+  async function send(action: () => Promise<void>) {
+    setError(undefined)
+    setCreated(undefined)
     if (!resolution) return setError('Choose a resolution.')
 
     setSubmitting(true)
     try {
-      if (baseSet) {
-        await api.moreImages(baseSet.id, count, prompt, resolution)
-        navigate(`/sets/${baseSet.id}`)
-        return
-      }
-
-      const { id } = await api.createSet(buildForm())
-      resetForm()
-      setCreatedSetId(id)
+      await action()
     } catch (failure) {
       setError((failure as Error).message)
     } finally {
@@ -139,11 +164,14 @@ export function NewSetPage() {
     return form
   }
 
+  const hasImage = source.kind === 'Upload' || source.kind === 'Paste' || source.kind === 'DeviantArt'
+  const heading = !baseSet ? 'New prompt' : isDraft ? `Queue draft #${baseSet.id}` : `Edit & requeue set #${baseSet.id}`
+
   return (
     <div className="new-set-layout">
       <form className="panel new-set" onSubmit={(e) => void submit(e)}>
-        <h2>{baseSet ? `Edit & requeue set #${baseSet.id}` : 'New prompt'}</h2>
-        {baseSet && (
+        <h2>{heading}</h2>
+        {baseSet && !isDraft && (
           <p className="hint">New images are added to set #{baseSet.id} with this prompt and resolution.</p>
         )}
 
@@ -180,15 +208,31 @@ export function NewSetPage() {
               onChange={(e) => setCount(Math.max(1, Number(e.target.value) || 1))}
             />
           </label>
+          {baseSetId === null && (
+            <button
+              type="button"
+              className="submit-in-row"
+              disabled={submitting || !hasImage}
+              title={hasImage ? 'Keep the image without a prompt and queue it later' : 'Attach an image first'}
+              onClick={() => void saveDraft()}
+            >
+              Save as draft
+            </button>
+          )}
           <button type="submit" className="primary submit-in-row" disabled={submitting}>
-            {submitting ? 'Queuing…' : 'Add to queue'}
+            {submitting ? 'Sending…' : 'Add to queue'}
           </button>
         </div>
 
         {error && <p className="error">{error}</p>}
-        {createdSetId !== undefined && (
+        {created && !created.asDraft && (
           <p className="success">
-            Queued as <Link to={`/sets/${createdSetId}`}>set #{createdSetId}</Link>. <Link to="/queue">View queue</Link>
+            Queued as <Link to={`/sets/${created.id}`}>set #{created.id}</Link>. <Link to="/queue">View queue</Link>
+          </p>
+        )}
+        {created?.asDraft && (
+          <p className="success">
+            Saved as draft #{created.id}. <Link to="/drafts">View drafts</Link>
           </p>
         )}
 

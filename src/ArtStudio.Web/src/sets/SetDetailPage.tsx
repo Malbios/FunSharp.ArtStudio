@@ -1,5 +1,5 @@
 import { useCallback, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { api, type ImageInfo } from '../api'
 import { useStudioEvents, type JobEventPayload } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
@@ -89,6 +89,7 @@ export function SetDetailPage() {
     )
   if (set.error) return <p className="error">{set.error}</p>
   if (!set.data) return <p className="hint">Loading…</p>
+  if (set.data.isDraft) return <Navigate to={`/?draft=${setId}`} replace />
 
   const data = set.data
   const hasInspiration = Boolean(data.sourceImageUrl || data.deviantArtUrl)

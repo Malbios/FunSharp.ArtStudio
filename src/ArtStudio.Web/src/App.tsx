@@ -1,5 +1,6 @@
 import { BrowserRouter, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { api } from './api'
+import { DraftsPage } from './drafts/DraftsPage'
 import { DesktopNotifications } from './live/desktopNotifications'
 import { SettingsPage } from './settings/SettingsPage'
 import { useStudioEvents } from './live/studioHub'
@@ -13,6 +14,19 @@ import { SetsPage } from './sets/SetsPage'
 function NewSetRoute() {
   const location = useLocation()
   return <NewSetPage key={location.search} />
+}
+
+function DraftsNavLink() {
+  const drafts = useLoad(() => api.sets('draft'))
+  useStudioEvents(['SetUpdated', 'SetDeleted'], drafts.reload)
+  const count = drafts.data?.length ?? 0
+
+  return (
+    <NavLink to="/drafts">
+      Drafts
+      {count > 0 && <span className="nav-count">{count}</span>}
+    </NavLink>
+  )
 }
 
 function QueueNavLink() {
@@ -40,6 +54,7 @@ export default function App() {
           <NavLink to="/" end>
             New
           </NavLink>
+          <DraftsNavLink />
           <QueueNavLink />
           <NavLink to="/sets">Sets</NavLink>
           <NavLink to="/post">Post</NavLink>
@@ -50,6 +65,7 @@ export default function App() {
       <main>
         <Routes>
           <Route path="/" element={<NewSetRoute />} />
+          <Route path="/drafts" element={<DraftsPage />} />
           <Route path="/queue" element={<QueuePage />} />
           <Route path="/sets" element={<SetsPage />} />
           <Route path="/sets/:id" element={<SetDetailPage />} />

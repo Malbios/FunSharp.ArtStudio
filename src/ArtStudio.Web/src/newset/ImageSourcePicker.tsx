@@ -70,7 +70,7 @@ export function ImageSourcePicker({ source, initialTab = 'None', onChange }: Pro
   if (source.kind === 'BasedOn') {
     return (
       <div className="source-picker">
-        <p className="hint">Uses the base image of set #{source.setId}.</p>
+        <p className="hint">Uses the inspiration image of #{source.setId}.</p>
         {source.imageUrl && <img className="source-preview" src={source.imageUrl} alt="Base image" />}
       </div>
     )
