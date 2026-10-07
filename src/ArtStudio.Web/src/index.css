@@ -466,6 +466,11 @@ main {
   flex-wrap: wrap;
 }
 
+.set-toolbar-bottom {
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
 .set-section {
   margin-bottom: 1.5rem;
 }

@@ -104,41 +104,47 @@ export function SetDetailPage() {
         ? 'Wait for or cancel the queued and running jobs first.'
         : null
 
+  const setActions = (
+    <>
+      {!isReadyToPost && (
+        <>
+          <form className="inline-form" onSubmit={(e) => void requestMore(e)}>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={moreCount}
+              aria-label="Number of additional images"
+              onChange={(e) => setMoreCount(Math.max(1, Number(e.target.value) || 1))}
+            />
+            <button type="submit">More images</button>
+          </form>
+          <Link to={`/?basedOn=${data.id}`} className="button-link inline">
+            Edit &amp; requeue
+          </Link>
+          <button
+            type="button"
+            className="success"
+            disabled={readyBlocker !== null}
+            title={readyBlocker ?? 'Move this set to Post'}
+            onClick={() => void changeStage(() => api.markReadyToPost(setId), '/post')}
+          >
+            Ready to post
+          </button>
+        </>
+      )}
+      <button type="button" className="danger" disabled={deleting} onClick={() => void deleteSet()}>
+        {deleting ? 'Deleting…' : 'Delete set'}
+      </button>
+      <Link to={isReadyToPost ? '/post' : '/sets'}>{isReadyToPost ? 'All posts' : 'All sets'}</Link>
+    </>
+  )
+
   return (
     <div>
       <div className="toolbar set-toolbar">
         <h2>Set #{data.id}</h2>
-        {!isReadyToPost && (
-          <>
-            <form className="inline-form" onSubmit={(e) => void requestMore(e)}>
-              <input
-                type="number"
-                min={1}
-                max={100}
-                value={moreCount}
-                aria-label="Number of additional images"
-                onChange={(e) => setMoreCount(Math.max(1, Number(e.target.value) || 1))}
-              />
-              <button type="submit">More images</button>
-            </form>
-            <Link to={`/?basedOn=${data.id}`} className="button-link inline">
-              Edit &amp; requeue
-            </Link>
-            <button
-              type="button"
-              className="success"
-              disabled={readyBlocker !== null}
-              title={readyBlocker ?? 'Move this set to Post'}
-              onClick={() => void changeStage(() => api.markReadyToPost(setId), '/post')}
-            >
-              Ready to post
-            </button>
-          </>
-        )}
-        <button type="button" className="danger" disabled={deleting} onClick={() => void deleteSet()}>
-          {deleting ? 'Deleting…' : 'Delete set'}
-        </button>
-        <Link to={isReadyToPost ? '/post' : '/sets'}>{isReadyToPost ? 'All posts' : 'All sets'}</Link>
+        {setActions}
       </div>
       {error && <p className="error">{error}</p>}
       {isReadyToPost && (
@@ -214,6 +220,9 @@ export function SetDetailPage() {
         onUnpick={(image) => void changePicks(() => api.unpickImage(setId, image.id))}
         onOpen={(image) => setLightboxIndex(data.images.indexOf(image))}
       />
+
+      {error && <p className="error">{error}</p>}
+      <div className="toolbar set-toolbar set-toolbar-bottom">{setActions}</div>
 
       {lightboxIndex !== null && data.images[lightboxIndex] && (
         <Lightbox
