@@ -18,4 +18,25 @@
     <EmbeddedResource Include="Comfy\krea2_t2i.json" LogicalName="ArtStudio.Server.Comfy.krea2_t2i.json" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <WebProjectDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\ArtStudio.Web'))\</WebProjectDir>
+    <WebInstallStamp>$(WebProjectDir)node_modules\.artstudio-install-stamp</WebInstallStamp>
+    <WebBuildOutput>$(MSBuildProjectDirectory)\wwwroot\index.html</WebBuildOutput>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <WebSources Include="$(WebProjectDir)src\**\*;$(WebProjectDir)public\**\*" />
+    <WebSources Include="$(WebProjectDir)index.html;$(WebProjectDir)vite.config.ts;$(WebProjectDir)tsconfig*.json;$(WebProjectDir)package*.json" />
+  </ItemGroup>
+
+  <Target Name="InstallWebDependencies" Inputs="$(WebProjectDir)package-lock.json" Outputs="$(WebInstallStamp)">
+    <Exec Command="npm install" WorkingDirectory="$(WebProjectDir)" />
+    <Touch Files="$(WebInstallStamp)" AlwaysCreate="true" />
+  </Target>
+
+  <Target Name="BuildWeb" BeforeTargets="BeforeBuild" DependsOnTargets="InstallWebDependencies"
+          Inputs="@(WebSources);$(WebInstallStamp)" Outputs="$(WebBuildOutput)">
+    <Exec Command="npm run build" WorkingDirectory="$(WebProjectDir)" />
+  </Target>
+
 </Project>
