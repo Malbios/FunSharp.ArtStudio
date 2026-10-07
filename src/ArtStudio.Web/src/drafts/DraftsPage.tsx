@@ -5,6 +5,7 @@ import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { Pager } from '../paging/Pager'
+import { BulkDeviantArtDrafts } from './BulkDeviantArtDrafts'
 import { usePagedItems } from '../paging/usePagedItems'
 
 export function DraftsPage() {
@@ -30,6 +31,7 @@ export function DraftsPage() {
       <div className="toolbar">
         <h2>Drafts</h2>
       </div>
+      <BulkDeviantArtDrafts />
       {drafts.error && <p className="error">{drafts.error}</p>}
       {error && <p className="error">{error}</p>}
       {drafts.data?.length === 0 && (

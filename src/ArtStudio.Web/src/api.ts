@@ -153,6 +153,7 @@ export const api = {
     request<{ id: number }>('POST', `/api/sets/${setId}/more`, { count, prompt, resolution }),
   queueDraft: (setId: number, prompt: string, resolution: string, count: number) =>
     request<void>('POST', `/api/sets/${setId}/queue`, { prompt, resolution, count }),
+  addDeviantArtDraft: (url: string) => request<{ id: number }>('POST', '/api/drafts/deviantart', { url }),
   pickImage: (setId: number, imageId: number) => request<void>('POST', `/api/sets/${setId}/picks`, { imageId }),
   unpickImage: (setId: number, imageId: number) => request<void>('DELETE', `/api/sets/${setId}/picks/${imageId}`),
   reorderPicks: (setId: number, imageIds: number[]) =>
