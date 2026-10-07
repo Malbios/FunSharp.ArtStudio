@@ -70,8 +70,12 @@ export function ImageSourcePicker({ source, initialTab = 'None', onChange }: Pro
   if (source.kind === 'BasedOn') {
     return (
       <div className="source-picker">
-        <p className="hint">Uses the inspiration image of #{source.setId}.</p>
-        {source.imageUrl && <img className="source-preview" src={source.imageUrl} alt="Base image" />}
+        {source.imageUrl && <img className="source-preview" src={source.imageUrl} alt="Inspiration image" />}
+        {source.deviantArtAuthor && (
+          <p className="hint">
+            by <DeviantArtUserLink username={source.deviantArtAuthor} />
+          </p>
+        )}
       </div>
     )
   }

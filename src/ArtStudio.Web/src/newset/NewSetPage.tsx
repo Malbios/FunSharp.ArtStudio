@@ -49,7 +49,7 @@ export function NewSetPage() {
       setPrompt(set.prompt)
       setResolution(set.resolution)
       setResolutionIsAuto(false)
-      setSource({ kind: 'BasedOn', setId: set.id, imageUrl: set.sourceImageUrl })
+      setSource({ kind: 'BasedOn', imageUrl: set.sourceImageUrl, deviantArtAuthor: set.deviantArtAuthor })
     }, (failure: Error) => setError(failure.message))
   }, [baseSetId])
 
