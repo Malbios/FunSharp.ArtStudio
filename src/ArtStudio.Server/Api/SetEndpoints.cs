@@ -29,6 +29,10 @@ public static class SetEndpoints
             await setService.MarkReadyToPostAsync(id, ct));
         sets.MapDelete("{id:int}/ready", async (int id, SetService setService, CancellationToken ct) =>
             await setService.MoveBackToSetsAsync(id, ct));
+        sets.MapPost("{id:int}/archive", async (int id, SetService setService, CancellationToken ct) =>
+            await setService.ArchiveAsync(id, ct));
+        sets.MapDelete("{id:int}/archive", async (int id, SetService setService, CancellationToken ct) =>
+            await setService.RestoreAsync(id, ct));
         sets.MapDelete("{id:int}", async (int id, SetService setService, CancellationToken ct) =>
             await setService.DeleteAsync(id, ct) ? Results.NoContent() : Results.NotFound());
         app.MapGet("/api/images/{id:int}", GetImageAsync);
@@ -42,9 +46,16 @@ public static class SetEndpoints
         IQueryable<PromptSet> inStage = stage switch
         {
             "draft" => db.PromptSets.Where(s => s.IsDraft).OrderByDescending(s => s.Id),
-            null or "working" => db.PromptSets.Where(s => !s.IsDraft && s.ReadyToPostAt == null).OrderByDescending(s => s.Id),
-            "ready" => db.PromptSets.Where(s => s.ReadyToPostAt != null).OrderByDescending(s => s.ReadyToPostAt).ThenByDescending(s => s.Id),
-            _ => throw new UserFacingException($"Unknown stage '{stage}'. Use 'draft', 'working' or 'ready'."),
+            null or "working" => db.PromptSets
+                .Where(s => !s.IsDraft && s.ReadyToPostAt == null && s.ArchivedAt == null)
+                .OrderByDescending(s => s.Id),
+            "ready" => db.PromptSets
+                .Where(s => s.ReadyToPostAt != null && s.ArchivedAt == null)
+                .OrderByDescending(s => s.ReadyToPostAt).ThenByDescending(s => s.Id),
+            "archived" => db.PromptSets
+                .Where(s => s.ArchivedAt != null)
+                .OrderByDescending(s => s.ArchivedAt).ThenByDescending(s => s.Id),
+            _ => throw new UserFacingException($"Unknown stage '{stage}'. Use 'draft', 'working', 'ready' or 'archived'."),
         };
         var sets = await inStage
             .Select(s => new
@@ -73,7 +84,8 @@ public static class SetEndpoints
                 s.Set.DeviantArtAuthor,
                 s.Set.CreatedAt,
                 s.Set.IsDraft,
-                s.Set.ReadyToPostAt))
+                s.Set.ReadyToPostAt,
+                s.Set.ArchivedAt))
             .ToList();
     }
 
@@ -101,6 +113,7 @@ public static class SetEndpoints
             set.CreatedAt,
             set.IsDraft,
             set.ReadyToPostAt,
+            set.ArchivedAt,
             set.Images.Select(image => ImageDto.From(image, jobsById[image.GenerationJobId])).ToList(),
             set.Jobs.Select(JobDto.From).ToList()));
     }

@@ -23,6 +23,7 @@ public sealed class QueueService(
             ?? throw new UserFacingException("Set not found.");
         if (set.IsDraft)
             throw new UserFacingException("Add a prompt and queue the draft first.");
+        SetService.EnsureNotArchived(set);
         if (set.ReadyToPostAt is not null)
             throw new UserFacingException("This set is ready to post. Move it back to Sets to generate more images.");
         var jobPrompt = prompt ?? set.Prompt;

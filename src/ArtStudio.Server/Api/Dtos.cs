@@ -63,7 +63,8 @@ public sealed record SetSummaryDto(
     string? DeviantArtAuthor,
     DateTimeOffset CreatedAt,
     bool IsDraft,
-    DateTimeOffset? ReadyToPostAt);
+    DateTimeOffset? ReadyToPostAt,
+    DateTimeOffset? ArchivedAt);
 
 public sealed record SetDetailDto(
     int Id,
@@ -77,6 +78,7 @@ public sealed record SetDetailDto(
     DateTimeOffset CreatedAt,
     bool IsDraft,
     DateTimeOffset? ReadyToPostAt,
+    DateTimeOffset? ArchivedAt,
     IReadOnlyList<ImageDto> Images,
     IReadOnlyList<JobDto> Jobs);
 

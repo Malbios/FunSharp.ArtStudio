@@ -21,6 +21,7 @@ public class PromptSet
     public DateTimeOffset CreatedAt { get; set; }
     public bool IsDraft { get; set; }
     public DateTimeOffset? ReadyToPostAt { get; set; }
+    public DateTimeOffset? ArchivedAt { get; set; }
 
     public List<GenerationJob> Jobs { get; set; } = [];
     public List<GeneratedImage> Images { get; set; } = [];

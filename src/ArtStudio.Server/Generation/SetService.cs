@@ -128,6 +128,7 @@ public sealed class SetService(
     public async Task MarkReadyToPostAsync(int setId, CancellationToken ct)
     {
         var set = await FindSetAsync(setId, ct);
+        EnsureNotArchived(set);
         if (!await db.Picks.AnyAsync(p => p.PromptSetId == setId, ct))
             throw new UserFacingException("Pick at least one image before moving the set to Post.");
         if (await db.Jobs.AnyAsync(j => j.PromptSetId == setId && (j.Status == JobStatus.Queued || j.Status == JobStatus.Running), ct))
@@ -141,9 +142,16 @@ public sealed class SetService(
     public async Task MoveBackToSetsAsync(int setId, CancellationToken ct)
     {
         var set = await FindSetAsync(setId, ct);
+        EnsureNotArchived(set);
         set.ReadyToPostAt = null;
         await db.SaveChangesAsync(ct);
         await notifier.SetUpdated(setId);
+    }
+
+    internal static void EnsureNotArchived(PromptSet set)
+    {
+        if (set.ArchivedAt is not null)
+            throw new UserFacingException("Restore the set from the archive first.");
     }
 
     private async Task<PromptSet> FindSetAsync(int setId, CancellationToken ct) =>
@@ -189,12 +197,7 @@ public sealed class SetService(
         if (!await db.PromptSets.AnyAsync(s => s.Id == setId, ct))
             return false;
 
-        await db.Jobs
-            .Where(j => j.PromptSetId == setId && j.Status == JobStatus.Queued)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(j => j.Status, JobStatus.Cancelled)
-                .SetProperty(j => j.FinishedAt, clock.GetUtcNow()), ct);
-        await StopRunningJobAsync(setId, ct);
+        await StopJobsAsync(setId, [JobStatus.Queued], ct);
 
         await using (var transaction = await db.Database.BeginTransactionAsync(ct))
         {
@@ -207,6 +210,46 @@ public sealed class SetService(
 
         await notifier.SetDeleted(setId);
         return true;
+    }
+
+    public async Task ArchiveAsync(int setId, CancellationToken ct)
+    {
+        var set = await FindSetAsync(setId, ct);
+        if (set.IsDraft)
+            throw new UserFacingException("Drafts cannot be archived. Delete the draft instead.");
+        if (set.ArchivedAt is not null)
+            throw new UserFacingException("This set is already archived.");
+
+        await StopJobsAsync(setId, [JobStatus.Queued, JobStatus.Failed], ct);
+
+        set.ArchivedAt = clock.GetUtcNow();
+        await db.SaveChangesAsync(ct);
+        await notifier.SetUpdated(setId);
+    }
+
+    public async Task RestoreAsync(int setId, CancellationToken ct)
+    {
+        var set = await FindSetAsync(setId, ct);
+        set.ArchivedAt = null;
+        await db.SaveChangesAsync(ct);
+        await notifier.SetUpdated(setId);
+    }
+
+    private async Task StopJobsAsync(int setId, JobStatus[] statusesToCancel, CancellationToken ct)
+    {
+        var cancelledJobIds = await db.Jobs
+            .Where(j => j.PromptSetId == setId && statusesToCancel.Contains(j.Status))
+            .Select(j => j.Id)
+            .ToListAsync(ct);
+        await db.Jobs
+            .Where(j => cancelledJobIds.Contains(j.Id))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(j => j.Status, JobStatus.Cancelled)
+                .SetProperty(j => j.FinishedAt, clock.GetUtcNow()), ct);
+        foreach (var jobId in cancelledJobIds)
+            await notifier.JobUpdated(jobId, setId);
+
+        await StopRunningJobAsync(setId, ct);
     }
 
     private async Task StopRunningJobAsync(int setId, CancellationToken ct)
