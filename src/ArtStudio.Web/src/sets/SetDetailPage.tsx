@@ -81,6 +81,7 @@ export function SetDetailPage() {
   if (!set.data) return <p className="hint">Loading…</p>
 
   const data = set.data
+  const hasInspiration = Boolean(data.sourceImageUrl || data.deviantArtUrl)
   const activeJobs = data.jobs.filter((job) => job.status === 'Queued' || job.status === 'Running' || job.status === 'Failed')
 
   return (
@@ -110,49 +111,45 @@ export function SetDetailPage() {
       </div>
       {error && <p className="error">{error}</p>}
 
-      {(data.sourceImageUrl || data.deviantArtUrl) && (
-        <section className="set-section">
-          {data.sourceImageUrl && (
-            <a href={data.sourceImageUrl} target="_blank" rel="noreferrer">
-              <img className="set-inspiration" src={data.sourceImageUrl} alt="Inspiration image" />
-            </a>
-          )}
-          {data.deviantArtUrl && (
-            <p className="hint">
-              Inspired by{' '}
-              <a href={data.deviantArtUrl} target="_blank" rel="noreferrer">
-                {data.deviantArtUrl}
+      <div className={hasInspiration ? 'set-compare' : 'set-compare single'}>
+        {hasInspiration && (
+          <section className="set-inspiration-column">
+            {data.sourceImageUrl && (
+              <a href={data.sourceImageUrl} target="_blank" rel="noreferrer">
+                <img className="set-inspiration" src={data.sourceImageUrl} alt="Inspiration image" />
               </a>
-              {data.deviantArtAuthor && ` (${data.deviantArtAuthor})`}
-            </p>
-          )}
+            )}
+            {data.deviantArtUrl && (
+              <p className="hint">
+                Inspired by{' '}
+                <a href={data.deviantArtUrl} target="_blank" rel="noreferrer">
+                  {data.deviantArtUrl}
+                </a>
+                {data.deviantArtAuthor && ` (${data.deviantArtAuthor})`}
+              </p>
+            )}
+          </section>
+        )}
+
+        <section>
+          <div className="image-grid">
+            {data.images.map((image, index) => (
+              <button
+                key={image.id}
+                type="button"
+                className={image.id === data.selectedImageId ? 'image-tile selected' : 'image-tile'}
+                onClick={() => setLightboxIndex(index)}
+              >
+                {image.id === data.selectedImageId && <span className="badge">Picked</span>}
+                <img src={image.url} alt={`Generated image ${index + 1}`} loading="lazy" />
+              </button>
+            ))}
+          </div>
+          {data.images.length === 0 && <p className="hint">No images yet.</p>}
         </section>
-      )}
-
-      {activeJobs.length > 0 && (
-        <div className="job-list">
-          {activeJobs.map((job) => (
-            <JobRow key={job.id} job={job} showPrompt={false} />
-          ))}
-        </div>
-      )}
-
-      <div className="image-grid">
-        {data.images.map((image, index) => (
-          <button
-            key={image.id}
-            type="button"
-            className={image.id === data.selectedImageId ? 'image-tile selected' : 'image-tile'}
-            onClick={() => setLightboxIndex(index)}
-          >
-            {image.id === data.selectedImageId && <span className="badge">Picked</span>}
-            <img src={image.url} alt={`Generated image ${index + 1}`} loading="lazy" />
-          </button>
-        ))}
       </div>
-      {data.images.length === 0 && <p className="hint set-section">No images yet.</p>}
 
-      <section className="panel">
+      <section className="panel set-section">
         <p className="set-prompt">{data.prompt}</p>
         <div className="job-meta">
           <span>{data.resolution}</span>
@@ -163,6 +160,14 @@ export function SetDetailPage() {
           </button>
         </div>
       </section>
+
+      {activeJobs.length > 0 && (
+        <div className="job-list">
+          {activeJobs.map((job) => (
+            <JobRow key={job.id} job={job} showPrompt={false} />
+          ))}
+        </div>
+      )}
 
       {lightboxIndex !== null && data.images[lightboxIndex] && (
         <Lightbox

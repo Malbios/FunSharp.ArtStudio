@@ -465,11 +465,33 @@ main {
   margin-bottom: 1.5rem;
 }
 
+.set-compare {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  gap: 1.5rem;
+  align-items: start;
+  margin-bottom: 1.5rem;
+}
+
+.set-compare.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.set-inspiration-column {
+  position: sticky;
+  top: 5rem;
+  overflow-wrap: anywhere;
+}
+
 .set-inspiration {
   display: block;
-  max-width: 100%;
-  max-height: 420px;
+  width: 100%;
   border-radius: var(--radius);
+}
+
+.set-compare .image-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  margin-bottom: 0;
 }
 
 .set-prompt {
@@ -626,6 +648,14 @@ main {
 @media (max-width: 900px) {
   .new-set-layout {
     grid-template-columns: 1fr;
+  }
+
+  .set-compare {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .set-inspiration-column {
+    position: static;
   }
 
   .building-blocks {
