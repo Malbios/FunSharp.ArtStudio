@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
+import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 
 export function PostPage() {
   const sets = useLoad(() => api.sets('ready'))
@@ -20,22 +21,28 @@ export function PostPage() {
       )}
       <div className="set-grid">
         {sets.data?.map((set) => (
-          <Link key={set.id} to={`/sets/${set.id}`} className="panel set-card">
-            {set.previewImageUrl ? (
-              <img className="set-card-image" src={set.previewImageUrl} alt="" loading="lazy" />
-            ) : (
-              <div className="set-card-image" />
-            )}
+          <div key={set.id} className="panel set-card">
+            <Link to={`/sets/${set.id}`}>
+              {set.previewImageUrl ? (
+                <img className="set-card-image" src={set.previewImageUrl} alt="" loading="lazy" />
+              ) : (
+                <div className="set-card-image" />
+              )}
+            </Link>
             <div className="set-card-body">
               <div className="job-meta">
-                <span>#{set.id}</span>
+                <Link to={`/sets/${set.id}`}>#{set.id}</Link>
                 <span>
                   {set.pickedCount} {set.pickedCount === 1 ? 'pick' : 'picks'}
                 </span>
-                {set.deviantArtAuthor && <span>inspired by {set.deviantArtAuthor}</span>}
+                {set.deviantArtAuthor && (
+                  <span>
+                    inspired by <DeviantArtUserLink username={set.deviantArtAuthor} />
+                  </span>
+                )}
               </div>
             </div>
-          </Link>
+          </div>
         ))}
       </div>
     </div>

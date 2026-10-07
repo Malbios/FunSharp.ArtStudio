@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, type DeviantArtApp } from '../api'
+import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 
 const DEVELOPER_APPS_URL = 'https://www.deviantart.com/developers/apps'
 
@@ -61,7 +62,7 @@ export function DeviantArtConnection() {
       <p>
         {app.connected ? (
           <>
-            Connected as <strong>{app.username ?? 'unknown user'}</strong>.{' '}
+            Connected as <strong>{app.username ? <DeviantArtUserLink username={app.username} /> : 'unknown user'}</strong>.{' '}
             <button type="button" className="link-button" onClick={() => void disconnect()}>
               Disconnect
             </button>

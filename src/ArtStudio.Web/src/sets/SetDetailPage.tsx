@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, type ImageInfo } from '../api'
 import { useStudioEvents, type JobEventPayload } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
+import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { JobRow } from '../queue/JobRow'
 import { Lightbox } from './Lightbox'
 import { PickedStrip } from './PickedStrip'
@@ -193,7 +194,12 @@ export function SetDetailPage() {
                 <a href={data.deviantArtUrl} target="_blank" rel="noreferrer">
                   {data.deviantArtUrl}
                 </a>
-                {data.deviantArtAuthor && ` (${data.deviantArtAuthor})`}
+                {data.deviantArtAuthor && (
+                  <>
+                    {' '}
+                    (<DeviantArtUserLink username={data.deviantArtAuthor} />)
+                  </>
+                )}
               </p>
             )}
           </section>

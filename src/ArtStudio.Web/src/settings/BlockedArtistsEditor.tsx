@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { api } from '../api'
 import { useLoad } from '../live/useLoad'
+import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 
 export function BlockedArtistsEditor() {
   const artists = useLoad(api.blockedArtists)
@@ -42,7 +43,7 @@ export function BlockedArtistsEditor() {
       <div className="editable-list">
         {artists.data?.map((artist) => (
           <div key={artist.id} className="blocked-row">
-            <span>{artist.username}</span>
+            <DeviantArtUserLink username={artist.username} />
             <button type="button" className="link-button" onClick={() => void run(() => api.unblockArtist(artist.id))}>
               Unblock
             </button>

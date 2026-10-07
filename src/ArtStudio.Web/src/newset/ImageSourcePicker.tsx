@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, ApiError } from '../api'
+import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { imageFileFrom, loadImageFile, sourceDimensions, sourceImageUrl, type ImageSource } from './imageSource'
 
 export type SourceTab = 'None' | 'Upload' | 'Paste' | 'DeviantArt'
@@ -166,7 +167,7 @@ export function ImageSourcePicker({ source, initialTab = 'None', onChange }: Pro
           <figcaption>
             {source.kind === 'DeviantArt' && (
               <>
-                {source.preview.title ?? 'Untitled'} by {source.preview.author} ·{' '}
+                {source.preview.title ?? 'Untitled'} by <DeviantArtUserLink username={source.preview.author} /> ·{' '}
               </>
             )}
             {dimensions && `${dimensions.width}×${dimensions.height}`}
