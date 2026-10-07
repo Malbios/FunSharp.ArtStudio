@@ -257,7 +257,7 @@ main {
 
 .image-beside-prompt textarea {
   flex: 1;
-  min-height: 320px;
+  min-height: 400px;
 }
 
 .building-blocks {

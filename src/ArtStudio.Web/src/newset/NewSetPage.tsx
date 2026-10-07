@@ -191,9 +191,6 @@ export function NewSetPage() {
     <div className="new-set-layout">
       <form className="panel new-set" onSubmit={(e) => void submit(e)}>
         <h2>{heading}</h2>
-        {baseSet && !isDraft && (
-          <p className="hint">New images are added to set #{baseSet.id} with this prompt and resolution.</p>
-        )}
 
         <div className="field-row submit-row">
           <label className="field">
