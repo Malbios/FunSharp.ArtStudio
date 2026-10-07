@@ -694,3 +694,70 @@ code {
   border-radius: 4px;
   user-select: all;
 }
+
+/* Queue tiles */
+
+.job-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.job-grid.recent {
+  margin-top: 0.75rem;
+}
+
+.job-tile {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.job-tile-image {
+  display: block;
+  aspect-ratio: 1;
+  background: var(--panel-raised);
+}
+
+.job-tile-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.job-tile-placeholder {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.job-tile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.75rem 0.75rem 0;
+  flex: 1;
+}
+
+.progress.wide {
+  width: 100%;
+}
+
+.job-tile-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.75rem;
+}
+
+.job-tile-controls .button-link {
+  padding: 0.3rem 0.9rem;
+}

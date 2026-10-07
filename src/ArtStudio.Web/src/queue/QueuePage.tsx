@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api } from '../api'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
-import { JobRow } from './JobRow'
+import { JobTile } from './JobTile'
 
 export function QueuePage() {
   const queue = useLoad(api.queue)
@@ -44,10 +44,12 @@ export function QueuePage() {
         </div>
       )}
 
-      <div className="job-list">
-        {data?.active.map((job) => <JobRow key={job.id} job={job} />)}
-        {data && data.active.length === 0 && <p className="hint">Nothing queued.</p>}
-        {data && pendingCount > 0 && <p className="hint">{pendingCount} job(s) waiting or running.</p>}
+      {data && pendingCount > 0 && <p className="hint">{pendingCount} job(s) waiting or running.</p>}
+      {data && data.active.length === 0 && <p className="hint">Nothing queued.</p>}
+      <div className="job-grid">
+        {data?.active.map((job) => (
+          <JobTile key={job.id} job={job} />
+        ))}
       </div>
 
       {data && data.recent.length > 0 && (
@@ -56,9 +58,9 @@ export function QueuePage() {
             {showRecent ? 'Hide' : 'Show'} recently finished ({data.recent.length})
           </button>
           {showRecent && (
-            <div className="job-list" style={{ marginTop: '0.75rem' }}>
+            <div className="job-grid recent">
               {data.recent.map((job) => (
-                <JobRow key={job.id} job={job} />
+                <JobTile key={job.id} job={job} />
               ))}
             </div>
           )}
