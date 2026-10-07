@@ -13,7 +13,7 @@ export interface ImageInfo {
   setId: number
   jobId: number
   url: string
-  seed: number
+  seed: string
   prompt: string
   resolution: string
   createdAt: string

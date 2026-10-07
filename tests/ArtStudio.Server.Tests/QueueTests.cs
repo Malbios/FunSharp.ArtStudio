@@ -36,6 +36,20 @@ public sealed class QueueTests : IDisposable
     }
 
     [Fact]
+    public async Task ImageSeed_IsReturnedExactlyAsText()
+    {
+        var setId = await _factory.CreateSetAsync(_client, "fox", count: 1);
+        await WaitForJobStatusAsync(setId, JobStatus.Completed);
+
+        var json = await _client.GetStringAsync($"/api/sets/{setId}");
+        var seed = (await GetSetAsync(_client, setId)).Images.Single().Seed;
+
+        Assert.Contains($"\"seed\":\"{seed}\"", json);
+        var savedFile = Directory.GetFiles(Path.Combine(ImagesDirectory, "generated", setId.ToString())).Single();
+        Assert.EndsWith($"-{seed}.png", savedFile);
+    }
+
+    [Fact]
     public async Task CreateSet_WithUpload_StoresAndServesSourceImage()
     {
         byte[] sourceBytes = [1, 2, 3, 4];

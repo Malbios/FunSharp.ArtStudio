@@ -1,16 +1,18 @@
+using System.Globalization;
 using ArtStudio.Server.Domain;
 
 namespace ArtStudio.Server.Api;
 
 public sealed record ImageDto(
-    int Id, int SetId, int JobId, string Url, long Seed, string Prompt, string Resolution, DateTimeOffset CreatedAt)
+    int Id, int SetId, int JobId, string Url, string Seed, string Prompt, string Resolution, DateTimeOffset CreatedAt)
 {
     public static ImageDto From(GeneratedImage image, GenerationJob job) => new(
         image.Id,
         image.PromptSetId,
         image.GenerationJobId,
         ApiUrls.Image(image.Id),
-        image.Seed,
+        // Seeds exceed JavaScript's exact integer range, so they travel as text.
+        image.Seed.ToString(CultureInfo.InvariantCulture),
         job.Prompt,
         job.Resolution,
         image.CreatedAt);
