@@ -9,6 +9,7 @@ import { imageFileFrom, loadImageFile, NO_SOURCE, sourceDimensions, type ImageSo
 import { ImageSourcePicker, type SourceTab } from './ImageSourcePicker'
 
 const DEFAULT_COUNT = 2
+const CREATED_MESSAGE_DURATION_MS = 5000
 
 export function NewSetPage() {
   const [searchParams] = useSearchParams()
@@ -27,6 +28,12 @@ export function NewSetPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string>()
   const [createdSetId, setCreatedSetId] = useState<number>()
+
+  useEffect(() => {
+    if (createdSetId === undefined) return
+    const timer = setTimeout(() => setCreatedSetId(undefined), CREATED_MESSAGE_DURATION_MS)
+    return () => clearTimeout(timer)
+  }, [createdSetId])
 
   useEffect(() => {
     if (basedOnId === null) return
