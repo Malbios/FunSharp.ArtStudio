@@ -125,6 +125,7 @@ export function NewSetPage() {
       case 'DeviantArt':
         form.append('sourceKind', 'DeviantArt')
         form.append('deviantArtUrl', source.preview.url)
+        form.append('deviantArtImageIndex', String(source.imageIndex))
         break
 
     }

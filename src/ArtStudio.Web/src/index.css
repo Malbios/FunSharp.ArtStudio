@@ -913,3 +913,43 @@ code {
     height: 45vh;
   }
 }
+
+.deviation-images {
+  margin-top: 0.75rem;
+}
+
+.deviation-image-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.deviation-image-choice {
+  position: relative;
+  width: 96px;
+  padding: 0;
+  border: 2px solid var(--border);
+  overflow: hidden;
+}
+
+.deviation-image-choice.chosen {
+  border-color: var(--accent);
+}
+
+.deviation-image-choice img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.deviation-image-choice span {
+  position: absolute;
+  top: 0.2rem;
+  left: 0.2rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.65);
+  font-size: 0.75rem;
+}

@@ -17,6 +17,7 @@ public sealed class FakeDeviantArt : HttpMessageHandler
 
     public string Author { get; set; } = "someartist";
     public bool Mature { get; set; }
+    public int ExtraImages { get; set; }
     public int OEmbedCalls { get; private set; }
     public List<string> DeviationApiRequests { get; } = [];
     public int AccessTokenLifetimeSeconds { get; set; } = 3600;
@@ -53,11 +54,19 @@ public sealed class FakeDeviantArt : HttpMessageHandler
         }
 
         if (uri.Host == "www.deviantart.com" && uri.AbsolutePath.Contains("/art/"))
+        {
+            var deviationNumber = uri.AbsolutePath.Split('-').Last();
             return new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent(
-                    $"""<html><head><meta property="da:appurl" content="DeviantArt://deviation/{DeviationUuid}"/></head></html>"""),
+                Content = new StringContent(DeviationPageFixture.Html(DeviationUuid, deviationNumber, ExtraImages, blurred: Mature)),
             };
+        }
+
+        for (var position = 1; position <= ExtraImages; position++)
+        {
+            if (uri.ToString() == DeviationPageFixture.ExtraImageUrl(position))
+                return Image(DeviationPageFixture.ExtraImageBytes(position));
+        }
 
         if (uri.ToString() == ImageUrl)
             return Image(JpegBytes);

@@ -49,7 +49,7 @@ export function ImageSourcePicker({ source, initialTab = 'None', onChange }: Pro
     setLoadingDeviation(true)
     setDeviationError(undefined)
     try {
-      onChange({ kind: 'DeviantArt', preview: await api.previewDeviation(trimmed) })
+      onChange({ kind: 'DeviantArt', preview: await api.previewDeviation(trimmed), imageIndex: 0 })
     } catch (error) {
       const existingSetId = error instanceof ApiError ? error.existingSetId : null
       setDeviationError({ message: (error as Error).message, existingSetId })
@@ -175,6 +175,31 @@ export function ImageSourcePicker({ source, initialTab = 'None', onChange }: Pro
             </button>
           </figcaption>
         </figure>
+      )}
+
+      {source.kind === 'DeviantArt' && source.preview.images.length > 1 && (
+        <div className="deviation-images">
+          <span className="hint">This post has {source.preview.images.length} images. Choose one:</span>
+          <div className="deviation-image-choices">
+            {source.preview.images.map((image) => (
+              <button
+                key={image.index}
+                type="button"
+                className={image.index === source.imageIndex ? 'deviation-image-choice chosen' : 'deviation-image-choice'}
+                onClick={() => onChange({ ...source, imageIndex: image.index })}
+              >
+                <img src={image.imageUrl} alt={`Image ${image.index + 1} of the post`} loading="lazy" />
+                <span>{image.index + 1}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {source.kind === 'DeviantArt' && source.preview.unavailableImageCount > 0 && (
+        <p className="hint">
+          {source.preview.unavailableImageCount} more image(s) of this post are only available blurred (mature post),
+          so only the main image can be used.
+        </p>
       )}
     </div>
   )

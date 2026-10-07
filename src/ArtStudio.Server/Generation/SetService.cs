@@ -13,7 +13,7 @@ public abstract record SetSource
     public sealed record ImageFile(SourceKind Kind, Stream Content, string Extension) : SetSource;
 
 
-    public sealed record DeviantArtUrl(string Url) : SetSource;
+    public sealed record DeviantArtUrl(string Url, int ImageIndex) : SetSource;
 }
 
 public sealed record NewSetRequest(string Prompt, string Resolution, int Count, SetSource Source);
@@ -47,7 +47,7 @@ public sealed class SetService(
 
 
         var deviation = request.Source is SetSource.DeviantArtUrl deviantArt
-            ? await deviantArtService.DownloadAsync(deviantArt.Url, ct)
+            ? await deviantArtService.DownloadAsync(deviantArt.Url, deviantArt.ImageIndex, ct)
             : null;
 
         db.PromptSets.Add(set);

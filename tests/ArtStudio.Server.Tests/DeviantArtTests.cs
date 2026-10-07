@@ -18,7 +18,7 @@ public sealed class DeviantArtTests : IDisposable
 
     public void Dispose() => _factory.Dispose();
 
-    private Task<HttpResponseMessage> PostSetFromDeviationAsync(string url)
+    private Task<HttpResponseMessage> PostSetFromDeviationAsync(string url, int? imageIndex = null)
     {
         var form = new MultipartFormDataContent
         {
@@ -28,7 +28,72 @@ public sealed class DeviantArtTests : IDisposable
             { new StringContent("DeviantArt"), "sourceKind" },
             { new StringContent(url), "deviantArtUrl" },
         };
+        if (imageIndex is not null)
+            form.Add(new StringContent(imageIndex.Value.ToString()), "deviantArtImageIndex");
         return _client.PostAsync("/api/sets", form);
+    }
+
+    [Fact]
+    public async Task Preview_MultiImagePost_ListsMainAndExtraImages()
+    {
+        _factory.DeviantArt.ExtraImages = 3;
+
+        var preview = await ReadJsonAsync(await _client.PostAsJsonAsync("/api/deviantart/preview", new { url = DeviationLink }));
+
+        var images = preview.GetProperty("images").EnumerateArray().ToList();
+        Assert.Equal([0, 1, 2, 3], images.Select(i => i.GetProperty("index").GetInt32()));
+        Assert.Equal(FakeDeviantArt.ImageUrl, images[0].GetProperty("imageUrl").GetString());
+        Assert.Equal(DeviationPageFixture.ExtraImageUrl(2), images[2].GetProperty("imageUrl").GetString());
+        Assert.Equal(0, preview.GetProperty("unavailableImageCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task CreateSet_WithChosenImage_StoresThatImage()
+    {
+        _factory.DeviantArt.ExtraImages = 3;
+
+        var response = await PostSetFromDeviationAsync(DeviationLink, imageIndex: 2);
+
+        response.EnsureSuccessStatusCode();
+        var set = await GetSetAsync(_client, (await ReadJsonAsync(response)).GetProperty("id").GetInt32());
+        Assert.Equal(DeviationPageFixture.ExtraImageBytes(2), await _client.GetByteArrayAsync(set.SourceImageUrl));
+        Assert.Equal(DeviationLink, set.DeviantArtUrl);
+    }
+
+    [Fact]
+    public async Task CreateSet_WithMissingImageIndex_IsRejected()
+    {
+        _factory.DeviantArt.ExtraImages = 1;
+
+        var response = await PostSetFromDeviationAsync(DeviationLink, imageIndex: 5);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("#6", (await ReadJsonAsync(response)).GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task MaturePost_HidesBlurredExtraImages()
+    {
+        _factory.DeviantArt.Mature = true;
+        _factory.DeviantArt.ExtraImages = 2;
+        await _factory.ConnectDeviantArtAsync();
+
+        var preview = await ReadJsonAsync(await _client.PostAsJsonAsync("/api/deviantart/preview", new { url = DeviationLink }));
+
+        var image = Assert.Single(preview.GetProperty("images").EnumerateArray());
+        Assert.Equal(FakeDeviantArt.ApiImageUrl, image.GetProperty("imageUrl").GetString());
+        Assert.Equal(2, preview.GetProperty("unavailableImageCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task SamePost_WithDifferentImage_IsStillADuplicate()
+    {
+        _factory.DeviantArt.ExtraImages = 2;
+        (await PostSetFromDeviationAsync(DeviationLink, imageIndex: 1)).EnsureSuccessStatusCode();
+
+        var again = await PostSetFromDeviationAsync(DeviationLink, imageIndex: 2);
+
+        Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
     }
 
     private static async Task<JsonElement> ReadJsonAsync(HttpResponseMessage response) =>
@@ -42,8 +107,8 @@ public sealed class DeviantArtTests : IDisposable
         response.EnsureSuccessStatusCode();
         var preview = await ReadJsonAsync(response);
         Assert.Equal("someartist", preview.GetProperty("author").GetString());
-        Assert.Equal(1600, preview.GetProperty("width").GetInt32());
-        Assert.Equal(900, preview.GetProperty("height").GetInt32());
+        Assert.Equal(1600, preview.GetProperty("images")[0].GetProperty("width").GetInt32());
+        Assert.Equal(900, preview.GetProperty("images")[0].GetProperty("height").GetInt32());
         Assert.Equal("123456", preview.GetProperty("deviationId").GetString());
     }
 
@@ -141,9 +206,9 @@ public sealed class DeviantArtTests : IDisposable
 
         var preview = await ReadJsonAsync(await _client.PostAsJsonAsync("/api/deviantart/preview", new { url = DeviationLink }));
 
-        Assert.Equal(FakeDeviantArt.ApiImageUrl, preview.GetProperty("imageUrl").GetString());
-        Assert.Equal(3000, preview.GetProperty("width").GetInt32());
-        Assert.Equal(2000, preview.GetProperty("height").GetInt32());
+        Assert.Equal(FakeDeviantArt.ApiImageUrl, preview.GetProperty("images")[0].GetProperty("imageUrl").GetString());
+        Assert.Equal(3000, preview.GetProperty("images")[0].GetProperty("width").GetInt32());
+        Assert.Equal(2000, preview.GetProperty("images")[0].GetProperty("height").GetInt32());
     }
 
     [Fact]

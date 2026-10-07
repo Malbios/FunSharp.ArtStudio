@@ -68,14 +68,20 @@ export interface SetDetail {
   jobs: Job[]
 }
 
+export interface DeviationImage {
+  index: number
+  imageUrl: string
+  width: number
+  height: number
+}
+
 export interface DeviationPreview {
   url: string
   deviationId: string
   author: string
   title: string | null
-  imageUrl: string
-  width: number
-  height: number
+  images: DeviationImage[]
+  unavailableImageCount: number
 }
 
 export interface Settings {

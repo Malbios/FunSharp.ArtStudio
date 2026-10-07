@@ -1,7 +1,6 @@
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 using ArtStudio.Server.Data;
 using ArtStudio.Server.Generation;
 using Microsoft.EntityFrameworkCore;
@@ -14,19 +13,26 @@ public sealed class DuplicateDeviationException(int existingSetId)
     public int ExistingSetId { get; } = existingSetId;
 }
 
+public sealed record DeviationImage(int Index, string ImageUrl, int Width, int Height);
+
 public sealed record DeviationPreview(
-    string Url, string DeviationId, string Author, string? Title, string ImageUrl, int Width, int Height);
+    string Url,
+    string DeviationId,
+    string Author,
+    string? Title,
+    IReadOnlyList<DeviationImage> Images,
+    int UnavailableImageCount);
 
 public sealed record DownloadedDeviation(DeviationPreview Preview, byte[] Content, string Extension);
 
-public sealed partial class DeviantArtService(StudioDbContext db, IHttpClientFactory httpClientFactory, DeviantArtAuth auth)
+public sealed class DeviantArtService(
+    StudioDbContext db, IHttpClientFactory httpClientFactory, DeviantArtAuth auth, ILogger<DeviantArtService> logger)
 {
     public const string HttpClientName = "deviantart";
     public const string DeviationApiEndpoint = "https://www.deviantart.com/api/v1/oauth2/deviation";
     private const string OEmbedEndpoint = "https://backend.deviantart.com/oembed";
 
-    [GeneratedRegex(@"DeviantArt://deviation/(?<uuid>[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12})")]
-    private static partial Regex DeviationUuid();
+    private sealed record MainImage(string Author, string? Title, string ImageUrl, int Width, int Height);
 
     public async Task<DeviationPreview> PreviewAsync(string input, CancellationToken ct)
     {
@@ -35,18 +41,30 @@ public sealed partial class DeviantArtService(StudioDbContext db, IHttpClientFac
             await EnsureNotBlockedAsync(deviation.Username, ct);
         await EnsureNotUsedAsync(deviation.DeviationId, ct);
 
-        var preview = await auth.IsConnectedAsync(ct)
-            ? await FetchFromApiAsync(deviation, ct)
+        var connected = await auth.IsConnectedAsync(ct);
+        var page = await FetchPageAsync(deviation, required: connected, ct);
+        var main = connected
+            ? await FetchFromApiAsync(page.Uuid!, ct)
             : await FetchFromOEmbedAsync(deviation, ct);
-        await EnsureNotBlockedAsync(preview.Author, ct);
-        return preview;
+        await EnsureNotBlockedAsync(main.Author, ct);
+
+        var usableExtras = page.AdditionalImages.Where(image => !image.Blurred).ToList();
+        var images = usableExtras
+            .Select((image, position) => new DeviationImage(position + 1, image.FullviewUrl, image.Width, image.Height))
+            .Prepend(new DeviationImage(0, main.ImageUrl, main.Width, main.Height))
+            .ToList();
+        return new DeviationPreview(
+            deviation.Url, deviation.DeviationId, main.Author, main.Title, images,
+            page.AdditionalImages.Count - usableExtras.Count);
     }
 
-    public async Task<DownloadedDeviation> DownloadAsync(string input, CancellationToken ct)
+    public async Task<DownloadedDeviation> DownloadAsync(string input, int imageIndex, CancellationToken ct)
     {
         var preview = await PreviewAsync(input, ct);
+        var image = preview.Images.FirstOrDefault(i => i.Index == imageIndex)
+            ?? throw new UserFacingException($"That DeviantArt post has no image #{imageIndex + 1}.");
 
-        using var response = await Http().GetAsync(preview.ImageUrl, ct);
+        using var response = await Http().GetAsync(image.ImageUrl, ct);
         if (!response.IsSuccessStatusCode)
             throw new UserFacingException($"Downloading the deviation image failed ({(int)response.StatusCode}).");
 
@@ -72,16 +90,28 @@ public sealed partial class DeviantArtService(StudioDbContext db, IHttpClientFac
             throw new DuplicateDeviationException(existingSetId.Value);
     }
 
-    // The API only accepts the deviation UUID, which the public page exposes in its da:appurl meta tag.
-    private async Task<DeviationPreview> FetchFromApiAsync(DeviationUrl deviation, CancellationToken ct)
+    // The page supplies what the API lacks: the UUID the API needs, and the extra images of multi-image posts.
+    private async Task<DeviationPage> FetchPageAsync(DeviationUrl deviation, bool required, CancellationToken ct)
     {
-        using var page = await Http().GetAsync(deviation.Url, ct);
-        if (!page.IsSuccessStatusCode)
-            throw new UserFacingException($"DeviantArt could not find that deviation ({(int)page.StatusCode}).");
-        var uuid = DeviationUuid().Match(await page.Content.ReadAsStringAsync(ct)).Groups["uuid"].Value;
-        if (uuid.Length == 0)
-            throw new UserFacingException("Could not find the deviation's ID on its DeviantArt page.");
+        using var response = await Http().GetAsync(deviation.Url, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            if (required)
+                throw new UserFacingException($"DeviantArt could not find that deviation ({(int)response.StatusCode}).");
+            logger.LogWarning("Could not load DeviantArt page {Url} ({Status})", deviation.Url, (int)response.StatusCode);
+            return new DeviationPage(null, [], StateParsed: false);
+        }
 
+        var page = DeviationPage.Parse(await response.Content.ReadAsStringAsync(ct), deviation.DeviationId);
+        if (!page.StateParsed)
+            logger.LogWarning("DeviantArt page format not recognized for {Url}; only the main image is offered", deviation.Url);
+        if (required && page.Uuid is null)
+            throw new UserFacingException("Could not find the deviation's ID on its DeviantArt page.");
+        return page;
+    }
+
+    private async Task<MainImage> FetchFromApiAsync(string uuid, CancellationToken ct)
+    {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"{DeviationApiEndpoint}/{uuid}?mature_content=true");
         request.Headers.Authorization = new("Bearer", await auth.GetAccessTokenAsync(ct));
         using var response = await Http().SendAsync(request, ct);
@@ -99,11 +129,10 @@ public sealed partial class DeviantArtService(StudioDbContext db, IHttpClientFac
         if (imageUrl is null || width is null || height is null || author is null)
             throw new UserFacingException("That deviation has no image that can be used.");
 
-        return new DeviationPreview(
-            deviation.Url, deviation.DeviationId, author, deviationJson?["title"]?.GetValue<string>(), imageUrl, width.Value, height.Value);
+        return new MainImage(author, deviationJson?["title"]?.GetValue<string>(), imageUrl, width.Value, height.Value);
     }
 
-    private async Task<DeviationPreview> FetchFromOEmbedAsync(DeviationUrl deviation, CancellationToken ct)
+    private async Task<MainImage> FetchFromOEmbedAsync(DeviationUrl deviation, CancellationToken ct)
     {
         using var response = await Http().GetAsync($"{OEmbedEndpoint}?url={Uri.EscapeDataString(deviation.Url)}", ct);
         if (!response.IsSuccessStatusCode)
@@ -121,8 +150,7 @@ public sealed partial class DeviantArtService(StudioDbContext db, IHttpClientFac
         if (oEmbed?["type"]?.GetValue<string>() != "photo" || imageUrl is null || author is null || width is null || height is null)
             throw new UserFacingException("That deviation has no image that can be used.");
 
-        return new DeviationPreview(
-            deviation.Url, deviation.DeviationId, author, oEmbed?["title"]?.GetValue<string>(), imageUrl, width.Value, height.Value);
+        return new MainImage(author, oEmbed?["title"]?.GetValue<string>(), imageUrl, width.Value, height.Value);
     }
 
     private static async Task<JsonNode?> ParseJsonAsync(HttpResponseMessage response, CancellationToken ct)

@@ -118,7 +118,8 @@ public static class SetEndpoints
                 var url = form["deviantArtUrl"].ToString();
                 if (string.IsNullOrWhiteSpace(url))
                     throw new UserFacingException("No DeviantArt URL was given.");
-                return new SetSource.DeviantArtUrl(url);
+                var imageIndex = int.TryParse(form["deviantArtImageIndex"], out var index) ? index : 0;
+                return new SetSource.DeviantArtUrl(url, imageIndex);
             default:
                 throw new UserFacingException($"Unsupported image source '{sourceKind}'.");
         }
