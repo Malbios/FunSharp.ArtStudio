@@ -669,3 +669,12 @@ main {
   background: var(--warning);
   color: #000;
 }
+
+.inline-form.wide {
+  margin-bottom: 1rem;
+}
+
+.inline-form.wide input {
+  width: auto;
+  flex: 1;
+}

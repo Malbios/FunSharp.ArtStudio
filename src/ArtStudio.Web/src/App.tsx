@@ -1,5 +1,7 @@
 import { BrowserRouter, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { api } from './api'
+import { DesktopNotifications } from './live/desktopNotifications'
+import { SettingsPage } from './settings/SettingsPage'
 import { useStudioEvents } from './live/studioHub'
 import { useLoad } from './live/useLoad'
 import { NewSetPage } from './newset/NewSetPage'
@@ -39,14 +41,17 @@ export default function App() {
           </NavLink>
           <QueueNavLink />
           <NavLink to="/sets">Sets</NavLink>
+          <NavLink to="/settings">Settings</NavLink>
         </nav>
       </header>
+      <DesktopNotifications />
       <main>
         <Routes>
           <Route path="/" element={<NewSetRoute />} />
           <Route path="/queue" element={<QueuePage />} />
           <Route path="/sets" element={<SetsPage />} />
           <Route path="/sets/:id" element={<SetDetailPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>
     </BrowserRouter>
