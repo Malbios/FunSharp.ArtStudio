@@ -239,7 +239,6 @@ public sealed class QueueTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync(imageUrl)).StatusCode);
         Assert.DoesNotContain((await _client.GetFromJsonAsync<JsonElement>("/api/sets")).EnumerateArray(),
             s => s.GetProperty("id").GetInt32() == setId);
-        Assert.Empty((await GetQueueAsync(_client)).Recent);
         Assert.Equal(3, filesBefore.Length);
         Assert.All(filesBefore, path => Assert.True(File.Exists(path)));
     }

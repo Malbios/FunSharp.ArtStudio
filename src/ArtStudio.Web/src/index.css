@@ -850,10 +850,6 @@ code {
   margin-bottom: 2rem;
 }
 
-.job-grid.recent {
-  margin-top: 0.75rem;
-}
-
 .job-tile {
   display: flex;
   flex-direction: column;

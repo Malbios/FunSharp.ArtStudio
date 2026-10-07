@@ -47,7 +47,7 @@ public sealed record JobDto(
         job.FinishedAt);
 }
 
-public sealed record QueueDto(bool Paused, IReadOnlyList<JobDto> Active, IReadOnlyList<JobDto> Recent);
+public sealed record QueueDto(bool Paused, IReadOnlyList<JobDto> Active);
 
 public sealed record SetSummaryDto(
     int Id,

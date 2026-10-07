@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { api } from '../api'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
@@ -6,7 +5,6 @@ import { JobTile } from './JobTile'
 
 export function QueuePage() {
   const queue = useLoad(api.queue)
-  const [showRecent, setShowRecent] = useState(false)
 
   useStudioEvents(['JobUpdated', 'QueueStateChanged', 'SetDeleted'], queue.reload)
 
@@ -51,21 +49,6 @@ export function QueuePage() {
           <JobTile key={job.id} job={job} />
         ))}
       </div>
-
-      {data && data.recent.length > 0 && (
-        <>
-          <button type="button" className="link-button" onClick={() => setShowRecent(!showRecent)}>
-            {showRecent ? 'Hide' : 'Show'} recently finished ({data.recent.length})
-          </button>
-          {showRecent && (
-            <div className="job-grid recent">
-              {data.recent.map((job) => (
-                <JobTile key={job.id} job={job} />
-              ))}
-            </div>
-          )}
-        </>
-      )}
     </div>
   )
 }

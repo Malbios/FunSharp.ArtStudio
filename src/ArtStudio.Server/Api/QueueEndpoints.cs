@@ -7,8 +7,6 @@ namespace ArtStudio.Server.Api;
 
 public static class QueueEndpoints
 {
-    private const int RecentJobCount = 20;
-
     public static void MapQueueEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/queue", GetQueueAsync);
@@ -33,13 +31,6 @@ public static class QueueEndpoints
             .Select(JobDto.From)
             .ToList();
 
-        var recent = await db.Jobs
-            .Include(j => j.PromptSet)
-            .Where(j => !activeStatuses.Contains(j.Status))
-            .OrderByDescending(j => j.FinishedAt)
-            .Take(RecentJobCount)
-            .ToListAsync(ct);
-
-        return new QueueDto(settings.QueuePaused, ordered, recent.Select(JobDto.From).ToList());
+        return new QueueDto(settings.QueuePaused, ordered);
     }
 }

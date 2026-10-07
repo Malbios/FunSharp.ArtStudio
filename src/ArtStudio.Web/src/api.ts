@@ -37,7 +37,6 @@ export interface Job {
 export interface QueueState {
   paused: boolean
   active: Job[]
-  recent: Job[]
 }
 
 export interface SetSummary {
