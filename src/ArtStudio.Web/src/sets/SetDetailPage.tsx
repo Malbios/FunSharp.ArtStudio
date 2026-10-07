@@ -103,44 +103,37 @@ export function SetDetailPage() {
       : data.jobs.some((job) => job.status === 'Queued' || job.status === 'Running')
         ? 'Wait for or cancel the queued and running jobs first.'
         : null
-  const generatingBlocked = isReadyToPost ? 'Move the set back to Sets to generate more images.' : undefined
 
   return (
     <div>
       <div className="toolbar set-toolbar">
         <h2>Set #{data.id}</h2>
-        <form className="inline-form" onSubmit={(e) => void requestMore(e)}>
-          <input
-            type="number"
-            min={1}
-            max={100}
-            value={moreCount}
-            aria-label="Number of additional images"
-            onChange={(e) => setMoreCount(Math.max(1, Number(e.target.value) || 1))}
-          />
-          <button type="submit" disabled={isReadyToPost} title={generatingBlocked}>
-            More images
-          </button>
-        </form>
-        {isReadyToPost ? (
-          <button type="button" disabled title={generatingBlocked}>
-            Edit &amp; requeue
-          </button>
-        ) : (
-          <Link to={`/?basedOn=${data.id}`} className="button-link inline">
-            Edit &amp; requeue
-          </Link>
-        )}
         {!isReadyToPost && (
-          <button
-            type="button"
-            className="success"
-            disabled={readyBlocker !== null}
-            title={readyBlocker ?? 'Move this set to Post'}
-            onClick={() => void changeStage(() => api.markReadyToPost(setId), '/post')}
-          >
-            Ready to post
-          </button>
+          <>
+            <form className="inline-form" onSubmit={(e) => void requestMore(e)}>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={moreCount}
+                aria-label="Number of additional images"
+                onChange={(e) => setMoreCount(Math.max(1, Number(e.target.value) || 1))}
+              />
+              <button type="submit">More images</button>
+            </form>
+            <Link to={`/?basedOn=${data.id}`} className="button-link inline">
+              Edit &amp; requeue
+            </Link>
+            <button
+              type="button"
+              className="success"
+              disabled={readyBlocker !== null}
+              title={readyBlocker ?? 'Move this set to Post'}
+              onClick={() => void changeStage(() => api.markReadyToPost(setId), '/post')}
+            >
+              Ready to post
+            </button>
+          </>
         )}
         <button type="button" className="danger" disabled={deleting} onClick={() => void deleteSet()}>
           {deleting ? 'Deleting…' : 'Delete set'}
