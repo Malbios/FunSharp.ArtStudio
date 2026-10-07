@@ -67,6 +67,25 @@ export function SetDetailPage() {
     }
   }
 
+  async function archiveSet() {
+    const confirmed = window.confirm(
+      `Archive set #${setId}? It keeps its DeviantArt link, so that deviation still counts as used. Queued, running or failed jobs of this set are cancelled.`,
+    )
+    if (!confirmed) return
+    const destination = set.data?.readyToPostAt ? '/post' : setsOverview
+    await changeStage(() => api.archiveSet(setId), destination)
+  }
+
+  async function restoreSet() {
+    setError(undefined)
+    try {
+      await api.restoreSet(setId)
+      set.reload()
+    } catch (failure) {
+      setError((failure as Error).message)
+    }
+  }
+
   async function deleteSet() {
     const confirmed = window.confirm(
       `Delete set #${setId}? Image files stay in the folder. Queued or running jobs of this set are cancelled.`,
@@ -99,7 +118,14 @@ export function SetDetailPage() {
   const imagesById = new Map(data.images.map((image) => [image.id, image]))
   const pickedImages = data.pickedImageIds.flatMap((id) => imagesById.get(id) ?? [])
   const pickNumber = (image: ImageInfo) => data.pickedImageIds.indexOf(image.id) + 1
-  const isReadyToPost = data.readyToPostAt !== null
+  const isArchived = data.archivedAt !== null
+  const isReadyToPost = data.readyToPostAt !== null && !isArchived
+  const isWorking = !isReadyToPost && !isArchived
+  const overview = isArchived
+    ? { to: '/archive', label: 'All archived' }
+    : isReadyToPost
+      ? { to: '/post', label: 'All posts' }
+      : { to: '/sets', label: 'All sets' }
   const readyBlocker =
     data.pickedImageIds.length === 0
       ? 'Pick at least one image first.'
@@ -109,7 +135,7 @@ export function SetDetailPage() {
 
   const setActions = (
     <>
-      {!isReadyToPost && (
+      {isWorking && (
         <>
           <form className="inline-form" onSubmit={(e) => void requestMore(e)}>
             <input
@@ -136,10 +162,15 @@ export function SetDetailPage() {
           </button>
         </>
       )}
+      {!isArchived && (
+        <button type="button" onClick={() => void archiveSet()}>
+          Archive
+        </button>
+      )}
       <button type="button" className="danger" disabled={deleting} onClick={() => void deleteSet()}>
         {deleting ? 'Deleting…' : 'Delete set'}
       </button>
-      <Link to={isReadyToPost ? '/post' : '/sets'}>{isReadyToPost ? 'All posts' : 'All sets'}</Link>
+      <Link to={overview.to}>{overview.label}</Link>
     </>
   )
 
@@ -155,6 +186,14 @@ export function SetDetailPage() {
           <span>Ready to post since {new Date(data.readyToPostAt!).toLocaleString()}.</span>
           <button type="button" onClick={() => void changeStage(() => api.moveBackToSets(setId), '/sets')}>
             Back to sets
+          </button>
+        </div>
+      )}
+      {isArchived && (
+        <div className="queue-banner">
+          <span>Archived since {new Date(data.archivedAt!).toLocaleString()}.</span>
+          <button type="button" onClick={() => void restoreSet()}>
+            Restore
           </button>
         </div>
       )}

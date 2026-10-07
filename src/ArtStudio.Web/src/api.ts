@@ -54,6 +54,7 @@ export interface SetSummary {
   createdAt: string
   isDraft: boolean
   readyToPostAt: string | null
+  archivedAt: string | null
 }
 
 export interface SetDetail {
@@ -68,6 +69,7 @@ export interface SetDetail {
   createdAt: string
   isDraft: boolean
   readyToPostAt: string | null
+  archivedAt: string | null
   images: ImageInfo[]
   jobs: Job[]
 }
@@ -146,7 +148,7 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
 export const api = {
   resolutions: () => request<ResolutionPreset[]>('GET', '/api/resolutions'),
 
-  sets: (stage: 'draft' | 'working' | 'ready') => request<SetSummary[]>('GET', `/api/sets?stage=${stage}`),
+  sets: (stage: 'draft' | 'working' | 'ready' | 'archived') => request<SetSummary[]>('GET', `/api/sets?stage=${stage}`),
   set: (id: number) => request<SetDetail>('GET', `/api/sets/${id}`),
   createSet: (form: FormData) => request<{ id: number }>('POST', '/api/sets', form),
   moreImages: (setId: number, count: number, prompt?: string, resolution?: string) =>
@@ -160,6 +162,8 @@ export const api = {
     request<void>('PUT', `/api/sets/${setId}/picks`, { imageIds }),
   markReadyToPost: (setId: number) => request<void>('POST', `/api/sets/${setId}/ready`),
   moveBackToSets: (setId: number) => request<void>('DELETE', `/api/sets/${setId}/ready`),
+  archiveSet: (setId: number) => request<void>('POST', `/api/sets/${setId}/archive`),
+  restoreSet: (setId: number) => request<void>('DELETE', `/api/sets/${setId}/archive`),
   deleteSet: (setId: number) => request<void>('DELETE', `/api/sets/${setId}`),
 
   queue: () => request<QueueState>('GET', '/api/queue'),

@@ -1,5 +1,6 @@
 import { BrowserRouter, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { api } from './api'
+import { ArchivePage } from './archive/ArchivePage'
 import { DraftsPage } from './drafts/DraftsPage'
 import { DesktopNotifications } from './live/desktopNotifications'
 import { SettingsPage } from './settings/SettingsPage'
@@ -58,6 +59,7 @@ export default function App() {
           <QueueNavLink />
           <NavLink to="/sets">Sets</NavLink>
           <NavLink to="/post">Post</NavLink>
+          <NavLink to="/archive">Archive</NavLink>
           <NavLink to="/settings">Settings</NavLink>
         </nav>
       </header>
@@ -70,6 +72,7 @@ export default function App() {
           <Route path="/sets" element={<SetsPage />} />
           <Route path="/sets/:id" element={<SetDetailPage />} />
           <Route path="/post" element={<PostPage />} />
+          <Route path="/archive" element={<ArchivePage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>
