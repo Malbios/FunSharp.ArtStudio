@@ -7,10 +7,10 @@ import { imageFileFrom, loadImageFile, sourceDimensions, sourceImageUrl, type Im
 export type SourceTab = 'None' | 'Upload' | 'Paste' | 'DeviantArt'
 
 const TABS: { tab: SourceTab; label: string }[] = [
-  { tab: 'None', label: 'No image' },
-  { tab: 'Upload', label: 'Upload' },
-  { tab: 'Paste', label: 'Clipboard' },
   { tab: 'DeviantArt', label: 'DeviantArt' },
+  { tab: 'Paste', label: 'Clipboard' },
+  { tab: 'Upload', label: 'Upload' },
+  { tab: 'None', label: 'No image' },
 ]
 
 interface Props {

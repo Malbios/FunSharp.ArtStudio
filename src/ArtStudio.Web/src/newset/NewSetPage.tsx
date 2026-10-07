@@ -22,7 +22,7 @@ export function NewSetPage() {
   const [resolutionIsAuto, setResolutionIsAuto] = useState(false)
   const [count, setCount] = useState(DEFAULT_COUNT)
   const [pickerVersion, setPickerVersion] = useState(0)
-  const [pickerTab, setPickerTab] = useState<SourceTab>('None')
+  const [pickerTab, setPickerTab] = useState<SourceTab>('DeviantArt')
   const [baseSet, setBaseSet] = useState<SetDetail>()
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string>()
