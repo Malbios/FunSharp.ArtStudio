@@ -167,6 +167,26 @@ export function NewSetPage() {
   const hasImage = source.kind === 'Upload' || source.kind === 'Paste' || source.kind === 'DeviantArt'
   const heading = !baseSet ? 'New prompt' : isDraft ? `Queue draft #${baseSet.id}` : `Edit & requeue set #${baseSet.id}`
 
+  const promptField = (
+    <label className="field">
+      <span>Prompt</span>
+      <textarea
+        value={prompt}
+        rows={8}
+        onChange={(e) => setPrompt(e.target.value)}
+        onPaste={pastePromptText}
+        placeholder="Describe the image…"
+      />
+    </label>
+  )
+
+  const imageField = (
+    <div className="field">
+      <span>{baseSet ? 'Inspiration image' : 'Image (optional)'}</span>
+      <ImageSourcePicker key={pickerVersion} source={source} initialTab={pickerTab} onChange={changeSource} />
+    </div>
+  )
+
   return (
     <div className="new-set-layout">
       <form className="panel new-set" onSubmit={(e) => void submit(e)}>
@@ -236,21 +256,17 @@ export function NewSetPage() {
           </p>
         )}
 
-        <label className="field">
-          <span>Prompt</span>
-          <textarea
-            value={prompt}
-            rows={8}
-            onChange={(e) => setPrompt(e.target.value)}
-            onPaste={pastePromptText}
-            placeholder="Describe the image…"
-          />
-        </label>
-
-        <div className="field">
-          <span>Image (optional)</span>
-          <ImageSourcePicker key={pickerVersion} source={source} initialTab={pickerTab} onChange={changeSource} />
-        </div>
+        {baseSet ? (
+          <div className="image-beside-prompt">
+            {imageField}
+            {promptField}
+          </div>
+        ) : (
+          <>
+            {promptField}
+            {imageField}
+          </>
+        )}
       </form>
 
       <BuildingBlockChips />

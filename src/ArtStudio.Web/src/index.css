@@ -246,9 +246,20 @@ main {
 
 .new-set-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-columns: minmax(0, 1fr) 240px;
   gap: 1.5rem;
   align-items: start;
+}
+
+.image-beside-prompt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.image-beside-prompt textarea {
+  min-height: 320px;
 }
 
 .building-blocks {
@@ -753,7 +764,8 @@ main {
 }
 
 @media (max-width: 900px) {
-  .new-set-layout {
+  .new-set-layout,
+  .image-beside-prompt {
     grid-template-columns: 1fr;
   }
 
