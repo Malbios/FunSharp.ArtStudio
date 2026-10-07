@@ -118,7 +118,7 @@ export function SetDetailPage() {
             aria-label="Number of additional images"
             onChange={(e) => setMoreCount(Math.max(1, Number(e.target.value) || 1))}
           />
-          <button type="submit" className="primary" disabled={isReadyToPost} title={generatingBlocked}>
+          <button type="submit" disabled={isReadyToPost} title={generatingBlocked}>
             More images
           </button>
         </form>
@@ -134,6 +134,7 @@ export function SetDetailPage() {
         {!isReadyToPost && (
           <button
             type="button"
+            className="success"
             disabled={readyBlocker !== null}
             title={readyBlocker ?? 'Move this set to Post'}
             onClick={() => void changeStage(() => api.markReadyToPost(setId), '/post')}

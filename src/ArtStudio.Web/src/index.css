@@ -83,6 +83,11 @@ button.danger {
   color: var(--danger);
 }
 
+button.success {
+  border-color: var(--success);
+  color: var(--success);
+}
+
 .link-button {
   background: none;
   border: none;
