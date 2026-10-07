@@ -14,6 +14,8 @@ public class GenerationJob
     public int Id { get; set; }
     public int PromptSetId { get; set; }
     public PromptSet PromptSet { get; set; } = null!;
+    public required string Prompt { get; set; }
+    public required string Resolution { get; set; }
     public int RequestedCount { get; set; }
     public int CompletedCount { get; set; }
     public JobStatus Status { get; set; }

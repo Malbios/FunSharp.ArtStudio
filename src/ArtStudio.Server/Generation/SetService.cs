@@ -69,7 +69,7 @@ public sealed class SetService(
                 break;
         }
 
-        await queueService.EnqueueAsync(set.Id, request.Count, ct);
+        await queueService.EnqueueAsync(set.Id, request.Count, prompt: null, resolution: null, ct);
 
         if (request.Source is SetSource.CopyOf replaced)
             await DeleteReplacedSetAsync(set.Id, replaced.SetId, ct);

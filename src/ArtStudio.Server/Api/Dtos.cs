@@ -25,8 +25,8 @@ public sealed record JobDto(
     public static JobDto From(GenerationJob job) => new(
         job.Id,
         job.PromptSetId,
-        job.PromptSet.Prompt,
-        job.PromptSet.Resolution,
+        job.Prompt,
+        job.Resolution,
         ApiUrls.SourceImage(job.PromptSet),
         job.RequestedCount,
         job.CompletedCount,

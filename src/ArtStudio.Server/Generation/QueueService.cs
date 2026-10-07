@@ -12,15 +12,30 @@ public sealed class QueueService(
 {
     public const int MaxImagesPerJob = 100;
 
-    public async Task<GenerationJob> EnqueueAsync(int setId, int count, CancellationToken ct)
+    /// <summary>Queues a batch for the set; a missing prompt or resolution falls back to the set's most recent one.</summary>
+    public async Task<GenerationJob> EnqueueAsync(
+        int setId, int count, string? prompt, string? resolution, CancellationToken ct)
     {
         if (count is < 1 or > MaxImagesPerJob)
             throw new UserFacingException($"Image count must be between 1 and {MaxImagesPerJob}.");
+
+        var set = await db.PromptSets.SingleOrDefaultAsync(s => s.Id == setId, ct)
+            ?? throw new UserFacingException("Set not found.");
+        var jobPrompt = prompt ?? set.Prompt;
+        if (string.IsNullOrWhiteSpace(jobPrompt))
+            throw new UserFacingException("The prompt must not be empty.");
+        var preset = Resolutions.Find(resolution ?? set.Resolution)
+            ?? throw new UserFacingException($"Unknown resolution '{resolution}'.");
+
+        set.Prompt = jobPrompt.Trim();
+        set.Resolution = preset.Name;
 
         var lastPosition = await db.Jobs.MaxAsync(j => (long?)j.QueuePosition, ct) ?? 0;
         var job = new GenerationJob
         {
             PromptSetId = setId,
+            Prompt = set.Prompt,
+            Resolution = set.Resolution,
             RequestedCount = count,
             Status = JobStatus.Queued,
             QueuePosition = lastPosition + 1,

@@ -103,7 +103,7 @@ public sealed class QueueWorker(
             {
                 await GenerateRemainingImagesAsync(db, client, settings, job, jobToken);
                 await FinishAsync(db, job, JobStatus.Completed, error: null);
-                await notifier.JobCompleted(job.Id, job.PromptSetId, job.PromptSet.Prompt);
+                await notifier.JobCompleted(job.Id, job.PromptSetId, job.Prompt);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -132,13 +132,13 @@ public sealed class QueueWorker(
     private async Task GenerateRemainingImagesAsync(
         StudioDbContext db, ComfyClient client, StudioSettings settings, GenerationJob job, CancellationToken ct)
     {
-        var resolution = Resolutions.Find(job.PromptSet.Resolution)
-            ?? throw new UserFacingException($"Unknown resolution '{job.PromptSet.Resolution}'.");
+        var resolution = Resolutions.Find(job.Resolution)
+            ?? throw new UserFacingException($"Unknown resolution '{job.Resolution}'.");
 
         while (job.RemainingCount > 0)
         {
             var seed = seeds.Next();
-            var workflow = workflowBuilder.Build(job.PromptSet.Prompt, resolution, seed);
+            var workflow = workflowBuilder.Build(job.Prompt, resolution, seed);
 
             var downloaded = await runner.RunAsync(client, workflow, async promptId =>
             {

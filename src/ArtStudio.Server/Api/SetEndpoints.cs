@@ -122,7 +122,7 @@ public static class SetEndpoints
     {
         if (!await db.PromptSets.AnyAsync(s => s.Id == id, ct))
             return Results.NotFound();
-        var job = await queueService.EnqueueAsync(id, request.Count, ct);
+        var job = await queueService.EnqueueAsync(id, request.Count, prompt: null, resolution: null, ct);
         return Results.Ok(new { job.Id });
     }
 
