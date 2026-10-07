@@ -139,7 +139,8 @@ export function NewSetPage() {
         <h2>{baseSet ? `Edit & requeue set #${baseSet.id}` : 'New prompt'}</h2>
         {baseSet && (
           <p className="hint">
-            Unchanged prompt and resolution add images to set #{baseSet.id}. Any change creates a new set.
+            Unchanged prompt and resolution add images to set #{baseSet.id}. Any change creates a new set and deletes
+            set #{baseSet.id} (image files are kept).
           </p>
         )}
 

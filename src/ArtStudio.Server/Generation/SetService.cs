@@ -70,7 +70,24 @@ public sealed class SetService(
         }
 
         await queueService.EnqueueAsync(set.Id, request.Count, ct);
+
+        if (request.Source is SetSource.CopyOf replaced)
+            await DeleteReplacedSetAsync(set.Id, replaced.SetId, ct);
         return set;
+    }
+
+    // Runs after the new set is saved, so it already holds the inherited DeviantArt link and the link stays blocked.
+    private async Task DeleteReplacedSetAsync(int newSetId, int replacedSetId, CancellationToken ct)
+    {
+        try
+        {
+            await DeleteAsync(replacedSetId, ct);
+        }
+        catch (UserFacingException ex)
+        {
+            throw new UserFacingException(
+                $"New set #{newSetId} was created, but set #{replacedSetId} could not be deleted: {ex.Message}");
+        }
     }
 
     public async Task SelectImageAsync(int setId, int? imageId, CancellationToken ct)

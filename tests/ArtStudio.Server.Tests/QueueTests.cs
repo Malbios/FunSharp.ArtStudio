@@ -84,7 +84,7 @@ public sealed class QueueTests : IDisposable
     }
 
     [Fact]
-    public async Task EditAsNewSet_CopiesSourceIntoNewSet()
+    public async Task EditAsNewSet_CopiesSourceIntoNewSetAndDeletesOriginal()
     {
         var originalId = await _factory.CreateSetAsync(_client, "fox", count: 1, addSource: form =>
         {
@@ -101,6 +101,24 @@ public sealed class QueueTests : IDisposable
         Assert.NotEqual(originalId, copyId);
         Assert.Equal(SourceKind.Paste, copy.SourceKind);
         Assert.Equal([9, 9], await _client.GetByteArrayAsync(copy.SourceImageUrl));
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync($"/api/sets/{originalId}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task EditAsNewSet_CancelsRunningJobOfOriginal()
+    {
+        _factory.Comfy.HoldRuns = true;
+        var originalId = await _factory.CreateSetAsync(_client, "slow fox", count: 2);
+        await WaitUntilAsync(() => Task.FromResult(_factory.Comfy.SubmittedPrompts.Count == 1), "prompt submitted");
+
+        var copyId = await _factory.CreateSetAsync(_client, "slow fox, edited", count: 1,
+            addSource: form => form.Add(new StringContent(originalId.ToString()), "basedOnSetId"));
+
+        Assert.Equal(["prompt-1"], _factory.Comfy.DeletedPromptIds);
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync($"/api/sets/{originalId}")).StatusCode);
+        _factory.Comfy.HoldRuns = false;
+        await WaitForJobStatusAsync(copyId, JobStatus.Completed);
+        Assert.Equal("slow fox, edited", _factory.Comfy.SubmittedPrompts.Last());
     }
 
     [Fact]

@@ -88,18 +88,19 @@ public sealed class DeviantArtTests : IDisposable
     }
 
     [Fact]
-    public async Task DeletedSet_WithRemainingCopy_KeepsDeviationBlocked()
+    public async Task EditAsNewSet_KeepsDeviationBlockedUntilCopyIsDeleted()
     {
         var first = await PostSetFromDeviationAsync(DeviationLink);
         var firstId = (await ReadJsonAsync(first)).GetProperty("id").GetInt32();
         var copyId = await _factory.CreateSetAsync(_client, "forest, edited", count: 1,
             addSource: form => form.Add(new StringContent(firstId.ToString()), "basedOnSetId"));
 
-        (await _client.DeleteAsync($"/api/sets/{firstId}")).EnsureSuccessStatusCode();
-        var again = await PostSetFromDeviationAsync(DeviationLink);
+        var whileCopyExists = await PostSetFromDeviationAsync(DeviationLink);
+        Assert.Equal(HttpStatusCode.BadRequest, whileCopyExists.StatusCode);
+        Assert.Equal(copyId, (await ReadJsonAsync(whileCopyExists)).GetProperty("existingSetId").GetInt32());
 
-        Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
-        Assert.Equal(copyId, (await ReadJsonAsync(again)).GetProperty("existingSetId").GetInt32());
+        (await _client.DeleteAsync($"/api/sets/{copyId}")).EnsureSuccessStatusCode();
+        (await PostSetFromDeviationAsync(DeviationLink)).EnsureSuccessStatusCode();
     }
 
     [Fact]
