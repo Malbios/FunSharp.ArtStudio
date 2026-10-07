@@ -1,6 +1,8 @@
 import { api } from '../api'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
+import { Pager } from '../paging/Pager'
+import { usePagedItems } from '../paging/usePagedItems'
 import { JobTile } from './JobTile'
 
 export function QueuePage() {
@@ -15,6 +17,8 @@ export function QueuePage() {
 
   const data = queue.data
   const pendingCount = data?.active.filter((job) => job.status !== 'Failed').length ?? 0
+  const paged = usePagedItems(data?.active)
+  const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
 
   return (
     <div>
@@ -44,11 +48,13 @@ export function QueuePage() {
 
       {data && pendingCount > 0 && <p className="hint">{pendingCount} job(s) waiting or running.</p>}
       {data && data.active.length === 0 && <p className="hint">Nothing queued.</p>}
+      {pager}
       <div className="job-grid">
-        {data?.active.map((job) => (
+        {paged.pageItems.map((job) => (
           <JobTile key={job.id} job={job} />
         ))}
       </div>
+      {pager}
     </div>
   )
 }

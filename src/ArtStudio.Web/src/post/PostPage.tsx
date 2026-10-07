@@ -2,11 +2,15 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
+import { Pager } from '../paging/Pager'
+import { usePagedItems } from '../paging/usePagedItems'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 
 export function PostPage() {
   const sets = useLoad(() => api.sets('ready'))
   useStudioEvents(['SetUpdated', 'SetDeleted'], sets.reload)
+  const paged = usePagedItems(sets.data)
+  const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
 
   return (
     <div>
@@ -19,8 +23,9 @@ export function PostPage() {
           Nothing is ready to post yet. Pick images in a set, then use "Ready to post" on its page.
         </p>
       )}
+      {pager}
       <div className="set-grid">
-        {sets.data?.map((set) => (
+        {paged.pageItems.map((set) => (
           <div key={set.id} className="panel set-card">
             <Link to={`/sets/${set.id}`}>
               {set.previewImageUrl ? (
@@ -45,6 +50,7 @@ export function PostPage() {
           </div>
         ))}
       </div>
+      {pager}
     </div>
   )
 }

@@ -4,11 +4,15 @@ import { api } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
+import { Pager } from '../paging/Pager'
+import { usePagedItems } from '../paging/usePagedItems'
 
 export function DraftsPage() {
   const drafts = useLoad(() => api.sets('draft'))
   const [error, setError] = useState<string>()
   useStudioEvents(['SetUpdated', 'SetDeleted'], drafts.reload)
+  const paged = usePagedItems(drafts.data)
+  const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
 
   async function deleteDraft(setId: number) {
     if (!window.confirm(`Delete draft #${setId}?`)) return
@@ -33,8 +37,9 @@ export function DraftsPage() {
           No drafts. Attach an image on the <Link to="/">New</Link> page and use "Save as draft" to add a prompt later.
         </p>
       )}
+      {pager}
       <div className="set-grid">
-        {drafts.data?.map((draft) => (
+        {paged.pageItems.map((draft) => (
           <div key={draft.id} className="panel set-card">
             <Link to={`/?draft=${draft.id}`} title="Add a prompt and queue">
               {draft.sourceImageUrl ? (
@@ -55,6 +60,7 @@ export function DraftsPage() {
           </div>
         ))}
       </div>
+      {pager}
     </div>
   )
 }

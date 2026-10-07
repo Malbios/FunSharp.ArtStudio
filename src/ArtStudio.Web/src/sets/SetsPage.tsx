@@ -2,10 +2,14 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
+import { Pager } from '../paging/Pager'
+import { usePagedItems } from '../paging/usePagedItems'
 
 export function SetsPage() {
   const sets = useLoad(() => api.sets('working'))
   useStudioEvents(['JobUpdated', 'ImageAdded', 'SetDeleted', 'SetUpdated'], sets.reload)
+  const paged = usePagedItems(sets.data)
+  const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
 
   return (
     <div>
@@ -18,8 +22,9 @@ export function SetsPage() {
           No sets yet. <Link to="/">Create one</Link>.
         </p>
       )}
+      {pager}
       <div className="set-grid">
-        {sets.data?.map((set) => {
+        {paged.pageItems.map((set) => {
           const thumbnail = set.previewImageUrl ?? set.sourceImageUrl
           return (
             <Link key={set.id} to={`/sets/${set.id}`} className="panel set-card">
@@ -38,6 +43,7 @@ export function SetsPage() {
           )
         })}
       </div>
+      {pager}
     </div>
   )
 }
