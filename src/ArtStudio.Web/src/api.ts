@@ -14,6 +14,8 @@ export interface ImageInfo {
   jobId: number
   url: string
   seed: number
+  prompt: string
+  resolution: string
   createdAt: string
 }
 
@@ -137,7 +139,8 @@ export const api = {
   sets: () => request<SetSummary[]>('GET', '/api/sets'),
   set: (id: number) => request<SetDetail>('GET', `/api/sets/${id}`),
   createSet: (form: FormData) => request<{ id: number }>('POST', '/api/sets', form),
-  moreImages: (setId: number, count: number) => request<{ id: number }>('POST', `/api/sets/${setId}/more`, { count }),
+  moreImages: (setId: number, count: number, prompt?: string, resolution?: string) =>
+    request<{ id: number }>('POST', `/api/sets/${setId}/more`, { count, prompt, resolution }),
   selectImage: (setId: number, imageId: number | null) =>
     request<void>('POST', `/api/sets/${setId}/select`, { imageId }),
   deleteSet: (setId: number) => request<void>('DELETE', `/api/sets/${setId}`),

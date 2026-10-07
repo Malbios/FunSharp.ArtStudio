@@ -84,41 +84,52 @@ public sealed class QueueTests : IDisposable
     }
 
     [Fact]
-    public async Task EditAsNewSet_CopiesSourceIntoNewSetAndDeletesOriginal()
+    public async Task RequeueWithChangedPrompt_AddsImagesToSameSetWithTheirOwnPrompt()
     {
-        var originalId = await _factory.CreateSetAsync(_client, "fox", count: 1, addSource: form =>
-        {
-            form.Add(new StringContent("Paste"), "sourceKind");
-            var file = new ByteArrayContent([9, 9]);
-            file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
-            form.Add(file, "image", "clipboard.png");
-        });
+        var setId = await _factory.CreateSetAsync(_client, "a fox, photo", count: 1, resolution: "Native");
+        await WaitForJobStatusAsync(setId, JobStatus.Completed);
 
-        var copyId = await _factory.CreateSetAsync(_client, "fox, edited", count: 1,
-            addSource: form => form.Add(new StringContent(originalId.ToString()), "basedOnSetId"));
+        (await _client.PostAsJsonAsync($"/api/sets/{setId}/more",
+            new { count = 2, prompt = "a fox, watercolor", resolution = "Wide" })).EnsureSuccessStatusCode();
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Images.Count == 3, "three images");
 
-        var copy = await GetSetAsync(_client, copyId);
-        Assert.NotEqual(originalId, copyId);
-        Assert.Equal(SourceKind.Paste, copy.SourceKind);
-        Assert.Equal([9, 9], await _client.GetByteArrayAsync(copy.SourceImageUrl));
-        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync($"/api/sets/{originalId}")).StatusCode);
+        var set = await GetSetAsync(_client, setId);
+        Assert.Single((await _client.GetFromJsonAsync<JsonElement>("/api/sets")).EnumerateArray());
+        Assert.Equal(["a fox, photo", "a fox, watercolor", "a fox, watercolor"], set.Images.Select(i => i.Prompt));
+        Assert.Equal(["Native", "Wide", "Wide"], set.Images.Select(i => i.Resolution));
+        Assert.Equal(["a fox, photo", "a fox, watercolor"], set.Jobs.Select(j => j.Prompt));
+        Assert.Equal("a fox, watercolor", set.Prompt);
+        Assert.Equal("Wide", set.Resolution);
+        Assert.Equal(["a fox, photo", "a fox, watercolor", "a fox, watercolor"], _factory.Comfy.SubmittedPrompts);
     }
 
     [Fact]
-    public async Task EditAsNewSet_CancelsRunningJobOfOriginal()
+    public async Task MoreImages_WithoutPrompt_ReusesLatestPromptAndResolution()
     {
-        _factory.Comfy.HoldRuns = true;
-        var originalId = await _factory.CreateSetAsync(_client, "slow fox", count: 2);
-        await WaitUntilAsync(() => Task.FromResult(_factory.Comfy.SubmittedPrompts.Count == 1), "prompt submitted");
+        var setId = await _factory.CreateSetAsync(_client, "a fox", count: 1);
+        await WaitForJobStatusAsync(setId, JobStatus.Completed);
+        (await _client.PostAsJsonAsync($"/api/sets/{setId}/more",
+            new { count = 1, prompt = "an owl", resolution = "Tall" })).EnsureSuccessStatusCode();
 
-        var copyId = await _factory.CreateSetAsync(_client, "slow fox, edited", count: 1,
-            addSource: form => form.Add(new StringContent(originalId.ToString()), "basedOnSetId"));
+        (await _client.PostAsJsonAsync($"/api/sets/{setId}/more", new { count = 1 })).EnsureSuccessStatusCode();
 
-        Assert.Equal(["prompt-1"], _factory.Comfy.DeletedPromptIds);
-        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync($"/api/sets/{originalId}")).StatusCode);
-        _factory.Comfy.HoldRuns = false;
-        await WaitForJobStatusAsync(copyId, JobStatus.Completed);
-        Assert.Equal("slow fox, edited", _factory.Comfy.SubmittedPrompts.Last());
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Images.Count == 3, "three images");
+        var latest = (await GetSetAsync(_client, setId)).Images.Last();
+        Assert.Equal("an owl", latest.Prompt);
+        Assert.Equal("Tall", latest.Resolution);
+    }
+
+    [Theory]
+    [InlineData("   ", "Native")]
+    [InlineData("an owl", "Gigantic")]
+    public async Task MoreImages_InvalidPromptOrResolution_ReturnsBadRequest(string prompt, string resolution)
+    {
+        var setId = await _factory.CreateSetAsync(_client, "a fox", count: 1);
+
+        var response = await _client.PostAsJsonAsync($"/api/sets/{setId}/more", new { count = 1, prompt, resolution });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Single((await GetSetAsync(_client, setId)).Jobs);
     }
 
     [Fact]

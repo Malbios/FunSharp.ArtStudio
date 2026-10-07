@@ -14,7 +14,6 @@ export function SetDetailPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [moreCount, setMoreCount] = useState(DEFAULT_MORE_COUNT)
   const [error, setError] = useState<string>()
-  const [copied, setCopied] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deletedElsewhere, setDeletedElsewhere] = useState(false)
   const navigate = useNavigate()
@@ -65,11 +64,6 @@ export function SetDetailPage() {
     }
   }
 
-  async function copyPrompt(prompt: string) {
-    await navigator.clipboard.writeText(prompt)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1200)
-  }
 
   if (deletedElsewhere && !deleting)
     return (
@@ -149,17 +143,6 @@ export function SetDetailPage() {
         </section>
       </div>
 
-      <section className="panel set-section">
-        <p className="set-prompt">{data.prompt}</p>
-        <div className="job-meta">
-          <span>{data.resolution}</span>
-          <span>{new Date(data.createdAt).toLocaleString()}</span>
-          <span>{data.images.length} images</span>
-          <button type="button" className="link-button" onClick={() => void copyPrompt(data.prompt)}>
-            {copied ? 'Copied!' : 'Copy prompt'}
-          </button>
-        </div>
-      </section>
 
       {activeJobs.length > 0 && (
         <div className="job-list">

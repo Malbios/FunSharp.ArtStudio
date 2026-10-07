@@ -88,31 +88,18 @@ public sealed class DeviantArtTests : IDisposable
     }
 
     [Fact]
-    public async Task EditAsNewSet_KeepsDeviationBlockedUntilCopyIsDeleted()
+    public async Task RequeueWithNewPrompt_KeepsDeviationOnSameSetAndBlocked()
     {
         var first = await PostSetFromDeviationAsync(DeviationLink);
-        var firstId = (await ReadJsonAsync(first)).GetProperty("id").GetInt32();
-        var copyId = await _factory.CreateSetAsync(_client, "forest, edited", count: 1,
-            addSource: form => form.Add(new StringContent(firstId.ToString()), "basedOnSetId"));
+        var setId = (await ReadJsonAsync(first)).GetProperty("id").GetInt32();
 
-        var whileCopyExists = await PostSetFromDeviationAsync(DeviationLink);
-        Assert.Equal(HttpStatusCode.BadRequest, whileCopyExists.StatusCode);
-        Assert.Equal(copyId, (await ReadJsonAsync(whileCopyExists)).GetProperty("existingSetId").GetInt32());
+        (await _client.PostAsJsonAsync($"/api/sets/{setId}/more", new { count = 1, prompt = "forest, oil painting" }))
+            .EnsureSuccessStatusCode();
+        var again = await PostSetFromDeviationAsync(DeviationLink);
 
-        (await _client.DeleteAsync($"/api/sets/{copyId}")).EnsureSuccessStatusCode();
-        (await PostSetFromDeviationAsync(DeviationLink)).EnsureSuccessStatusCode();
-    }
-
-    [Fact]
-    public async Task EditAsNewSet_FromDeviationSet_IsNotTreatedAsDuplicate()
-    {
-        var first = await PostSetFromDeviationAsync(DeviationLink);
-        var firstId = (await ReadJsonAsync(first)).GetProperty("id").GetInt32();
-
-        var copyId = await _factory.CreateSetAsync(_client, "forest, edited", count: 1,
-            addSource: form => form.Add(new StringContent(firstId.ToString()), "basedOnSetId"));
-
-        Assert.Equal(DeviationLink, (await GetSetAsync(_client, copyId)).DeviantArtUrl);
+        Assert.Equal(DeviationLink, (await GetSetAsync(_client, setId)).DeviantArtUrl);
+        Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
+        Assert.Equal(setId, (await ReadJsonAsync(again)).GetProperty("existingSetId").GetInt32());
     }
 
     [Fact]

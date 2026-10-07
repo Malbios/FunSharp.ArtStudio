@@ -62,6 +62,7 @@ public static class SetEndpoints
             .SingleOrDefaultAsync(s => s.Id == id, ct);
         if (set is null)
             return Results.NotFound();
+        var jobsById = set.Jobs.ToDictionary(j => j.Id);
 
         return Results.Ok(new SetDetailDto(
             set.Id,
@@ -73,7 +74,7 @@ public static class SetEndpoints
             set.DeviantArtAuthor,
             set.SelectedImageId,
             set.CreatedAt,
-            set.Images.Select(ImageDto.From).ToList(),
+            set.Images.Select(image => ImageDto.From(image, jobsById[image.GenerationJobId])).ToList(),
             set.Jobs.Select(JobDto.From).ToList()));
     }
 
@@ -94,8 +95,6 @@ public static class SetEndpoints
 
     private static SetSource ReadSource(IFormCollection form, Stream? fileStream)
     {
-        if (int.TryParse(form["basedOnSetId"], out var basedOnSetId))
-            return new SetSource.CopyOf(basedOnSetId);
 
         var sourceKind = Enum.TryParse<SourceKind>(form["sourceKind"], ignoreCase: true, out var kind) ? kind : SourceKind.None;
         switch (sourceKind)
@@ -122,7 +121,7 @@ public static class SetEndpoints
     {
         if (!await db.PromptSets.AnyAsync(s => s.Id == id, ct))
             return Results.NotFound();
-        var job = await queueService.EnqueueAsync(id, request.Count, prompt: null, resolution: null, ct);
+        var job = await queueService.EnqueueAsync(id, request.Count, request.Prompt, request.Resolution, ct);
         return Results.Ok(new { job.Id });
     }
 

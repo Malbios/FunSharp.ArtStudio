@@ -12,7 +12,6 @@ public abstract record SetSource
 
     public sealed record ImageFile(SourceKind Kind, Stream Content, string Extension) : SetSource;
 
-    public sealed record CopyOf(int SetId) : SetSource;
 
     public sealed record DeviantArtUrl(string Url) : SetSource;
 }
@@ -46,8 +45,6 @@ public sealed class SetService(
             CreatedAt = clock.GetUtcNow(),
         };
 
-        if (request.Source is SetSource.CopyOf copyOf)
-            await CopySourceAsync(set, copyOf.SetId, ct);
 
         var deviation = request.Source is SetSource.DeviantArtUrl deviantArt
             ? await deviantArtService.DownloadAsync(deviantArt.Url, ct)
@@ -70,24 +67,7 @@ public sealed class SetService(
         }
 
         await queueService.EnqueueAsync(set.Id, request.Count, prompt: null, resolution: null, ct);
-
-        if (request.Source is SetSource.CopyOf replaced)
-            await DeleteReplacedSetAsync(set.Id, replaced.SetId, ct);
         return set;
-    }
-
-    // Runs after the new set is saved, so it already holds the inherited DeviantArt link and the link stays blocked.
-    private async Task DeleteReplacedSetAsync(int newSetId, int replacedSetId, CancellationToken ct)
-    {
-        try
-        {
-            await DeleteAsync(replacedSetId, ct);
-        }
-        catch (UserFacingException ex)
-        {
-            throw new UserFacingException(
-                $"New set #{newSetId} was created, but set #{replacedSetId} could not be deleted: {ex.Message}");
-        }
     }
 
     public async Task SelectImageAsync(int setId, int? imageId, CancellationToken ct)
@@ -156,15 +136,4 @@ public sealed class SetService(
         await db.SaveChangesAsync(ct);
     }
 
-    private async Task CopySourceAsync(PromptSet target, int sourceSetId, CancellationToken ct)
-    {
-        var source = await db.PromptSets.AsNoTracking().SingleOrDefaultAsync(s => s.Id == sourceSetId, ct)
-            ?? throw new UserFacingException("The set to base this one on was not found.");
-
-        target.SourceKind = source.SourceKind;
-        target.SourceImagePath = source.SourceImagePath;
-        target.DeviantArtUrl = source.DeviantArtUrl;
-        target.DeviationId = source.DeviationId;
-        target.DeviantArtAuthor = source.DeviantArtAuthor;
-    }
 }

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type { ImageInfo } from '../api'
 
 interface Props {
@@ -14,6 +14,12 @@ interface Props {
 export function Lightbox({ images, index, sourceImageUrl, selectedImageId, onIndexChange, onToggleSelect, onClose }: Props) {
   const image = images[index]
   const isSelected = image.id === selectedImageId
+  const [copiedImageId, setCopiedImageId] = useState<number>()
+
+  async function copyPrompt() {
+    await navigator.clipboard.writeText(image.prompt)
+    setCopiedImageId(image.id)
+  }
 
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
@@ -59,6 +65,16 @@ export function Lightbox({ images, index, sourceImageUrl, selectedImageId, onInd
           <img src={image.url} alt={`Generated image ${index + 1}`} />
           <figcaption>{isSelected ? 'Generated (picked)' : 'Generated'}</figcaption>
         </figure>
+      </div>
+      <div className="lightbox-prompt">
+        <p>{image.prompt}</p>
+        <div className="job-meta">
+          <span>{image.resolution}</span>
+          <span>seed {image.seed}</span>
+          <button type="button" className="link-button" onClick={() => void copyPrompt()}>
+            {copiedImageId === image.id ? 'Copied!' : 'Copy prompt'}
+          </button>
+        </div>
       </div>
     </div>
   )

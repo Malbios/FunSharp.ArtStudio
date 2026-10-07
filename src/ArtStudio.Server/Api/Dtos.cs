@@ -2,10 +2,18 @@ using ArtStudio.Server.Domain;
 
 namespace ArtStudio.Server.Api;
 
-public sealed record ImageDto(int Id, int SetId, int JobId, string Url, long Seed, DateTimeOffset CreatedAt)
+public sealed record ImageDto(
+    int Id, int SetId, int JobId, string Url, long Seed, string Prompt, string Resolution, DateTimeOffset CreatedAt)
 {
-    public static ImageDto From(GeneratedImage image) =>
-        new(image.Id, image.PromptSetId, image.GenerationJobId, ApiUrls.Image(image.Id), image.Seed, image.CreatedAt);
+    public static ImageDto From(GeneratedImage image, GenerationJob job) => new(
+        image.Id,
+        image.PromptSetId,
+        image.GenerationJobId,
+        ApiUrls.Image(image.Id),
+        image.Seed,
+        job.Prompt,
+        job.Resolution,
+        image.CreatedAt);
 }
 
 public sealed record JobDto(
@@ -65,7 +73,7 @@ public sealed record SetDetailDto(
     IReadOnlyList<ImageDto> Images,
     IReadOnlyList<JobDto> Jobs);
 
-public sealed record MoreImagesRequest(int Count);
+public sealed record MoreImagesRequest(int Count, string? Prompt, string? Resolution);
 
 public sealed record SelectImageRequest(int? ImageId);
 

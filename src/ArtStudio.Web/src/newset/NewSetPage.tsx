@@ -91,19 +91,15 @@ export function NewSetPage() {
 
     setSubmitting(true)
     try {
-      if (baseSet && prompt.trim() === baseSet.prompt && resolution === baseSet.resolution) {
-        await api.moreImages(baseSet.id, count)
+      if (baseSet) {
+        await api.moreImages(baseSet.id, count, prompt, resolution)
         navigate(`/sets/${baseSet.id}`)
         return
       }
 
       const { id } = await api.createSet(buildForm())
-      if (baseSet) {
-        navigate(`/sets/${id}`)
-      } else {
-        resetForm()
-        setCreatedSetId(id)
-      }
+      resetForm()
+      setCreatedSetId(id)
     } catch (failure) {
       setError((failure as Error).message)
     } finally {
@@ -126,9 +122,7 @@ export function NewSetPage() {
         form.append('sourceKind', 'DeviantArt')
         form.append('deviantArtUrl', source.preview.url)
         break
-      case 'BasedOn':
-        form.append('basedOnSetId', String(source.setId))
-        break
+
     }
     return form
   }
@@ -138,10 +132,7 @@ export function NewSetPage() {
       <form className="panel new-set" onSubmit={(e) => void submit(e)}>
         <h2>{baseSet ? `Edit & requeue set #${baseSet.id}` : 'New prompt'}</h2>
         {baseSet && (
-          <p className="hint">
-            Unchanged prompt and resolution add images to set #{baseSet.id}. Any change creates a new set and deletes
-            set #{baseSet.id} (image files are kept).
-          </p>
+          <p className="hint">New images are added to set #{baseSet.id} with this prompt and resolution.</p>
         )}
 
         <label className="field">
