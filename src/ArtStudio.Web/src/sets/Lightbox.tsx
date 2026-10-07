@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 import type { ImageInfo } from '../api'
 
 interface Props {
@@ -16,6 +16,11 @@ export function Lightbox({ images, index, sourceImageUrl, pickedImageIds, onInde
   const pickNumber = pickedImageIds.indexOf(image.id) + 1
   const [copiedImageId, setCopiedImageId] = useState<number>()
 
+  function closeOnBackdropClick(event: MouseEvent) {
+    const clickedContent = (event.target as HTMLElement).closest('img, button, a, .lightbox-prompt')
+    if (!clickedContent) onClose()
+  }
+
   async function copyPrompt() {
     await navigator.clipboard.writeText(image.prompt)
     setCopiedImageId(image.id)
@@ -32,7 +37,7 @@ export function Lightbox({ images, index, sourceImageUrl, pickedImageIds, onInde
   }, [index, images.length, onClose, onIndexChange])
 
   return (
-    <div className="lightbox" role="dialog" aria-modal>
+    <div className="lightbox" role="dialog" aria-modal onClick={closeOnBackdropClick}>
       <div className="lightbox-bar">
         <button type="button" disabled={index === 0} onClick={() => onIndexChange(index - 1)}>
           ← Previous
