@@ -2,6 +2,7 @@ import { useEffect, useState, type ClipboardEvent, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, type SetDetail } from '../api'
 import { useLoad } from '../live/useLoad'
+import { MESSAGE_DURATION_MS } from '../messages'
 import { cleanPrompt } from '../prompt/cleanPrompt'
 import { closestResolution } from '../prompt/closestResolution'
 import { BuildingBlockChips } from './BuildingBlockChips'
@@ -9,7 +10,6 @@ import { imageFileFrom, loadImageFile, NO_SOURCE, sourceDimensions, type ImageSo
 import { ImageSourcePicker, type SourceTab } from './ImageSourcePicker'
 
 const DEFAULT_COUNT = 2
-const CREATED_MESSAGE_DURATION_MS = 5000
 
 interface CreatedSet {
   id: number
@@ -38,7 +38,7 @@ export function NewSetPage() {
 
   useEffect(() => {
     if (created === undefined) return
-    const timer = setTimeout(() => setCreated(undefined), CREATED_MESSAGE_DURATION_MS)
+    const timer = setTimeout(() => setCreated(undefined), MESSAGE_DURATION_MS)
     return () => clearTimeout(timer)
   }, [created])
 

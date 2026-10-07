@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, ApiError } from '../api'
+import { MESSAGE_DURATION_MS } from '../messages'
 import { parseDeviantArtUrls } from './parseUrls'
 
 type BulkResult =
@@ -8,22 +9,32 @@ type BulkResult =
   | { url: string; status: 'added'; setId: number }
   | { url: string; status: 'failed'; error: string; existingSetId: number | null }
 
+interface Progress {
+  done: number
+  total: number
+}
+
 export function BulkDeviantArtDrafts() {
   const [text, setText] = useState('')
   const [results, setResults] = useState<BulkResult[]>([])
-  const [running, setRunning] = useState(false)
+  const [progress, setProgress] = useState<Progress>()
   const urls = parseDeviantArtUrls(text)
-  const doneCount = results.filter((result) => result.status !== 'pending').length
+  const running = progress !== undefined
 
   async function addAll() {
-    setRunning(true)
+    setProgress({ done: 0, total: urls.length })
     setText('')
     setResults(urls.map((url) => ({ url, status: 'pending' })))
     for (const [index, url] of urls.entries()) {
       const result = await addOne(url)
-      setResults((previous) => previous.map((existing, i) => (i === index ? result : existing)))
+      setResults((previous) => previous.map((existing) => (existing.url === url ? result : existing)))
+      setProgress({ done: index + 1, total: urls.length })
     }
-    setRunning(false)
+    setProgress(undefined)
+  }
+
+  function removeResult(url: string) {
+    setResults((previous) => previous.filter((result) => result.url !== url))
   }
 
   async function addOne(url: string): Promise<BulkResult> {
@@ -50,9 +61,9 @@ export function BulkDeviantArtDrafts() {
         <button type="button" className="primary" disabled={running || urls.length === 0} onClick={() => void addAll()}>
           {urls.length > 1 ? `Add ${urls.length} drafts` : 'Add draft'}
         </button>
-        {running && (
+        {progress && (
           <span className="hint">
-            Adding {Math.min(doneCount + 1, results.length)} of {results.length}…
+            Adding {Math.min(progress.done + 1, progress.total)} of {progress.total}…
           </span>
         )}
       </div>
@@ -63,9 +74,7 @@ export function BulkDeviantArtDrafts() {
               <span className="bulk-result-url">{result.url}</span>
               {result.status === 'pending' && <span className="hint">waiting…</span>}
               {result.status === 'added' && (
-                <span className="success">
-                  Added as <Link to={`/?draft=${result.setId}`}>draft #{result.setId}</Link>
-                </span>
+                <AddedNote setId={result.setId} onExpire={() => removeResult(result.url)} />
               )}
               {result.status === 'failed' && (
                 <span className="error">
@@ -80,5 +89,24 @@ export function BulkDeviantArtDrafts() {
         </ul>
       )}
     </section>
+  )
+}
+
+function AddedNote({ setId, onExpire }: { setId: number; onExpire: () => void }) {
+  const onExpireRef = useRef(onExpire)
+
+  useEffect(() => {
+    onExpireRef.current = onExpire
+  })
+
+  useEffect(() => {
+    const timer = setTimeout(() => onExpireRef.current(), MESSAGE_DURATION_MS)
+    return () => clearTimeout(timer)
+  }, [])
+
+  return (
+    <span className="success">
+      Added as <Link to={`/?draft=${setId}`}>draft #{setId}</Link>
+    </span>
   )
 }
