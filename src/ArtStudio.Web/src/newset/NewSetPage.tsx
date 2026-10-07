@@ -5,6 +5,7 @@ import { useLoad } from '../live/useLoad'
 import { MESSAGE_DURATION_MS } from '../messages'
 import { cleanPrompt } from '../prompt/cleanPrompt'
 import { closestResolution } from '../prompt/closestResolution'
+import { insertAtSelection } from '../prompt/insertAtSelection'
 import { BuildingBlockChips } from './BuildingBlockChips'
 import { imageFileFrom, loadImageFile, NO_SOURCE, sourceDimensions, type ImageSource } from './imageSource'
 import { ImageSourcePicker, type SourceTab } from './ImageSourcePicker'
@@ -83,11 +84,7 @@ export function NewSetPage() {
     const text = event.clipboardData.getData('text')
     if (!text) return
     event.preventDefault()
-    const textarea = event.currentTarget
-    const cleaned = cleanPrompt(text)
-    const caret = textarea.selectionStart + cleaned.length
-    setPrompt(prompt.slice(0, textarea.selectionStart) + cleaned + prompt.slice(textarea.selectionEnd))
-    requestAnimationFrame(() => textarea.setSelectionRange(caret, caret))
+    insertAtSelection(event.currentTarget, cleanPrompt(text))
   }
 
   function resetForm() {

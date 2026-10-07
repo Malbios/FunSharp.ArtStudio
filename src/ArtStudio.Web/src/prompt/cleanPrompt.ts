@@ -19,7 +19,7 @@ function replaceRemovedWord(match: string, offset: number, text: string): string
 }
 
 export function cleanPrompt(text: string): string {
-  let cleaned = text.replace(/’/g, "'")
+  let cleaned = text.replace(/\r\n?/g, '\n').replace(/’/g, "'")
   for (const pattern of removedWordPatterns) {
     cleaned = cleaned.replace(pattern, replaceRemovedWord)
   }

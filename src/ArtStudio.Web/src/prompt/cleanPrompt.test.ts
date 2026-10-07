@@ -31,6 +31,11 @@ describe('cleanPrompt', () => {
     expect(cleanPrompt(' She is an adult woman.')).toBe(' She is an woman.')
   })
 
+  it('turns Windows and old Mac line breaks into plain line breaks', () => {
+    expect(cleanPrompt('line one\r\nline two\rline three')).toBe('line one\nline two\nline three')
+    expect(cleanPrompt('first line adult\r\nsecond')).toBe('first line\nsecond')
+  })
+
   it('leaves clean text unchanged', () => {
     expect(cleanPrompt('a red fox in the snow')).toBe('a red fox in the snow')
   })
