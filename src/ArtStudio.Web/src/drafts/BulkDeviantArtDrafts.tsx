@@ -44,7 +44,7 @@ export function BulkDeviantArtDrafts() {
         value={text}
         disabled={running}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Paste DeviantArt URLs, one per line. Each becomes a draft with the post's main image."
+        placeholder="Paste DeviantArt URLs separated by spaces or line breaks. Each becomes a draft with the post's main image."
       />
       <div className="bulk-drafts-actions">
         <button type="button" className="primary" disabled={running || urls.length === 0} onClick={() => void addAll()}>
