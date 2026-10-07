@@ -1,15 +1,18 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { api } from '../api'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { Pager } from '../paging/Pager'
 import { usePagedItems } from '../paging/usePagedItems'
+import type { SetsOverviewState } from './setsOverviewLink'
 
 export function SetsPage() {
   const sets = useLoad(() => api.sets('working'))
   useStudioEvents(['JobUpdated', 'ImageAdded', 'SetDeleted', 'SetUpdated'], sets.reload)
   const paged = usePagedItems(sets.data)
   const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
+  const location = useLocation()
+  const overviewState: SetsOverviewState = { setsOverview: location.pathname + location.search }
 
   return (
     <div>
@@ -27,7 +30,7 @@ export function SetsPage() {
         {paged.pageItems.map((set) => {
           const thumbnail = set.previewImageUrl ?? set.sourceImageUrl
           return (
-            <Link key={set.id} to={`/sets/${set.id}`} className="panel set-card">
+            <Link key={set.id} to={`/sets/${set.id}`} state={overviewState} className="panel set-card">
               {thumbnail ? <img className="set-card-image" src={thumbnail} alt="" loading="lazy" /> : <div className="set-card-image" />}
               <div className="set-card-body">
                 <div className="job-prompt">{set.prompt}</div>

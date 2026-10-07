@@ -1,5 +1,5 @@
 import { useCallback, useState, type FormEvent } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { api, type ImageInfo } from '../api'
 import { useStudioEvents, type JobEventPayload } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
@@ -7,6 +7,7 @@ import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { JobRow } from '../queue/JobRow'
 import { Lightbox } from './Lightbox'
 import { PickedStrip } from './PickedStrip'
+import { setsOverviewFrom } from './setsOverviewLink'
 
 const DEFAULT_MORE_COUNT = 2
 
@@ -19,6 +20,7 @@ export function SetDetailPage() {
   const [deleting, setDeleting] = useState(false)
   const [deletedElsewhere, setDeletedElsewhere] = useState(false)
   const navigate = useNavigate()
+  const setsOverview = setsOverviewFrom(useLocation().state)
 
   useStudioEvents(['JobUpdated', 'ImageAdded', 'SetDeleted', 'SetUpdated'], (event, payload) => {
     const affectsThisSet = event === 'Reconnected' || (payload as JobEventPayload).setId === setId
@@ -128,7 +130,7 @@ export function SetDetailPage() {
             className="success"
             disabled={readyBlocker !== null}
             title={readyBlocker ?? 'Move this set to Post'}
-            onClick={() => void changeStage(() => api.markReadyToPost(setId), '/post')}
+            onClick={() => void changeStage(() => api.markReadyToPost(setId), setsOverview)}
           >
             Ready to post
           </button>
