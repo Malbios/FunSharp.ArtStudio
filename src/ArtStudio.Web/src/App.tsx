@@ -16,7 +16,7 @@ function NewSetRoute() {
 
 function QueueNavLink() {
   const queue = useLoad(api.queue)
-  useStudioEvents(['JobUpdated', 'QueueStateChanged'], queue.reload)
+  useStudioEvents(['JobUpdated', 'QueueStateChanged', 'SetDeleted'], queue.reload)
   const pending = queue.data?.active.filter((job) => job.status !== 'Failed').length ?? 0
   const failed = queue.data?.active.some((job) => job.status === 'Failed') ?? false
 

@@ -140,6 +140,7 @@ export const api = {
   moreImages: (setId: number, count: number) => request<{ id: number }>('POST', `/api/sets/${setId}/more`, { count }),
   selectImage: (setId: number, imageId: number | null) =>
     request<void>('POST', `/api/sets/${setId}/select`, { imageId }),
+  deleteSet: (setId: number) => request<void>('DELETE', `/api/sets/${setId}`),
 
   queue: () => request<QueueState>('GET', '/api/queue'),
   pauseQueue: () => request<void>('POST', '/api/queue/pause'),

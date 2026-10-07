@@ -8,7 +8,7 @@ export function QueuePage() {
   const queue = useLoad(api.queue)
   const [showRecent, setShowRecent] = useState(false)
 
-  useStudioEvents(['JobUpdated', 'QueueStateChanged'], queue.reload)
+  useStudioEvents(['JobUpdated', 'QueueStateChanged', 'SetDeleted'], queue.reload)
 
   async function togglePause() {
     if (queue.data?.paused) await api.resumeQueue()

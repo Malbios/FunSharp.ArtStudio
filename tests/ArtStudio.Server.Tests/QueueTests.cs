@@ -173,6 +173,88 @@ public sealed class QueueTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    private string ImagesDirectory => Path.Combine(_factory.DataDirectory, "images");
+
+    [Fact]
+    public async Task DeleteSet_RemovesDatabaseRowsButKeepsFiles()
+    {
+        var setId = await _factory.CreateSetAsync(_client, "fox", count: 2, addSource: form =>
+        {
+            form.Add(new StringContent("Upload"), "sourceKind");
+            var file = new ByteArrayContent([1, 2, 3]);
+            file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+            form.Add(file, "image", "fox.png");
+        });
+        await WaitForJobStatusAsync(setId, JobStatus.Completed);
+        var imageUrl = (await GetSetAsync(_client, setId)).Images[0].Url;
+        var filesBefore = Directory.GetFiles(ImagesDirectory, "*", SearchOption.AllDirectories);
+
+        var response = await _client.DeleteAsync($"/api/sets/{setId}");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync($"/api/sets/{setId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.GetAsync(imageUrl)).StatusCode);
+        Assert.DoesNotContain((await _client.GetFromJsonAsync<JsonElement>("/api/sets")).EnumerateArray(),
+            s => s.GetProperty("id").GetInt32() == setId);
+        Assert.Empty((await GetQueueAsync(_client)).Recent);
+        Assert.Equal(3, filesBefore.Length);
+        Assert.All(filesBefore, path => Assert.True(File.Exists(path)));
+    }
+
+    [Fact]
+    public async Task DeleteSet_NeverReusesItsIdForNewSets()
+    {
+        var deletedId = await _factory.CreateSetAsync(_client, "fox", count: 1);
+        await WaitForJobStatusAsync(deletedId, JobStatus.Completed);
+        var keptFile = Directory.GetFiles(Path.Combine(ImagesDirectory, "generated", deletedId.ToString())).Single();
+        (await _client.DeleteAsync($"/api/sets/{deletedId}")).EnsureSuccessStatusCode();
+
+        var newId = await _factory.CreateSetAsync(_client, "owl", count: 1);
+        await WaitForJobStatusAsync(newId, JobStatus.Completed);
+
+        Assert.True(newId > deletedId);
+        Assert.Single(Directory.GetFiles(Path.Combine(ImagesDirectory, "generated", deletedId.ToString())), keptFile);
+    }
+
+    [Fact]
+    public async Task DeleteSet_DropsQueuedJobAndQueueContinues()
+    {
+        _factory.Comfy.HoldRuns = true;
+        var runningSet = await _factory.CreateSetAsync(_client, "first", count: 1);
+        await WaitForJobStatusAsync(runningSet, JobStatus.Running);
+        var deletedSet = await _factory.CreateSetAsync(_client, "deleted", count: 1);
+        var laterSet = await _factory.CreateSetAsync(_client, "later", count: 1);
+
+        (await _client.DeleteAsync($"/api/sets/{deletedSet}")).EnsureSuccessStatusCode();
+        _factory.Comfy.HoldRuns = false;
+
+        await WaitForJobStatusAsync(laterSet, JobStatus.Completed);
+        Assert.Equal(["first", "later"], _factory.Comfy.SubmittedPrompts);
+    }
+
+    [Fact]
+    public async Task DeleteSet_CancelsRunningJobOnComfy()
+    {
+        _factory.Comfy.HoldRuns = true;
+        var setId = await _factory.CreateSetAsync(_client, "slow", count: 2);
+        await WaitUntilAsync(() => Task.FromResult(_factory.Comfy.SubmittedPrompts.Count == 1), "prompt submitted");
+
+        var response = await _client.DeleteAsync($"/api/sets/{setId}");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(["prompt-1"], _factory.Comfy.DeletedPromptIds);
+        Assert.Equal(1, _factory.Comfy.InterruptCount);
+        var queue = await GetQueueAsync(_client);
+        Assert.False(queue.Paused);
+        Assert.Empty(queue.Active);
+    }
+
+    [Fact]
+    public async Task DeleteUnknownSet_ReturnsNotFound()
+    {
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.DeleteAsync("/api/sets/999")).StatusCode);
+    }
+
     [Fact]
     public async Task SelectImage_StoresSelection()
     {

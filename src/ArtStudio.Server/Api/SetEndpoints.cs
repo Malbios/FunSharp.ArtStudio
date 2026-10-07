@@ -18,6 +18,8 @@ public static class SetEndpoints
         sets.MapPost("{id:int}/more", RequestMoreImagesAsync);
         sets.MapPost("{id:int}/select", SelectImageAsync);
         sets.MapGet("{id:int}/source", GetSourceImageAsync);
+        sets.MapDelete("{id:int}", async (int id, SetService setService, CancellationToken ct) =>
+            await setService.DeleteAsync(id, ct) ? Results.NoContent() : Results.NotFound());
         app.MapGet("/api/images/{id:int}", GetImageAsync);
     }
 

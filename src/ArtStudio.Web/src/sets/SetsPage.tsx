@@ -5,7 +5,7 @@ import { useLoad } from '../live/useLoad'
 
 export function SetsPage() {
   const sets = useLoad(api.sets)
-  useStudioEvents(['JobUpdated', 'ImageAdded'], sets.reload)
+  useStudioEvents(['JobUpdated', 'ImageAdded', 'SetDeleted'], sets.reload)
 
   return (
     <div>

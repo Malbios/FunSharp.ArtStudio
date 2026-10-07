@@ -1,5 +1,5 @@
 import { useCallback, useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, type ImageInfo } from '../api'
 import { useStudioEvents, type JobEventPayload } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
@@ -15,9 +15,15 @@ export function SetDetailPage() {
   const [moreCount, setMoreCount] = useState(DEFAULT_MORE_COUNT)
   const [error, setError] = useState<string>()
   const [copied, setCopied] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [deletedElsewhere, setDeletedElsewhere] = useState(false)
+  const navigate = useNavigate()
 
-  useStudioEvents(['JobUpdated', 'ImageAdded'], (event, payload) => {
-    if (event === 'Reconnected' || (payload as JobEventPayload).setId === setId) set.reload()
+  useStudioEvents(['JobUpdated', 'ImageAdded', 'SetDeleted'], (event, payload) => {
+    const affectsThisSet = event === 'Reconnected' || (payload as JobEventPayload).setId === setId
+    if (!affectsThisSet) return
+    if (event === 'SetDeleted') setDeletedElsewhere(true)
+    else set.reload()
   })
 
   const closeLightbox = useCallback(() => setLightboxIndex(null), [])
@@ -43,12 +49,34 @@ export function SetDetailPage() {
     }
   }
 
+  async function deleteSet() {
+    const confirmed = window.confirm(
+      `Delete set #${setId}? Image files stay in the folder. Queued or running jobs of this set are cancelled.`,
+    )
+    if (!confirmed) return
+    setDeleting(true)
+    setError(undefined)
+    try {
+      await api.deleteSet(setId)
+      navigate('/sets')
+    } catch (failure) {
+      setError((failure as Error).message)
+      setDeleting(false)
+    }
+  }
+
   async function copyPrompt(prompt: string) {
     await navigator.clipboard.writeText(prompt)
     setCopied(true)
     setTimeout(() => setCopied(false), 1200)
   }
 
+  if (deletedElsewhere && !deleting)
+    return (
+      <p className="hint">
+        This set was deleted. <Link to="/sets">Back to all sets</Link>
+      </p>
+    )
   if (set.error) return <p className="error">{set.error}</p>
   if (!set.data) return <p className="hint">Loading…</p>
 
@@ -105,6 +133,9 @@ export function SetDetailPage() {
           <Link to={`/?basedOn=${data.id}`} className="button-link">
             Edit &amp; requeue
           </Link>
+          <button type="button" className="danger" disabled={deleting} onClick={() => void deleteSet()}>
+            {deleting ? 'Deleting…' : 'Delete set'}
+          </button>
           {error && <p className="error">{error}</p>}
         </div>
       </div>

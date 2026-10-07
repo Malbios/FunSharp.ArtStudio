@@ -76,6 +76,33 @@ public sealed class DeviantArtTests : IDisposable
     }
 
     [Fact]
+    public async Task DeletedSet_FreesItsDeviation()
+    {
+        var first = await PostSetFromDeviationAsync(DeviationLink);
+        var firstId = (await ReadJsonAsync(first)).GetProperty("id").GetInt32();
+
+        (await _client.DeleteAsync($"/api/sets/{firstId}")).EnsureSuccessStatusCode();
+        var again = await PostSetFromDeviationAsync(DeviationLink);
+
+        again.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task DeletedSet_WithRemainingCopy_KeepsDeviationBlocked()
+    {
+        var first = await PostSetFromDeviationAsync(DeviationLink);
+        var firstId = (await ReadJsonAsync(first)).GetProperty("id").GetInt32();
+        var copyId = await _factory.CreateSetAsync(_client, "forest, edited", count: 1,
+            addSource: form => form.Add(new StringContent(firstId.ToString()), "basedOnSetId"));
+
+        (await _client.DeleteAsync($"/api/sets/{firstId}")).EnsureSuccessStatusCode();
+        var again = await PostSetFromDeviationAsync(DeviationLink);
+
+        Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
+        Assert.Equal(copyId, (await ReadJsonAsync(again)).GetProperty("existingSetId").GetInt32());
+    }
+
+    [Fact]
     public async Task EditAsNewSet_FromDeviationSet_IsNotTreatedAsDuplicate()
     {
         var first = await PostSetFromDeviationAsync(DeviationLink);
