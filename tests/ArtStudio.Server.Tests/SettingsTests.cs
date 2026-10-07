@@ -69,6 +69,15 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(1, (await _client.GetFromJsonAsync<JsonElement>("/api/building-blocks")).GetArrayLength());
     }
 
+    [Fact]
+    public async Task BuildingBlockText_KeepsLeadingWhitespace()
+    {
+        var block = await AddBlockAsync("", "  , cinematic lighting");
+
+        Assert.Equal("  , cinematic lighting", block.GetProperty("text").GetString());
+        Assert.Equal(", cinematic lighting", block.GetProperty("label").GetString());
+    }
+
     private async Task<JsonElement> AddBlockAsync(string label, string text)
     {
         var response = await _client.PostAsJsonAsync("/api/building-blocks", new { label, text });

@@ -99,9 +99,9 @@ public static class SettingsEndpoints
 
     private static void Apply(BuildingBlock block, BuildingBlockRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Text))
+        if (string.IsNullOrEmpty(request.Text))
             throw new UserFacingException("A building block needs some text.");
-        block.Text = request.Text.Trim();
-        block.Label = string.IsNullOrWhiteSpace(request.Label) ? block.Text : request.Label.Trim();
+        block.Text = request.Text;
+        block.Label = string.IsNullOrWhiteSpace(request.Label) ? block.Text.Trim() : request.Label.Trim();
     }
 }
