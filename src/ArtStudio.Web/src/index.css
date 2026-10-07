@@ -678,3 +678,19 @@ main {
   width: auto;
   flex: 1;
 }
+
+.button-link.inline {
+  display: inline-block;
+}
+
+details summary {
+  cursor: pointer;
+  margin-bottom: 0.5rem;
+}
+
+code {
+  background: var(--bg);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  user-select: all;
+}

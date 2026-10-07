@@ -10,4 +10,8 @@ public class StudioSettings
     public bool NotifyOnJobDone { get; set; }
     public bool NotifyOnQueueEmpty { get; set; }
     public bool QueuePaused { get; set; }
+    public string? DeviantArtClientId { get; set; }
+    public string? ProtectedDeviantArtClientSecret { get; set; }
+    public string? ProtectedDeviantArtRefreshToken { get; set; }
+    public string? DeviantArtUsername { get; set; }
 }

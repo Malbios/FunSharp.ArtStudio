@@ -4,6 +4,7 @@ using ArtStudio.Server.Data;
 using ArtStudio.Server.DeviantArt;
 using ArtStudio.Server.Generation;
 using ArtStudio.Server.Hubs;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArtStudio.Server;
@@ -38,6 +39,8 @@ public static class ServiceRegistration
             http.DefaultRequestHeaders.UserAgent.ParseAdd("ArtStudio/1.0");
         });
         services.AddScoped<DeviantArtService>();
+        services.AddDataProtection().SetApplicationName("ArtStudio");
+        services.AddSingleton<DeviantArtAuth>();
         services.AddHostedService<QueueWorker>();
         return services;
     }

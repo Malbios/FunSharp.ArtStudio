@@ -83,6 +83,14 @@ export interface Settings {
   notifyOnQueueEmpty: boolean
 }
 
+export interface DeviantArtApp {
+  clientId: string | null
+  hasClientSecret: boolean
+  connected: boolean
+  username: string | null
+  redirectUri: string
+}
+
 export interface BuildingBlock {
   id: number
   label: string
@@ -143,6 +151,12 @@ export const api = {
   blockedArtists: () => request<BlockedArtist[]>('GET', '/api/blocked-artists'),
   blockArtist: (username: string) => request<BlockedArtist>('POST', '/api/blocked-artists', { username }),
   unblockArtist: (id: number) => request<void>('DELETE', `/api/blocked-artists/${id}`),
+
+  deviantArtApp: () => request<DeviantArtApp>('GET', '/api/deviantart/app'),
+  saveDeviantArtApp: (clientId: string, clientSecret: string) =>
+    request<DeviantArtApp>('PUT', '/api/deviantart/app', { clientId, clientSecret }),
+  disconnectDeviantArt: () => request<void>('POST', '/api/deviantart/disconnect'),
+  deviantArtLoginUrl: '/api/deviantart/login',
 
   settings: () => request<Settings>('GET', '/api/settings'),
   saveSettings: (settings: Settings) => request<Settings>('PUT', '/api/settings', settings),
