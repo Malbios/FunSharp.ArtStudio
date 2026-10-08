@@ -74,6 +74,15 @@ public sealed class DraftTests : IDisposable
     }
 
     [Fact]
+    public async Task Drafts_AreListedOldestFirst()
+    {
+        var first = await CreateDraftAsync(AddUpload);
+        var second = await CreateDraftAsync(AddUpload);
+
+        Assert.Equal([first, second], await SetIdsAsync("draft"));
+    }
+
+    [Fact]
     public async Task Draft_WithoutImage_IsRejected()
     {
         var response = await PostDraftAsync(_ => { });

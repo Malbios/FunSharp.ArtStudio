@@ -47,7 +47,7 @@ public static class SetEndpoints
         var activeStatuses = new[] { JobStatus.Queued, JobStatus.Running };
         IQueryable<PromptSet> inStage = stage switch
         {
-            "draft" => db.PromptSets.Where(s => s.IsDraft).OrderByDescending(s => s.Id),
+            "draft" => db.PromptSets.Where(s => s.IsDraft).OrderBy(s => s.Id),
             null or "working" => db.PromptSets
                 .Where(s => !s.IsDraft && s.ReadyToPostAt == null && s.ArchivedAt == null)
                 .OrderByDescending(s => s.Id),
