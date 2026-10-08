@@ -268,9 +268,40 @@ main {
   font-size: inherit;
 }
 
-.image-beside-prompt textarea {
-  flex: 1;
-  min-height: 400px;
+.prompt-paragraphs {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.prompt-paragraph {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.prompt-paragraph-label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.prompt-paragraph textarea {
+  field-sizing: content;
+  min-height: 4.5em;
+}
+
+.add-character {
+  align-self: flex-start;
+  font-size: 0.85rem;
+  padding: 0;
+}
+
+.prompt-heading {
+  color: var(--text);
+  font-weight: 600;
 }
 
 .building-blocks {

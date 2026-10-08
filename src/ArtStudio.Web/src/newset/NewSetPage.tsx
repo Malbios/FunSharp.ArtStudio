@@ -1,4 +1,4 @@
-import { useEffect, useState, type ClipboardEvent, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, type PromptGeneration, type SetDetail } from '../api'
 import { useStudioEvents, type JobEventPayload } from '../live/studioHub'
@@ -7,10 +7,11 @@ import { MESSAGE_DURATION_MS } from '../messages'
 import { cleanPrompt } from '../prompt/cleanPrompt'
 import { closestResolution } from '../prompt/closestResolution'
 import { generateActionLabel } from '../prompt/generateAction'
-import { insertAtSelection } from '../prompt/insertAtSelection'
+import { joinParagraphs, splitParagraphs } from '../prompt/paragraphs'
 import { BuildingBlockChips } from './BuildingBlockChips'
 import { imageFileFrom, loadImageFile, NO_SOURCE, sourceDimensions, type ImageSource } from './imageSource'
 import { ImageSourcePicker, type SourceTab } from './ImageSourcePicker'
+import { PromptParagraphs } from './PromptParagraphs'
 
 const DEFAULT_COUNT = 2
 
@@ -27,7 +28,9 @@ export function NewSetPage() {
   const navigate = useNavigate()
   const resolutions = useLoad(api.resolutions)
 
-  const [prompt, setPrompt] = useState('')
+  const [paragraphs, setParagraphs] = useState(() => splitParagraphs(''))
+  const prompt = joinParagraphs(paragraphs)
+  const setPrompt = (text: string) => setParagraphs(splitParagraphs(text))
   const [source, setSource] = useState<ImageSource>(NO_SOURCE)
   const [resolution, setResolution] = useState('')
   const [resolutionIsAuto, setResolutionIsAuto] = useState(false)
@@ -109,14 +112,6 @@ export function NewSetPage() {
       setResolution('')
       setResolutionIsAuto(false)
     }
-  }
-
-  function pastePromptText(event: ClipboardEvent<HTMLTextAreaElement>) {
-    if (imageFileFrom(event.clipboardData)) return
-    const text = event.clipboardData.getData('text')
-    if (!text) return
-    event.preventDefault()
-    insertAtSelection(event.currentTarget, cleanPrompt(text))
   }
 
   function resetForm() {
@@ -202,7 +197,7 @@ export function NewSetPage() {
   const promptField = (
     <div className="field">
       <div className="prompt-label-row">
-        <label htmlFor="prompt-text">Prompt</label>
+        <span className="prompt-heading">Prompt</span>
         {generationNote && <em className={generationNote.failed ? 'error' : undefined}>{generationNote.text}</em>}
         {generateAction && (
           <button type="button" className="link-button" disabled={requestingPrompt} onClick={() => void generatePrompt()}>
@@ -210,14 +205,7 @@ export function NewSetPage() {
           </button>
         )}
       </div>
-      <textarea
-        id="prompt-text"
-        value={prompt}
-        rows={8}
-        onChange={(e) => setPrompt(e.target.value)}
-        onPaste={pastePromptText}
-        placeholder="Describe the image…"
-      />
+      <PromptParagraphs paragraphs={paragraphs} onChange={setParagraphs} />
     </div>
   )
 
