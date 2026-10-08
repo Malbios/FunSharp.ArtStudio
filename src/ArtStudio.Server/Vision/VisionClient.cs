@@ -19,7 +19,7 @@ public sealed class VisionClient(IHttpClientFactory httpClientFactory, IConfigur
     private const string ChatCompletionsPath = "/v1/chat/completions";
     private const string Model = "vision";
     private const double Temperature = 0.2;
-    private const int MaxTokens = 1000;
+    private const int MaxTokens = 4096;
 
     private string ServerUrl => (configuration[ServerUrlKey] is { Length: > 0 } configured ? configured : DefaultServerUrl).TrimEnd('/');
 

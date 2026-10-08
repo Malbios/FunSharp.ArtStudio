@@ -30,7 +30,7 @@ public sealed class VisionClientTests
         Assert.Equal("Bearer secret-key", request.Authorization);
         Assert.Equal("vision", request.Body["model"]!.GetValue<string>());
         Assert.Equal(0.2, request.Body["temperature"]!.GetValue<double>());
-        Assert.Equal(1000, request.Body["max_tokens"]!.GetValue<int>());
+        Assert.Equal(4096, request.Body["max_tokens"]!.GetValue<int>());
         Assert.False(request.Body["stream"]!.GetValue<bool>());
 
         var message = request.Body["messages"]![0]!;
