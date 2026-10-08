@@ -273,6 +273,7 @@ export function SetDetailPage() {
           index={lightboxIndex}
           sourceImageUrl={data.sourceImageUrl}
           pickedImageIds={data.pickedImageIds}
+          canRequeue={isWorking}
           onIndexChange={setLightboxIndex}
           onTogglePick={togglePick}
           onClose={closeLightbox}

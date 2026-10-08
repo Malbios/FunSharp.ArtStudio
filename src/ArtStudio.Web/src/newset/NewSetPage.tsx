@@ -25,6 +25,7 @@ export function NewSetPage() {
   const draftId = Number(searchParams.get('draft')) || null
   const baseSetId = draftId ?? (Number(searchParams.get('basedOn')) || null)
   const isDraft = draftId !== null
+  const fromImageId = Number(searchParams.get('image')) || null
   const navigate = useNavigate()
   const resolutions = useLoad(api.resolutions)
 
@@ -54,13 +55,14 @@ export function NewSetPage() {
   useEffect(() => {
     if (baseSetId === null) return
     api.set(baseSetId).then((set) => {
+      const fromImage = set.images.find((image) => image.id === fromImageId)
       setBaseSet(set)
-      setPrompt(set.isDraft ? cleanPrompt(set.prompt) : set.prompt)
-      setResolution(set.resolution)
+      setPrompt(fromImage?.prompt ?? (set.isDraft ? cleanPrompt(set.prompt) : set.prompt))
+      setResolution(fromImage?.resolution ?? set.resolution)
       setResolutionIsAuto(false)
       setSource({ kind: 'BasedOn', imageUrl: set.sourceImageUrl, deviantArtAuthor: set.deviantArtAuthor })
     }, (failure: Error) => setError(failure.message))
-  }, [baseSetId])
+  }, [baseSetId, fromImageId])
 
   useStudioEvents(['SetUpdated'], (event, payload) => {
     if (baseSetId === null) return

@@ -95,6 +95,10 @@ button.success {
   padding: 0 0.4rem;
 }
 
+a.link-button {
+  text-decoration: none;
+}
+
 input,
 select,
 textarea {

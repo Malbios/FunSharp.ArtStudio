@@ -1,4 +1,5 @@
 import { useEffect, useState, type MouseEvent } from 'react'
+import { Link } from 'react-router-dom'
 import type { ImageInfo } from '../api'
 
 interface Props {
@@ -6,12 +7,22 @@ interface Props {
   index: number
   sourceImageUrl: string | null
   pickedImageIds: number[]
+  canRequeue: boolean
   onIndexChange: (index: number) => void
   onTogglePick: (image: ImageInfo) => void
   onClose: () => void
 }
 
-export function Lightbox({ images, index, sourceImageUrl, pickedImageIds, onIndexChange, onTogglePick, onClose }: Props) {
+export function Lightbox({
+  images,
+  index,
+  sourceImageUrl,
+  pickedImageIds,
+  canRequeue,
+  onIndexChange,
+  onTogglePick,
+  onClose,
+}: Props) {
   const image = images[index]
   const pickNumber = pickedImageIds.indexOf(image.id) + 1
   const [copiedImageId, setCopiedImageId] = useState<number>()
@@ -79,7 +90,14 @@ export function Lightbox({ images, index, sourceImageUrl, pickedImageIds, onInde
           )}
         </div>
         <div className="lightbox-prompt">
-          <div className="job-meta">{copyPromptButton}</div>
+          <div className="job-meta">
+            {copyPromptButton}
+            {canRequeue && (
+              <Link to={`/?basedOn=${image.setId}&image=${image.id}`} className="link-button">
+                Edit &amp; requeue with this prompt
+              </Link>
+            )}
+          </div>
           <p>{image.prompt}</p>
           <div className="job-meta">
             {copyPromptButton}
