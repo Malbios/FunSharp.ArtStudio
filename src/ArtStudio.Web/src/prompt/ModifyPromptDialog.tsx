@@ -5,12 +5,13 @@ interface Props {
   /** What is being modified, shown as the heading: "Whole prompt" or a box label. */
   subject: string
   text: string
+  hint?: string
   /** Queues the modification; a rejection is shown in the dialog. */
   onSubmit: (instructions: string) => Promise<void>
   onClose: () => void
 }
 
-export function ModifyPromptDialog({ subject, text, onSubmit, onClose }: Props) {
+export function ModifyPromptDialog({ subject, text, hint, onSubmit, onClose }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const [instructions, setInstructions] = useState('')
   const [queueing, setQueueing] = useState(false)
@@ -53,6 +54,7 @@ export function ModifyPromptDialog({ subject, text, onSubmit, onClose }: Props) 
             onChange={(e) => setInstructions(e.target.value)}
           />
         </label>
+        {hint && <p className="hint">{hint}</p>}
         {error && <p className="error">{error}</p>}
         <div className="modify-dialog-actions">
           <button type="button" onClick={onClose}>

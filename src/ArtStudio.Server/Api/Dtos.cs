@@ -100,7 +100,8 @@ public sealed record VisionSettingsDto(bool HasApiKey);
 
 public sealed record VisionApiKeyRequest(string ApiKey);
 
-public sealed record ModifyPromptRequest(string? Prompt, string? Instructions, int? ParagraphIndex, string? Section);
+public sealed record ModifyPromptRequest(
+    string? Prompt, string? Instructions, int? ParagraphIndex, string? Section, int? ImageCount, string? Resolution);
 
 public sealed record PickImageRequest(int ImageId);
 

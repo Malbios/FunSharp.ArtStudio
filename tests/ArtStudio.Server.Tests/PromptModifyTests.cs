@@ -22,8 +22,83 @@ public sealed class PromptModifyTests : IDisposable
     private Task<int> CreateSetAsync() => _factory.CreateSetAsync(_client, "Saved prompt.");
 
     private Task<HttpResponseMessage> ModifyAsync(
-        int setId, string prompt, string instructions, int? paragraphIndex = null, string? section = null) =>
-        _client.PostAsJsonAsync($"/api/sets/{setId}/modify-prompt", new { prompt, instructions, paragraphIndex, section });
+        int setId, string prompt, string instructions, int? paragraphIndex = null, string? section = null,
+        int? imageCount = 3, string? resolution = "Portrait") =>
+        _client.PostAsJsonAsync(
+            $"/api/sets/{setId}/modify-prompt", new { prompt, instructions, paragraphIndex, section, imageCount, resolution });
+
+    private async Task<int> CreateUploadDraftAsync()
+    {
+        var form = new MultipartFormDataContent
+        {
+            { new StringContent("Draft prompt."), "prompt" },
+            { new StringContent("Native"), "resolution" },
+            { new StringContent("2"), "count" },
+            { new StringContent("true"), "draft" },
+            { new StringContent("Upload"), "sourceKind" },
+        };
+        var file = new ByteArrayContent([0x89, 0x50, 0x4E, 0x47, 1, 2, 3]);
+        file.Headers.ContentType = new("image/png");
+        form.Add(file, "image", "fox.png");
+        var response = await _client.PostAsync("/api/sets", form);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+    }
+
+    [Fact]
+    public async Task ModifiedSet_QueuesImagesWithTheNewPrompt()
+    {
+        await SetVisionApiKeyAsync(_client);
+        var setId = await CreateSetAsync();
+        _factory.Vision.Answer = "A fox at night.";
+
+        (await ModifyAsync(setId, "A fox.", "Make it night-time.", imageCount: 3, resolution: "Portrait")).EnsureSuccessStatusCode();
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Jobs.Count == 2, "a second job");
+
+        var set = await GetSetAsync(_client, setId);
+        var job = set.Jobs.MaxBy(j => j.Id)!;
+        Assert.Equal(("A fox at night.", "Portrait", 3), (job.Prompt, job.Resolution, job.RequestedCount));
+        Assert.Equal("A fox at night.", set.Prompt);
+    }
+
+    [Fact]
+    public async Task ModifiedDraft_QueuesNoImages()
+    {
+        var setId = await CreateUploadDraftAsync();
+        await SetVisionApiKeyAsync(_client);
+
+        (await ModifyAsync(setId, "A fox.", "Make it night-time.", imageCount: null, resolution: null)).EnsureSuccessStatusCode();
+        await WaitForStateAsync(setId, PromptGenerationState.Done);
+
+        var set = await GetSetAsync(_client, setId);
+        Assert.True(set.IsDraft);
+        Assert.Empty(set.Jobs);
+    }
+
+    [Fact]
+    public async Task FailedModification_QueuesNoImages()
+    {
+        await SetVisionApiKeyAsync(_client);
+        var setId = await CreateSetAsync();
+        _factory.Vision.Status = HttpStatusCode.InternalServerError;
+
+        (await ModifyAsync(setId, "A fox.", "Make it night-time.")).EnsureSuccessStatusCode();
+        await WaitForStateAsync(setId, PromptGenerationState.Failed);
+
+        Assert.Single((await GetSetAsync(_client, setId)).Jobs);
+    }
+
+    [Fact]
+    public async Task SetWithoutValidImageSettings_IsRejected()
+    {
+        await SetVisionApiKeyAsync(_client);
+        var setId = await CreateSetAsync();
+
+        Assert.Contains("between 1", await ErrorAsync(await ModifyAsync(setId, "A fox.", "Night.", imageCount: 0)));
+        Assert.Contains("between 1", await ErrorAsync(await ModifyAsync(setId, "A fox.", "Night.", imageCount: null)));
+        Assert.Contains("resolution", await ErrorAsync(await ModifyAsync(setId, "A fox.", "Night.", resolution: "Huge")));
+        Assert.Empty(_factory.Vision.Requests);
+    }
 
     private Task WaitForStateAsync(int setId, PromptGenerationState state) =>
         WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).PromptGeneration.State == state, $"modification {state}");

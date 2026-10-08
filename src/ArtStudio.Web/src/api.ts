@@ -70,6 +70,17 @@ export interface PromptGeneration {
   text: string | null
 }
 
+export interface ModifiedParagraph {
+  index: number
+  section: string
+}
+
+/** Images queued with the new prompt once a modification is done. */
+export interface ImagesToQueue {
+  count: number
+  resolution: string
+}
+
 export interface VisionSettings {
   hasApiKey: boolean
 }
@@ -178,12 +189,14 @@ export const api = {
   visionSettings: () => request<VisionSettings>('GET', '/api/vision'),
   saveVisionApiKey: (apiKey: string) => request<VisionSettings>('PUT', '/api/vision', { apiKey }),
   removeVisionApiKey: () => request<VisionSettings>('DELETE', '/api/vision'),
-  modifyPrompt: (setId: number, prompt: string, instructions: string, paragraph?: { index: number; section: string }) =>
+  modifyPrompt: (setId: number, prompt: string, instructions: string, paragraph?: ModifiedParagraph, images?: ImagesToQueue) =>
     request<void>('POST', `/api/sets/${setId}/modify-prompt`, {
       prompt,
       instructions,
       paragraphIndex: paragraph?.index,
       section: paragraph?.section,
+      imageCount: images?.count,
+      resolution: images?.resolution,
     }),
   pickImage: (setId: number, imageId: number) => request<void>('POST', `/api/sets/${setId}/picks`, { imageId }),
   unpickImage: (setId: number, imageId: number) => request<void>('DELETE', `/api/sets/${setId}/picks/${imageId}`),

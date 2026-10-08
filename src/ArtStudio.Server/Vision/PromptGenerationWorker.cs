@@ -85,11 +85,13 @@ public sealed class PromptGenerationWorker(
             var (answer, prompt) = set is { ModifyInstructions: { } instructions, ModifyBasePrompt: { } basePrompt }
                 ? await ModifyAsync(key, basePrompt, set.ModifyParagraphIndex, set.ModifySection, instructions, runToken)
                 : await DescribeSourceImageAsync(key, set.SourceImagePath, runToken);
-            await FinishRunningAsync(db, setId, s => s
+            var finished = await FinishRunningAsync(db, setId, s => s
                 .SetProperty(set => set.GeneratedPrompt, prompt)
                 .SetProperty(set => set.Prompt, prompt)
                 .SetProperty(set => set.PromptGeneration, PromptGenerationState.Done)
                 .SetProperty(set => set.PromptGenerationTruncated, answer.Truncated));
+            if (finished && set is { ModifyImageCount: { } count, ModifyResolution: { } resolution })
+                await QueueImagesAsync(scope.ServiceProvider.GetRequiredService<QueueService>(), setId, count, prompt, resolution);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
@@ -132,14 +134,28 @@ public sealed class PromptGenerationWorker(
         return (answer, PromptModifier.Apply(basePrompt, paragraphIndex, answer.Text));
     }
 
-    private async Task FinishRunningAsync(
+    private async Task QueueImagesAsync(QueueService queueService, int setId, int count, string prompt, string resolution)
+    {
+        try
+        {
+            await queueService.EnqueueAsync(setId, count, prompt, resolution, CancellationToken.None);
+        }
+        catch (UserFacingException ex)
+        {
+            logger.LogWarning("Set {SetId} was modified, but its images could not be queued: {Reason}", setId, ex.Message);
+        }
+    }
+
+    /// <summary>Applies the setters unless the run was cancelled meanwhile; returns whether it did.</summary>
+    private async Task<bool> FinishRunningAsync(
         StudioDbContext db,
         int setId,
         Action<Microsoft.EntityFrameworkCore.Query.UpdateSettersBuilder<PromptSet>> setters)
     {
-        await db.PromptSets
+        var updated = await db.PromptSets
             .Where(s => s.Id == setId && s.PromptGeneration == PromptGenerationState.Running)
             .ExecuteUpdateAsync(setters, CancellationToken.None);
         await notifier.SetUpdated(setId);
+        return updated > 0;
     }
 }

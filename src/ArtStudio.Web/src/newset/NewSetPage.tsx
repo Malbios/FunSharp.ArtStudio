@@ -98,13 +98,15 @@ export function NewSetPage() {
     }
   }
 
+  const imagesAfterModify = isDraft ? undefined : { count, resolution }
+
   async function queueModification(target: ModifyTarget, instructions: string) {
     if (!baseSet) return
     const paragraph =
       target.index === undefined
         ? undefined
         : { index: joinedIndex(paragraphs, target.index), section: paragraphLabels(paragraphs.length)[target.index] }
-    await api.modifyPrompt(baseSet.id, prompt, instructions, paragraph)
+    await api.modifyPrompt(baseSet.id, prompt, instructions, paragraph, imagesAfterModify)
     setError(undefined)
     setReplacePromptWhenGenerated(true)
     setGeneratedHere(true)
@@ -246,6 +248,10 @@ export function NewSetPage() {
         <ModifyPromptDialog
           subject={modifying.index === undefined ? 'Whole prompt' : modifyLabels[modifying.index]}
           text={modifying.index === undefined ? prompt : paragraphs[modifying.index]}
+          hint={
+            imagesAfterModify &&
+            `When it's done, ${count} ${count === 1 ? 'image is' : 'images are'} queued with the new prompt (${resolution}).`
+          }
           onSubmit={(instructions) => queueModification(modifying, instructions)}
           onClose={() => setModifying(undefined)}
         />

@@ -126,12 +126,13 @@ public sealed class SetService(
             throw new UserFacingException("This set has no inspiration image to describe.");
         await EnsureVisionCanStartAsync(set, ct);
 
-        SetModification(set, instructions: null, basePrompt: null, paragraphIndex: null, section: null);
+        SetModification(set, null);
         await MarkPromptGenerationQueuedAsync(set, ct);
     }
 
     public async Task QueuePromptModificationAsync(
-        int setId, string prompt, string instructions, int? paragraphIndex, string? section, CancellationToken ct)
+        int setId, string prompt, string instructions, int? paragraphIndex, string? section,
+        int? imageCount, string? resolution, CancellationToken ct)
     {
         var set = await FindSetAsync(setId, ct);
         if (string.IsNullOrWhiteSpace(prompt))
@@ -140,9 +141,10 @@ public sealed class SetService(
             throw new UserFacingException("Describe how the prompt should change.");
         if (paragraphIndex is { } index && (index < 0 || index >= PromptModifier.Paragraphs(prompt).Count))
             throw new UserFacingException("That paragraph is not part of the prompt.");
+        (int Count, string Resolution)? images = set.IsDraft ? null : ValidatedImages(imageCount, resolution);
         await EnsureVisionCanStartAsync(set, ct);
 
-        SetModification(set, instructions.Trim(), prompt.Trim(), paragraphIndex, section?.Trim());
+        SetModification(set, new(instructions.Trim(), prompt.Trim(), paragraphIndex, section?.Trim(), images?.Count, images?.Resolution));
         await MarkPromptGenerationQueuedAsync(set, ct);
     }
 
@@ -154,12 +156,26 @@ public sealed class SetService(
             throw new UserFacingException("Set the vision API key in Settings first.");
     }
 
-    private static void SetModification(PromptSet set, string? instructions, string? basePrompt, int? paragraphIndex, string? section)
+    private static (int Count, string Resolution) ValidatedImages(int? imageCount, string? resolution)
     {
-        set.ModifyInstructions = instructions;
-        set.ModifyBasePrompt = basePrompt;
-        set.ModifyParagraphIndex = paragraphIndex;
-        set.ModifySection = section;
+        if (imageCount is not { } count || count is < 1 or > QueueService.MaxImagesPerJob)
+            throw new UserFacingException($"Image count must be between 1 and {QueueService.MaxImagesPerJob}.");
+        var preset = Resolutions.Find(resolution ?? "")
+            ?? throw new UserFacingException("Choose a resolution.");
+        return (count, preset.Name);
+    }
+
+    private sealed record Modification(
+        string Instructions, string BasePrompt, int? ParagraphIndex, string? Section, int? ImageCount, string? Resolution);
+
+    private static void SetModification(PromptSet set, Modification? modification)
+    {
+        set.ModifyInstructions = modification?.Instructions;
+        set.ModifyBasePrompt = modification?.BasePrompt;
+        set.ModifyParagraphIndex = modification?.ParagraphIndex;
+        set.ModifySection = modification?.Section;
+        set.ModifyImageCount = modification?.ImageCount;
+        set.ModifyResolution = modification?.Resolution;
     }
 
     private async Task QueuePromptGenerationIfKeySetAsync(PromptSet set, CancellationToken ct)
