@@ -52,7 +52,6 @@ public sealed class SetService(
             CreatedAt = clock.GetUtcNow(),
             IsDraft = request.AsDraft,
         };
-        var imagesAfterPrompt = request.AsDraft ? ImagesAfterPrompt(set, request.Count, resolution: null) : null;
 
 
         var deviation = request.Source is SetSource.DeviantArtUrl deviantArt
@@ -72,8 +71,8 @@ public sealed class SetService(
                 break;
         }
 
-        if (imagesAfterPrompt is not null)
-            await QueuePromptGenerationIfKeySetAsync(set, imagesAfterPrompt, ct);
+        if (set.IsDraft)
+            await QueuePromptGenerationIfKeySetAsync(set, ct);
         else
             await queueService.EnqueueAsync(set.Id, request.Count, prompt: null, resolution: null, ct);
         return set;
@@ -96,7 +95,7 @@ public sealed class SetService(
         await db.SaveChangesAsync(ct);
 
         await AttachDeviationAsync(set, deviation, ct);
-        await QueuePromptGenerationIfKeySetAsync(set, new(DefaultImageCount, set.Resolution), ct);
+        await QueuePromptGenerationIfKeySetAsync(set, ct);
         return set;
     }
 
@@ -194,22 +193,23 @@ public sealed class SetService(
         set.ModifySection = modification?.Section;
     }
 
-    private async Task QueuePromptGenerationIfKeySetAsync(PromptSet set, ImagesToQueue images, CancellationToken ct)
+    /// <summary>The automatic prompt for a new draft; it queues no images, so the draft stays in Drafts.</summary>
+    private async Task QueuePromptGenerationIfKeySetAsync(PromptSet set, CancellationToken ct)
     {
         if (await visionApiKey.HasKeyAsync(ct))
-            await MarkPromptGenerationQueuedAsync(set, images, ct);
+            await MarkPromptGenerationQueuedAsync(set, images: null, ct);
         else
             await notifier.SetUpdated(set.Id);
     }
 
-    private async Task MarkPromptGenerationQueuedAsync(PromptSet set, ImagesToQueue images, CancellationToken ct)
+    private async Task MarkPromptGenerationQueuedAsync(PromptSet set, ImagesToQueue? images, CancellationToken ct)
     {
         set.PromptGeneration = PromptGenerationState.Queued;
         set.PromptGenerationQueuedAt = clock.GetUtcNow();
         set.PromptGenerationError = null;
         set.PromptGenerationTruncated = false;
-        set.ImagesAfterPromptCount = images.Count;
-        set.ImagesAfterPromptResolution = images.Resolution;
+        set.ImagesAfterPromptCount = images?.Count;
+        set.ImagesAfterPromptResolution = images?.Resolution;
         await db.SaveChangesAsync(ct);
         promptQueue.Wake();
         await notifier.SetUpdated(set.Id);

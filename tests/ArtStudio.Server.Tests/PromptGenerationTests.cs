@@ -60,9 +60,8 @@ public sealed class PromptGenerationTests : IDisposable
         var set = await GetSetAsync(_client, setId);
         Assert.Equal(_factory.Vision.Answer, set.Prompt);
         Assert.Equal(_factory.Vision.Answer, set.PromptGeneration.Text);
-        Assert.False(set.IsDraft);
-        var job = Assert.Single(set.Jobs);
-        Assert.Equal((_factory.Vision.Answer, "Native", 2), (job.Prompt, job.Resolution, job.RequestedCount));
+        Assert.True(set.IsDraft);
+        Assert.Empty(set.Jobs);
         var request = Assert.Single(_factory.Vision.Requests);
         Assert.Equal("Bearer secret", request.Authorization);
         var content = request.Body["messages"]![0]!["content"]!;
@@ -102,9 +101,8 @@ public sealed class PromptGenerationTests : IDisposable
             $"data:image/jpeg;base64,{Convert.ToBase64String(FakeDeviantArt.JpegBytes)}",
             _factory.Vision.Requests.Single().Body["messages"]![0]!["content"]![1]!["image_url"]!["url"]!.GetValue<string>());
         var set = await GetSetAsync(_client, setId);
-        Assert.False(set.IsDraft);
-        var job = Assert.Single(set.Jobs);
-        Assert.Equal((set.Resolution, SetService.DefaultImageCount), (job.Resolution, job.RequestedCount));
+        Assert.True(set.IsDraft);
+        Assert.Empty(set.Jobs);
     }
 
     [Fact]
@@ -116,9 +114,11 @@ public sealed class PromptGenerationTests : IDisposable
 
         var generate = await _client.PostAsJsonAsync($"/api/sets/{setId}/generate-prompt", new { imageCount = 4, resolution = "Wide" });
         generate.EnsureSuccessStatusCode();
-        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Jobs.Count == 2, "a second job");
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Jobs.Count == 1, "a job");
 
-        var job = (await GetSetAsync(_client, setId)).Jobs.MaxBy(j => j.Id)!;
+        var set = await GetSetAsync(_client, setId);
+        Assert.False(set.IsDraft);
+        var job = Assert.Single(set.Jobs);
         Assert.Equal((_factory.Vision.Answer, "Wide", 4), (job.Prompt, job.Resolution, job.RequestedCount));
     }
 
