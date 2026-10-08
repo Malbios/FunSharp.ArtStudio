@@ -22,6 +22,7 @@ public class GenerationJob
     public string? Error { get; set; }
     public long QueuePosition { get; set; }
     public string? CurrentComfyPromptId { get; set; }
+    public long? CurrentSeed { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? StartedAt { get; set; }
     public DateTimeOffset? FinishedAt { get; set; }

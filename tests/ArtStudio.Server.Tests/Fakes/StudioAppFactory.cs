@@ -21,10 +21,13 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
         Converters = { new JsonStringEnumConverter() },
     };
 
-    public string DataDirectory { get; } =
+    public string DataDirectory { get; init; } =
         Path.Combine(Path.GetTempPath(), "ArtStudioTests", Guid.NewGuid().ToString("N"));
 
-    public FakeComfyServer Comfy { get; } = new();
+    /// <summary>Set to simulate a restart: a second app then starts on the same data.</summary>
+    public bool KeepDataDirectory { get; init; }
+
+    public FakeComfyServer Comfy { get; init; } = new();
 
     public FakeDeviantArt DeviantArt { get; } = new();
 
@@ -97,6 +100,8 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
         // Only this app's pool: clearing all pools would close connections of tests running in parallel.
         using (var connection = new SqliteConnection($"Data Source={Path.Combine(DataDirectory, "artstudio.db")}"))
             SqliteConnection.ClearPool(connection);
+        if (KeepDataDirectory)
+            return;
         try
         {
             Directory.Delete(DataDirectory, recursive: true);

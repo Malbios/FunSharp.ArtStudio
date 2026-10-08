@@ -73,6 +73,14 @@ public sealed class ComfyClient(HttpClient http)
             .Any(entry => entry is JsonArray { Count: > 1 } item && item[1]?.GetValue<string>() == promptId);
     }
 
+    public async Task<bool> IsQueuedOrRunningAsync(string promptId, CancellationToken ct)
+    {
+        var queue = await SendForJsonAsync(HttpMethod.Get, "/queue", null, ct);
+        return new[] { "queue_running", "queue_pending" }
+            .SelectMany(key => queue?[key] as JsonArray ?? [])
+            .Any(entry => entry is JsonArray { Count: > 1 } item && item[1]?.GetValue<string>() == promptId);
+    }
+
     public async Task DeleteFromQueueAsync(string promptId, CancellationToken ct)
     {
         await SendForJsonAsync(HttpMethod.Post, "/queue", new JsonObject { ["delete"] = new JsonArray(promptId) }, ct);

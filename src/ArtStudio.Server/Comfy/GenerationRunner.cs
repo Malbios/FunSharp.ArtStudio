@@ -20,7 +20,30 @@ public sealed class GenerationRunner(GenerationTiming timing, ILogger<Generation
             logger.LogWarning("ComfyUI reported node errors for {PromptId}: {NodeErrors}", queued.PromptId, queued.NodeErrors);
         await onQueued(queued.PromptId);
 
-        var status = await WaitForCompletionAsync(client, queued.PromptId, ct);
+        return await DownloadWhenDoneAsync(client, queued.PromptId, ct);
+    }
+
+    /// <summary>Collects a run queued before a restart; null if ComfyUI no longer knows it.</summary>
+    public async Task<IReadOnlyList<DownloadedImage>?> ResumeAsync(ComfyClient client, string promptId, CancellationToken ct)
+    {
+        if (!await IsKnownAsync(client, promptId, ct))
+            return null;
+        return await DownloadWhenDoneAsync(client, promptId, ct);
+    }
+
+    private static async Task<bool> IsKnownAsync(ComfyClient client, string promptId, CancellationToken ct)
+    {
+        if ((await client.GetRunStatusAsync(promptId, ct)).State != ComfyRunState.Pending)
+            return true;
+        if (await client.IsQueuedOrRunningAsync(promptId, ct))
+            return true;
+        // It may have finished between the two checks.
+        return (await client.GetRunStatusAsync(promptId, ct)).State != ComfyRunState.Pending;
+    }
+
+    private async Task<IReadOnlyList<DownloadedImage>> DownloadWhenDoneAsync(ComfyClient client, string promptId, CancellationToken ct)
+    {
+        var status = await WaitForCompletionAsync(client, promptId, ct);
 
         var images = new List<DownloadedImage>();
         foreach (var image in status.Images)

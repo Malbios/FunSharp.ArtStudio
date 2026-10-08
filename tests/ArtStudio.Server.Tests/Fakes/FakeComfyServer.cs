@@ -14,6 +14,8 @@ public sealed class FakeComfyServer : HttpMessageHandler
     public volatile string? CurrentPromptId;
 
     public List<string> SubmittedPrompts { get; } = [];
+    public List<long> SubmittedSeeds { get; } = [];
+    private readonly HashSet<string> _knownPromptIds = [];
     public List<string> DeletedPromptIds { get; } = [];
     public int InterruptCount { get; private set; }
 
@@ -42,13 +44,15 @@ public sealed class FakeComfyServer : HttpMessageHandler
     {
         var workflow = JsonNode.Parse(body)!["prompt"]!;
         SubmittedPrompts.Add(workflow["79:8"]!["inputs"]!["text"]!.GetValue<string>());
+        SubmittedSeeds.Add(workflow["79:129"]!["inputs"]!["seed"]!.GetValue<long>());
         CurrentPromptId = $"prompt-{++_promptCounter}";
+        _knownPromptIds.Add(CurrentPromptId);
         return FakeHttpHandler.Json($$"""{ "prompt_id": "{{CurrentPromptId}}", "node_errors": {} }""");
     }
 
     private HttpResponseMessage History(string promptId)
     {
-        if (HoldRuns)
+        if (HoldRuns || !_knownPromptIds.Contains(promptId))
             return FakeHttpHandler.Json("{}");
         if (FailRuns)
             return FakeHttpHandler.Json($$"""{ "{{promptId}}": { "status": { "status_str": "error", "completed": false, "messages": [] } } }""");

@@ -46,11 +46,10 @@ public sealed class QueueWorker(
     {
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<StudioDbContext>();
+        // The run id and seed are kept so the image ComfyUI was rendering can still be collected.
         await db.Jobs
             .Where(j => j.Status == JobStatus.Running)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(j => j.Status, JobStatus.Queued)
-                .SetProperty(j => j.CurrentComfyPromptId, (string?)null), ct);
+            .ExecuteUpdateAsync(s => s.SetProperty(j => j.Status, JobStatus.Queued), ct);
     }
 
     private async Task DrainQueueAsync(CancellationToken stoppingToken)
@@ -135,6 +134,8 @@ public sealed class QueueWorker(
         var resolution = Resolutions.Find(job.Resolution)
             ?? throw new UserFacingException($"Unknown resolution '{job.Resolution}'.");
 
+        await CollectRunFromBeforeRestartAsync(db, client, settings, job, ct);
+
         while (job.RemainingCount > 0)
         {
             var seed = seeds.Next();
@@ -143,32 +144,59 @@ public sealed class QueueWorker(
             var downloaded = await runner.RunAsync(client, workflow, async promptId =>
             {
                 job.CurrentComfyPromptId = promptId;
+                job.CurrentSeed = seed;
                 await db.SaveChangesAsync(ct);
             }, ct);
 
-            var images = new List<GeneratedImage>();
-            foreach (var image in downloaded)
-            {
-                var path = await ImageStore.SaveGeneratedAsync(
-                    settings.OutputDirectory, job.PromptSetId, seed, image.FileName, image.Content, CancellationToken.None);
-                images.Add(new GeneratedImage
-                {
-                    PromptSetId = job.PromptSetId,
-                    GenerationJobId = job.Id,
-                    FilePath = path,
-                    Seed = seed,
-                    CreatedAt = clock.GetUtcNow(),
-                });
-            }
-            db.Images.AddRange(images);
-            job.CompletedCount++;
-            job.CurrentComfyPromptId = null;
-            await db.SaveChangesAsync(CancellationToken.None);
-
-            foreach (var image in images)
-                await notifier.ImageAdded(image.Id, job.PromptSetId);
-            await notifier.JobUpdated(job.Id, job.PromptSetId);
+            await SaveImagesAsync(db, settings, job, seed, downloaded);
         }
+    }
+
+    private async Task CollectRunFromBeforeRestartAsync(
+        StudioDbContext db, ComfyClient client, StudioSettings settings, GenerationJob job, CancellationToken ct)
+    {
+        if (job.CurrentComfyPromptId is not { } promptId)
+            return;
+
+        var downloaded = job.CurrentSeed is null ? null : await runner.ResumeAsync(client, promptId, ct);
+        if (downloaded is null)
+        {
+            logger.LogInformation("ComfyUI no longer knows run {PromptId} of job {JobId}; rendering that image again", promptId, job.Id);
+            job.CurrentComfyPromptId = null;
+            job.CurrentSeed = null;
+            await db.SaveChangesAsync(ct);
+            return;
+        }
+
+        await SaveImagesAsync(db, settings, job, job.CurrentSeed!.Value, downloaded);
+    }
+
+    private async Task SaveImagesAsync(
+        StudioDbContext db, StudioSettings settings, GenerationJob job, long seed, IReadOnlyList<DownloadedImage> downloaded)
+    {
+        var images = new List<GeneratedImage>();
+        foreach (var image in downloaded)
+        {
+            var path = await ImageStore.SaveGeneratedAsync(
+                settings.OutputDirectory, job.PromptSetId, seed, image.FileName, image.Content, CancellationToken.None);
+            images.Add(new GeneratedImage
+            {
+                PromptSetId = job.PromptSetId,
+                GenerationJobId = job.Id,
+                FilePath = path,
+                Seed = seed,
+                CreatedAt = clock.GetUtcNow(),
+            });
+        }
+        db.Images.AddRange(images);
+        job.CompletedCount++;
+        job.CurrentComfyPromptId = null;
+        job.CurrentSeed = null;
+        await db.SaveChangesAsync(CancellationToken.None);
+
+        foreach (var image in images)
+            await notifier.ImageAdded(image.Id, job.PromptSetId);
+        await notifier.JobUpdated(job.Id, job.PromptSetId);
     }
 
     private async Task FinishAsync(StudioDbContext db, GenerationJob job, JobStatus status, string? error)
@@ -176,6 +204,7 @@ public sealed class QueueWorker(
         job.Status = status;
         job.Error = error;
         job.CurrentComfyPromptId = null;
+        job.CurrentSeed = null;
         job.FinishedAt = clock.GetUtcNow();
         await db.SaveChangesAsync(CancellationToken.None);
         await notifier.JobUpdated(job.Id, job.PromptSetId);
