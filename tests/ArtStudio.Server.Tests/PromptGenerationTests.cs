@@ -69,6 +69,25 @@ public sealed class PromptGenerationTests : IDisposable
     }
 
     [Fact]
+    public async Task GeneratingAfterAModification_DescribesTheImageAgain()
+    {
+        await SetVisionApiKeyAsync(_client);
+        var setId = await CreateUploadDraftAsync();
+        await WaitForStateAsync(setId, PromptGenerationState.Done);
+        var modify = await _client.PostAsJsonAsync($"/api/sets/{setId}/modify-prompt", new { prompt = "A fox.", instructions = "Night." });
+        modify.EnsureSuccessStatusCode();
+        await WaitForStateAsync(setId, PromptGenerationState.Done);
+
+        (await GeneratePromptAsync(setId)).EnsureSuccessStatusCode();
+        await WaitForStateAsync(setId, PromptGenerationState.Done);
+
+        var set = await GetSetAsync(_client, setId);
+        Assert.Equal(PromptGenerationKind.Generate, set.PromptGeneration.Kind);
+        Assert.Equal(3, _factory.Vision.Requests.Count);
+        Assert.Equal("image_url", _factory.Vision.Requests[2].Body["messages"]![0]!["content"]![1]!["type"]!.GetValue<string>());
+    }
+
+    [Fact]
     public async Task BulkDeviantArtDraft_WithKey_IsQueuedToo()
     {
         await SetVisionApiKeyAsync(_client);

@@ -54,7 +54,6 @@ public static class ServiceRegistration
                     ? new FakeVisionHandler(imageAnswerTime: TimeSpan.FromSeconds(5), textAnswerTime: TimeSpan.FromSeconds(2))
                     : new SocketsHttpHandler());
         services.AddSingleton<VisionClient>();
-        services.AddSingleton<PromptModifier>();
         services.AddSingleton(VisionInstruction.FromEmbeddedText());
         services.AddSingleton<VisionApiKey>();
         services.AddSingleton<PromptGenerationQueue>();

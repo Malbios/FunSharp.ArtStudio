@@ -1,13 +1,17 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ArtStudio.Server.Domain;
 using ArtStudio.Server.Tests.Fakes;
+using ArtStudio.Server.Vision;
 using static ArtStudio.Server.Tests.Fakes.StudioAppFactory;
 
 namespace ArtStudio.Server.Tests;
 
 public sealed class PromptModifyTests : IDisposable
 {
+    private const string FourParagraphs = "A fox.\n\nA forest.\n\nEye level.\n\nSoft watercolour.";
+
     private readonly StudioAppFactory _factory = new();
     private readonly HttpClient _client;
 
@@ -15,15 +19,21 @@ public sealed class PromptModifyTests : IDisposable
 
     public void Dispose() => _factory.Dispose();
 
-    private Task<HttpResponseMessage> ModifyAsync(string text, string instructions, string? section = null) =>
-        _client.PostAsJsonAsync("/api/vision/modify", new { text, instructions, section });
+    private Task<int> CreateSetAsync() => _factory.CreateSetAsync(_client, "Saved prompt.");
+
+    private Task<HttpResponseMessage> ModifyAsync(
+        int setId, string prompt, string instructions, int? paragraphIndex = null, string? section = null) =>
+        _client.PostAsJsonAsync($"/api/sets/{setId}/modify-prompt", new { prompt, instructions, paragraphIndex, section });
+
+    private Task WaitForStateAsync(int setId, PromptGenerationState state) =>
+        WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).PromptGeneration.State == state, $"modification {state}");
 
     private string SentText()
     {
         var content = Assert.Single(_factory.Vision.Requests).Body["messages"]![0]!["content"]!.AsArray();
         var part = Assert.Single(content);
         Assert.Equal("text", part!["type"]!.GetValue<string>());
-        return part["text"]!.GetValue<string>();
+        return part["text"]!.GetValue<string>().ReplaceLineEndings("\n");
     }
 
     private static async Task<string> ErrorAsync(HttpResponseMessage response)
@@ -33,69 +43,103 @@ public sealed class PromptModifyTests : IDisposable
     }
 
     [Fact]
-    public async Task WholePrompt_IsSentAsTextWithTheInstructions()
+    public async Task WholePrompt_IsQueued_AndBecomesTheSetsPrompt()
     {
         await SetVisionApiKeyAsync(_client, "secret");
+        var setId = await CreateSetAsync();
+        _factory.Vision.Answer = "A fox at night.\n\nA dark forest.";
 
-        (await ModifyAsync("A fox.\n\nA forest.", "Make it night-time.")).EnsureSuccessStatusCode();
+        (await ModifyAsync(setId, "A fox.\n\nA forest.", "Make it night-time.")).EnsureSuccessStatusCode();
+        await WaitForStateAsync(setId, PromptGenerationState.Done);
 
+        var set = await GetSetAsync(_client, setId);
+        Assert.Equal("A fox at night.\n\nA dark forest.", set.Prompt);
+        Assert.Equal(set.Prompt, set.PromptGeneration.Text);
+        Assert.Equal(PromptGenerationKind.Modify, set.PromptGeneration.Kind);
         Assert.Equal("Bearer secret", _factory.Vision.Requests.Single().Authorization);
         var text = SentText();
         Assert.StartsWith("Here is an image-generation prompt:", text);
-        Assert.Contains("<prompt>\nA fox.\n\nA forest.\n</prompt>", text.ReplaceLineEndings("\n"));
-        Assert.Contains("<instructions>\nMake it night-time.\n</instructions>", text.ReplaceLineEndings("\n"));
+        Assert.Contains("<prompt>\nA fox.\n\nA forest.\n</prompt>", text);
+        Assert.Contains("<instructions>\nMake it night-time.\n</instructions>", text);
     }
 
     [Fact]
-    public async Task Paragraph_IsSentWithItsSection()
+    public async Task Paragraph_ReplacesOnlyThatParagraph()
     {
         await SetVisionApiKeyAsync(_client);
+        var setId = await CreateSetAsync();
+        _factory.Vision.Answer = "Thick oil paint.\n\nWith visible strokes.";
 
-        (await ModifyAsync("Soft watercolour.", "Make it oil paint.", "Art style")).EnsureSuccessStatusCode();
+        (await ModifyAsync(setId, FourParagraphs, "Make it oil paint.", 3, "Art style")).EnsureSuccessStatusCode();
+        await WaitForStateAsync(setId, PromptGenerationState.Done);
 
-        var text = SentText().ReplaceLineEndings("\n");
+        Assert.Equal("A fox.\n\nA forest.\n\nEye level.\n\nThick oil paint. With visible strokes.", (await GetSetAsync(_client, setId)).Prompt);
+        var text = SentText();
         Assert.StartsWith("Here is the \"Art style\" paragraph", text);
         Assert.Contains("<paragraph>\nSoft watercolour.\n</paragraph>", text);
-        Assert.Contains("<instructions>\nMake it oil paint.\n</instructions>", text);
+        Assert.DoesNotContain("A forest.", text);
     }
 
     [Fact]
-    public async Task Answer_IsCleaned_AndReportsTruncation()
+    public async Task CutOffAnswer_IsReported()
     {
         await SetVisionApiKeyAsync(_client);
-        _factory.Vision.Answer = "A fox’s den.\r\n\r\nAt night.";
+        var setId = await CreateSetAsync();
         _factory.Vision.FinishReason = "length";
 
-        var response = await ModifyAsync("A fox's den.", "Make it night-time.");
+        (await ModifyAsync(setId, "A fox.", "Make it night-time.")).EnsureSuccessStatusCode();
+        await WaitForStateAsync(setId, PromptGenerationState.Done);
 
-        var answer = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("A fox's den.\n\nAt night.", answer.GetProperty("text").GetString());
-        Assert.True(answer.GetProperty("truncated").GetBoolean());
+        Assert.True((await GetSetAsync(_client, setId)).PromptGeneration.Truncated);
     }
 
     [Fact]
-    public async Task WithoutKey_AsksForIt()
-    {
-        Assert.Contains("API key", await ErrorAsync(await ModifyAsync("A fox.", "Make it night-time.")));
-        Assert.Empty(_factory.Vision.Requests);
-    }
-
-    [Fact]
-    public async Task EmptyTextOrInstructions_AreRejected()
+    public async Task Failure_IsShownAsAFailedModification()
     {
         await SetVisionApiKeyAsync(_client);
-
-        Assert.Contains("no prompt text", await ErrorAsync(await ModifyAsync("  ", "Make it night-time.")));
-        Assert.Contains("Describe", await ErrorAsync(await ModifyAsync("A fox.", " ")));
-        Assert.Empty(_factory.Vision.Requests);
-    }
-
-    [Fact]
-    public async Task UnreachableServer_IsAReadableError()
-    {
-        await SetVisionApiKeyAsync(_client);
+        var setId = await CreateSetAsync();
         _factory.Vision.Unreachable = true;
 
-        Assert.Contains("SSH tunnel", await ErrorAsync(await ModifyAsync("A fox.", "Make it night-time.")));
+        (await ModifyAsync(setId, "A fox.", "Make it night-time.")).EnsureSuccessStatusCode();
+        await WaitForStateAsync(setId, PromptGenerationState.Failed);
+
+        var generation = (await GetSetAsync(_client, setId)).PromptGeneration;
+        Assert.Equal(PromptGenerationKind.Modify, generation.Kind);
+        Assert.Contains("SSH tunnel", generation.Error);
+        Assert.Equal("Saved prompt.", (await GetSetAsync(_client, setId)).Prompt);
+    }
+
+    [Fact]
+    public async Task InvalidRequests_AreRejected()
+    {
+        var setId = await CreateSetAsync();
+        Assert.Contains("API key", await ErrorAsync(await ModifyAsync(setId, "A fox.", "Make it night-time.")));
+
+        await SetVisionApiKeyAsync(_client);
+        Assert.Contains("no prompt text", await ErrorAsync(await ModifyAsync(setId, "  ", "Make it night-time.")));
+        Assert.Contains("Describe", await ErrorAsync(await ModifyAsync(setId, "A fox.", " ")));
+        Assert.Contains("paragraph", await ErrorAsync(await ModifyAsync(setId, FourParagraphs, "Oil paint.", 4, "Art style")));
+        Assert.Empty(_factory.Vision.Requests);
+    }
+
+    [Fact]
+    public async Task WhilePending_AnotherRequestIsRejected()
+    {
+        await SetVisionApiKeyAsync(_client);
+        var setId = await CreateSetAsync();
+        _factory.Vision.HoldAnswers = true;
+
+        (await ModifyAsync(setId, "A fox.", "Make it night-time.")).EnsureSuccessStatusCode();
+
+        Assert.Contains("already", await ErrorAsync(await ModifyAsync(setId, "A fox.", "Make it day.")));
+        _factory.Vision.HoldAnswers = false;
+        await WaitForStateAsync(setId, PromptGenerationState.Done);
+    }
+
+    [Fact]
+    public void Apply_KeepsTheOtherParagraphs()
+    {
+        Assert.Equal("A fox's den.\n\nB", PromptModifier.Apply("A\n\nB", 0, "A fox’s den.\r\n\r\n"));
+        Assert.Equal("New whole prompt.", PromptModifier.Apply("A\n\nB", null, "New whole prompt."));
     }
 }

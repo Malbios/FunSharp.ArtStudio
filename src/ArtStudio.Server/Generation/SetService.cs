@@ -124,12 +124,42 @@ public sealed class SetService(
         var set = await FindSetAsync(setId, ct);
         if (set.SourceImagePath is null)
             throw new UserFacingException("This set has no inspiration image to describe.");
+        await EnsureVisionCanStartAsync(set, ct);
+
+        SetModification(set, instructions: null, basePrompt: null, paragraphIndex: null, section: null);
+        await MarkPromptGenerationQueuedAsync(set, ct);
+    }
+
+    public async Task QueuePromptModificationAsync(
+        int setId, string prompt, string instructions, int? paragraphIndex, string? section, CancellationToken ct)
+    {
+        var set = await FindSetAsync(setId, ct);
+        if (string.IsNullOrWhiteSpace(prompt))
+            throw new UserFacingException("There is no prompt text to modify.");
+        if (string.IsNullOrWhiteSpace(instructions))
+            throw new UserFacingException("Describe how the prompt should change.");
+        if (paragraphIndex is { } index && (index < 0 || index >= PromptModifier.Paragraphs(prompt).Count))
+            throw new UserFacingException("That paragraph is not part of the prompt.");
+        await EnsureVisionCanStartAsync(set, ct);
+
+        SetModification(set, instructions.Trim(), prompt.Trim(), paragraphIndex, section?.Trim());
+        await MarkPromptGenerationQueuedAsync(set, ct);
+    }
+
+    private async Task EnsureVisionCanStartAsync(PromptSet set, CancellationToken ct)
+    {
         if (set.PromptGeneration is PromptGenerationState.Queued or PromptGenerationState.Running)
             throw new UserFacingException("A prompt for this set is already being generated.");
         if (!await visionApiKey.HasKeyAsync(ct))
             throw new UserFacingException("Set the vision API key in Settings first.");
+    }
 
-        await MarkPromptGenerationQueuedAsync(set, ct);
+    private static void SetModification(PromptSet set, string? instructions, string? basePrompt, int? paragraphIndex, string? section)
+    {
+        set.ModifyInstructions = instructions;
+        set.ModifyBasePrompt = basePrompt;
+        set.ModifyParagraphIndex = paragraphIndex;
+        set.ModifySection = section;
     }
 
     private async Task QueuePromptGenerationIfKeySetAsync(PromptSet set, CancellationToken ct)

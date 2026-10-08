@@ -17,6 +17,12 @@ public enum PromptGenerationState
     Failed,
 }
 
+public enum PromptGenerationKind
+{
+    Generate,
+    Modify,
+}
+
 public class PromptSet
 {
     public int Id { get; set; }
@@ -36,6 +42,10 @@ public class PromptSet
     public string? PromptGenerationError { get; set; }
     public bool PromptGenerationTruncated { get; set; }
     public string? GeneratedPrompt { get; set; }
+    public string? ModifyInstructions { get; set; }
+    public string? ModifyBasePrompt { get; set; }
+    public int? ModifyParagraphIndex { get; set; }
+    public string? ModifySection { get; set; }
 
     public List<GenerationJob> Jobs { get; set; } = [];
     public List<GeneratedImage> Images { get; set; } = [];

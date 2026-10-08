@@ -90,19 +90,17 @@ public sealed record QueueDraftRequest(string Prompt, string Resolution, int Cou
 
 public sealed record DeviantArtDraftRequest(string Url);
 
-public sealed record PromptGenerationDto(PromptGenerationState State, string? Error, bool Truncated, string? Text)
+public sealed record PromptGenerationDto(PromptGenerationState State, PromptGenerationKind Kind, string? Error, bool Truncated, string? Text)
 {
     public static PromptGenerationDto From(PromptSet set) =>
-        new(set.PromptGeneration, set.PromptGenerationError, set.PromptGenerationTruncated, set.GeneratedPrompt);
+        new(set.PromptGeneration, set.ModifyInstructions is null ? PromptGenerationKind.Generate : PromptGenerationKind.Modify, set.PromptGenerationError, set.PromptGenerationTruncated, set.GeneratedPrompt);
 }
 
 public sealed record VisionSettingsDto(bool HasApiKey);
 
 public sealed record VisionApiKeyRequest(string ApiKey);
 
-public sealed record ModifyPromptRequest(string? Text, string? Instructions, string? Section);
-
-public sealed record ModifiedPromptDto(string Text, bool Truncated);
+public sealed record ModifyPromptRequest(string? Prompt, string? Instructions, int? ParagraphIndex, string? Section);
 
 public sealed record PickImageRequest(int ImageId);
 

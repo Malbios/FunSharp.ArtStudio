@@ -36,11 +36,6 @@ public static class SettingsEndpoints
             await apiKey.ClearAsync(ct);
             return new VisionSettingsDto(false);
         });
-        app.MapPost("/api/vision/modify", async (ModifyPromptRequest request, PromptModifier modifier, CancellationToken ct) =>
-        {
-            var answer = await modifier.ModifyAsync(request.Text, request.Instructions, request.Section, ct);
-            return new ModifiedPromptDto(answer.Text, answer.Truncated);
-        });
 
         var blocks = app.MapGroup("/api/building-blocks");
         blocks.MapGet("", async (StudioDbContext db, CancellationToken ct) =>

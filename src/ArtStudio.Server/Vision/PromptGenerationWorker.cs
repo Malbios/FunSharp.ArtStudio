@@ -79,8 +79,12 @@ public sealed class PromptGenerationWorker(
                 return;
             await notifier.SetUpdated(setId);
 
-            var answer = await DescribeSourceImageAsync(db, setId, runToken);
-            var prompt = PromptCleaner.Clean(answer.Text);
+            var set = await db.PromptSets.AsNoTracking().SingleAsync(s => s.Id == setId, runToken);
+            var key = await apiKey.GetAsync(runToken)
+                ?? throw new UserFacingException("Set the vision API key in Settings.");
+            var (answer, prompt) = set is { ModifyInstructions: { } instructions, ModifyBasePrompt: { } basePrompt }
+                ? await ModifyAsync(key, basePrompt, set.ModifyParagraphIndex, set.ModifySection, instructions, runToken)
+                : await DescribeSourceImageAsync(key, set.SourceImagePath, runToken);
             await FinishRunningAsync(db, setId, s => s
                 .SetProperty(set => set.GeneratedPrompt, prompt)
                 .SetProperty(set => set.Prompt, prompt)
@@ -109,16 +113,23 @@ public sealed class PromptGenerationWorker(
         }
     }
 
-    private async Task<VisionAnswer> DescribeSourceImageAsync(StudioDbContext db, int setId, CancellationToken ct)
+    private async Task<(VisionAnswer Answer, string Prompt)> DescribeSourceImageAsync(
+        string key, string? imagePath, CancellationToken ct)
     {
-        var key = await apiKey.GetAsync(ct)
-            ?? throw new UserFacingException("Set the vision API key in Settings.");
-        var imagePath = await db.PromptSets.Where(s => s.Id == setId).Select(s => s.SourceImagePath).SingleAsync(ct);
         if (imagePath is null || !File.Exists(imagePath))
             throw new UserFacingException("The draft's image file is missing.");
 
         var image = await File.ReadAllBytesAsync(imagePath, ct);
-        return await visionClient.DescribeAsync(key, image, ImageStore.ContentTypeFor(imagePath), instruction.Text, ct);
+        var answer = await visionClient.DescribeAsync(key, image, ImageStore.ContentTypeFor(imagePath), instruction.Text, ct);
+        return (answer, PromptCleaner.Clean(answer.Text));
+    }
+
+    private async Task<(VisionAnswer Answer, string Prompt)> ModifyAsync(
+        string key, string basePrompt, int? paragraphIndex, string? section, string instructions, CancellationToken ct)
+    {
+        var answer = await visionClient.CompleteAsync(
+            key, PromptModifier.BuildInstruction(basePrompt, paragraphIndex, section, instructions), ct);
+        return (answer, PromptModifier.Apply(basePrompt, paragraphIndex, answer.Text));
     }
 
     private async Task FinishRunningAsync(
