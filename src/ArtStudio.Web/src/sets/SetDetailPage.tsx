@@ -233,8 +233,8 @@ export function SetDetailPage() {
             {data.deviantArtUrl && (
               <p className="hint">
                 Inspired by{' '}
-                <a href={data.deviantArtUrl} target="_blank" rel="noreferrer">
-                  {data.deviantArtUrl}
+                <a href={data.deviantArtUrl} target="_blank" rel="noreferrer" title={data.deviantArtUrl}>
+                  DeviantArt
                 </a>
                 {data.deviantArtAuthor && (
                   <>
