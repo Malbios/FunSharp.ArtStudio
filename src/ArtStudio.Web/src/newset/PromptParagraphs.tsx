@@ -71,8 +71,15 @@ export function PromptParagraphs({ paragraphs, onChange, onError }: Props) {
     insertCleaned(index, textarea, text, length, length)
   }
 
+  const addCharacterButton = (
+    <button type="button" className="link-button add-character" onClick={() => onChange(addCharacter(paragraphs))}>
+      + Add character
+    </button>
+  )
+
   return (
     <div className="prompt-paragraphs">
+      {characterCount === 0 && addCharacterButton}
       {paragraphs.map((paragraph, index) => (
         <div key={index} className="prompt-paragraph">
           <div className="prompt-paragraph-label">
@@ -96,11 +103,7 @@ export function PromptParagraphs({ paragraphs, onChange, onError }: Props) {
             onChange={(e) => changeParagraph(index, e.target.value)}
             onPaste={(e) => paste(index, e)}
           />
-          {index === characterCount - 1 && (
-            <button type="button" className="link-button add-character" onClick={() => onChange(addCharacter(paragraphs))}>
-              + Add character
-            </button>
-          )}
+          {index === characterCount - 1 && addCharacterButton}
         </div>
       ))}
     </div>

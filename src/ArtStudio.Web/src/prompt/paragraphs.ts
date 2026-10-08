@@ -13,9 +13,13 @@ export function toParagraphs(text: string): string[] {
     .filter((paragraph) => paragraph.length > 0)
 }
 
-/** Splits a prompt into paragraph boxes, filling from the start and padding to the minimum number of boxes. */
+/**
+ * Splits a prompt into paragraph boxes. Exactly three paragraphs are a prompt without characters; other short
+ * prompts fill from the start and are padded to the minimum number of boxes.
+ */
 export function splitParagraphs(text: string): string[] {
   const paragraphs = toParagraphs(text)
+  if (paragraphs.length === FIXED_SECTIONS.length) return paragraphs
   while (paragraphs.length < MIN_PARAGRAPHS) paragraphs.push('')
   return paragraphs
 }

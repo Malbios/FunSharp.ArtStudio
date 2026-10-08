@@ -23,6 +23,12 @@ describe('splitParagraphs', () => {
     expect(splitParagraphs('')).toEqual(['', '', '', ''])
   })
 
+  it('treats exactly three paragraphs as a prompt without characters', () => {
+    const paragraphs = splitParagraphs('setting\n\ncomposition\n\nstyle')
+    expect(paragraphs).toEqual(['setting', 'composition', 'style'])
+    expect(paragraphLabels(paragraphs.length)).toEqual(['Setting', 'Composition', 'Art style'])
+  })
+
   it('keeps every paragraph of long prompts', () => {
     expect(splitParagraphs('a\n\nb\n\nc\n\nd\n\ne\n\nf')).toHaveLength(6)
   })
@@ -71,6 +77,7 @@ describe('pasteIntoParagraphs', () => {
 describe('character boxes', () => {
   it('adds a character before Setting', () => {
     expect(addCharacter(['c', 's', 'co', 'a'])).toEqual(['c', '', 's', 'co', 'a'])
+    expect(addCharacter(['s', 'co', 'a'])).toEqual(['', 's', 'co', 'a'])
   })
 
   it('removes a character but never goes below four boxes', () => {
