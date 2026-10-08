@@ -68,10 +68,6 @@ export function SetDetailPage() {
   }
 
   async function archiveSet() {
-    const confirmed = window.confirm(
-      `Archive set #${setId}? It keeps its DeviantArt link, so that deviation still counts as used. Queued, running or failed jobs of this set are cancelled.`,
-    )
-    if (!confirmed) return
     const destination = set.data?.readyToPostAt ? '/post' : setsOverview
     await changeStage(() => api.archiveSet(setId), destination)
   }
