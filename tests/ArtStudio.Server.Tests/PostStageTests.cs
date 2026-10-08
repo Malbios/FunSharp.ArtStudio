@@ -51,6 +51,22 @@ public sealed class PostStageTests : IDisposable
     }
 
     [Fact]
+    public async Task SetsAndPosts_AreListedOldestFirst()
+    {
+        var (first, firstImages) = await CreateCompletedSetAsync(1);
+        var (second, secondImages) = await CreateCompletedSetAsync(1);
+
+        Assert.Equal([first, second], await SetIdsAsync("working"));
+
+        await PickAsync(second, secondImages[0]);
+        await PickAsync(first, firstImages[0]);
+        (await MarkReadyAsync(second)).EnsureSuccessStatusCode();
+        (await MarkReadyAsync(first)).EnsureSuccessStatusCode();
+
+        Assert.Equal([second, first], await SetIdsAsync("ready"));
+    }
+
+    [Fact]
     public async Task SetListWithoutStage_ShowsWorkingSets()
     {
         var (setId, _) = await CreateCompletedSetAsync(1);

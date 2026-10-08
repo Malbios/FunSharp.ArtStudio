@@ -50,10 +50,10 @@ public static class SetEndpoints
             "draft" => db.PromptSets.Where(s => s.IsDraft).OrderBy(s => s.Id),
             null or "working" => db.PromptSets
                 .Where(s => !s.IsDraft && s.ReadyToPostAt == null && s.ArchivedAt == null)
-                .OrderByDescending(s => s.Id),
+                .OrderBy(s => s.Id),
             "ready" => db.PromptSets
                 .Where(s => s.ReadyToPostAt != null && s.ArchivedAt == null)
-                .OrderByDescending(s => s.ReadyToPostAt).ThenByDescending(s => s.Id),
+                .OrderBy(s => s.ReadyToPostAt).ThenBy(s => s.Id),
             "archived" => db.PromptSets
                 .Where(s => s.ArchivedAt != null)
                 .OrderByDescending(s => s.ArchivedAt).ThenByDescending(s => s.Id),
