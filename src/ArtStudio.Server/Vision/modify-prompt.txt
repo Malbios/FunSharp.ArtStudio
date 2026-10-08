@@ -1,0 +1,15 @@
+Here is an image-generation prompt:
+
+<prompt>
+{prompt}
+</prompt>
+
+Change it as follows:
+
+<instructions>
+{instructions}
+</instructions>
+
+Apply only the requested changes and keep everything else as it is. Keep the paragraph structure: one paragraph per character, then one for the setting, one for composition, and a final one for style, separated by blank lines. Add or remove a character paragraph only when the instructions add or remove a character.
+
+Use direct generative phrasing in specific, natural English prose. Avoid headings, lists, code fences, tags, and commentary. Return only the new prompt paragraphs.

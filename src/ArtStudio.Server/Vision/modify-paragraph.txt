@@ -1,0 +1,15 @@
+Here is the "{section}" paragraph of an image-generation prompt:
+
+<paragraph>
+{paragraph}
+</paragraph>
+
+Change it as follows:
+
+<instructions>
+{instructions}
+</instructions>
+
+Apply only the requested changes and keep everything else as it is. The paragraph must still describe only its section ("{section}").
+
+Use direct generative phrasing in specific, natural English prose. Avoid headings, lists, code fences, tags, and commentary. Return exactly one paragraph and nothing else.

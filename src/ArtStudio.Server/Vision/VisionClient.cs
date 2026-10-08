@@ -23,12 +23,18 @@ public sealed class VisionClient(IHttpClientFactory httpClientFactory, IConfigur
 
     private string ServerUrl => (configuration[ServerUrlKey] is { Length: > 0 } configured ? configured : DefaultServerUrl).TrimEnd('/');
 
-    public async Task<VisionAnswer> DescribeAsync(
-        string apiKey, byte[] image, string contentType, string instruction, CancellationToken ct)
+    public Task<VisionAnswer> DescribeAsync(
+        string apiKey, byte[] image, string contentType, string instruction, CancellationToken ct) =>
+        AskAsync(apiKey, new JsonArray(TextPart(instruction), ImagePart(image, contentType)), ct);
+
+    public Task<VisionAnswer> CompleteAsync(string apiKey, string instruction, CancellationToken ct) =>
+        AskAsync(apiKey, new JsonArray(TextPart(instruction)), ct);
+
+    private async Task<VisionAnswer> AskAsync(string apiKey, JsonArray content, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, ServerUrl + ChatCompletionsPath)
         {
-            Content = new StringContent(BuildPayload(image, contentType, instruction).ToJsonString(), Encoding.UTF8, "application/json"),
+            Content = new StringContent(BuildPayload(content).ToJsonString(), Encoding.UTF8, "application/json"),
         };
         request.Headers.Authorization = new("Bearer", apiKey);
 
@@ -42,20 +48,18 @@ public sealed class VisionClient(IHttpClientFactory httpClientFactory, IConfigur
         return ParseAnswer(body);
     }
 
-    private static JsonObject BuildPayload(byte[] image, string contentType, string instruction) => new()
+    private static JsonObject TextPart(string text) => new() { ["type"] = "text", ["text"] = text };
+
+    private static JsonObject ImagePart(byte[] image, string contentType) => new()
+    {
+        ["type"] = "image_url",
+        ["image_url"] = new JsonObject { ["url"] = $"data:{contentType};base64,{Convert.ToBase64String(image)}" },
+    };
+
+    private static JsonObject BuildPayload(JsonArray content) => new()
     {
         ["model"] = Model,
-        ["messages"] = new JsonArray(new JsonObject
-        {
-            ["role"] = "user",
-            ["content"] = new JsonArray(
-                new JsonObject { ["type"] = "text", ["text"] = instruction },
-                new JsonObject
-                {
-                    ["type"] = "image_url",
-                    ["image_url"] = new JsonObject { ["url"] = $"data:{contentType};base64,{Convert.ToBase64String(image)}" },
-                }),
-        }),
+        ["messages"] = new JsonArray(new JsonObject { ["role"] = "user", ["content"] = content }),
         ["temperature"] = Temperature,
         ["max_tokens"] = MaxTokens,
         ["stream"] = false,

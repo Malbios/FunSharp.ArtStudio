@@ -1,13 +1,18 @@
 using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 namespace ArtStudio.Server.Vision;
 
-/// <summary>Stands in for the vision server on test instances: answers every request with a fixed prompt after a delay.</summary>
-public sealed class FakeVisionHandler(TimeSpan answerTime) : HttpMessageHandler
+/// <summary>
+/// Stands in for the vision server on test instances: describes every image with a fixed prompt, and answers
+/// text-only modify requests with the text they carry, marked as modified.
+/// </summary>
+public sealed partial class FakeVisionHandler(TimeSpan imageAnswerTime, TimeSpan textAnswerTime) : HttpMessageHandler
 {
     public const string ConfigurationKey = "ArtStudio:FakeVision";
+    public const string ModifiedMarker = " (modified)";
 
     public const string Answer =
         "A fox with rust-red fur sits upright on a mossy rock, its tail curled around its front paws.\n\n" +
@@ -18,12 +23,16 @@ public sealed class FakeVisionHandler(TimeSpan answerTime) : HttpMessageHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
-        await Task.Delay(answerTime, ct);
+        var content = JsonNode.Parse(await request.Content!.ReadAsStringAsync(ct))!["messages"]![0]!["content"]!.AsArray();
+        var hasImage = content.Any(part => part?["type"]?.GetValue<string>() == "image_url");
+        await Task.Delay(hasImage ? imageAnswerTime : textAnswerTime, ct);
+
+        var answer = hasImage ? Answer : ModifiedText(content[0]!["text"]!.GetValue<string>());
         var body = new JsonObject
         {
             ["choices"] = new JsonArray(new JsonObject
             {
-                ["message"] = new JsonObject { ["role"] = "assistant", ["content"] = Answer },
+                ["message"] = new JsonObject { ["role"] = "assistant", ["content"] = answer },
                 ["finish_reason"] = "stop",
             }),
         };
@@ -32,4 +41,13 @@ public sealed class FakeVisionHandler(TimeSpan answerTime) : HttpMessageHandler
             Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json"),
         };
     }
+
+    private static string ModifiedText(string instruction)
+    {
+        var match = TaggedText().Match(instruction);
+        return (match.Success ? match.Groups[1].Value.Trim() : instruction) + ModifiedMarker;
+    }
+
+    [GeneratedRegex(@"<(?:prompt|paragraph)>(.*?)</(?:prompt|paragraph)>", RegexOptions.Singleline)]
+    private static partial Regex TaggedText();
 }

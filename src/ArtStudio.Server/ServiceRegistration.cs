@@ -51,9 +51,10 @@ public static class ServiceRegistration
         services.AddHttpClient(VisionClient.HttpClientName, http => http.Timeout = VisionClient.Timeout)
             .ConfigurePrimaryHttpMessageHandler(sp =>
                 sp.GetRequiredService<IConfiguration>().GetValue<bool>(FakeVisionHandler.ConfigurationKey)
-                    ? new FakeVisionHandler(TimeSpan.FromSeconds(5))
+                    ? new FakeVisionHandler(imageAnswerTime: TimeSpan.FromSeconds(5), textAnswerTime: TimeSpan.FromSeconds(2))
                     : new SocketsHttpHandler());
         services.AddSingleton<VisionClient>();
+        services.AddSingleton<PromptModifier>();
         services.AddSingleton(VisionInstruction.FromEmbeddedText());
         services.AddSingleton<VisionApiKey>();
         services.AddSingleton<PromptGenerationQueue>();
