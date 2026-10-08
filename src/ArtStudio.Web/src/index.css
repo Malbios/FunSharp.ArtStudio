@@ -255,6 +255,19 @@ main {
   gap: 1rem;
 }
 
+.prompt-label-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.prompt-label-row .link-button {
+  font-size: inherit;
+}
+
 .image-beside-prompt textarea {
   flex: 1;
   min-height: 400px;

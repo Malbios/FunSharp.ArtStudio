@@ -67,7 +67,7 @@ export function DraftsPage() {
                   Delete
                 </button>
               </div>
-              <DraftPromptStatus draft={draft} onError={setError} />
+              <DraftPromptStatus draft={draft} />
             </div>
           </div>
         ))}

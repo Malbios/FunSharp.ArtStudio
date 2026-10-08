@@ -1,6 +1,6 @@
 import { useEffect, useState, type ClipboardEvent, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { api, type PromptGeneration, type SetDetail } from '../api'
+import { api, type PromptGeneration, type PromptGenerationState, type SetDetail } from '../api'
 import { useStudioEvents, type JobEventPayload } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { MESSAGE_DURATION_MS } from '../messages'
@@ -12,6 +12,12 @@ import { imageFileFrom, loadImageFile, NO_SOURCE, sourceDimensions, type ImageSo
 import { ImageSourcePicker, type SourceTab } from './ImageSourcePicker'
 
 const DEFAULT_COUNT = 2
+
+const GENERATE_ACTIONS: Partial<Record<PromptGenerationState, string>> = {
+  None: 'Generate prompt',
+  Done: 'Regenerate prompt',
+  Failed: 'Retry generating',
+}
 
 interface CreatedSet {
   id: number
@@ -37,6 +43,8 @@ export function NewSetPage() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string>()
   const [created, setCreated] = useState<CreatedSet>()
+  const [requestingPrompt, setRequestingPrompt] = useState(false)
+  const [replacePromptWhenGenerated, setReplacePromptWhenGenerated] = useState(false)
 
   useEffect(() => {
     if (created === undefined) return
@@ -61,9 +69,25 @@ export function NewSetPage() {
     api.set(draftId).then((set) => {
       if (!set.isDraft) return
       setBaseSet(set)
-      if (set.promptGeneration.state === 'Done' && prompt.trim() === '') setPrompt(cleanPrompt(set.prompt))
+      const state = set.promptGeneration.state
+      if (state === 'Done' && (replacePromptWhenGenerated || prompt.trim() === '')) setPrompt(cleanPrompt(set.prompt))
+      if (state === 'Done' || state === 'Failed') setReplacePromptWhenGenerated(false)
     }, (failure: Error) => setError(failure.message))
   })
+
+  async function generatePrompt() {
+    if (!baseSet) return
+    setError(undefined)
+    setRequestingPrompt(true)
+    try {
+      await api.generatePrompt(baseSet.id)
+      setReplacePromptWhenGenerated(true)
+    } catch (failure) {
+      setError((failure as Error).message)
+    } finally {
+      setRequestingPrompt(false)
+    }
+  }
 
   useEffect(() => {
     function pasteImage(event: globalThis.ClipboardEvent) {
@@ -175,20 +199,29 @@ export function NewSetPage() {
   const hasImage = source.kind === 'Upload' || source.kind === 'Paste' || source.kind === 'DeviantArt'
   const heading = !baseSet ? 'New prompt' : isDraft ? `Queue draft #${baseSet.id}` : `Edit & requeue set #${baseSet.id}`
 
-  const generationNote = isDraft && baseSet ? promptGenerationNote(baseSet.promptGeneration) : null
+  const draftGeneration = isDraft && baseSet ? baseSet.promptGeneration : null
+  const generationNote = draftGeneration ? promptGenerationNote(draftGeneration) : null
+  const generateAction = draftGeneration ? GENERATE_ACTIONS[draftGeneration.state] : undefined
   const promptField = (
-    <label className="field">
-      <span>
-        Prompt {generationNote && <em className={generationNote.failed ? 'error' : 'hint'}>{generationNote.text}</em>}
-      </span>
+    <div className="field">
+      <div className="prompt-label-row">
+        <label htmlFor="prompt-text">Prompt</label>
+        {generationNote && <em className={generationNote.failed ? 'error' : undefined}>{generationNote.text}</em>}
+        {generateAction && (
+          <button type="button" className="link-button" disabled={requestingPrompt} onClick={() => void generatePrompt()}>
+            {generateAction}
+          </button>
+        )}
+      </div>
       <textarea
+        id="prompt-text"
         value={prompt}
         rows={8}
         onChange={(e) => setPrompt(e.target.value)}
         onPaste={pastePromptText}
         placeholder="Describe the image…"
       />
-    </label>
+    </div>
   )
 
   const imageField = (
