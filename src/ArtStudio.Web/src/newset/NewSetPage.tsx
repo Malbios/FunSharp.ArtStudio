@@ -207,7 +207,7 @@ export function NewSetPage() {
           </button>
         )}
       </div>
-      <PromptParagraphs paragraphs={paragraphs} onChange={setParagraphs} />
+      <PromptParagraphs paragraphs={paragraphs} onChange={setParagraphs} onError={setError} />
     </div>
   )
 

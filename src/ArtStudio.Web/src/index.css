@@ -292,6 +292,12 @@ main {
   font-size: 0.85rem;
 }
 
+.prompt-paragraph-label .link-button {
+  font-size: inherit;
+  line-height: inherit;
+  padding: 0;
+}
+
 .prompt-paragraph textarea {
   field-sizing: content;
   min-height: 4.5em;

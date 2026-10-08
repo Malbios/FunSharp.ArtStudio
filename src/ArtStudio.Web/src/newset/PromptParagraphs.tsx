@@ -15,14 +15,32 @@ import { imageFileFrom } from './imageSource'
 interface Props {
   paragraphs: string[]
   onChange: (paragraphs: string[]) => void
+  onError: (message: string) => void
 }
 
-export function PromptParagraphs({ paragraphs, onChange }: Props) {
+type ClipboardAction = 'append' | 'replace'
+
+const textareaId = (index: number) => `prompt-paragraph-${index}`
+
+export function PromptParagraphs({ paragraphs, onChange, onError }: Props) {
   const labels = paragraphLabels(paragraphs.length)
   const characterCount = paragraphs.filter((_, index) => isCharacter(index, paragraphs.length)).length
 
   function changeParagraph(index: number, text: string) {
     onChange(paragraphs.map((paragraph, position) => (position === index ? text : paragraph)))
+  }
+
+  /** Puts cleaned text between `start` and `end` of the box; several paragraphs spread over the following boxes. */
+  function insertCleaned(index: number, textarea: HTMLTextAreaElement, text: string, start: number, end: number, separator = '') {
+    const cleaned = cleanPrompt(text)
+    if (!hasSeveralParagraphs(cleaned)) {
+      textarea.setSelectionRange(start, end)
+      insertAtSelection(textarea, separator + cleaned)
+      return
+    }
+    const before = textarea.value.slice(0, start) + separator
+    const after = textarea.value.slice(end)
+    onChange(pasteIntoParagraphs(paragraphs, index, before, toParagraphs(cleaned), after))
   }
 
   function paste(index: number, event: ClipboardEvent<HTMLTextAreaElement>) {
@@ -31,14 +49,27 @@ export function PromptParagraphs({ paragraphs, onChange }: Props) {
     if (!text) return
     event.preventDefault()
     const textarea = event.currentTarget
-    const cleaned = cleanPrompt(text)
-    if (!hasSeveralParagraphs(cleaned)) {
-      insertAtSelection(textarea, cleaned)
+    insertCleaned(index, textarea, text, textarea.selectionStart, textarea.selectionEnd)
+  }
+
+  async function fromClipboard(index: number, action: ClipboardAction) {
+    let text: string
+    try {
+      text = await navigator.clipboard.readText()
+    } catch {
+      onError('The browser did not allow reading the clipboard.')
       return
     }
-    const before = textarea.value.slice(0, textarea.selectionStart)
-    const after = textarea.value.slice(textarea.selectionEnd)
-    onChange(pasteIntoParagraphs(paragraphs, index, before, toParagraphs(cleaned), after))
+    if (!text.trim()) return
+
+    const textarea = document.getElementById(textareaId(index)) as HTMLTextAreaElement
+    const length = textarea.value.length
+    if (action === 'replace') {
+      insertCleaned(index, textarea, text, 0, length)
+      return
+    }
+    const separator = textarea.value.trim() !== '' && !/\s$/.test(textarea.value) ? ' ' : ''
+    insertCleaned(index, textarea, text, length, length, separator)
   }
 
   return (
@@ -46,7 +77,13 @@ export function PromptParagraphs({ paragraphs, onChange }: Props) {
       {paragraphs.map((paragraph, index) => (
         <div key={index} className="prompt-paragraph">
           <div className="prompt-paragraph-label">
-            <label htmlFor={`prompt-paragraph-${index}`}>{labels[index]}</label>
+            <label htmlFor={textareaId(index)}>{labels[index]}</label>
+            <button type="button" className="link-button" onClick={() => void fromClipboard(index, 'append')}>
+              Append from clipboard
+            </button>
+            <button type="button" className="link-button" onClick={() => void fromClipboard(index, 'replace')}>
+              Replace with clipboard
+            </button>
             {characterCount > 1 && isCharacter(index, paragraphs.length) && (
               <button type="button" className="link-button" onClick={() => onChange(removeParagraph(paragraphs, index))}>
                 Remove
@@ -54,7 +91,7 @@ export function PromptParagraphs({ paragraphs, onChange }: Props) {
             )}
           </div>
           <textarea
-            id={`prompt-paragraph-${index}`}
+            id={textareaId(index)}
             value={paragraph}
             rows={3}
             onChange={(e) => changeParagraph(index, e.target.value)}
