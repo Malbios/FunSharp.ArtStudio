@@ -75,10 +75,7 @@ export function NewSetPage() {
     if (baseSetId === null) return
     if (event !== 'Reconnected' && (payload as JobEventPayload).setId !== baseSetId) return
     api.set(baseSetId).then((set) => {
-      if (isDraft && !set.isDraft) {
-        if (!submitting) navigate(`/sets/${set.id}`)
-        return
-      }
+      if (isDraft && !set.isDraft) return
       setBaseSet(set)
       const { state, text } = set.promptGeneration
       if (state === 'Done' && (replacePromptWhenGenerated || prompt.trim() === '')) setPrompt(cleanPrompt(text ?? set.prompt))
@@ -101,10 +98,9 @@ export function NewSetPage() {
     }
   }
 
-  const imagesAfterPrompt = { count, resolution }
-  const imagesAfterPromptHint =
-    `When it's done, ${count} ${count === 1 ? 'image is' : 'images are'} queued with the new prompt (${resolution})`
-    + (isDraft ? ' and the draft moves to Sets.' : '.')
+  const imagesAfterPrompt = isDraft ? undefined : { count, resolution }
+  const imagesAfterPromptHint = imagesAfterPrompt &&
+    `When it's done, ${count} ${count === 1 ? 'image is' : 'images are'} queued with the new prompt (${resolution}).`
 
   async function queueModification(target: ModifyTarget, instructions: string) {
     if (!baseSet) return

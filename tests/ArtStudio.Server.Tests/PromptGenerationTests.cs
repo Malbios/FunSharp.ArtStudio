@@ -106,7 +106,7 @@ public sealed class PromptGenerationTests : IDisposable
     }
 
     [Fact]
-    public async Task GenerateNewPrompt_QueuesTheRequestedImages()
+    public async Task GeneratePromptOnADraft_QueuesNoImages()
     {
         await SetVisionApiKeyAsync(_client);
         var setId = await CreateUploadDraftAsync();
@@ -114,19 +114,25 @@ public sealed class PromptGenerationTests : IDisposable
 
         var generate = await _client.PostAsJsonAsync($"/api/sets/{setId}/generate-prompt", new { imageCount = 4, resolution = "Wide" });
         generate.EnsureSuccessStatusCode();
-        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Jobs.Count == 1, "a job");
+        await WaitUntilAsync(async () => _factory.Vision.Requests.Count == 2, "a second vision request");
+        await WaitForStateAsync(setId, PromptGenerationState.Done);
 
         var set = await GetSetAsync(_client, setId);
-        Assert.False(set.IsDraft);
-        var job = Assert.Single(set.Jobs);
-        Assert.Equal((_factory.Vision.Answer, "Wide", 4), (job.Prompt, job.Resolution, job.RequestedCount));
+        Assert.True(set.IsDraft);
+        Assert.Empty(set.Jobs);
     }
 
     [Fact]
-    public async Task GeneratePrompt_RejectsInvalidImageSettings()
+    public async Task GeneratePromptOnASet_RejectsInvalidImageSettings()
     {
-        var setId = await CreateUploadDraftAsync();
         await SetVisionApiKeyAsync(_client);
+        var setId = await _factory.CreateSetAsync(_client, "the original prompt", count: 1, addSource: form =>
+        {
+            form.Add(new StringContent("Upload"), "sourceKind");
+            var file = new ByteArrayContent(SourcePng);
+            file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+            form.Add(file, "image", "fox.png");
+        });
 
         var badCount = await _client.PostAsJsonAsync($"/api/sets/{setId}/generate-prompt", new { imageCount = 0 });
         var badResolution = await _client.PostAsJsonAsync($"/api/sets/{setId}/generate-prompt", new { resolution = "Huge" });

@@ -62,7 +62,7 @@ public sealed class PromptModifyTests : IDisposable
     }
 
     [Fact]
-    public async Task ModifiedDraft_IsQueued()
+    public async Task ModifiedDraft_QueuesNoImages()
     {
         var setId = await CreateUploadDraftAsync();
         await SetVisionApiKeyAsync(_client);
@@ -72,9 +72,9 @@ public sealed class PromptModifyTests : IDisposable
         await WaitForStateAsync(setId, PromptGenerationState.Done);
 
         var set = await GetSetAsync(_client, setId);
-        Assert.False(set.IsDraft);
-        var job = Assert.Single(set.Jobs);
-        Assert.Equal(("A fox at night.", "Wide", 4), (job.Prompt, job.Resolution, job.RequestedCount));
+        Assert.Equal("A fox at night.", set.Prompt);
+        Assert.True(set.IsDraft);
+        Assert.Empty(set.Jobs);
     }
 
     [Fact]

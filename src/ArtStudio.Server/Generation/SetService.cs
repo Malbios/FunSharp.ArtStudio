@@ -151,14 +151,13 @@ public sealed class SetService(
         await MarkPromptGenerationQueuedAsync(set, images, ct);
     }
 
-    /// <summary>Queues the images a finished prompt request asked for; a draft is queued and becomes a set.</summary>
+    /// <summary>Queues the images a finished prompt request on a set asked for.</summary>
     public async Task QueueImagesAfterPromptAsync(int setId, CancellationToken ct)
     {
         var set = await FindSetAsync(setId, ct);
-        if (set is not { ImagesAfterPromptCount: { } count, ImagesAfterPromptResolution: { } resolution })
+        if (set is not { IsDraft: false, ImagesAfterPromptCount: { } count, ImagesAfterPromptResolution: { } resolution })
             return;
 
-        set.IsDraft = false;
         await queueService.EnqueueAsync(setId, count, set.Prompt, resolution, ct);
         await notifier.SetUpdated(setId);
     }
@@ -173,8 +172,11 @@ public sealed class SetService(
 
     private sealed record ImagesToQueue(int Count, string Resolution);
 
-    private static ImagesToQueue ImagesAfterPrompt(PromptSet set, int? imageCount, string? resolution)
+    /// <summary>The images to queue once the prompt is done; drafts never queue images.</summary>
+    private static ImagesToQueue? ImagesAfterPrompt(PromptSet set, int? imageCount, string? resolution)
     {
+        if (set.IsDraft)
+            return null;
         var count = imageCount ?? DefaultImageCount;
         if (count is < 1 or > QueueService.MaxImagesPerJob)
             throw new UserFacingException($"Image count must be between 1 and {QueueService.MaxImagesPerJob}.");
