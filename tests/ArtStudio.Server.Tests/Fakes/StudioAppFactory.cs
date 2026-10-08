@@ -94,7 +94,9 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
     protected override void Dispose(bool disposing)
     {
         base.Dispose(disposing);
-        SqliteConnection.ClearAllPools();
+        // Only this app's pool: clearing all pools would close connections of tests running in parallel.
+        using (var connection = new SqliteConnection($"Data Source={Path.Combine(DataDirectory, "artstudio.db")}"))
+            SqliteConnection.ClearPool(connection);
         try
         {
             Directory.Delete(DataDirectory, recursive: true);
