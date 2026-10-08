@@ -13,8 +13,9 @@ export function toParagraphs(text: string): string[] {
     .filter((paragraph) => paragraph.length > 0)
 }
 
-export function toSingleParagraph(text: string): string {
-  return toParagraphs(text).join(' ')
+/** The position of box `index` in the joined prompt, which leaves out empty boxes. */
+export function joinedIndex(paragraphs: string[], index: number): number {
+  return paragraphs.slice(0, index).filter((paragraph) => paragraph.trim() !== '').length
 }
 
 /**

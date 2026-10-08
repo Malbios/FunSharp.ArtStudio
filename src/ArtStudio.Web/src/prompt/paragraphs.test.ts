@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   addCharacter,
   hasSeveralParagraphs,
+  joinedIndex,
   joinParagraphs,
   paragraphLabels,
   pasteIntoParagraphs,
   removeParagraph,
   splitParagraphs,
-  toSingleParagraph,
 } from './paragraphs'
 
 describe('splitParagraphs', () => {
@@ -56,9 +56,10 @@ describe('hasSeveralParagraphs', () => {
   })
 })
 
-describe('toSingleParagraph', () => {
-  it('joins several paragraphs into one box', () => {
-    expect(toSingleParagraph('\n\nfirst\n\nsecond\nline\n\n')).toBe('first second\nline')
+describe('joinedIndex', () => {
+  it('skips empty boxes before the box', () => {
+    expect(joinedIndex(['', 'c2', 's', 'co', 'a'], 4)).toBe(3)
+    expect(joinedIndex(['c', 's', 'co', 'a'], 0)).toBe(0)
   })
 })
 

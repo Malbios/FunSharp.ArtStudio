@@ -6,15 +6,20 @@ import { useLoad } from '../live/useLoad'
 import { MESSAGE_DURATION_MS } from '../messages'
 import { cleanPrompt } from '../prompt/cleanPrompt'
 import { closestResolution } from '../prompt/closestResolution'
-import { generateActionLabel } from '../prompt/generateAction'
+import { generateActionLabel, isPromptPending } from '../prompt/generateAction'
 import { ModifyPromptDialog } from '../prompt/ModifyPromptDialog'
-import { joinParagraphs, splitParagraphs } from '../prompt/paragraphs'
+import { joinedIndex, joinParagraphs, paragraphLabels, splitParagraphs } from '../prompt/paragraphs'
 import { BuildingBlockChips } from './BuildingBlockChips'
 import { imageFileFrom, loadImageFile, NO_SOURCE, sourceDimensions, type ImageSource } from './imageSource'
 import { ImageSourcePicker, type SourceTab } from './ImageSourcePicker'
 import { PromptParagraphs } from './PromptParagraphs'
 
 const DEFAULT_COUNT = 2
+
+/** The box being modified, or the whole prompt when index is undefined. */
+interface ModifyTarget {
+  index?: number
+}
 
 interface CreatedSet {
   id: number
@@ -46,8 +51,7 @@ export function NewSetPage() {
   const [requestingPrompt, setRequestingPrompt] = useState(false)
   const [replacePromptWhenGenerated, setReplacePromptWhenGenerated] = useState(false)
   const [generatedHere, setGeneratedHere] = useState(false)
-  const [modifyingPrompt, setModifyingPrompt] = useState(false)
-  const [modifiedTruncated, setModifiedTruncated] = useState(false)
+  const [modifying, setModifying] = useState<ModifyTarget>()
 
   useEffect(() => {
     if (created === undefined) return
@@ -92,6 +96,18 @@ export function NewSetPage() {
     } finally {
       setRequestingPrompt(false)
     }
+  }
+
+  async function queueModification(target: ModifyTarget, instructions: string) {
+    if (!baseSet) return
+    const paragraph =
+      target.index === undefined
+        ? undefined
+        : { index: joinedIndex(paragraphs, target.index), section: paragraphLabels(paragraphs.length)[target.index] }
+    await api.modifyPrompt(baseSet.id, prompt, instructions, paragraph)
+    setError(undefined)
+    setReplacePromptWhenGenerated(true)
+    setGeneratedHere(true)
   }
 
   useEffect(() => {
@@ -196,11 +212,13 @@ export function NewSetPage() {
   const hasImage = source.kind === 'Upload' || source.kind === 'Paste' || source.kind === 'DeviantArt'
   const heading = !baseSet ? 'New prompt' : isDraft ? `Queue draft #${baseSet.id}` : `Edit & requeue set #${baseSet.id}`
 
-  const generation = baseSet?.sourceImageUrl ? baseSet.promptGeneration : null
-  const generationNote = generation ? promptGenerationNote(generation, isDraft || generatedHere) : null
-  const generateAction = generation ? generateActionLabel(generation.state, prompt.trim() !== '') : undefined
-  const generationPending = generation?.state === 'Queued' || generation?.state === 'Running'
-  const canModifyPrompt = prompt.trim() !== '' && !generationPending
+  const generation = baseSet?.promptGeneration
+  const showsGeneration = !!baseSet?.sourceImageUrl || generation?.kind === 'Modify'
+  const generationNote = generation && showsGeneration ? promptGenerationNote(generation, isDraft || generatedHere) : null
+  const generateAction =
+    generation && baseSet?.sourceImageUrl ? generateActionLabel(generation, prompt.trim() !== '') : undefined
+  const generationPending = generation !== undefined && isPromptPending(generation)
+  const modifyLabels = paragraphLabels(paragraphs.length)
   const promptField = (
     <div className="field">
       <div className="prompt-label-row">
@@ -211,28 +229,25 @@ export function NewSetPage() {
             {generateAction}
           </button>
         )}
-        {canModifyPrompt && (
-          <button type="button" className="link-button" onClick={() => setModifyingPrompt(true)}>
+        {baseSet && prompt.trim() !== '' && !generationPending && (
+          <button type="button" className="link-button" onClick={() => setModifying({})}>
             Modify existing prompt
           </button>
         )}
-        {modifiedTruncated && <em>modified, but may be cut off</em>}
       </div>
       <PromptParagraphs
         paragraphs={paragraphs}
         onChange={setParagraphs}
         onError={setError}
-        onModified={setModifiedTruncated}
+        onModify={baseSet ? (index) => setModifying({ index }) : undefined}
+        modifyDisabled={generationPending}
       />
-      {modifyingPrompt && (
+      {modifying && (
         <ModifyPromptDialog
-          subject="Whole prompt"
-          text={prompt}
-          onModified={(text, truncated) => {
-            setPrompt(text)
-            setModifiedTruncated(truncated)
-          }}
-          onClose={() => setModifyingPrompt(false)}
+          subject={modifying.index === undefined ? 'Whole prompt' : modifyLabels[modifying.index]}
+          text={modifying.index === undefined ? prompt : paragraphs[modifying.index]}
+          onSubmit={(instructions) => queueModification(modifying, instructions)}
+          onClose={() => setModifying(undefined)}
         />
       )}
     </div>
@@ -333,15 +348,18 @@ function promptGenerationNote(
   generation: PromptGeneration,
   showTruncation: boolean,
 ): { text: string; failed: boolean } | null {
+  const modify = generation.kind === 'Modify'
   switch (generation.state) {
     case 'Queued':
-      return { text: 'waiting to be generated…', failed: false }
+      return { text: modify ? 'waiting to be modified…' : 'waiting to be generated…', failed: false }
     case 'Running':
-      return { text: 'being generated, this takes a few minutes…', failed: false }
+      return { text: modify ? 'being modified…' : 'being generated, this takes a few minutes…', failed: false }
     case 'Failed':
-      return { text: `generating failed: ${generation.error ?? 'unknown error'}`, failed: true }
+      return { text: `${modify ? 'modifying' : 'generating'} failed: ${generation.error ?? 'unknown error'}`, failed: true }
     case 'Done':
-      return showTruncation && generation.truncated ? { text: 'generated, but may be cut off', failed: false } : null
+      return showTruncation && generation.truncated
+        ? { text: `${modify ? 'modified' : 'generated'}, but may be cut off`, failed: false }
+        : null
     default:
       return null
   }

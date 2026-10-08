@@ -60,8 +60,11 @@ export interface SetSummary {
 
 export type PromptGenerationState = 'None' | 'Queued' | 'Running' | 'Done' | 'Failed'
 
+export type PromptGenerationKind = 'Generate' | 'Modify'
+
 export interface PromptGeneration {
   state: PromptGenerationState
+  kind: PromptGenerationKind
   error: string | null
   truncated: boolean
   text: string | null
@@ -69,11 +72,6 @@ export interface PromptGeneration {
 
 export interface VisionSettings {
   hasApiKey: boolean
-}
-
-export interface ModifiedPrompt {
-  text: string
-  truncated: boolean
 }
 
 export interface SetDetail {
@@ -147,8 +145,8 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(method: string, url: string, body?: unknown, signal?: AbortSignal): Promise<T> {
-  const init: RequestInit = { method, signal }
+async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
+  const init: RequestInit = { method }
   if (body instanceof FormData) {
     init.body = body
   } else if (body !== undefined) {
@@ -180,8 +178,13 @@ export const api = {
   visionSettings: () => request<VisionSettings>('GET', '/api/vision'),
   saveVisionApiKey: (apiKey: string) => request<VisionSettings>('PUT', '/api/vision', { apiKey }),
   removeVisionApiKey: () => request<VisionSettings>('DELETE', '/api/vision'),
-  modifyPrompt: (text: string, instructions: string, section: string | undefined, signal: AbortSignal) =>
-    request<ModifiedPrompt>('POST', '/api/vision/modify', { text, instructions, section }, signal),
+  modifyPrompt: (setId: number, prompt: string, instructions: string, paragraph?: { index: number; section: string }) =>
+    request<void>('POST', `/api/sets/${setId}/modify-prompt`, {
+      prompt,
+      instructions,
+      paragraphIndex: paragraph?.index,
+      section: paragraph?.section,
+    }),
   pickImage: (setId: number, imageId: number) => request<void>('POST', `/api/sets/${setId}/picks`, { imageId }),
   unpickImage: (setId: number, imageId: number) => request<void>('DELETE', `/api/sets/${setId}/picks/${imageId}`),
   reorderPicks: (setId: number, imageIds: number[]) =>

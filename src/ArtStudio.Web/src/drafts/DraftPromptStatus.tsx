@@ -1,19 +1,29 @@
 import { useState } from 'react'
-import { api, type PromptGenerationState, type SetSummary } from '../api'
+import { api, type PromptGenerationKind, type PromptGenerationState, type SetSummary } from '../api'
 import { generateActionLabel } from '../prompt/generateAction'
 
-const BADGES: Partial<Record<PromptGenerationState, { label: string; status: string }>> = {
-  Queued: { label: 'prompt waiting', status: 'Queued' },
-  Running: { label: 'generating prompt…', status: 'Running' },
-  Done: { label: 'prompt ready', status: 'Completed' },
-  Failed: { label: 'prompt failed', status: 'Failed' },
+type Badges = Partial<Record<PromptGenerationState, { label: string; status: string }>>
+
+const BADGES: Record<PromptGenerationKind, Badges> = {
+  Generate: {
+    Queued: { label: 'prompt waiting', status: 'Queued' },
+    Running: { label: 'generating prompt…', status: 'Running' },
+    Done: { label: 'prompt ready', status: 'Completed' },
+    Failed: { label: 'prompt failed', status: 'Failed' },
+  },
+  Modify: {
+    Queued: { label: 'modification waiting', status: 'Queued' },
+    Running: { label: 'modifying prompt…', status: 'Running' },
+    Done: { label: 'prompt modified', status: 'Completed' },
+    Failed: { label: 'modifying failed', status: 'Failed' },
+  },
 }
 
 export function DraftPromptStatus({ draft, onError }: { draft: SetSummary; onError: (message: string) => void }) {
   const [busy, setBusy] = useState(false)
-  const { state, error, truncated } = draft.promptGeneration
-  const badge = BADGES[state]
-  const action = generateActionLabel(state, draft.prompt.trim() !== '')
+  const { state, kind, error, truncated } = draft.promptGeneration
+  const badge = BADGES[kind][state]
+  const action = generateActionLabel(draft.promptGeneration, draft.prompt.trim() !== '')
 
   async function generate() {
     setBusy(true)

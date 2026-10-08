@@ -1,27 +1,23 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { api } from '../api'
 
 interface Props {
   /** What is being modified, shown as the heading: "Whole prompt" or a box label. */
   subject: string
   text: string
-  /** The box label sent to the model; undefined modifies the whole prompt. */
-  section?: string
-  onModified: (text: string, truncated: boolean) => void
+  /** Queues the modification; a rejection is shown in the dialog. */
+  onSubmit: (instructions: string) => Promise<void>
   onClose: () => void
 }
 
-export function ModifyPromptDialog({ subject, text, section, onModified, onClose }: Props) {
+export function ModifyPromptDialog({ subject, text, onSubmit, onClose }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
-  const abortRef = useRef<AbortController>(undefined)
   const [instructions, setInstructions] = useState('')
-  const [running, setRunning] = useState(false)
+  const [queueing, setQueueing] = useState(false)
   const [error, setError] = useState<string>()
 
   useEffect(() => {
     dialogRef.current?.showModal()
-    return () => abortRef.current?.abort()
   }, [])
 
   async function submit(event: FormEvent) {
@@ -30,18 +26,14 @@ export function ModifyPromptDialog({ subject, text, section, onModified, onClose
     event.stopPropagation()
     if (!instructions.trim()) return setError('Describe how it should change.')
 
-    const controller = new AbortController()
-    abortRef.current = controller
     setError(undefined)
-    setRunning(true)
+    setQueueing(true)
     try {
-      const result = await api.modifyPrompt(text, instructions, section, controller.signal)
-      onModified(result.text, result.truncated)
+      await onSubmit(instructions)
       onClose()
     } catch (failure) {
-      if (controller.signal.aborted) return
       setError((failure as Error).message)
-      setRunning(false)
+      setQueueing(false)
     }
   }
 
@@ -56,7 +48,7 @@ export function ModifyPromptDialog({ subject, text, section, onModified, onClose
             autoFocus
             rows={4}
             value={instructions}
-            disabled={running}
+            disabled={queueing}
             placeholder="For example: make it night-time"
             onChange={(e) => setInstructions(e.target.value)}
           />
@@ -66,8 +58,8 @@ export function ModifyPromptDialog({ subject, text, section, onModified, onClose
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="primary" disabled={running}>
-            {running ? 'Modifying…' : 'Modify'}
+          <button type="submit" className="primary" disabled={queueing}>
+            {queueing ? 'Queueing…' : 'Modify'}
           </button>
         </div>
       </form>
