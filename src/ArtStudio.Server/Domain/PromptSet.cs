@@ -8,6 +8,15 @@ public enum SourceKind
     DeviantArt,
 }
 
+public enum PromptGenerationState
+{
+    None,
+    Queued,
+    Running,
+    Done,
+    Failed,
+}
+
 public class PromptSet
 {
     public int Id { get; set; }
@@ -22,6 +31,10 @@ public class PromptSet
     public bool IsDraft { get; set; }
     public DateTimeOffset? ReadyToPostAt { get; set; }
     public DateTimeOffset? ArchivedAt { get; set; }
+    public PromptGenerationState PromptGeneration { get; set; }
+    public DateTimeOffset? PromptGenerationQueuedAt { get; set; }
+    public string? PromptGenerationError { get; set; }
+    public bool PromptGenerationTruncated { get; set; }
 
     public List<GenerationJob> Jobs { get; set; } = [];
     public List<GeneratedImage> Images { get; set; } = [];

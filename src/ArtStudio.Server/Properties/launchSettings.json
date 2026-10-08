@@ -9,7 +9,8 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "ArtStudio__DataDirectory": "%LOCALAPPDATA%\\ArtStudio-dev",
-        "ArtStudio__FakeComfyUi": "true"
+        "ArtStudio__FakeComfyUi": "true",
+        "ArtStudio__FakeVision": "true"
       }
     },
     "test-real-comfyui": {

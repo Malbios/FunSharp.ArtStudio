@@ -29,6 +29,8 @@ public static class SetEndpoints
             await setService.MarkReadyToPostAsync(id, ct));
         sets.MapDelete("{id:int}/ready", async (int id, SetService setService, CancellationToken ct) =>
             await setService.MoveBackToSetsAsync(id, ct));
+        sets.MapPost("{id:int}/generate-prompt", async (int id, SetService setService, CancellationToken ct) =>
+            await setService.QueuePromptGenerationAsync(id, ct));
         sets.MapPost("{id:int}/archive", async (int id, SetService setService, CancellationToken ct) =>
             await setService.ArchiveAsync(id, ct));
         sets.MapDelete("{id:int}/archive", async (int id, SetService setService, CancellationToken ct) =>
@@ -85,7 +87,8 @@ public static class SetEndpoints
                 s.Set.CreatedAt,
                 s.Set.IsDraft,
                 s.Set.ReadyToPostAt,
-                s.Set.ArchivedAt))
+                s.Set.ArchivedAt,
+                PromptGenerationDto.From(s.Set)))
             .ToList();
     }
 
@@ -114,6 +117,7 @@ public static class SetEndpoints
             set.IsDraft,
             set.ReadyToPostAt,
             set.ArchivedAt,
+            PromptGenerationDto.From(set),
             set.Images.Select(image => ImageDto.From(image, jobsById[image.GenerationJobId])).ToList(),
             set.Jobs.Select(JobDto.From).ToList()));
     }

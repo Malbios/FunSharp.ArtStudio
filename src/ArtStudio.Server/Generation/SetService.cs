@@ -2,6 +2,7 @@ using ArtStudio.Server.Data;
 using ArtStudio.Server.DeviantArt;
 using ArtStudio.Server.Domain;
 using ArtStudio.Server.Hubs;
+using ArtStudio.Server.Vision;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArtStudio.Server.Generation;
@@ -24,6 +25,8 @@ public sealed class SetService(
     QueueService queueService,
     DeviantArtService deviantArtService,
     GenerationQueue queue,
+    PromptGenerationQueue promptQueue,
+    VisionApiKey visionApiKey,
     StudioNotifier notifier,
     TimeProvider clock)
 {
@@ -67,7 +70,7 @@ public sealed class SetService(
         }
 
         if (set.IsDraft)
-            await notifier.SetUpdated(set.Id);
+            await QueuePromptGenerationIfKeySetAsync(set, ct);
         else
             await queueService.EnqueueAsync(set.Id, request.Count, prompt: null, resolution: null, ct);
         return set;
@@ -90,7 +93,7 @@ public sealed class SetService(
         await db.SaveChangesAsync(ct);
 
         await AttachDeviationAsync(set, deviation, ct);
-        await notifier.SetUpdated(set.Id);
+        await QueuePromptGenerationIfKeySetAsync(set, ct);
         return set;
     }
 
@@ -109,8 +112,45 @@ public sealed class SetService(
             throw new UserFacingException("This set is not a draft.");
 
         set.IsDraft = false;
+        if (set.PromptGeneration is PromptGenerationState.Queued or PromptGenerationState.Running)
+            set.PromptGeneration = PromptGenerationState.None;
         await queueService.EnqueueAsync(setId, count, prompt, resolution, ct);
+        promptQueue.CancelRunning(setId);
         await notifier.SetUpdated(setId);
+    }
+
+    public async Task QueuePromptGenerationAsync(int setId, CancellationToken ct)
+    {
+        var set = await FindSetAsync(setId, ct);
+        if (!set.IsDraft)
+            throw new UserFacingException("Prompts are only generated for drafts.");
+        if (set.SourceImagePath is null)
+            throw new UserFacingException("The draft has no image to describe.");
+        if (set.PromptGeneration is PromptGenerationState.Queued or PromptGenerationState.Running)
+            throw new UserFacingException("The prompt for this draft is already being generated.");
+        if (!await visionApiKey.HasKeyAsync(ct))
+            throw new UserFacingException("Set the vision API key in Settings first.");
+
+        await MarkPromptGenerationQueuedAsync(set, ct);
+    }
+
+    private async Task QueuePromptGenerationIfKeySetAsync(PromptSet set, CancellationToken ct)
+    {
+        if (await visionApiKey.HasKeyAsync(ct))
+            await MarkPromptGenerationQueuedAsync(set, ct);
+        else
+            await notifier.SetUpdated(set.Id);
+    }
+
+    private async Task MarkPromptGenerationQueuedAsync(PromptSet set, CancellationToken ct)
+    {
+        set.PromptGeneration = PromptGenerationState.Queued;
+        set.PromptGenerationQueuedAt = clock.GetUtcNow();
+        set.PromptGenerationError = null;
+        set.PromptGenerationTruncated = false;
+        await db.SaveChangesAsync(ct);
+        promptQueue.Wake();
+        await notifier.SetUpdated(set.Id);
     }
 
     public async Task PickAsync(int setId, int imageId, CancellationToken ct)
@@ -208,6 +248,7 @@ public sealed class SetService(
             await transaction.CommitAsync(ct);
         }
 
+        promptQueue.CancelRunning(setId);
         await notifier.SetDeleted(setId);
         return true;
     }

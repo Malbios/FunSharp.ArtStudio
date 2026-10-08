@@ -64,7 +64,8 @@ public sealed record SetSummaryDto(
     DateTimeOffset CreatedAt,
     bool IsDraft,
     DateTimeOffset? ReadyToPostAt,
-    DateTimeOffset? ArchivedAt);
+    DateTimeOffset? ArchivedAt,
+    PromptGenerationDto PromptGeneration);
 
 public sealed record SetDetailDto(
     int Id,
@@ -79,6 +80,7 @@ public sealed record SetDetailDto(
     bool IsDraft,
     DateTimeOffset? ReadyToPostAt,
     DateTimeOffset? ArchivedAt,
+    PromptGenerationDto PromptGeneration,
     IReadOnlyList<ImageDto> Images,
     IReadOnlyList<JobDto> Jobs);
 
@@ -87,6 +89,16 @@ public sealed record MoreImagesRequest(int Count, string? Prompt, string? Resolu
 public sealed record QueueDraftRequest(string Prompt, string Resolution, int Count);
 
 public sealed record DeviantArtDraftRequest(string Url);
+
+public sealed record PromptGenerationDto(PromptGenerationState State, string? Error, bool Truncated)
+{
+    public static PromptGenerationDto From(PromptSet set) =>
+        new(set.PromptGeneration, set.PromptGenerationError, set.PromptGenerationTruncated);
+}
+
+public sealed record VisionSettingsDto(bool HasApiKey);
+
+public sealed record VisionApiKeyRequest(string ApiKey);
 
 public sealed record PickImageRequest(int ImageId);
 

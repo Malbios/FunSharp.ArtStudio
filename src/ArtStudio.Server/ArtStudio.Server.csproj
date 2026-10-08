@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Comfy\krea2_t2i.json" LogicalName="ArtStudio.Server.Comfy.krea2_t2i.json" />
+    <EmbeddedResource Include="Vision\reconstruct-prompt.txt" LogicalName="ArtStudio.Server.Vision.reconstruct-prompt.txt" />
   </ItemGroup>
 
   <PropertyGroup>

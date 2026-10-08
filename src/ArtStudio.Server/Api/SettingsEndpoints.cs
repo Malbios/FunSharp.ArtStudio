@@ -1,6 +1,7 @@
 using ArtStudio.Server.Data;
 using ArtStudio.Server.Domain;
 using ArtStudio.Server.Generation;
+using ArtStudio.Server.Vision;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArtStudio.Server.Api;
@@ -22,6 +23,19 @@ public static class SettingsEndpoints
         app.MapGet("/api/settings", async (StudioDbContext db, AppPaths paths, CancellationToken ct) =>
             SettingsDto.From(await SettingsStore.LoadAsync(db, paths, ct)));
         app.MapPut("/api/settings", UpdateSettingsAsync);
+
+        app.MapGet("/api/vision", async (VisionApiKey apiKey, CancellationToken ct) =>
+            new VisionSettingsDto(await apiKey.HasKeyAsync(ct)));
+        app.MapPut("/api/vision", async (VisionApiKeyRequest request, VisionApiKey apiKey, CancellationToken ct) =>
+        {
+            await apiKey.SaveAsync(request.ApiKey ?? "", ct);
+            return new VisionSettingsDto(true);
+        });
+        app.MapDelete("/api/vision", async (VisionApiKey apiKey, CancellationToken ct) =>
+        {
+            await apiKey.ClearAsync(ct);
+            return new VisionSettingsDto(false);
+        });
 
         var blocks = app.MapGroup("/api/building-blocks");
         blocks.MapGet("", async (StudioDbContext db, CancellationToken ct) =>

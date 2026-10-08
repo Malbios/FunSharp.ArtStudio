@@ -4,6 +4,7 @@ using ArtStudio.Server.Data;
 using ArtStudio.Server.DeviantArt;
 using ArtStudio.Server.Generation;
 using ArtStudio.Server.Hubs;
+using ArtStudio.Server.Vision;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 
@@ -46,6 +47,17 @@ public static class ServiceRegistration
         services.AddDataProtection().SetApplicationName("ArtStudio");
         services.AddSingleton<DeviantArtAuth>();
         services.AddHostedService<QueueWorker>();
+
+        services.AddHttpClient(VisionClient.HttpClientName, http => http.Timeout = VisionClient.Timeout)
+            .ConfigurePrimaryHttpMessageHandler(sp =>
+                sp.GetRequiredService<IConfiguration>().GetValue<bool>(FakeVisionHandler.ConfigurationKey)
+                    ? new FakeVisionHandler(TimeSpan.FromSeconds(5))
+                    : new SocketsHttpHandler());
+        services.AddSingleton<VisionClient>();
+        services.AddSingleton(VisionInstruction.FromEmbeddedText());
+        services.AddSingleton<VisionApiKey>();
+        services.AddSingleton<PromptGenerationQueue>();
+        services.AddHostedService<PromptGenerationWorker>();
         return services;
     }
 }

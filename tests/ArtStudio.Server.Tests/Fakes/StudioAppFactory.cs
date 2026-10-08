@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using ArtStudio.Server.Api;
 using ArtStudio.Server.Comfy;
 using ArtStudio.Server.DeviantArt;
+using ArtStudio.Server.Vision;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -27,6 +28,8 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
 
     public FakeDeviantArt DeviantArt { get; } = new();
 
+    public FakeVisionServer Vision { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("ArtStudio:DataDirectory", DataDirectory);
@@ -36,6 +39,7 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
             services.AddSingleton(new GenerationTiming(TimeSpan.FromMilliseconds(10), TimeSpan.FromSeconds(30)));
             services.AddHttpClient(ComfyClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Comfy);
             services.AddHttpClient(DeviantArtService.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => DeviantArt);
+            services.AddHttpClient(VisionClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Vision);
         });
     }
 
@@ -65,6 +69,9 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
         if (!callback.Headers.Location!.ToString().Contains("deviantart=connected"))
             throw new InvalidOperationException($"DeviantArt login failed: {callback.Headers.Location}");
     }
+
+    public static async Task SetVisionApiKeyAsync(HttpClient client, string apiKey = "test-key") =>
+        (await client.PutAsJsonAsync("/api/vision", new { apiKey })).EnsureSuccessStatusCode();
 
     public static async Task<SetDetailDto> GetSetAsync(HttpClient client, int setId) =>
         (await client.GetFromJsonAsync<SetDetailDto>($"/api/sets/{setId}", Json))!;

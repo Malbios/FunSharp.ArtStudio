@@ -14,4 +14,5 @@ public class StudioSettings
     public string? ProtectedDeviantArtClientSecret { get; set; }
     public string? ProtectedDeviantArtRefreshToken { get; set; }
     public string? DeviantArtUsername { get; set; }
+    public string? ProtectedVisionApiKey { get; set; }
 }
