@@ -71,6 +71,11 @@ export interface VisionSettings {
   hasApiKey: boolean
 }
 
+export interface ModifiedPrompt {
+  text: string
+  truncated: boolean
+}
+
 export interface SetDetail {
   id: number
   prompt: string
@@ -142,8 +147,8 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
-  const init: RequestInit = { method }
+async function request<T>(method: string, url: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  const init: RequestInit = { method, signal }
   if (body instanceof FormData) {
     init.body = body
   } else if (body !== undefined) {
@@ -175,6 +180,8 @@ export const api = {
   visionSettings: () => request<VisionSettings>('GET', '/api/vision'),
   saveVisionApiKey: (apiKey: string) => request<VisionSettings>('PUT', '/api/vision', { apiKey }),
   removeVisionApiKey: () => request<VisionSettings>('DELETE', '/api/vision'),
+  modifyPrompt: (text: string, instructions: string, section: string | undefined, signal: AbortSignal) =>
+    request<ModifiedPrompt>('POST', '/api/vision/modify', { text, instructions, section }, signal),
   pickImage: (setId: number, imageId: number) => request<void>('POST', `/api/sets/${setId}/picks`, { imageId }),
   unpickImage: (setId: number, imageId: number) => request<void>('DELETE', `/api/sets/${setId}/picks/${imageId}`),
   reorderPicks: (setId: number, imageIds: number[]) =>

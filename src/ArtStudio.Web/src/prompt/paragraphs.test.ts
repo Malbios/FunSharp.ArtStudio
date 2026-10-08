@@ -7,6 +7,7 @@ import {
   pasteIntoParagraphs,
   removeParagraph,
   splitParagraphs,
+  toSingleParagraph,
 } from './paragraphs'
 
 describe('splitParagraphs', () => {
@@ -52,6 +53,12 @@ describe('hasSeveralParagraphs', () => {
   it('ignores blank lines at the edges', () => {
     expect(hasSeveralParagraphs('\n\nonly one\n\n')).toBe(false)
     expect(hasSeveralParagraphs('one\n\ntwo')).toBe(true)
+  })
+})
+
+describe('toSingleParagraph', () => {
+  it('joins several paragraphs into one box', () => {
+    expect(toSingleParagraph('\n\nfirst\n\nsecond\nline\n\n')).toBe('first second\nline')
   })
 })
 

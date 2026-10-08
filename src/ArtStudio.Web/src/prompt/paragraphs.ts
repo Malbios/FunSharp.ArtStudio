@@ -13,6 +13,10 @@ export function toParagraphs(text: string): string[] {
     .filter((paragraph) => paragraph.length > 0)
 }
 
+export function toSingleParagraph(text: string): string {
+  return toParagraphs(text).join(' ')
+}
+
 /**
  * Splits a prompt into paragraph boxes. Exactly three paragraphs are a prompt without characters; other short
  * prompts fill from the start and are padded to the minimum number of boxes.

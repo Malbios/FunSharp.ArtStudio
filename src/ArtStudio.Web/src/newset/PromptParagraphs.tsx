@@ -1,6 +1,7 @@
-import type { ClipboardEvent } from 'react'
+import { useState, type ClipboardEvent } from 'react'
 import { cleanPrompt } from '../prompt/cleanPrompt'
 import { insertAtSelection } from '../prompt/insertAtSelection'
+import { ModifyPromptDialog } from '../prompt/ModifyPromptDialog'
 import {
   addCharacter,
   hasSeveralParagraphs,
@@ -9,6 +10,7 @@ import {
   pasteIntoParagraphs,
   removeParagraph,
   toParagraphs,
+  toSingleParagraph,
 } from '../prompt/paragraphs'
 import { imageFileFrom } from './imageSource'
 
@@ -16,13 +18,15 @@ interface Props {
   paragraphs: string[]
   onChange: (paragraphs: string[]) => void
   onError: (message: string) => void
+  onModified: (truncated: boolean) => void
 }
 
 type ClipboardAction = 'append' | 'replace'
 
 const textareaId = (index: number) => `prompt-paragraph-${index}`
 
-export function PromptParagraphs({ paragraphs, onChange, onError }: Props) {
+export function PromptParagraphs({ paragraphs, onChange, onError, onModified }: Props) {
+  const [modifying, setModifying] = useState<number>()
   const labels = paragraphLabels(paragraphs.length)
   const characterCount = paragraphs.filter((_, index) => isCharacter(index, paragraphs.length)).length
 
@@ -90,6 +94,14 @@ export function PromptParagraphs({ paragraphs, onChange, onError }: Props) {
             <button type="button" className="link-button" onClick={() => void fromClipboard(index, 'replace')}>
               Replace with clipboard
             </button>
+            <button
+              type="button"
+              className="link-button"
+              disabled={paragraph.trim() === ''}
+              onClick={() => setModifying(index)}
+            >
+              Modify
+            </button>
             {characterCount > 1 && isCharacter(index, paragraphs.length) && (
               <button type="button" className="link-button" onClick={() => onChange(removeParagraph(paragraphs, index))}>
                 Remove
@@ -106,6 +118,18 @@ export function PromptParagraphs({ paragraphs, onChange, onError }: Props) {
           {index === characterCount - 1 && addCharacterButton}
         </div>
       ))}
+      {modifying !== undefined && (
+        <ModifyPromptDialog
+          subject={labels[modifying]}
+          text={paragraphs[modifying]}
+          section={labels[modifying]}
+          onModified={(text, truncated) => {
+            changeParagraph(modifying, toSingleParagraph(text))
+            onModified(truncated)
+          }}
+          onClose={() => setModifying(undefined)}
+        />
+      )}
     </div>
   )
 }

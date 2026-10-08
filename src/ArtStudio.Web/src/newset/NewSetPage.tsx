@@ -7,6 +7,7 @@ import { MESSAGE_DURATION_MS } from '../messages'
 import { cleanPrompt } from '../prompt/cleanPrompt'
 import { closestResolution } from '../prompt/closestResolution'
 import { generateActionLabel } from '../prompt/generateAction'
+import { ModifyPromptDialog } from '../prompt/ModifyPromptDialog'
 import { joinParagraphs, splitParagraphs } from '../prompt/paragraphs'
 import { BuildingBlockChips } from './BuildingBlockChips'
 import { imageFileFrom, loadImageFile, NO_SOURCE, sourceDimensions, type ImageSource } from './imageSource'
@@ -45,6 +46,8 @@ export function NewSetPage() {
   const [requestingPrompt, setRequestingPrompt] = useState(false)
   const [replacePromptWhenGenerated, setReplacePromptWhenGenerated] = useState(false)
   const [generatedHere, setGeneratedHere] = useState(false)
+  const [modifyingPrompt, setModifyingPrompt] = useState(false)
+  const [modifiedTruncated, setModifiedTruncated] = useState(false)
 
   useEffect(() => {
     if (created === undefined) return
@@ -196,6 +199,8 @@ export function NewSetPage() {
   const generation = baseSet?.sourceImageUrl ? baseSet.promptGeneration : null
   const generationNote = generation ? promptGenerationNote(generation, isDraft || generatedHere) : null
   const generateAction = generation ? generateActionLabel(generation.state, prompt.trim() !== '') : undefined
+  const generationPending = generation?.state === 'Queued' || generation?.state === 'Running'
+  const canModifyPrompt = prompt.trim() !== '' && !generationPending
   const promptField = (
     <div className="field">
       <div className="prompt-label-row">
@@ -206,8 +211,30 @@ export function NewSetPage() {
             {generateAction}
           </button>
         )}
+        {canModifyPrompt && (
+          <button type="button" className="link-button" onClick={() => setModifyingPrompt(true)}>
+            Modify existing prompt
+          </button>
+        )}
+        {modifiedTruncated && <em>modified, but may be cut off</em>}
       </div>
-      <PromptParagraphs paragraphs={paragraphs} onChange={setParagraphs} onError={setError} />
+      <PromptParagraphs
+        paragraphs={paragraphs}
+        onChange={setParagraphs}
+        onError={setError}
+        onModified={setModifiedTruncated}
+      />
+      {modifyingPrompt && (
+        <ModifyPromptDialog
+          subject="Whole prompt"
+          text={prompt}
+          onModified={(text, truncated) => {
+            setPrompt(text)
+            setModifiedTruncated(truncated)
+          }}
+          onClose={() => setModifyingPrompt(false)}
+        />
+      )}
     </div>
   )
 

@@ -272,6 +272,40 @@ main {
   font-size: inherit;
 }
 
+.modify-dialog {
+  width: min(40rem, calc(100vw - 2rem));
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+
+.modify-dialog::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+
+.modify-dialog h3 {
+  margin-top: 0;
+}
+
+.modify-dialog-text {
+  max-height: 12rem;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  color: var(--muted);
+  font-size: 0.9rem;
+  background: var(--panel-raised);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.75rem;
+}
+
+.modify-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
 .prompt-paragraphs {
   display: flex;
   flex-direction: column;
