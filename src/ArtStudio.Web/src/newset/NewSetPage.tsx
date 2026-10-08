@@ -1,6 +1,7 @@
 import { useEffect, useState, type ClipboardEvent, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { api, type SetDetail } from '../api'
+import { api, type PromptGeneration, type SetDetail } from '../api'
+import { useStudioEvents, type JobEventPayload } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { MESSAGE_DURATION_MS } from '../messages'
 import { cleanPrompt } from '../prompt/cleanPrompt'
@@ -47,12 +48,22 @@ export function NewSetPage() {
     if (baseSetId === null) return
     api.set(baseSetId).then((set) => {
       setBaseSet(set)
-      setPrompt(set.prompt)
+      setPrompt(set.isDraft ? cleanPrompt(set.prompt) : set.prompt)
       setResolution(set.resolution)
       setResolutionIsAuto(false)
       setSource({ kind: 'BasedOn', imageUrl: set.sourceImageUrl, deviantArtAuthor: set.deviantArtAuthor })
     }, (failure: Error) => setError(failure.message))
   }, [baseSetId])
+
+  useStudioEvents(['SetUpdated'], (event, payload) => {
+    if (draftId === null) return
+    if (event !== 'Reconnected' && (payload as JobEventPayload).setId !== draftId) return
+    api.set(draftId).then((set) => {
+      if (!set.isDraft) return
+      setBaseSet(set)
+      if (set.promptGeneration.state === 'Done' && prompt.trim() === '') setPrompt(cleanPrompt(set.prompt))
+    }, (failure: Error) => setError(failure.message))
+  })
 
   useEffect(() => {
     function pasteImage(event: globalThis.ClipboardEvent) {
@@ -164,9 +175,12 @@ export function NewSetPage() {
   const hasImage = source.kind === 'Upload' || source.kind === 'Paste' || source.kind === 'DeviantArt'
   const heading = !baseSet ? 'New prompt' : isDraft ? `Queue draft #${baseSet.id}` : `Edit & requeue set #${baseSet.id}`
 
+  const generationNote = isDraft && baseSet ? promptGenerationNote(baseSet.promptGeneration) : null
   const promptField = (
     <label className="field">
-      <span>Prompt</span>
+      <span>
+        Prompt {generationNote && <em className={generationNote.failed ? 'error' : 'hint'}>{generationNote.text}</em>}
+      </span>
       <textarea
         value={prompt}
         rows={8}
@@ -266,4 +280,19 @@ export function NewSetPage() {
       <BuildingBlockChips />
     </div>
   )
+}
+
+function promptGenerationNote(generation: PromptGeneration): { text: string; failed: boolean } | null {
+  switch (generation.state) {
+    case 'Queued':
+      return { text: 'waiting to be generated…', failed: false }
+    case 'Running':
+      return { text: 'being generated, this takes a few minutes…', failed: false }
+    case 'Failed':
+      return { text: `generating failed: ${generation.error ?? 'unknown error'}`, failed: true }
+    case 'Done':
+      return generation.truncated ? { text: 'generated, but may be cut off', failed: false } : null
+    default:
+      return null
+  }
 }

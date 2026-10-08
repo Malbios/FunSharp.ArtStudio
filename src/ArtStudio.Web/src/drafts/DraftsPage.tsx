@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../api'
+import { api, type PromptGenerationState } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { Pager } from '../paging/Pager'
 import { BulkDeviantArtDrafts } from './BulkDeviantArtDrafts'
+import { DraftPromptStatus } from './DraftPromptStatus'
 import { usePagedItems } from '../paging/usePagedItems'
 
 export function DraftsPage() {
@@ -14,6 +15,13 @@ export function DraftsPage() {
   useStudioEvents(['SetUpdated', 'SetDeleted'], drafts.reload)
   const paged = usePagedItems(drafts.data)
   const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
+  const countIn = (state: PromptGenerationState) => drafts.data?.filter((d) => d.promptGeneration.state === state).length ?? 0
+  const promptSummary = [
+    countIn('Running') > 0 && `${countIn('Running')} generating`,
+    countIn('Queued') > 0 && `${countIn('Queued')} waiting`,
+  ]
+    .filter(Boolean)
+    .join(', ')
 
   async function deleteDraft(setId: number) {
     if (!window.confirm(`Delete draft #${setId}?`)) return
@@ -34,6 +42,7 @@ export function DraftsPage() {
       <BulkDeviantArtDrafts />
       {drafts.error && <p className="error">{drafts.error}</p>}
       {error && <p className="error">{error}</p>}
+      {promptSummary && <p className="hint">Prompts: {promptSummary}</p>}
       {drafts.data?.length === 0 && (
         <p className="hint">
           No drafts. Attach an image on the <Link to="/">New</Link> page and use "Save as draft" to add a prompt later.
@@ -58,6 +67,7 @@ export function DraftsPage() {
                   Delete
                 </button>
               </div>
+              <DraftPromptStatus draft={draft} onError={setError} />
             </div>
           </div>
         ))}

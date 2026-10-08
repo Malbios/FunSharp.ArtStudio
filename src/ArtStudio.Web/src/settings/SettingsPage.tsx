@@ -4,6 +4,7 @@ import { BlockedArtistsEditor } from './BlockedArtistsEditor'
 import { BuildingBlocksEditor } from './BuildingBlocksEditor'
 import { DeviantArtConnection } from './DeviantArtConnection'
 import { GeneralSettings } from './GeneralSettings'
+import { VisionSettings } from './VisionSettings'
 
 export function SettingsPage() {
   const { hash } = useLocation()
@@ -17,6 +18,7 @@ export function SettingsPage() {
       <h2>Settings</h2>
       <GeneralSettings />
       <DeviantArtConnection />
+      <VisionSettings />
       <BuildingBlocksEditor />
       <BlockedArtistsEditor />
     </div>

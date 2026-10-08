@@ -55,6 +55,19 @@ export interface SetSummary {
   isDraft: boolean
   readyToPostAt: string | null
   archivedAt: string | null
+  promptGeneration: PromptGeneration
+}
+
+export type PromptGenerationState = 'None' | 'Queued' | 'Running' | 'Done' | 'Failed'
+
+export interface PromptGeneration {
+  state: PromptGenerationState
+  error: string | null
+  truncated: boolean
+}
+
+export interface VisionSettings {
+  hasApiKey: boolean
 }
 
 export interface SetDetail {
@@ -70,6 +83,7 @@ export interface SetDetail {
   isDraft: boolean
   readyToPostAt: string | null
   archivedAt: string | null
+  promptGeneration: PromptGeneration
   images: ImageInfo[]
   jobs: Job[]
 }
@@ -156,6 +170,10 @@ export const api = {
   queueDraft: (setId: number, prompt: string, resolution: string, count: number) =>
     request<void>('POST', `/api/sets/${setId}/queue`, { prompt, resolution, count }),
   addDeviantArtDraft: (url: string) => request<{ id: number }>('POST', '/api/drafts/deviantart', { url }),
+  generatePrompt: (setId: number) => request<void>('POST', `/api/sets/${setId}/generate-prompt`),
+  visionSettings: () => request<VisionSettings>('GET', '/api/vision'),
+  saveVisionApiKey: (apiKey: string) => request<VisionSettings>('PUT', '/api/vision', { apiKey }),
+  removeVisionApiKey: () => request<VisionSettings>('DELETE', '/api/vision'),
   pickImage: (setId: number, imageId: number) => request<void>('POST', `/api/sets/${setId}/picks`, { imageId }),
   unpickImage: (setId: number, imageId: number) => request<void>('DELETE', `/api/sets/${setId}/picks/${imageId}`),
   reorderPicks: (setId: number, imageIds: number[]) =>
