@@ -252,6 +252,7 @@ public sealed class PromptGenerationTests : IDisposable
 
         (await GeneratePromptAsync(setId)).EnsureSuccessStatusCode();
         await WaitForStateAsync(setId, PromptGenerationState.Done);
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Jobs.Count == 2, "the job for the new prompt");
 
         const string cleaned = "An fox's den.\nIn snow.";
         var set = await GetSetAsync(_client, setId);

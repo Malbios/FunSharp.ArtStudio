@@ -52,6 +52,8 @@ public sealed class SetService(
             CreatedAt = clock.GetUtcNow(),
             IsDraft = request.AsDraft,
         };
+        if (request.AsDraft)
+            set.DraftImageCount = ValidatedImageCount(request.Count);
 
 
         var deviation = request.Source is SetSource.DeviantArtUrl deviantArt
@@ -121,6 +123,18 @@ public sealed class SetService(
         await notifier.SetUpdated(setId);
     }
 
+    public async Task SaveDraftSettingsAsync(int setId, string resolution, int imageCount, CancellationToken ct)
+    {
+        var set = await FindSetAsync(setId, ct);
+        if (!set.IsDraft)
+            throw new UserFacingException("This set is not a draft.");
+
+        set.Resolution = (Resolutions.Find(resolution) ?? throw new UserFacingException($"Unknown resolution '{resolution}'.")).Name;
+        set.DraftImageCount = ValidatedImageCount(imageCount);
+        await db.SaveChangesAsync(ct);
+        await notifier.SetUpdated(setId);
+    }
+
     public async Task QueuePromptGenerationAsync(int setId, int? imageCount, string? resolution, CancellationToken ct)
     {
         var set = await FindSetAsync(setId, ct);
@@ -177,13 +191,16 @@ public sealed class SetService(
     {
         if (set.IsDraft)
             return null;
-        var count = imageCount ?? DefaultImageCount;
-        if (count is < 1 or > QueueService.MaxImagesPerJob)
-            throw new UserFacingException($"Image count must be between 1 and {QueueService.MaxImagesPerJob}.");
+        var count = ValidatedImageCount(imageCount ?? DefaultImageCount);
         var preset = Resolutions.Find(resolution ?? set.Resolution)
             ?? throw new UserFacingException("Choose a resolution.");
         return new(count, preset.Name);
     }
+
+    private static int ValidatedImageCount(int count) =>
+        count is >= 1 and <= QueueService.MaxImagesPerJob
+            ? count
+            : throw new UserFacingException($"Image count must be between 1 and {QueueService.MaxImagesPerJob}.");
 
     private sealed record Modification(string Instructions, string BasePrompt, int? ParagraphIndex, string? Section);
 

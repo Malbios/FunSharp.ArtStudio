@@ -18,6 +18,8 @@ public static class SetEndpoints
         sets.MapPost("{id:int}/more", RequestMoreImagesAsync);
         sets.MapPost("{id:int}/queue", async (int id, QueueDraftRequest request, SetService setService, CancellationToken ct) =>
             await setService.QueueDraftAsync(id, request.Prompt, request.Resolution, request.Count, ct));
+        sets.MapPut("{id:int}/draft-settings", async (int id, DraftSettingsRequest request, SetService setService, CancellationToken ct) =>
+            await setService.SaveDraftSettingsAsync(id, request.Resolution ?? "", request.ImageCount, ct));
         sets.MapPost("{id:int}/picks", async (int id, PickImageRequest request, SetService setService, CancellationToken ct) =>
             await setService.PickAsync(id, request.ImageId, ct));
         sets.MapDelete("{id:int}/picks/{imageId:int}", async (int id, int imageId, SetService setService, CancellationToken ct) =>
@@ -119,6 +121,7 @@ public static class SetEndpoints
             set.Picks.Select(p => p.GeneratedImageId).ToList(),
             set.CreatedAt,
             set.IsDraft,
+            set.DraftImageCount,
             set.ReadyToPostAt,
             set.ArchivedAt,
             PromptGenerationDto.From(set),

@@ -96,6 +96,7 @@ export interface SetDetail {
   pickedImageIds: number[]
   createdAt: string
   isDraft: boolean
+  draftImageCount: number
   readyToPostAt: string | null
   archivedAt: string | null
   promptGeneration: PromptGeneration
@@ -182,6 +183,8 @@ export const api = {
   createSet: (form: FormData) => request<{ id: number }>('POST', '/api/sets', form),
   moreImages: (setId: number, count: number, prompt?: string, resolution?: string) =>
     request<{ id: number }>('POST', `/api/sets/${setId}/more`, { count, prompt, resolution }),
+  saveDraftSettings: (setId: number, resolution: string, imageCount: number) =>
+    request<void>('PUT', `/api/sets/${setId}/draft-settings`, { resolution, imageCount }),
   queueDraft: (setId: number, prompt: string, resolution: string, count: number) =>
     request<void>('POST', `/api/sets/${setId}/queue`, { prompt, resolution, count }),
   addDeviantArtDraft: (url: string) => request<{ id: number }>('POST', '/api/drafts/deviantart', { url }),

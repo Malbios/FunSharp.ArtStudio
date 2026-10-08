@@ -19,13 +19,13 @@ public sealed class DraftTests : IDisposable
 
     public void Dispose() => _factory.Dispose();
 
-    private Task<HttpResponseMessage> PostDraftAsync(Action<MultipartFormDataContent> addSource)
+    private Task<HttpResponseMessage> PostDraftAsync(Action<MultipartFormDataContent> addSource, int count = 2)
     {
         var form = new MultipartFormDataContent
         {
             { new StringContent(""), "prompt" },
             { new StringContent("Wide"), "resolution" },
-            { new StringContent("2"), "count" },
+            { new StringContent(count.ToString()), "count" },
             { new StringContent("true"), "draft" },
         };
         addSource(form);
@@ -46,9 +46,9 @@ public sealed class DraftTests : IDisposable
         form.Add(new StringContent(DeviationLink), "deviantArtUrl");
     }
 
-    private async Task<int> CreateDraftAsync(Action<MultipartFormDataContent> addSource)
+    private async Task<int> CreateDraftAsync(Action<MultipartFormDataContent> addSource, int count = 2)
     {
-        var response = await PostDraftAsync(addSource);
+        var response = await PostDraftAsync(addSource, count);
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
     }
@@ -59,6 +59,46 @@ public sealed class DraftTests : IDisposable
     private async Task<int[]> SetIdsAsync(string stage) =>
         (await _client.GetFromJsonAsync<JsonElement>($"/api/sets?stage={stage}"))
             .EnumerateArray().Select(s => s.GetProperty("id").GetInt32()).ToArray();
+
+    private Task<HttpResponseMessage> SaveDraftSettingsAsync(int setId, string resolution, int imageCount) =>
+        _client.PutAsJsonAsync($"/api/sets/{setId}/draft-settings", new { resolution, imageCount });
+
+    [Fact]
+    public async Task Draft_KeepsTheImageCountItWasSavedWith()
+    {
+        var setId = await CreateDraftAsync(AddUpload, count: 5);
+
+        Assert.Equal(5, (await GetSetAsync(_client, setId)).DraftImageCount);
+    }
+
+    [Fact]
+    public async Task DraftSettings_AreSaved()
+    {
+        var setId = await CreateDraftAsync(AddUpload);
+
+        (await SaveDraftSettingsAsync(setId, "Portrait", 7)).EnsureSuccessStatusCode();
+
+        var set = await GetSetAsync(_client, setId);
+        Assert.Equal(("Portrait", 7), (set.Resolution, set.DraftImageCount));
+        Assert.True(set.IsDraft);
+        Assert.Empty(set.Jobs);
+    }
+
+    [Fact]
+    public async Task InvalidDraftSettings_AreRejected()
+    {
+        var setId = await CreateDraftAsync(AddUpload);
+        var queuedSetId = await _factory.CreateSetAsync(_client, "A fox.");
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await SaveDraftSettingsAsync(setId, "Portrait", 0)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await SaveDraftSettingsAsync(setId, "Portrait", 101)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await SaveDraftSettingsAsync(setId, "Huge", 3)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await SaveDraftSettingsAsync(queuedSetId, "Portrait", 3)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await PostDraftAsync(AddUpload, count: 0)).StatusCode);
+
+        var set = await GetSetAsync(_client, setId);
+        Assert.Equal(("Wide", 2), (set.Resolution, set.DraftImageCount));
+    }
 
     [Fact]
     public async Task Draft_WithoutPrompt_IsNotQueued()
@@ -159,6 +199,7 @@ public sealed class DraftTests : IDisposable
         Assert.Equal(SourceKind.DeviantArt, set.SourceKind);
         Assert.Equal("someartist", set.DeviantArtAuthor);
         Assert.Equal("Wide", set.Resolution);
+        Assert.Equal(2, set.DraftImageCount);
         Assert.Equal(FakeDeviantArt.JpegBytes, await _client.GetByteArrayAsync(set.SourceImageUrl));
         Assert.Equal([setId], await SetIdsAsync("draft"));
     }

@@ -35,6 +35,7 @@ public class PromptSet
     public string? DeviantArtAuthor { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public bool IsDraft { get; set; }
+    public int DraftImageCount { get; set; } = Generation.SetService.DefaultImageCount;
     public DateTimeOffset? ReadyToPostAt { get; set; }
     public DateTimeOffset? ArchivedAt { get; set; }
     public PromptGenerationState PromptGeneration { get; set; }

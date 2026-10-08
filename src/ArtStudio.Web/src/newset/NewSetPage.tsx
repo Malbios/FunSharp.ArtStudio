@@ -13,6 +13,7 @@ import { BuildingBlockChips } from './BuildingBlockChips'
 import { imageFileFrom, loadImageFile, NO_SOURCE, sourceDimensions, type ImageSource } from './imageSource'
 import { ImageSourcePicker, type SourceTab } from './ImageSourcePicker'
 import { PromptParagraphs } from './PromptParagraphs'
+import { useDraftSettingsAutosave } from './useDraftSettingsAutosave'
 
 const DEFAULT_COUNT = 2
 
@@ -52,6 +53,7 @@ export function NewSetPage() {
   const [replacePromptWhenGenerated, setReplacePromptWhenGenerated] = useState(false)
   const [generatedHere, setGeneratedHere] = useState(false)
   const [modifying, setModifying] = useState<ModifyTarget>()
+  const draftSettings = useDraftSettingsAutosave(draftId, setError)
 
   useEffect(() => {
     if (created === undefined) return
@@ -67,6 +69,7 @@ export function NewSetPage() {
       setPrompt(fromImage?.prompt ?? (set.isDraft ? cleanPrompt(set.prompt) : set.prompt))
       setResolution(fromImage?.resolution ?? set.resolution)
       setResolutionIsAuto(false)
+      if (set.isDraft) setCount(set.draftImageCount)
       setSource({ kind: 'BasedOn', imageUrl: set.sourceImageUrl, deviantArtAuthor: set.deviantArtAuthor })
     }, (failure: Error) => setError(failure.message))
   }, [baseSetId, fromImageId])
@@ -154,6 +157,7 @@ export function NewSetPage() {
     if (!prompt.trim()) return setError('Enter a prompt.')
     await send(async () => {
       if (baseSet && isDraft) {
+        draftSettings.cancel()
         await api.queueDraft(baseSet.id, prompt, resolution, count)
         navigate('/drafts')
       } else if (baseSet) {
@@ -286,6 +290,7 @@ export function NewSetPage() {
               onChange={(e) => {
                 setResolution(e.target.value)
                 setResolutionIsAuto(false)
+                draftSettings.save(e.target.value, count)
               }}
             >
               <option value="" disabled>
@@ -306,7 +311,11 @@ export function NewSetPage() {
               min={1}
               max={100}
               value={count}
-              onChange={(e) => setCount(Math.max(1, Number(e.target.value) || 1))}
+              onChange={(e) => {
+                const next = Math.max(1, Number(e.target.value) || 1)
+                setCount(next)
+                draftSettings.saveSoon(resolution, next)
+              }}
             />
           </label>
           {baseSetId === null && (

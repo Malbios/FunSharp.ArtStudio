@@ -78,6 +78,7 @@ public sealed record SetDetailDto(
     IReadOnlyList<int> PickedImageIds,
     DateTimeOffset CreatedAt,
     bool IsDraft,
+    int DraftImageCount,
     DateTimeOffset? ReadyToPostAt,
     DateTimeOffset? ArchivedAt,
     PromptGenerationDto PromptGeneration,
@@ -87,6 +88,8 @@ public sealed record SetDetailDto(
 public sealed record MoreImagesRequest(int Count, string? Prompt, string? Resolution);
 
 public sealed record QueueDraftRequest(string Prompt, string Resolution, int Count);
+
+public sealed record DraftSettingsRequest(string Resolution, int ImageCount);
 
 public sealed record DeviantArtDraftRequest(string Url);
 
