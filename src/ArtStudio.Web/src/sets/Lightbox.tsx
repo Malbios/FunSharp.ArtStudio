@@ -36,6 +36,12 @@ export function Lightbox({ images, index, sourceImageUrl, pickedImageIds, onInde
     return () => window.removeEventListener('keydown', handleKey)
   }, [index, images.length, onClose, onIndexChange])
 
+  const copyPromptButton = (
+    <button type="button" className="link-button" onClick={() => void copyPrompt()}>
+      {copiedImageId === image.id ? 'Copied!' : 'Copy prompt'}
+    </button>
+  )
+
   return (
     <div className="lightbox" role="dialog" aria-modal onClick={closeOnBackdropClick}>
       <div className="lightbox-bar">
@@ -73,13 +79,12 @@ export function Lightbox({ images, index, sourceImageUrl, pickedImageIds, onInde
           )}
         </div>
         <div className="lightbox-prompt">
+          <div className="job-meta">{copyPromptButton}</div>
           <p>{image.prompt}</p>
           <div className="job-meta">
             <span>{image.resolution}</span>
             <span>seed {image.seed}</span>
-            <button type="button" className="link-button" onClick={() => void copyPrompt()}>
-              {copiedImageId === image.id ? 'Copied!' : 'Copy prompt'}
-            </button>
+            {copyPromptButton}
           </div>
         </div>
       </div>
