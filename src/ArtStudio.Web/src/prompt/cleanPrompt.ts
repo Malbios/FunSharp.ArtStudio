@@ -18,6 +18,7 @@ function replaceRemovedWord(match: string, offset: number, text: string): string
   return atLineStart || atLineEnd || startsWithPunctuation.test(after) ? '' : ' '
 }
 
+/** The server cleans generated prompts with the same rules (ArtStudio.Server/Generation/PromptCleaner.cs); keep both in sync. */
 export function cleanPrompt(text: string): string {
   let cleaned = text.replace(/\r\n?/g, '\n').replace(/’/g, "'")
   for (const pattern of removedWordPatterns) {

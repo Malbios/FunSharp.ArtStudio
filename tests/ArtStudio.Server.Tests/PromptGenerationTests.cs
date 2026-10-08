@@ -174,9 +174,10 @@ public sealed class PromptGenerationTests : IDisposable
     }
 
     [Fact]
-    public async Task SetWithImages_GetsANewPrompt_WithoutChangingItsOwn()
+    public async Task SetWithImages_GetsTheCleanedNewPromptAsItsOwn()
     {
         await SetVisionApiKeyAsync(_client);
+        _factory.Vision.Answer = "An adult fox’s den.\r\nIn snow.";
         var setId = await _factory.CreateSetAsync(_client, "the original prompt", count: 1, addSource: form =>
         {
             form.Add(new StringContent("Upload"), "sourceKind");
@@ -190,11 +191,15 @@ public sealed class PromptGenerationTests : IDisposable
         (await GeneratePromptAsync(setId)).EnsureSuccessStatusCode();
         await WaitForStateAsync(setId, PromptGenerationState.Done);
 
+        const string cleaned = "An fox's den.\nIn snow.";
         var set = await GetSetAsync(_client, setId);
-        Assert.Equal(_factory.Vision.Answer, set.PromptGeneration.Text);
-        Assert.Equal("the original prompt", set.Prompt);
-        Assert.Single(set.Jobs);
+        Assert.Equal(cleaned, set.PromptGeneration.Text);
+        Assert.Equal(cleaned, set.Prompt);
+        Assert.Equal("the original prompt", Assert.Single(set.Jobs).Prompt);
         Assert.False(set.IsDraft);
+
+        (await _client.PostAsJsonAsync($"/api/sets/{setId}/more", new { count = 1 })).EnsureSuccessStatusCode();
+        Assert.Equal(cleaned, (await GetSetAsync(_client, setId)).Jobs.Last().Prompt);
     }
 
     [Fact]

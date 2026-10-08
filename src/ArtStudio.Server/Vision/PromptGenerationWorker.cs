@@ -80,9 +80,10 @@ public sealed class PromptGenerationWorker(
             await notifier.SetUpdated(setId);
 
             var answer = await DescribeSourceImageAsync(db, setId, runToken);
+            var prompt = PromptCleaner.Clean(answer.Text);
             await FinishRunningAsync(db, setId, s => s
-                .SetProperty(set => set.GeneratedPrompt, answer.Text)
-                .SetProperty(set => set.Prompt, set => set.IsDraft ? answer.Text : set.Prompt)
+                .SetProperty(set => set.GeneratedPrompt, prompt)
+                .SetProperty(set => set.Prompt, prompt)
                 .SetProperty(set => set.PromptGeneration, PromptGenerationState.Done)
                 .SetProperty(set => set.PromptGenerationTruncated, answer.Truncated));
         }
