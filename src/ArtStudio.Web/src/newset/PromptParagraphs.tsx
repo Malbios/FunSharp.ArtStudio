@@ -31,14 +31,14 @@ export function PromptParagraphs({ paragraphs, onChange, onError }: Props) {
   }
 
   /** Puts cleaned text between `start` and `end` of the box; several paragraphs spread over the following boxes. */
-  function insertCleaned(index: number, textarea: HTMLTextAreaElement, text: string, start: number, end: number, separator = '') {
+  function insertCleaned(index: number, textarea: HTMLTextAreaElement, text: string, start: number, end: number) {
     const cleaned = cleanPrompt(text)
     if (!hasSeveralParagraphs(cleaned)) {
       textarea.setSelectionRange(start, end)
-      insertAtSelection(textarea, separator + cleaned)
+      insertAtSelection(textarea, cleaned)
       return
     }
-    const before = textarea.value.slice(0, start) + separator
+    const before = textarea.value.slice(0, start)
     const after = textarea.value.slice(end)
     onChange(pasteIntoParagraphs(paragraphs, index, before, toParagraphs(cleaned), after))
   }
@@ -68,8 +68,7 @@ export function PromptParagraphs({ paragraphs, onChange, onError }: Props) {
       insertCleaned(index, textarea, text, 0, length)
       return
     }
-    const separator = textarea.value.trim() !== '' && !/\s$/.test(textarea.value) ? ' ' : ''
-    insertCleaned(index, textarea, text, length, length, separator)
+    insertCleaned(index, textarea, text, length, length)
   }
 
   return (
