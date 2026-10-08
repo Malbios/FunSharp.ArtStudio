@@ -1,23 +1,18 @@
 import { useEffect, useState, type ClipboardEvent, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { api, type PromptGeneration, type PromptGenerationState, type SetDetail } from '../api'
+import { api, type PromptGeneration, type SetDetail } from '../api'
 import { useStudioEvents, type JobEventPayload } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { MESSAGE_DURATION_MS } from '../messages'
 import { cleanPrompt } from '../prompt/cleanPrompt'
 import { closestResolution } from '../prompt/closestResolution'
+import { generateActionLabel } from '../prompt/generateAction'
 import { insertAtSelection } from '../prompt/insertAtSelection'
 import { BuildingBlockChips } from './BuildingBlockChips'
 import { imageFileFrom, loadImageFile, NO_SOURCE, sourceDimensions, type ImageSource } from './imageSource'
 import { ImageSourcePicker, type SourceTab } from './ImageSourcePicker'
 
 const DEFAULT_COUNT = 2
-
-const GENERATE_ACTIONS: Partial<Record<PromptGenerationState, string>> = {
-  None: 'Generate prompt',
-  Done: 'Regenerate prompt',
-  Failed: 'Retry generating',
-}
 
 interface CreatedSet {
   id: number
@@ -45,6 +40,7 @@ export function NewSetPage() {
   const [created, setCreated] = useState<CreatedSet>()
   const [requestingPrompt, setRequestingPrompt] = useState(false)
   const [replacePromptWhenGenerated, setReplacePromptWhenGenerated] = useState(false)
+  const [generatedHere, setGeneratedHere] = useState(false)
 
   useEffect(() => {
     if (created === undefined) return
@@ -64,13 +60,13 @@ export function NewSetPage() {
   }, [baseSetId])
 
   useStudioEvents(['SetUpdated'], (event, payload) => {
-    if (draftId === null) return
-    if (event !== 'Reconnected' && (payload as JobEventPayload).setId !== draftId) return
-    api.set(draftId).then((set) => {
-      if (!set.isDraft) return
+    if (baseSetId === null) return
+    if (event !== 'Reconnected' && (payload as JobEventPayload).setId !== baseSetId) return
+    api.set(baseSetId).then((set) => {
+      if (isDraft && !set.isDraft) return
       setBaseSet(set)
-      const state = set.promptGeneration.state
-      if (state === 'Done' && (replacePromptWhenGenerated || prompt.trim() === '')) setPrompt(cleanPrompt(set.prompt))
+      const { state, text } = set.promptGeneration
+      if (state === 'Done' && (replacePromptWhenGenerated || prompt.trim() === '')) setPrompt(cleanPrompt(text ?? set.prompt))
       if (state === 'Done' || state === 'Failed') setReplacePromptWhenGenerated(false)
     }, (failure: Error) => setError(failure.message))
   })
@@ -82,6 +78,7 @@ export function NewSetPage() {
     try {
       await api.generatePrompt(baseSet.id)
       setReplacePromptWhenGenerated(true)
+      setGeneratedHere(true)
     } catch (failure) {
       setError((failure as Error).message)
     } finally {
@@ -199,9 +196,9 @@ export function NewSetPage() {
   const hasImage = source.kind === 'Upload' || source.kind === 'Paste' || source.kind === 'DeviantArt'
   const heading = !baseSet ? 'New prompt' : isDraft ? `Queue draft #${baseSet.id}` : `Edit & requeue set #${baseSet.id}`
 
-  const draftGeneration = isDraft && baseSet ? baseSet.promptGeneration : null
-  const generationNote = draftGeneration ? promptGenerationNote(draftGeneration) : null
-  const generateAction = draftGeneration ? GENERATE_ACTIONS[draftGeneration.state] : undefined
+  const generation = baseSet?.sourceImageUrl ? baseSet.promptGeneration : null
+  const generationNote = generation ? promptGenerationNote(generation, isDraft || generatedHere) : null
+  const generateAction = generation ? generateActionLabel(generation.state, prompt.trim() !== '') : undefined
   const promptField = (
     <div className="field">
       <div className="prompt-label-row">
@@ -315,7 +312,10 @@ export function NewSetPage() {
   )
 }
 
-function promptGenerationNote(generation: PromptGeneration): { text: string; failed: boolean } | null {
+function promptGenerationNote(
+  generation: PromptGeneration,
+  showTruncation: boolean,
+): { text: string; failed: boolean } | null {
   switch (generation.state) {
     case 'Queued':
       return { text: 'waiting to be generated…', failed: false }
@@ -324,7 +324,7 @@ function promptGenerationNote(generation: PromptGeneration): { text: string; fai
     case 'Failed':
       return { text: `generating failed: ${generation.error ?? 'unknown error'}`, failed: true }
     case 'Done':
-      return generation.truncated ? { text: 'generated, but may be cut off', failed: false } : null
+      return showTruncation && generation.truncated ? { text: 'generated, but may be cut off', failed: false } : null
     default:
       return null
   }

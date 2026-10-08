@@ -90,10 +90,10 @@ public sealed record QueueDraftRequest(string Prompt, string Resolution, int Cou
 
 public sealed record DeviantArtDraftRequest(string Url);
 
-public sealed record PromptGenerationDto(PromptGenerationState State, string? Error, bool Truncated)
+public sealed record PromptGenerationDto(PromptGenerationState State, string? Error, bool Truncated, string? Text)
 {
     public static PromptGenerationDto From(PromptSet set) =>
-        new(set.PromptGeneration, set.PromptGenerationError, set.PromptGenerationTruncated);
+        new(set.PromptGeneration, set.PromptGenerationError, set.PromptGenerationTruncated, set.GeneratedPrompt);
 }
 
 public sealed record VisionSettingsDto(bool HasApiKey);

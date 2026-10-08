@@ -35,6 +35,7 @@ public class PromptSet
     public DateTimeOffset? PromptGenerationQueuedAt { get; set; }
     public string? PromptGenerationError { get; set; }
     public bool PromptGenerationTruncated { get; set; }
+    public string? GeneratedPrompt { get; set; }
 
     public List<GenerationJob> Jobs { get; set; } = [];
     public List<GeneratedImage> Images { get; set; } = [];

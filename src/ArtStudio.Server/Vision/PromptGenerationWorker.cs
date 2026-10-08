@@ -56,7 +56,7 @@ public sealed class PromptGenerationWorker(
     {
         using var scope = scopeFactory.CreateScope();
         return await scope.ServiceProvider.GetRequiredService<StudioDbContext>().PromptSets
-            .Where(s => s.IsDraft && s.PromptGeneration == PromptGenerationState.Queued)
+            .Where(s => s.PromptGeneration == PromptGenerationState.Queued)
             .OrderBy(s => s.PromptGenerationQueuedAt)
             .Select(s => (int?)s.Id)
             .FirstOrDefaultAsync(ct);
@@ -66,21 +66,23 @@ public sealed class PromptGenerationWorker(
     {
         using var scope = scopeFactory.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<StudioDbContext>();
-        var claimed = await db.PromptSets
-            .Where(s => s.Id == setId && s.IsDraft && s.PromptGeneration == PromptGenerationState.Queued)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(set => set.PromptGeneration, PromptGenerationState.Running)
-                .SetProperty(set => set.PromptGenerationError, (string?)null), stoppingToken);
-        if (claimed == 0)
-            return;
-        await notifier.SetUpdated(setId);
-
+        // Registered before the set shows as running, so a cancel right after the state change is never missed.
         var runToken = queue.BeginRun(setId, stoppingToken);
         try
         {
+            var claimed = await db.PromptSets
+                .Where(s => s.Id == setId && s.PromptGeneration == PromptGenerationState.Queued)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(set => set.PromptGeneration, PromptGenerationState.Running)
+                    .SetProperty(set => set.PromptGenerationError, (string?)null), stoppingToken);
+            if (claimed == 0)
+                return;
+            await notifier.SetUpdated(setId);
+
             var answer = await DescribeSourceImageAsync(db, setId, runToken);
             await FinishRunningAsync(db, setId, s => s
-                .SetProperty(set => set.Prompt, answer.Text)
+                .SetProperty(set => set.GeneratedPrompt, answer.Text)
+                .SetProperty(set => set.Prompt, set => set.IsDraft ? answer.Text : set.Prompt)
                 .SetProperty(set => set.PromptGeneration, PromptGenerationState.Done)
                 .SetProperty(set => set.PromptGenerationTruncated, answer.Truncated));
         }
@@ -90,12 +92,12 @@ public sealed class PromptGenerationWorker(
         }
         catch (OperationCanceledException)
         {
-            logger.LogInformation("Prompt generation for draft {SetId} was cancelled", setId);
+            logger.LogInformation("Prompt generation for set {SetId} was cancelled", setId);
         }
         catch (Exception ex)
         {
             if (ex is not (VisionException or UserFacingException))
-                logger.LogError(ex, "Prompt generation for draft {SetId} failed", setId);
+                logger.LogError(ex, "Prompt generation for set {SetId} failed", setId);
             await FinishRunningAsync(db, setId, s => s
                 .SetProperty(set => set.PromptGeneration, PromptGenerationState.Failed)
                 .SetProperty(set => set.PromptGenerationError, ex.Message));
@@ -124,7 +126,7 @@ public sealed class PromptGenerationWorker(
         Action<Microsoft.EntityFrameworkCore.Query.UpdateSettersBuilder<PromptSet>> setters)
     {
         await db.PromptSets
-            .Where(s => s.Id == setId && s.IsDraft && s.PromptGeneration == PromptGenerationState.Running)
+            .Where(s => s.Id == setId && s.PromptGeneration == PromptGenerationState.Running)
             .ExecuteUpdateAsync(setters, CancellationToken.None);
         await notifier.SetUpdated(setId);
     }

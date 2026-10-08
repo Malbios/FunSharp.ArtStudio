@@ -64,6 +64,7 @@ export interface PromptGeneration {
   state: PromptGenerationState
   error: string | null
   truncated: boolean
+  text: string | null
 }
 
 export interface VisionSettings {

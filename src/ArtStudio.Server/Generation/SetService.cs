@@ -122,12 +122,10 @@ public sealed class SetService(
     public async Task QueuePromptGenerationAsync(int setId, CancellationToken ct)
     {
         var set = await FindSetAsync(setId, ct);
-        if (!set.IsDraft)
-            throw new UserFacingException("Prompts are only generated for drafts.");
         if (set.SourceImagePath is null)
-            throw new UserFacingException("The draft has no image to describe.");
+            throw new UserFacingException("This set has no inspiration image to describe.");
         if (set.PromptGeneration is PromptGenerationState.Queued or PromptGenerationState.Running)
-            throw new UserFacingException("The prompt for this draft is already being generated.");
+            throw new UserFacingException("A prompt for this set is already being generated.");
         if (!await visionApiKey.HasKeyAsync(ct))
             throw new UserFacingException("Set the vision API key in Settings first.");
 

@@ -58,6 +58,7 @@ public sealed class PromptGenerationTests : IDisposable
 
         var set = await GetSetAsync(_client, setId);
         Assert.Equal(_factory.Vision.Answer, set.Prompt);
+        Assert.Equal(_factory.Vision.Answer, set.PromptGeneration.Text);
         Assert.True(set.IsDraft);
         Assert.Empty(set.Jobs);
         var request = Assert.Single(_factory.Vision.Requests);
@@ -131,7 +132,7 @@ public sealed class PromptGenerationTests : IDisposable
         await SetVisionApiKeyAsync(_client);
         _factory.Vision.HoldAnswers = true;
         var setId = await CreateUploadDraftAsync();
-        await WaitForStateAsync(setId, PromptGenerationState.Running);
+        await WaitUntilAsync(() => Task.FromResult(_factory.Vision.Requests.Count == 1), "vision request sent");
 
         (await _client.PostAsJsonAsync($"/api/sets/{setId}/queue", new { prompt = "my own prompt", resolution = "Native", count = 1 }))
             .EnsureSuccessStatusCode();
@@ -151,7 +152,7 @@ public sealed class PromptGenerationTests : IDisposable
         await SetVisionApiKeyAsync(_client);
         _factory.Vision.HoldAnswers = true;
         var setId = await CreateUploadDraftAsync();
-        await WaitForStateAsync(setId, PromptGenerationState.Running);
+        await WaitUntilAsync(() => Task.FromResult(_factory.Vision.Requests.Count == 1), "vision request sent");
 
         (await _client.DeleteAsync($"/api/sets/{setId}")).EnsureSuccessStatusCode();
 
@@ -159,17 +160,41 @@ public sealed class PromptGenerationTests : IDisposable
     }
 
     [Fact]
-    public async Task GeneratePrompt_IsRefused_WhileRunning_AndForNonDrafts()
+    public async Task GeneratePrompt_IsRefused_WhileRunning_AndWithoutInspirationImage()
     {
         await SetVisionApiKeyAsync(_client);
         _factory.Vision.HoldAnswers = true;
         var draftId = await CreateUploadDraftAsync();
         await WaitForStateAsync(draftId, PromptGenerationState.Running);
-        var setId = await _factory.CreateSetAsync(_client, "a fox", count: 1);
+        var setWithoutImage = await _factory.CreateSetAsync(_client, "a fox", count: 1);
 
         Assert.Equal(HttpStatusCode.BadRequest, (await GeneratePromptAsync(draftId)).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await GeneratePromptAsync(setId)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await GeneratePromptAsync(setWithoutImage)).StatusCode);
         _factory.Vision.HoldAnswers = false;
+    }
+
+    [Fact]
+    public async Task SetWithImages_GetsANewPrompt_WithoutChangingItsOwn()
+    {
+        await SetVisionApiKeyAsync(_client);
+        var setId = await _factory.CreateSetAsync(_client, "the original prompt", count: 1, addSource: form =>
+        {
+            form.Add(new StringContent("Upload"), "sourceKind");
+            var file = new ByteArrayContent(SourcePng);
+            file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+            form.Add(file, "image", "fox.png");
+        });
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Jobs.All(j => j.Status == JobStatus.Completed), "images");
+        Assert.Equal(PromptGenerationState.None, await StateAsync(setId));
+
+        (await GeneratePromptAsync(setId)).EnsureSuccessStatusCode();
+        await WaitForStateAsync(setId, PromptGenerationState.Done);
+
+        var set = await GetSetAsync(_client, setId);
+        Assert.Equal(_factory.Vision.Answer, set.PromptGeneration.Text);
+        Assert.Equal("the original prompt", set.Prompt);
+        Assert.Single(set.Jobs);
+        Assert.False(set.IsDraft);
     }
 
     [Fact]
