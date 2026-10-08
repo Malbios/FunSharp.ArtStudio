@@ -121,6 +121,7 @@ export function SetDetailPage() {
   const isArchived = data.archivedAt !== null
   const isReadyToPost = data.readyToPostAt !== null && !isArchived
   const isWorking = !isReadyToPost && !isArchived
+  const shownImages = isReadyToPost ? pickedImages : data.images
   const overview = isArchived
     ? { to: '/archive', label: 'All archived' }
     : isReadyToPost
@@ -201,7 +202,7 @@ export function SetDetailPage() {
       <div className={hasInspiration ? 'set-compare' : 'set-compare single'}>
         <section>
           <div className="image-grid">
-            {data.images.map((image, index) => {
+            {shownImages.map((image, index) => {
               const number = pickNumber(image)
               return (
                 <div key={image.id} className={number > 0 ? 'image-tile selected' : 'image-tile'}>
@@ -220,7 +221,7 @@ export function SetDetailPage() {
               )
             })}
           </div>
-          {data.images.length === 0 && <p className="hint">No images yet.</p>}
+          {shownImages.length === 0 && <p className="hint">No images yet.</p>}
         </section>
 
         {hasInspiration && (
@@ -260,15 +261,15 @@ export function SetDetailPage() {
         pickedImages={pickedImages}
         onReorder={(imageIds) => void changePicks(() => api.reorderPicks(setId, imageIds))}
         onUnpick={(image) => void changePicks(() => api.unpickImage(setId, image.id))}
-        onOpen={(image) => setLightboxIndex(data.images.indexOf(image))}
+        onOpen={(image) => setLightboxIndex(shownImages.indexOf(image))}
       />
 
       {error && <p className="error">{error}</p>}
       <div className="toolbar set-toolbar set-toolbar-bottom">{setActions}</div>
 
-      {lightboxIndex !== null && data.images[lightboxIndex] && (
+      {lightboxIndex !== null && shownImages[lightboxIndex] && (
         <Lightbox
-          images={data.images}
+          images={shownImages}
           index={lightboxIndex}
           sourceImageUrl={data.sourceImageUrl}
           pickedImageIds={data.pickedImageIds}
