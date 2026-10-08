@@ -29,8 +29,8 @@ public static class SetEndpoints
             await setService.MarkReadyToPostAsync(id, ct));
         sets.MapDelete("{id:int}/ready", async (int id, SetService setService, CancellationToken ct) =>
             await setService.MoveBackToSetsAsync(id, ct));
-        sets.MapPost("{id:int}/generate-prompt", async (int id, SetService setService, CancellationToken ct) =>
-            await setService.QueuePromptGenerationAsync(id, ct));
+        sets.MapPost("{id:int}/generate-prompt", async (int id, GeneratePromptRequest? request, SetService setService, CancellationToken ct) =>
+            await setService.QueuePromptGenerationAsync(id, request?.ImageCount, request?.Resolution, ct));
         sets.MapPost("{id:int}/modify-prompt", async (int id, ModifyPromptRequest request, SetService setService, CancellationToken ct) =>
             await setService.QueuePromptModificationAsync(
                 id, request.Prompt ?? "", request.Instructions ?? "", request.ParagraphIndex, request.Section,

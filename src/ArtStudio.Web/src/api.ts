@@ -75,7 +75,7 @@ export interface ModifiedParagraph {
   section: string
 }
 
-/** Images queued with the new prompt once a modification is done. */
+/** Images queued with the new prompt once a generation or modification is done. */
 export interface ImagesToQueue {
   count: number
   resolution: string
@@ -185,7 +185,11 @@ export const api = {
   queueDraft: (setId: number, prompt: string, resolution: string, count: number) =>
     request<void>('POST', `/api/sets/${setId}/queue`, { prompt, resolution, count }),
   addDeviantArtDraft: (url: string) => request<{ id: number }>('POST', '/api/drafts/deviantart', { url }),
-  generatePrompt: (setId: number) => request<void>('POST', `/api/sets/${setId}/generate-prompt`),
+  generatePrompt: (setId: number, images?: ImagesToQueue) =>
+    request<void>('POST', `/api/sets/${setId}/generate-prompt`, {
+      imageCount: images?.count,
+      resolution: images?.resolution,
+    }),
   visionSettings: () => request<VisionSettings>('GET', '/api/vision'),
   saveVisionApiKey: (apiKey: string) => request<VisionSettings>('PUT', '/api/vision', { apiKey }),
   removeVisionApiKey: () => request<VisionSettings>('DELETE', '/api/vision'),

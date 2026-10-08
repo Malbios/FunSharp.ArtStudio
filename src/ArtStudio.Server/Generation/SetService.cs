@@ -30,6 +30,8 @@ public sealed class SetService(
     StudioNotifier notifier,
     TimeProvider clock)
 {
+    public const int DefaultImageCount = 2;
+
     private static readonly TimeSpan RunningJobStopTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan RunningJobPollInterval = TimeSpan.FromMilliseconds(200);
 
@@ -50,6 +52,7 @@ public sealed class SetService(
             CreatedAt = clock.GetUtcNow(),
             IsDraft = request.AsDraft,
         };
+        var imagesAfterPrompt = request.AsDraft ? ImagesAfterPrompt(set, request.Count, resolution: null) : null;
 
 
         var deviation = request.Source is SetSource.DeviantArtUrl deviantArt
@@ -69,8 +72,8 @@ public sealed class SetService(
                 break;
         }
 
-        if (set.IsDraft)
-            await QueuePromptGenerationIfKeySetAsync(set, ct);
+        if (imagesAfterPrompt is not null)
+            await QueuePromptGenerationIfKeySetAsync(set, imagesAfterPrompt, ct);
         else
             await queueService.EnqueueAsync(set.Id, request.Count, prompt: null, resolution: null, ct);
         return set;
@@ -93,7 +96,7 @@ public sealed class SetService(
         await db.SaveChangesAsync(ct);
 
         await AttachDeviationAsync(set, deviation, ct);
-        await QueuePromptGenerationIfKeySetAsync(set, ct);
+        await QueuePromptGenerationIfKeySetAsync(set, new(DefaultImageCount, set.Resolution), ct);
         return set;
     }
 
@@ -119,15 +122,16 @@ public sealed class SetService(
         await notifier.SetUpdated(setId);
     }
 
-    public async Task QueuePromptGenerationAsync(int setId, CancellationToken ct)
+    public async Task QueuePromptGenerationAsync(int setId, int? imageCount, string? resolution, CancellationToken ct)
     {
         var set = await FindSetAsync(setId, ct);
         if (set.SourceImagePath is null)
             throw new UserFacingException("This set has no inspiration image to describe.");
+        var images = ImagesAfterPrompt(set, imageCount, resolution);
         await EnsureVisionCanStartAsync(set, ct);
 
         SetModification(set, null);
-        await MarkPromptGenerationQueuedAsync(set, ct);
+        await MarkPromptGenerationQueuedAsync(set, images, ct);
     }
 
     public async Task QueuePromptModificationAsync(
@@ -141,11 +145,23 @@ public sealed class SetService(
             throw new UserFacingException("Describe how the prompt should change.");
         if (paragraphIndex is { } index && (index < 0 || index >= PromptModifier.Paragraphs(prompt).Count))
             throw new UserFacingException("That paragraph is not part of the prompt.");
-        (int Count, string Resolution)? images = set.IsDraft ? null : ValidatedImages(imageCount, resolution);
+        var images = ImagesAfterPrompt(set, imageCount, resolution);
         await EnsureVisionCanStartAsync(set, ct);
 
-        SetModification(set, new(instructions.Trim(), prompt.Trim(), paragraphIndex, section?.Trim(), images?.Count, images?.Resolution));
-        await MarkPromptGenerationQueuedAsync(set, ct);
+        SetModification(set, new(instructions.Trim(), prompt.Trim(), paragraphIndex, section?.Trim()));
+        await MarkPromptGenerationQueuedAsync(set, images, ct);
+    }
+
+    /// <summary>Queues the images a finished prompt request asked for; a draft is queued and becomes a set.</summary>
+    public async Task QueueImagesAfterPromptAsync(int setId, CancellationToken ct)
+    {
+        var set = await FindSetAsync(setId, ct);
+        if (set is not { ImagesAfterPromptCount: { } count, ImagesAfterPromptResolution: { } resolution })
+            return;
+
+        set.IsDraft = false;
+        await queueService.EnqueueAsync(setId, count, set.Prompt, resolution, ct);
+        await notifier.SetUpdated(setId);
     }
 
     private async Task EnsureVisionCanStartAsync(PromptSet set, CancellationToken ct)
@@ -156,17 +172,19 @@ public sealed class SetService(
             throw new UserFacingException("Set the vision API key in Settings first.");
     }
 
-    private static (int Count, string Resolution) ValidatedImages(int? imageCount, string? resolution)
+    private sealed record ImagesToQueue(int Count, string Resolution);
+
+    private static ImagesToQueue ImagesAfterPrompt(PromptSet set, int? imageCount, string? resolution)
     {
-        if (imageCount is not { } count || count is < 1 or > QueueService.MaxImagesPerJob)
+        var count = imageCount ?? DefaultImageCount;
+        if (count is < 1 or > QueueService.MaxImagesPerJob)
             throw new UserFacingException($"Image count must be between 1 and {QueueService.MaxImagesPerJob}.");
-        var preset = Resolutions.Find(resolution ?? "")
+        var preset = Resolutions.Find(resolution ?? set.Resolution)
             ?? throw new UserFacingException("Choose a resolution.");
-        return (count, preset.Name);
+        return new(count, preset.Name);
     }
 
-    private sealed record Modification(
-        string Instructions, string BasePrompt, int? ParagraphIndex, string? Section, int? ImageCount, string? Resolution);
+    private sealed record Modification(string Instructions, string BasePrompt, int? ParagraphIndex, string? Section);
 
     private static void SetModification(PromptSet set, Modification? modification)
     {
@@ -174,24 +192,24 @@ public sealed class SetService(
         set.ModifyBasePrompt = modification?.BasePrompt;
         set.ModifyParagraphIndex = modification?.ParagraphIndex;
         set.ModifySection = modification?.Section;
-        set.ModifyImageCount = modification?.ImageCount;
-        set.ModifyResolution = modification?.Resolution;
     }
 
-    private async Task QueuePromptGenerationIfKeySetAsync(PromptSet set, CancellationToken ct)
+    private async Task QueuePromptGenerationIfKeySetAsync(PromptSet set, ImagesToQueue images, CancellationToken ct)
     {
         if (await visionApiKey.HasKeyAsync(ct))
-            await MarkPromptGenerationQueuedAsync(set, ct);
+            await MarkPromptGenerationQueuedAsync(set, images, ct);
         else
             await notifier.SetUpdated(set.Id);
     }
 
-    private async Task MarkPromptGenerationQueuedAsync(PromptSet set, CancellationToken ct)
+    private async Task MarkPromptGenerationQueuedAsync(PromptSet set, ImagesToQueue images, CancellationToken ct)
     {
         set.PromptGeneration = PromptGenerationState.Queued;
         set.PromptGenerationQueuedAt = clock.GetUtcNow();
         set.PromptGenerationError = null;
         set.PromptGenerationTruncated = false;
+        set.ImagesAfterPromptCount = images.Count;
+        set.ImagesAfterPromptResolution = images.Resolution;
         await db.SaveChangesAsync(ct);
         promptQueue.Wake();
         await notifier.SetUpdated(set.Id);

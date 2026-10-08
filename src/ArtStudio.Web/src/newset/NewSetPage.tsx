@@ -75,7 +75,10 @@ export function NewSetPage() {
     if (baseSetId === null) return
     if (event !== 'Reconnected' && (payload as JobEventPayload).setId !== baseSetId) return
     api.set(baseSetId).then((set) => {
-      if (isDraft && !set.isDraft) return
+      if (isDraft && !set.isDraft) {
+        if (!submitting) navigate(`/sets/${set.id}`)
+        return
+      }
       setBaseSet(set)
       const { state, text } = set.promptGeneration
       if (state === 'Done' && (replacePromptWhenGenerated || prompt.trim() === '')) setPrompt(cleanPrompt(text ?? set.prompt))
@@ -88,7 +91,7 @@ export function NewSetPage() {
     setError(undefined)
     setRequestingPrompt(true)
     try {
-      await api.generatePrompt(baseSet.id)
+      await api.generatePrompt(baseSet.id, imagesAfterPrompt)
       setReplacePromptWhenGenerated(true)
       setGeneratedHere(true)
     } catch (failure) {
@@ -98,7 +101,10 @@ export function NewSetPage() {
     }
   }
 
-  const imagesAfterModify = isDraft ? undefined : { count, resolution }
+  const imagesAfterPrompt = { count, resolution }
+  const imagesAfterPromptHint =
+    `When it's done, ${count} ${count === 1 ? 'image is' : 'images are'} queued with the new prompt (${resolution})`
+    + (isDraft ? ' and the draft moves to Sets.' : '.')
 
   async function queueModification(target: ModifyTarget, instructions: string) {
     if (!baseSet) return
@@ -106,7 +112,7 @@ export function NewSetPage() {
       target.index === undefined
         ? undefined
         : { index: joinedIndex(paragraphs, target.index), section: paragraphLabels(paragraphs.length)[target.index] }
-    await api.modifyPrompt(baseSet.id, prompt, instructions, paragraph, imagesAfterModify)
+    await api.modifyPrompt(baseSet.id, prompt, instructions, paragraph, imagesAfterPrompt)
     setError(undefined)
     setReplacePromptWhenGenerated(true)
     setGeneratedHere(true)
@@ -227,7 +233,13 @@ export function NewSetPage() {
         <span className="prompt-heading">Prompt</span>
         {generationNote && <em className={generationNote.failed ? 'error' : undefined}>{generationNote.text}</em>}
         {generateAction && (
-          <button type="button" className="link-button" disabled={requestingPrompt} onClick={() => void generatePrompt()}>
+          <button
+            type="button"
+            className="link-button"
+            disabled={requestingPrompt}
+            title={imagesAfterPromptHint}
+            onClick={() => void generatePrompt()}
+          >
             {generateAction}
           </button>
         )}
@@ -248,10 +260,7 @@ export function NewSetPage() {
         <ModifyPromptDialog
           subject={modifying.index === undefined ? 'Whole prompt' : modifyLabels[modifying.index]}
           text={modifying.index === undefined ? prompt : paragraphs[modifying.index]}
-          hint={
-            imagesAfterModify &&
-            `When it's done, ${count} ${count === 1 ? 'image is' : 'images are'} queued with the new prompt (${resolution}).`
-          }
+          hint={imagesAfterPromptHint}
           onSubmit={(instructions) => queueModification(modifying, instructions)}
           onClose={() => setModifying(undefined)}
         />

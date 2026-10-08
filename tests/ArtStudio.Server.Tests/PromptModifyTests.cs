@@ -62,17 +62,19 @@ public sealed class PromptModifyTests : IDisposable
     }
 
     [Fact]
-    public async Task ModifiedDraft_QueuesNoImages()
+    public async Task ModifiedDraft_IsQueued()
     {
         var setId = await CreateUploadDraftAsync();
         await SetVisionApiKeyAsync(_client);
+        _factory.Vision.Answer = "A fox at night.";
 
-        (await ModifyAsync(setId, "A fox.", "Make it night-time.", imageCount: null, resolution: null)).EnsureSuccessStatusCode();
+        (await ModifyAsync(setId, "A fox.", "Make it night-time.", imageCount: 4, resolution: "Wide")).EnsureSuccessStatusCode();
         await WaitForStateAsync(setId, PromptGenerationState.Done);
 
         var set = await GetSetAsync(_client, setId);
-        Assert.True(set.IsDraft);
-        Assert.Empty(set.Jobs);
+        Assert.False(set.IsDraft);
+        var job = Assert.Single(set.Jobs);
+        Assert.Equal(("A fox at night.", "Wide", 4), (job.Prompt, job.Resolution, job.RequestedCount));
     }
 
     [Fact]
@@ -89,13 +91,12 @@ public sealed class PromptModifyTests : IDisposable
     }
 
     [Fact]
-    public async Task SetWithoutValidImageSettings_IsRejected()
+    public async Task InvalidImageSettings_AreRejected()
     {
         await SetVisionApiKeyAsync(_client);
         var setId = await CreateSetAsync();
 
         Assert.Contains("between 1", await ErrorAsync(await ModifyAsync(setId, "A fox.", "Night.", imageCount: 0)));
-        Assert.Contains("between 1", await ErrorAsync(await ModifyAsync(setId, "A fox.", "Night.", imageCount: null)));
         Assert.Contains("resolution", await ErrorAsync(await ModifyAsync(setId, "A fox.", "Night.", resolution: "Huge")));
         Assert.Empty(_factory.Vision.Requests);
     }

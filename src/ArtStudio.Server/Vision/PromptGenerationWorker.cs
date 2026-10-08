@@ -90,8 +90,8 @@ public sealed class PromptGenerationWorker(
                 .SetProperty(set => set.Prompt, prompt)
                 .SetProperty(set => set.PromptGeneration, PromptGenerationState.Done)
                 .SetProperty(set => set.PromptGenerationTruncated, answer.Truncated));
-            if (finished && set is { ModifyImageCount: { } count, ModifyResolution: { } resolution })
-                await QueueImagesAsync(scope.ServiceProvider.GetRequiredService<QueueService>(), setId, count, prompt, resolution);
+            if (finished)
+                await QueueImagesAsync(scope.ServiceProvider.GetRequiredService<SetService>(), setId);
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
@@ -134,15 +134,15 @@ public sealed class PromptGenerationWorker(
         return (answer, PromptModifier.Apply(basePrompt, paragraphIndex, answer.Text));
     }
 
-    private async Task QueueImagesAsync(QueueService queueService, int setId, int count, string prompt, string resolution)
+    private async Task QueueImagesAsync(SetService setService, int setId)
     {
         try
         {
-            await queueService.EnqueueAsync(setId, count, prompt, resolution, CancellationToken.None);
+            await setService.QueueImagesAfterPromptAsync(setId, CancellationToken.None);
         }
         catch (UserFacingException ex)
         {
-            logger.LogWarning("Set {SetId} was modified, but its images could not be queued: {Reason}", setId, ex.Message);
+            logger.LogWarning("Set {SetId} got its prompt, but its images could not be queued: {Reason}", setId, ex.Message);
         }
     }
 

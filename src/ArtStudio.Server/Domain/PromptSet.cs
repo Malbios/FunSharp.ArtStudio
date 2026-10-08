@@ -46,8 +46,8 @@ public class PromptSet
     public string? ModifyBasePrompt { get; set; }
     public int? ModifyParagraphIndex { get; set; }
     public string? ModifySection { get; set; }
-    public int? ModifyImageCount { get; set; }
-    public string? ModifyResolution { get; set; }
+    public int? ImagesAfterPromptCount { get; set; }
+    public string? ImagesAfterPromptResolution { get; set; }
 
     public List<GenerationJob> Jobs { get; set; } = [];
     public List<GeneratedImage> Images { get; set; } = [];

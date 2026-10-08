@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using ArtStudio.Server.Data;
 using ArtStudio.Server.Domain;
+using ArtStudio.Server.Generation;
 using ArtStudio.Server.Tests.Fakes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -59,8 +60,9 @@ public sealed class PromptGenerationTests : IDisposable
         var set = await GetSetAsync(_client, setId);
         Assert.Equal(_factory.Vision.Answer, set.Prompt);
         Assert.Equal(_factory.Vision.Answer, set.PromptGeneration.Text);
-        Assert.True(set.IsDraft);
-        Assert.Empty(set.Jobs);
+        Assert.False(set.IsDraft);
+        var job = Assert.Single(set.Jobs);
+        Assert.Equal((_factory.Vision.Answer, "Native", 2), (job.Prompt, job.Resolution, job.RequestedCount));
         var request = Assert.Single(_factory.Vision.Requests);
         Assert.Equal("Bearer secret", request.Authorization);
         var content = request.Body["messages"]![0]!["content"]!;
@@ -99,6 +101,39 @@ public sealed class PromptGenerationTests : IDisposable
         Assert.Equal(
             $"data:image/jpeg;base64,{Convert.ToBase64String(FakeDeviantArt.JpegBytes)}",
             _factory.Vision.Requests.Single().Body["messages"]![0]!["content"]![1]!["image_url"]!["url"]!.GetValue<string>());
+        var set = await GetSetAsync(_client, setId);
+        Assert.False(set.IsDraft);
+        var job = Assert.Single(set.Jobs);
+        Assert.Equal((set.Resolution, SetService.DefaultImageCount), (job.Resolution, job.RequestedCount));
+    }
+
+    [Fact]
+    public async Task GenerateNewPrompt_QueuesTheRequestedImages()
+    {
+        await SetVisionApiKeyAsync(_client);
+        var setId = await CreateUploadDraftAsync();
+        await WaitForStateAsync(setId, PromptGenerationState.Done);
+
+        var generate = await _client.PostAsJsonAsync($"/api/sets/{setId}/generate-prompt", new { imageCount = 4, resolution = "Wide" });
+        generate.EnsureSuccessStatusCode();
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Jobs.Count == 2, "a second job");
+
+        var job = (await GetSetAsync(_client, setId)).Jobs.MaxBy(j => j.Id)!;
+        Assert.Equal((_factory.Vision.Answer, "Wide", 4), (job.Prompt, job.Resolution, job.RequestedCount));
+    }
+
+    [Fact]
+    public async Task GeneratePrompt_RejectsInvalidImageSettings()
+    {
+        var setId = await CreateUploadDraftAsync();
+        await SetVisionApiKeyAsync(_client);
+
+        var badCount = await _client.PostAsJsonAsync($"/api/sets/{setId}/generate-prompt", new { imageCount = 0 });
+        var badResolution = await _client.PostAsJsonAsync($"/api/sets/{setId}/generate-prompt", new { resolution = "Huge" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, badCount.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, badResolution.StatusCode);
+        Assert.Equal(PromptGenerationState.None, await StateAsync(setId));
     }
 
     [Fact]
@@ -127,6 +162,8 @@ public sealed class PromptGenerationTests : IDisposable
         var failed = await GetSetAsync(_client, failing);
         Assert.Contains("API key", failed.PromptGeneration.Error);
         Assert.Equal("", failed.Prompt);
+        Assert.True(failed.IsDraft);
+        Assert.Empty(failed.Jobs);
 
         (await GeneratePromptAsync(failing)).EnsureSuccessStatusCode();
         await WaitForStateAsync(failing, PromptGenerationState.Done);
@@ -214,11 +251,8 @@ public sealed class PromptGenerationTests : IDisposable
         var set = await GetSetAsync(_client, setId);
         Assert.Equal(cleaned, set.PromptGeneration.Text);
         Assert.Equal(cleaned, set.Prompt);
-        Assert.Equal("the original prompt", Assert.Single(set.Jobs).Prompt);
-        Assert.False(set.IsDraft);
-
-        (await _client.PostAsJsonAsync($"/api/sets/{setId}/more", new { count = 1 })).EnsureSuccessStatusCode();
-        Assert.Equal(cleaned, (await GetSetAsync(_client, setId)).Jobs.Last().Prompt);
+        Assert.Equal(["the original prompt", cleaned], set.Jobs.OrderBy(j => j.Id).Select(j => j.Prompt));
+        Assert.Equal(SetService.DefaultImageCount, set.Jobs.MaxBy(j => j.Id)!.RequestedCount);
     }
 
     [Fact]
