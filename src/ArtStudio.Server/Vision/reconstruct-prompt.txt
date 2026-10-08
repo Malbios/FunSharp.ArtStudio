@@ -4,7 +4,7 @@ Preserve the visible subject count, proportions, poses, clothing, accessories, i
 
 Separate the output into paragraphs with a blank line between them, in this order:
 
-1. One paragraph per important character or subject: visible appearance, proportions, pose, expression, clothing, accessories, and interaction with objects. If a feature is obscured, describe the obstruction instead of guessing the feature.
+1. One paragraph per character (person, animal, or creature): visible appearance, proportions, pose, expression, clothing, accessories, and interaction with objects. If a feature is obscured, describe the obstruction instead of guessing the feature. If the image shows no characters, write no character paragraph and start with the setting.
 2. One paragraph for the setting: background, foreground, major objects, vegetation, sky, and spatial relationships.
 3. One paragraph for composition: viewpoint, actual crop, subject placement, scale, depth, lighting direction, highlights, shadows, and palette. Do not call a cropped figure a full-body view.
 4. One final paragraph for style only: medium, degree of stylization, rendering, linework, textures, edges, and shading. Avoid claims about specific software, artists, or AI generation.
