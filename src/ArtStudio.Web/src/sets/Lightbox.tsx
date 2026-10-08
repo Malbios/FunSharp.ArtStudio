@@ -82,9 +82,9 @@ export function Lightbox({ images, index, sourceImageUrl, pickedImageIds, onInde
           <div className="job-meta">{copyPromptButton}</div>
           <p>{image.prompt}</p>
           <div className="job-meta">
+            {copyPromptButton}
             <span>{image.resolution}</span>
             <span>seed {image.seed}</span>
-            {copyPromptButton}
           </div>
         </div>
       </div>
