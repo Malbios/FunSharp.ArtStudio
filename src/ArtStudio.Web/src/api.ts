@@ -146,6 +146,7 @@ export interface BuildingBlock {
   resolution: string | null
   imageCount: number | null
   sortOrder: number
+  imageUrl: string | null
 }
 
 /** What a preset changes on the page; null leaves that part as it is. */
@@ -258,6 +259,12 @@ export const api = {
     request<BuildingBlock>('POST', '/api/building-blocks', { ...preset, kind: 'Preset' }),
   updatePreset: (id: number, preset: PresetFields) =>
     request<BuildingBlock>('PUT', `/api/building-blocks/${id}`, { ...preset, kind: 'Preset' }),
+  setPresetImage: (id: number, image: Blob) => {
+    const form = new FormData()
+    form.append('image', image)
+    return request<BuildingBlock>('PUT', `/api/building-blocks/${id}/image`, form)
+  },
+  removePresetImage: (id: number) => request<BuildingBlock>('DELETE', `/api/building-blocks/${id}/image`),
   deleteBuildingBlock: (id: number) => request<void>('DELETE', `/api/building-blocks/${id}`),
   reorderBuildingBlocks: (ids: number[]) => request<void>('POST', '/api/building-blocks/reorder', { ids }),
 }

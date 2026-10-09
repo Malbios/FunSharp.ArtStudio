@@ -32,7 +32,7 @@ export function BuildingBlockChips({ onApplyPreset }: { onApplyPreset: (preset: 
     flashChip(preset.id, 'Applied!')
   }
 
-  const chip = (block: BuildingBlock, title: string, onClick: () => void) => (
+  const chip = (block: BuildingBlock, title: string | undefined, onClick: () => void) => (
     <button
       key={block.id}
       type="button"
@@ -44,12 +44,22 @@ export function BuildingBlockChips({ onApplyPreset }: { onApplyPreset: (preset: 
     </button>
   )
 
+  const presetChip = (preset: BuildingBlock) => (
+    <span key={preset.id} className="preset-chip">
+      {chip(preset, undefined, () => apply(preset))}
+      <span className="preset-preview" role="tooltip">
+        {preset.imageUrl && <img src={preset.imageUrl} alt="" />}
+        {describePreset(preset)}
+      </span>
+    </span>
+  )
+
   return (
     <aside className="building-blocks">
       {presets.length > 0 && (
         <>
           <h3>Presets</h3>
-          <div className="chips">{presets.map((preset) => chip(preset, describePreset(preset), () => apply(preset)))}</div>
+          <div className="chips">{presets.map(presetChip)}</div>
         </>
       )}
       <h3>Building blocks</h3>

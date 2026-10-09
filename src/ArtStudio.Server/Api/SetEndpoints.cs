@@ -191,7 +191,7 @@ public static class SetEndpoints
         return FileResult(path);
     }
 
-    private static IResult FileResult(string? path) =>
+    internal static IResult FileResult(string? path) =>
         path is not null && File.Exists(path)
             ? Results.File(path, ImageStore.ContentTypeFor(path), enableRangeProcessing: true)
             : Results.NotFound();

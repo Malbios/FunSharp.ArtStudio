@@ -30,6 +30,16 @@ public static class ImageStore
         return path;
     }
 
+    public static async Task<string> SavePresetImageAsync(
+        string presetImagesDirectory, int blockId, Stream content, string extension, CancellationToken ct)
+    {
+        var directory = Directory.CreateDirectory(presetImagesDirectory);
+        var path = Path.Combine(directory.FullName, $"{blockId}{extension}");
+        await using var file = File.Create(path);
+        await content.CopyToAsync(file, ct);
+        return path;
+    }
+
     public static async Task<string> SaveGeneratedAsync(
         string outputDirectory, int setId, long seed, string comfyFileName, byte[] content, CancellationToken ct)
     {

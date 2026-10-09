@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using ArtStudio.Server.Api;
@@ -118,6 +119,80 @@ public sealed class SettingsTests : IDisposable
             new { label, kind = "Preset", artStyle, resolution, imageCount });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    private async Task<JsonElement> AddPresetAsync()
+    {
+        var response = await _client.PostAsJsonAsync("/api/building-blocks", new { label = "Oil", kind = "Preset", imageCount = 2 });
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    private Task<HttpResponseMessage> UploadImageAsync(JsonElement block, byte[] bytes, string contentType)
+    {
+        var content = new ByteArrayContent(bytes);
+        content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        var form = new MultipartFormDataContent { { content, "image", "example" } };
+        return _client.PutAsync($"/api/building-blocks/{block.GetProperty("id")}/image", form);
+    }
+
+    [Fact]
+    public async Task PresetImage_IsStoredServedReplacedAndRemoved()
+    {
+        var preset = await AddPresetAsync();
+        Assert.Equal(JsonValueKind.Null, preset.GetProperty("imageUrl").ValueKind);
+
+        var uploaded = await (await UploadImageAsync(preset, [1, 2, 3], "image/png")).Content.ReadFromJsonAsync<JsonElement>();
+        var firstUrl = uploaded.GetProperty("imageUrl").GetString()!;
+        var served = await _client.GetAsync(firstUrl);
+        Assert.Equal("image/png", served.Content.Headers.ContentType?.MediaType);
+        Assert.Equal([1, 2, 3], await served.Content.ReadAsByteArrayAsync());
+
+        await Task.Delay(20);
+        var replaced = await (await UploadImageAsync(preset, [4, 5], "image/jpeg")).Content.ReadFromJsonAsync<JsonElement>();
+        var secondUrl = replaced.GetProperty("imageUrl").GetString()!;
+        Assert.NotEqual(firstUrl, secondUrl);
+        Assert.Equal([4, 5], await _client.GetByteArrayAsync(secondUrl));
+        var presetsDirectory = Path.Combine(_factory.DataDirectory, "presets");
+        Assert.Single(Directory.GetFiles(presetsDirectory));
+
+        var removed = await (await _client.DeleteAsync($"/api/building-blocks/{preset.GetProperty("id")}/image"))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(JsonValueKind.Null, removed.GetProperty("imageUrl").ValueKind);
+        Assert.Empty(Directory.GetFiles(presetsDirectory));
+    }
+
+    [Fact]
+    public async Task DeletingAPreset_DeletesItsImage()
+    {
+        var preset = await AddPresetAsync();
+        (await UploadImageAsync(preset, [1, 2, 3], "image/webp")).EnsureSuccessStatusCode();
+
+        (await _client.DeleteAsync($"/api/building-blocks/{preset.GetProperty("id")}")).EnsureSuccessStatusCode();
+
+        Assert.Empty(Directory.GetFiles(Path.Combine(_factory.DataDirectory, "presets")));
+    }
+
+    [Fact]
+    public async Task PresetImage_IsRejectedForTextBlocksAndUnsupportedTypes()
+    {
+        var text = await AddBlockAsync("Light", "soft light");
+        var preset = await AddPresetAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await UploadImageAsync(text, [1], "image/png")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await UploadImageAsync(preset, [1], "image/bmp")).StatusCode);
+    }
+
+    [Fact]
+    public async Task BuildingBlocks_NeverExposeFilePaths()
+    {
+        var preset = await AddPresetAsync();
+        (await UploadImageAsync(preset, [1, 2, 3], "image/png")).EnsureSuccessStatusCode();
+
+        var body = await _client.GetStringAsync("/api/building-blocks");
+
+        Assert.DoesNotContain("imagePath", body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(_factory.DataDirectory.Replace("\\", "\\\\"), body);
     }
 
     private async Task<JsonElement> AddBlockAsync(string label, string text)

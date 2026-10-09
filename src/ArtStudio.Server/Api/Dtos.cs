@@ -99,6 +99,22 @@ public sealed record PromptGenerationDto(PromptGenerationState State, PromptGene
         new(set.PromptGeneration, set.ModifyInstructions is null ? PromptGenerationKind.Generate : PromptGenerationKind.Modify, set.PromptGenerationError, set.PromptGenerationTruncated, set.GeneratedPrompt);
 }
 
+public sealed record BuildingBlockDto(
+    int Id,
+    BuildingBlockKind Kind,
+    string Label,
+    string Text,
+    string? ArtStyle,
+    string? Resolution,
+    int? ImageCount,
+    int SortOrder,
+    string? ImageUrl)
+{
+    public static BuildingBlockDto From(BuildingBlock block) => new(
+        block.Id, block.Kind, block.Label, block.Text, block.ArtStyle, block.Resolution, block.ImageCount,
+        block.SortOrder, ApiUrls.PresetImage(block));
+}
+
 public sealed record VisionSettingsDto(bool HasApiKey);
 
 public sealed record VisionApiKeyRequest(string ApiKey);
@@ -118,4 +134,10 @@ public static class ApiUrls
 
     public static string? SourceImage(PromptSet set) =>
         set.SourceImagePath is null ? null : $"/api/sets/{set.Id}/source";
+
+    /// <summary>Carries the file's write time so a replaced image is not served from the browser cache.</summary>
+    public static string? PresetImage(BuildingBlock block) =>
+        block.ImagePath is { } path && File.Exists(path)
+            ? $"/api/building-blocks/{block.Id}/image?v={File.GetLastWriteTimeUtc(path).Ticks}"
+            : null;
 }

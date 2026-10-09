@@ -1,6 +1,8 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type ClipboardEvent, type FormEvent } from 'react'
 import { api, type BuildingBlock, type PresetFields, type ResolutionPreset } from '../api'
 import { useLoad } from '../live/useLoad'
+import { imageFileFrom } from '../newset/imageSource'
+import { PresetImage, readClipboardImage } from './PresetImage'
 
 const EMPTY_PRESET: PresetFields = { label: '', artStyle: null, resolution: null, imageCount: null }
 
@@ -43,7 +45,7 @@ export function PresetsEditor() {
       <h3>Presets</h3>
       <p className="hint">
         Shown above the building blocks. Clicking one applies it: it replaces the Art style box and sets Resolution and
-        Images. Empty fields leave that part as it is.
+        Images. Empty fields leave that part as it is. The example image shows when hovering the preset.
       </p>
       <div className="editable-list">
         {list.map((preset, index) => (
@@ -55,6 +57,9 @@ export function PresetsEditor() {
             canMoveDown={index < list.length - 1}
             onSave={(fields) => void run(() => api.updatePreset(preset.id, fields))}
             onDelete={() => void run(() => api.deleteBuildingBlock(preset.id))}
+            onImage={(image) => void run(() => api.setPresetImage(preset.id, image))}
+            onPasteFromClipboard={() => void run(async () => api.setPresetImage(preset.id, await readClipboardImage()))}
+            onRemoveImage={() => void run(() => api.removePresetImage(preset.id))}
             onMove={(offset) => move(index, offset)}
           />
         ))}
@@ -80,9 +85,14 @@ interface RowProps {
   onSave: (fields: PresetFields) => void
   onDelete: () => void
   onMove: (offset: number) => void
+  onImage: (image: Blob) => void
+  onPasteFromClipboard: () => void
+  onRemoveImage: () => void
 }
 
-function PresetRow({ preset, resolutions, canMoveUp, canMoveDown, onSave, onDelete, onMove }: RowProps) {
+function PresetRow(props: RowProps) {
+  const { preset, resolutions, canMoveUp, canMoveDown, onSave, onDelete, onMove } = props
+  const { onImage, onPasteFromClipboard, onRemoveImage } = props
   const saved: PresetFields = {
     label: preset.label,
     artStyle: preset.artStyle,
@@ -92,8 +102,15 @@ function PresetRow({ preset, resolutions, canMoveUp, canMoveDown, onSave, onDele
   const [fields, setFields] = useState(saved)
   const changed = JSON.stringify(fields) !== JSON.stringify(saved)
 
+  function pasteImage(event: ClipboardEvent) {
+    const image = imageFileFrom(event.clipboardData)
+    if (!image) return
+    event.preventDefault()
+    onImage(image)
+  }
+
   return (
-    <div className="editable-row preset-row">
+    <div className="editable-row preset-row" onPaste={pasteImage}>
       <PresetInputs fields={fields} resolutions={resolutions} onChange={setFields} />
       <div className="row-actions">
         <button type="button" disabled={!canMoveUp} onClick={() => onMove(-1)} title="Move up">
@@ -109,6 +126,12 @@ function PresetRow({ preset, resolutions, canMoveUp, canMoveDown, onSave, onDele
           Delete
         </button>
       </div>
+      <PresetImage
+        preset={preset}
+        onImage={onImage}
+        onPasteFromClipboard={onPasteFromClipboard}
+        onRemove={onRemoveImage}
+      />
     </div>
   )
 }

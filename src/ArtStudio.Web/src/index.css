@@ -373,6 +373,45 @@ main {
   color: var(--success);
 }
 
+.preset-chip {
+  position: relative;
+}
+
+.preset-preview {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 0.6rem);
+  z-index: 20;
+  width: 320px;
+  padding: 0.6rem;
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 0.12s ease,
+    visibility 0s linear 0.12s;
+  pointer-events: none;
+}
+
+.preset-preview img {
+  display: block;
+  width: 100%;
+  border-radius: calc(var(--radius) - 2px);
+  margin-bottom: 0.5rem;
+}
+
+.preset-chip:hover .preset-preview,
+.preset-chip:focus-within .preset-preview {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.12s ease;
+}
+
 .tabs {
   display: flex;
   gap: 0.25rem;
@@ -976,6 +1015,33 @@ main {
   grid-template-columns: 180px minmax(0, 1fr) 170px 130px 14rem;
 }
 
+.preset-image {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.preset-image img,
+.preset-image-empty {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+}
+
+.preset-image img {
+  object-fit: cover;
+}
+
+.preset-image-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
 .editable-row .row-actions {
   display: flex;
   gap: 0.3rem;
@@ -1007,6 +1073,12 @@ main {
 
   .building-blocks {
     position: static;
+  }
+
+  .preset-preview {
+    top: calc(100% + 0.4rem);
+    right: auto;
+    left: 0;
   }
 
   .editable-row,

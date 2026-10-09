@@ -18,5 +18,6 @@ public class BuildingBlock
     public string? ArtStyle { get; set; }
     public string? Resolution { get; set; }
     public int? ImageCount { get; set; }
+    public string? ImagePath { get; set; }
     public int SortOrder { get; set; }
 }

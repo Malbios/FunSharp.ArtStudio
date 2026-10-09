@@ -45,15 +45,15 @@ public static class SettingsEndpoints
 
         var blocks = app.MapGroup("/api/building-blocks");
         blocks.MapGet("", async (StudioDbContext db, CancellationToken ct) =>
-            await db.BuildingBlocks.OrderBy(b => b.SortOrder).ThenBy(b => b.Id).ToListAsync(ct));
+            (await db.BuildingBlocks.OrderBy(b => b.SortOrder).ThenBy(b => b.Id).ToListAsync(ct)).Select(BuildingBlockDto.From));
         blocks.MapPost("", AddBuildingBlockAsync);
         blocks.MapPut("{id:int}", UpdateBuildingBlockAsync);
-        blocks.MapDelete("{id:int}", async (int id, StudioDbContext db, CancellationToken ct) =>
-        {
-            await db.BuildingBlocks.Where(b => b.Id == id).ExecuteDeleteAsync(ct);
-            return Results.NoContent();
-        });
+        blocks.MapDelete("{id:int}", DeleteBuildingBlockAsync);
         blocks.MapPost("reorder", ReorderBuildingBlocksAsync);
+        blocks.MapGet("{id:int}/image", async (int id, StudioDbContext db, CancellationToken ct) =>
+            SetEndpoints.FileResult(await db.BuildingBlocks.Where(b => b.Id == id).Select(b => b.ImagePath).SingleOrDefaultAsync(ct)));
+        blocks.MapPut("{id:int}/image", SetPresetImageAsync).DisableAntiforgery();
+        blocks.MapDelete("{id:int}/image", RemovePresetImageAsync);
     }
 
     private static async Task<SettingsDto> UpdateSettingsAsync(
@@ -84,7 +84,7 @@ public static class SettingsEndpoints
         return SettingsDto.From(settings);
     }
 
-    private static async Task<BuildingBlock> AddBuildingBlockAsync(
+    private static async Task<BuildingBlockDto> AddBuildingBlockAsync(
         BuildingBlockRequest request, StudioDbContext db, CancellationToken ct)
     {
         var lastSortOrder = await db.BuildingBlocks.MaxAsync(b => (int?)b.SortOrder, ct) ?? 0;
@@ -92,7 +92,7 @@ public static class SettingsEndpoints
         Apply(block, request);
         db.BuildingBlocks.Add(block);
         await db.SaveChangesAsync(ct);
-        return block;
+        return BuildingBlockDto.From(block);
     }
 
     private static async Task<IResult> UpdateBuildingBlockAsync(
@@ -102,8 +102,61 @@ public static class SettingsEndpoints
         if (block is null)
             return Results.NotFound();
         Apply(block, request);
+        if (block.Kind != BuildingBlockKind.Preset)
+            DeleteImageFile(block);
         await db.SaveChangesAsync(ct);
-        return Results.Ok(block);
+        return Results.Ok(BuildingBlockDto.From(block));
+    }
+
+    private static async Task<IResult> DeleteBuildingBlockAsync(int id, StudioDbContext db, CancellationToken ct)
+    {
+        if (await db.BuildingBlocks.FindAsync([id], ct) is { } block)
+        {
+            DeleteImageFile(block);
+            db.BuildingBlocks.Remove(block);
+            await db.SaveChangesAsync(ct);
+        }
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> SetPresetImageAsync(
+        int id, HttpRequest request, StudioDbContext db, AppPaths paths, CancellationToken ct)
+    {
+        var block = await db.BuildingBlocks.FindAsync([id], ct);
+        if (block is null)
+            return Results.NotFound();
+        if (block.Kind != BuildingBlockKind.Preset)
+            throw new UserFacingException("Only presets can have an image.");
+
+        var file = (await request.ReadFormAsync(ct)).Files.GetFile("image")
+            ?? throw new UserFacingException("Choose an image.");
+        var extension = ImageStore.ExtensionFor(file.ContentType)
+            ?? throw new UserFacingException($"Unsupported image type '{file.ContentType}'. Use PNG, JPEG, WebP or GIF.");
+
+        await using var content = file.OpenReadStream();
+        var path = await ImageStore.SavePresetImageAsync(paths.PresetImagesDirectory, id, content, extension, ct);
+        if (block.ImagePath != path)
+            DeleteImageFile(block);
+        block.ImagePath = path;
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(BuildingBlockDto.From(block));
+    }
+
+    private static async Task<IResult> RemovePresetImageAsync(int id, StudioDbContext db, CancellationToken ct)
+    {
+        var block = await db.BuildingBlocks.FindAsync([id], ct);
+        if (block is null)
+            return Results.NotFound();
+        DeleteImageFile(block);
+        await db.SaveChangesAsync(ct);
+        return Results.Ok(BuildingBlockDto.From(block));
+    }
+
+    private static void DeleteImageFile(BuildingBlock block)
+    {
+        if (block.ImagePath is { } path && File.Exists(path))
+            File.Delete(path);
+        block.ImagePath = null;
     }
 
     private static async Task ReorderBuildingBlocksAsync(ReorderRequest request, StudioDbContext db, CancellationToken ct)
