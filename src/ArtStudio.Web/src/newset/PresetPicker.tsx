@@ -19,6 +19,8 @@ export function PresetPicker({ presets, onChoose, onClose }: Props) {
   }, [])
 
   function closeOnBackdrop(event: MouseEvent<HTMLDialogElement>) {
+    // Portalled, but React still bubbles the click to the opener; the lightbox would close on it.
+    event.stopPropagation()
     if (event.target === dialogRef.current) onClose()
   }
 
@@ -34,6 +36,7 @@ export function PresetPicker({ presets, onChoose, onClose }: Props) {
             ✕
           </button>
         </div>
+        {presets.length === 0 && <p className="hint">No presets yet. Add some under Manage presets.</p>}
         <div className="preset-grid">
           {presets.map((preset) => (
             <button

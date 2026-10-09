@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describePreset, withArtStyle } from './presets'
+import { describePreset, presetRequeue, withArtStyle } from './presets'
 
 describe('withArtStyle', () => {
   it('replaces only the art style box', () => {
@@ -19,5 +19,21 @@ describe('describePreset', () => {
     expect(describePreset({ artStyle: 'Oil paint.', resolution: null, imageCount: 4 })).toBe(
       'Art style: Oil paint.\nImages: 4',
     )
+  })
+})
+
+describe('presetRequeue', () => {
+  it('replaces the art style and uses the preset resolution and count', () => {
+    expect(
+      presetRequeue({ artStyle: 'Oil.', resolution: 'Wide', imageCount: 4 }, 'A fox.\n\nA forest.\n\nEye level.\n\nWatercolour.', 'Native', 2),
+    ).toEqual({ prompt: 'A fox.\n\nA forest.\n\nEye level.\n\nOil.', resolution: 'Wide', count: 4 })
+  })
+
+  it('keeps what the preset does not set', () => {
+    expect(presetRequeue({ artStyle: null, resolution: null, imageCount: null }, 'A fox.\n\nWatercolour.', 'Native', 3)).toEqual({
+      prompt: 'A fox.\n\nWatercolour.',
+      resolution: 'Native',
+      count: 3,
+    })
   })
 })

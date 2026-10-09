@@ -7,6 +7,7 @@ import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { JobRow } from '../queue/JobRow'
 import { Lightbox } from './Lightbox'
 import { PickedStrip } from './PickedStrip'
+import { RequeueWithPreset } from './RequeueWithPreset'
 import { setsOverviewFrom } from './setsOverviewLink'
 
 const DEFAULT_MORE_COUNT = 2
@@ -148,6 +149,14 @@ export function SetDetailPage() {
           <Link to={`/?basedOn=${data.id}`} className="button-link inline">
             Edit &amp; requeue
           </Link>
+          <RequeueWithPreset
+            setId={data.id}
+            prompt={data.prompt}
+            resolution={data.resolution}
+            fallbackCount={moreCount}
+            onQueued={set.reload}
+            onError={setError}
+          />
           <button
             type="button"
             className="success"
@@ -270,6 +279,9 @@ export function SetDetailPage() {
           sourceImageUrl={data.sourceImageUrl}
           pickedImageIds={data.pickedImageIds}
           canRequeue={isWorking}
+          requeueCount={moreCount}
+          onRequeued={set.reload}
+          onError={setError}
           onIndexChange={setLightboxIndex}
           onTogglePick={togglePick}
           onClose={closeLightbox}

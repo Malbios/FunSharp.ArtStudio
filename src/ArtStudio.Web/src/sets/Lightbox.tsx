@@ -1,6 +1,7 @@
 import { useEffect, useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { ImageInfo } from '../api'
+import { RequeueWithPreset } from './RequeueWithPreset'
 
 interface Props {
   images: ImageInfo[]
@@ -8,6 +9,10 @@ interface Props {
   sourceImageUrl: string | null
   pickedImageIds: number[]
   canRequeue: boolean
+  /** Images queued by Requeue with preset when the preset has no image count. */
+  requeueCount: number
+  onRequeued: () => void
+  onError: (message: string) => void
   onIndexChange: (index: number) => void
   onTogglePick: (image: ImageInfo) => void
   onClose: () => void
@@ -19,6 +24,9 @@ export function Lightbox({
   sourceImageUrl,
   pickedImageIds,
   canRequeue,
+  requeueCount,
+  onRequeued,
+  onError,
   onIndexChange,
   onTogglePick,
   onClose,
@@ -39,6 +47,7 @@ export function Lightbox({
 
   useEffect(() => {
     function handleKey(event: KeyboardEvent) {
+      if (document.querySelector('dialog[open]')) return
       if (event.key === 'Escape') onClose()
       if (event.key === 'ArrowLeft' && index > 0) onIndexChange(index - 1)
       if (event.key === 'ArrowRight' && index < images.length - 1) onIndexChange(index + 1)
@@ -96,6 +105,17 @@ export function Lightbox({
               <Link to={`/?basedOn=${image.setId}&image=${image.id}`} className="link-button">
                 Edit &amp; requeue with this prompt
               </Link>
+            )}
+            {canRequeue && (
+              <RequeueWithPreset
+                setId={image.setId}
+                prompt={image.prompt}
+                resolution={image.resolution}
+                fallbackCount={requeueCount}
+                className="link-button"
+                onQueued={onRequeued}
+                onError={onError}
+              />
             )}
           </div>
           <p>{image.prompt}</p>
