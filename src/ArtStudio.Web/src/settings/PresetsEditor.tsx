@@ -2,6 +2,8 @@ import { useState, type ClipboardEvent, type FormEvent } from 'react'
 import { api, type BuildingBlock, type PresetFields, type ResolutionPreset } from '../api'
 import { useLoad } from '../live/useLoad'
 import { imageFileFrom } from '../newset/imageSource'
+import { cleanPrompt } from '../prompt/cleanPrompt'
+import { insertAtSelection } from '../prompt/insertAtSelection'
 import { PresetImage, readClipboardImage } from './PresetImage'
 
 const EMPTY_PRESET: PresetFields = { label: '', artStyle: null, resolution: null, imageCount: null }
@@ -145,6 +147,13 @@ interface InputsProps {
 function PresetInputs({ fields, resolutions, onChange }: InputsProps) {
   const change = (patch: Partial<PresetFields>) => onChange({ ...fields, ...patch })
 
+  function pasteTrimmed(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const text = event.clipboardData.getData('text')
+    if (!text) return
+    event.preventDefault()
+    insertAtSelection(event.currentTarget, cleanPrompt(text).trim())
+  }
+
   return (
     <>
       <input
@@ -159,6 +168,7 @@ function PresetInputs({ fields, resolutions, onChange }: InputsProps) {
         placeholder="Art style (empty keeps the Art style box as it is)"
         value={fields.artStyle ?? ''}
         onChange={(e) => change({ artStyle: e.target.value || null })}
+        onPaste={pasteTrimmed}
       />
       <select
         className="preset-resolution"
