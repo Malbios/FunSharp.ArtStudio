@@ -53,7 +53,7 @@ export function PresetsEditor() {
     addingAt === position ? (
       <form
         key={`new-${position}`}
-        className="editable-row preset-row new-preset"
+        className="editable-row preset-row new-preset new-entry"
         onSubmit={(e) => void add(e, position)}
       >
         <PresetInputs fields={newPreset} resolutions={resolutions.data ?? []} onChange={setNewPreset} />
@@ -70,7 +70,7 @@ export function PresetsEditor() {
       <button
         key={`insert-${position}`}
         type="button"
-        className="link-button add-preset-here"
+        className="link-button add-here"
         onClick={() => startAdding(position)}
       >
         {list.length === 0 ? '+ Add preset' : '+ Add preset here'}

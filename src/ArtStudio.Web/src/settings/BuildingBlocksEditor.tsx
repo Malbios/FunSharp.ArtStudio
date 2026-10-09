@@ -4,9 +4,11 @@ import { useLoad } from '../live/useLoad'
 
 export function BuildingBlocksEditor() {
   const blocks = useLoad(api.buildingBlocks)
+  const [addingAt, setAddingAt] = useState<number>()
   const [newLabel, setNewLabel] = useState('')
   const [newText, setNewText] = useState('')
   const [error, setError] = useState<string>()
+  const list = blocks.data?.filter((block) => block.kind === 'Text') ?? []
 
   async function run(action: () => Promise<unknown>) {
     setError(undefined)
@@ -18,16 +20,22 @@ export function BuildingBlocksEditor() {
     }
   }
 
-  async function add(event: FormEvent) {
-    event.preventDefault()
-    await run(async () => {
-      await api.addBuildingBlock(newLabel, newText)
-      setNewLabel('')
-      setNewText('')
-    })
+  function startAdding(position: number) {
+    setNewLabel('')
+    setNewText('')
+    setAddingAt(position)
   }
 
-  const list = blocks.data?.filter((block) => block.kind === 'Text') ?? []
+  async function add(event: FormEvent, position: number) {
+    event.preventDefault()
+    await run(async () => {
+      const created = await api.addBuildingBlock(newLabel, newText)
+      const ids = list.map((block) => block.id)
+      ids.splice(position, 0, created.id)
+      await api.reorderBuildingBlocks(ids)
+      setAddingAt(undefined)
+    })
+  }
 
   function move(index: number, offset: number) {
     const ids = list.map((block) => block.id)
@@ -36,12 +44,38 @@ export function BuildingBlocksEditor() {
     void run(() => api.reorderBuildingBlocks(ids))
   }
 
+  const insertPoint = (position: number) =>
+    addingAt === position ? (
+      <form key={`new-${position}`} className="editable-row new-entry" onSubmit={(e) => void add(e, position)}>
+        <input placeholder="Label (optional)" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} />
+        <textarea rows={2} placeholder="Text to copy" value={newText} onChange={(e) => setNewText(e.target.value)} />
+        <div className="row-actions">
+          <button type="button" onClick={() => setAddingAt(undefined)}>
+            Cancel
+          </button>
+          <button type="submit" className="primary" disabled={!newText.trim()}>
+            Add
+          </button>
+        </div>
+      </form>
+    ) : (
+      <button
+        key={`insert-${position}`}
+        type="button"
+        className="link-button add-here"
+        onClick={() => startAdding(position)}
+      >
+        {list.length === 0 ? '+ Add building block' : '+ Add building block here'}
+      </button>
+    )
+
   return (
     <section className="panel" id="building-blocks">
       <h3>Building blocks</h3>
       <p className="hint">Shown next to the prompt box. Clicking one copies its text to the clipboard.</p>
       <div className="editable-list">
-        {list.map((block, index) => (
+        {insertPoint(0)}
+        {list.map((block, index) => [
           <BuildingBlockRow
             key={`${block.id}-${block.label}-${block.text}`}
             block={block}
@@ -50,16 +84,10 @@ export function BuildingBlocksEditor() {
             onSave={(label, text) => void run(() => api.updateBuildingBlock(block.id, label, text))}
             onDelete={() => void run(() => api.deleteBuildingBlock(block.id))}
             onMove={(offset) => move(index, offset)}
-          />
-        ))}
+          />,
+          insertPoint(index + 1),
+        ])}
       </div>
-      <form className="editable-row" onSubmit={(e) => void add(e)}>
-        <input placeholder="Label (optional)" value={newLabel} onChange={(e) => setNewLabel(e.target.value)} />
-        <textarea rows={2} placeholder="Text to copy" value={newText} onChange={(e) => setNewText(e.target.value)} />
-        <button type="submit" className="primary" disabled={!newText.trim()}>
-          Add
-        </button>
-      </form>
       {(error ?? blocks.error) && <p className="error">{error ?? blocks.error}</p>}
     </section>
   )

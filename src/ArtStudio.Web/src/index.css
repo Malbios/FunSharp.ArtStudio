@@ -1023,19 +1023,22 @@ main {
   grid-template-areas:
     'label resolution count . actions'
     'style style style style style';
+}
+
+.editable-row.new-entry {
   padding: 0.75rem;
   border: 1px dashed var(--accent);
   border-radius: var(--radius);
 }
 
-.add-preset-here {
+.add-here {
   align-self: flex-start;
   padding: 0;
   font-size: 0.85rem;
   color: var(--muted);
 }
 
-.add-preset-here:hover {
+.add-here:hover {
   color: var(--accent);
 }
 
