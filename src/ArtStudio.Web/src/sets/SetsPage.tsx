@@ -11,7 +11,7 @@ import type { SetsOverviewState } from './setsOverviewLink'
 export function SetsPage() {
   const sets = useLoad(() => api.sets('working'))
   useStudioEvents(['JobUpdated', 'ImageAdded', 'SetDeleted', 'SetUpdated'], sets.reload)
-  const filter = useListFilter(sets.data, SET_FILTERS)
+  const filter = useListFilter('sets', sets.data, SET_FILTERS)
   const paged = usePagedItems(filter.items)
   const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
   const location = useLocation()

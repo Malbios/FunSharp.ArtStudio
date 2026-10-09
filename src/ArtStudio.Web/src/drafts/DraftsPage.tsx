@@ -15,7 +15,7 @@ export function DraftsPage() {
   const drafts = useLoad(() => api.sets('draft'))
   const [error, setError] = useState<string>()
   useStudioEvents(['SetUpdated', 'SetDeleted'], drafts.reload)
-  const filter = useListFilter(drafts.data, DRAFT_FILTERS)
+  const filter = useListFilter('drafts', drafts.data, DRAFT_FILTERS)
   const paged = usePagedItems(filter.items)
   const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
   const countIn = (state: PromptGenerationState) => drafts.data?.filter((d) => d.promptGeneration.state === state).length ?? 0

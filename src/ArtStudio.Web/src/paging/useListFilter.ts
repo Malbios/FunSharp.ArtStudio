@@ -23,24 +23,44 @@ export interface FilteredItems<T> {
   setActive: (key: string) => void
 }
 
+const storageKey = (list: string) => `artstudio.filter.${list}`
+
+function rememberedFilter(list: string): string | null {
+  try {
+    return localStorage.getItem(storageKey(list))
+  } catch {
+    return null
+  }
+}
+
+function rememberFilter(list: string, key: string) {
+  try {
+    localStorage.setItem(storageKey(list), key)
+  } catch {
+    // Without storage the filter is simply not remembered.
+  }
+}
+
 /**
- * Narrows items by the filter named in the URL (?filter=). The first filter is the default and has no parameter;
- * changing the filter goes back to page 1.
+ * Narrows items by the filter named in the URL (?filter=), or else by the one last chosen for this list in this
+ * browser. The first filter is the default and has no parameter; changing the filter goes back to page 1.
  */
-export function useListFilter<T>(items: T[] | undefined, filters: ListFilter<T>[]): FilteredItems<T> {
+export function useListFilter<T>(list: string, items: T[] | undefined, filters: ListFilter<T>[]): FilteredItems<T> {
   const [searchParams, setSearchParams] = useSearchParams()
-  const requested = searchParams.get(FILTER_PARAM)
+  const requested = searchParams.get(FILTER_PARAM) ?? rememberedFilter(list)
   const filter = filters.find((candidate) => candidate.key === requested) ?? filters[0]
 
   const setActive = useCallback(
-    (key: string) =>
+    (key: string) => {
+      rememberFilter(list, key)
       setSearchParams((params) => {
         if (key === filters[0].key) params.delete(FILTER_PARAM)
         else params.set(FILTER_PARAM, key)
         params.delete(PAGE_PARAM)
         return params
-      }),
-    [filters, setSearchParams],
+      })
+    },
+    [list, filters, setSearchParams],
   )
 
   return {
