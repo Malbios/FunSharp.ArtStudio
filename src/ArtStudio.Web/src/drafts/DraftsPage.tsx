@@ -4,7 +4,6 @@ import { api, type PromptGenerationState } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
-import { FilterBar } from '../paging/FilterBar'
 import { DRAFT_FILTERS } from '../paging/listFilters'
 import { Pager } from '../paging/Pager'
 import { useListFilter } from '../paging/useListFilter'
@@ -52,11 +51,12 @@ export function DraftsPage() {
           No drafts. Attach an image on the <Link to="/">New</Link> page and use "Save as draft" to add a prompt later.
         </p>
       )}
-      {drafts.data && drafts.data.length > 0 && <FilterBar filter={filter} />}
+      {drafts.data && drafts.data.length > 0 && (
+        <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} filter={filter} />
+      )}
       {drafts.data && drafts.data.length > 0 && filter.items?.length === 0 && (
         <p className="hint">No drafts match this filter.</p>
       )}
-      {pager}
       <div className="set-grid">
         {paged.pageItems.map((draft) => (
           <div key={draft.id} className="panel set-card">

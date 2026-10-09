@@ -1,14 +1,32 @@
+import { FilterMenu } from './FilterMenu'
 import { pageNumbers } from './pagination'
+import type { FilteredItems } from './useListFilter'
 
-interface Props {
+interface PageProps {
   page: number
   pageCount: number
   onChange: (page: number) => void
 }
 
+interface Props<T> extends PageProps {
+  /** Shown as a funnel button at the far right; the row then shows even with a single page. */
+  filter?: FilteredItems<T>
+}
+
 const MIN_PAGES_FOR_FIRST_AND_LAST = 5
 
-export function Pager({ page, pageCount, onChange }: Props) {
+export function Pager<T>({ page, pageCount, onChange, filter }: Props<T>) {
+  if (!filter) return <PageButtons page={page} pageCount={pageCount} onChange={onChange} />
+
+  return (
+    <div className="pager-row">
+      <PageButtons page={page} pageCount={pageCount} onChange={onChange} />
+      <FilterMenu filter={filter} />
+    </div>
+  )
+}
+
+function PageButtons({ page, pageCount, onChange }: PageProps) {
   if (pageCount <= 1) return null
   const showFirstAndLast = pageCount >= MIN_PAGES_FOR_FIRST_AND_LAST
 

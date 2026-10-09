@@ -2,7 +2,6 @@ import { Link, useLocation } from 'react-router-dom'
 import { api } from '../api'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
-import { FilterBar } from '../paging/FilterBar'
 import { SET_FILTERS } from '../paging/listFilters'
 import { Pager } from '../paging/Pager'
 import { useListFilter } from '../paging/useListFilter'
@@ -29,11 +28,12 @@ export function SetsPage() {
           No sets yet. <Link to="/">Create one</Link>.
         </p>
       )}
-      {sets.data && sets.data.length > 0 && <FilterBar filter={filter} />}
+      {sets.data && sets.data.length > 0 && (
+        <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} filter={filter} />
+      )}
       {sets.data && sets.data.length > 0 && filter.items?.length === 0 && (
         <p className="hint">No sets match this filter.</p>
       )}
-      {pager}
       <div className="set-grid">
         {paged.pageItems.map((set) => {
           const thumbnail = set.previewImageUrl ?? set.sourceImageUrl
