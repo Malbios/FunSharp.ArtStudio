@@ -48,8 +48,7 @@ export function BuildingBlockChips({ onApplyPreset }: { onApplyPreset: (preset: 
     <span key={preset.id} className="preset-chip">
       {chip(preset, undefined, () => apply(preset))}
       <span className="preset-preview" role="tooltip">
-        {preset.imageUrl && <img src={preset.imageUrl} alt="" />}
-        {describePreset(preset)}
+        {preset.imageUrl ? <img src={preset.imageUrl} alt="" /> : describePreset(preset)}
       </span>
     </span>
   )
