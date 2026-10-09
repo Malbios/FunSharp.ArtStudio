@@ -64,7 +64,7 @@ export function PresetsEditor() {
           />
         ))}
       </div>
-      <form className="editable-row preset-row" onSubmit={(e) => void add(e)}>
+      <form className="editable-row preset-row new-preset" onSubmit={(e) => void add(e)}>
         <PresetInputs key={addVersion} fields={newPreset} resolutions={resolutions.data ?? []} onChange={setNewPreset} />
         <div className="row-actions">
           <button type="submit" className="primary" disabled={!newPreset.label.trim()}>
@@ -147,14 +147,21 @@ function PresetInputs({ fields, resolutions, onChange }: InputsProps) {
 
   return (
     <>
-      <input placeholder="Label" value={fields.label} onChange={(e) => change({ label: e.target.value })} />
+      <input
+        className="preset-label"
+        placeholder="Label"
+        value={fields.label}
+        onChange={(e) => change({ label: e.target.value })}
+      />
       <textarea
-        rows={2}
-        placeholder="Art style (empty keeps the box as it is)"
+        className="preset-style"
+        rows={5}
+        placeholder="Art style (empty keeps the Art style box as it is)"
         value={fields.artStyle ?? ''}
         onChange={(e) => change({ artStyle: e.target.value || null })}
       />
       <select
+        className="preset-resolution"
         aria-label="Resolution"
         value={fields.resolution ?? ''}
         onChange={(e) => change({ resolution: e.target.value || null })}
@@ -167,6 +174,7 @@ function PresetInputs({ fields, resolutions, onChange }: InputsProps) {
         ))}
       </select>
       <input
+        className="preset-count"
         type="number"
         min={1}
         max={100}

@@ -42,8 +42,8 @@ export function PresetImage({ preset, onImage, onPasteFromClipboard, onRemove }:
         Paste
       </button>
       {preset.imageUrl && (
-        <button type="button" onClick={onRemove}>
-          Remove image
+        <button type="button" onClick={onRemove} title="Remove the example image">
+          Remove
         </button>
       )}
       <input
