@@ -188,6 +188,43 @@ public sealed class QueueTests : IDisposable
         Assert.DoesNotContain("second", _factory.Comfy.SubmittedPrompts);
     }
 
+    private Task<HttpResponseMessage> MoveAsync(int jobId, int offset) =>
+        _client.PostAsJsonAsync($"/api/jobs/{jobId}/move", new { offset });
+
+    private async Task<int> SingleJobIdAsync(int setId) => (await GetSetAsync(_client, setId)).Jobs.Single().Id;
+
+    [Fact]
+    public async Task MovedJob_RunsInItsNewPlace()
+    {
+        (await _client.PostAsync("/api/queue/pause", null)).EnsureSuccessStatusCode();
+        var first = await SingleJobIdAsync(await _factory.CreateSetAsync(_client, "first", count: 1));
+        var second = await SingleJobIdAsync(await _factory.CreateSetAsync(_client, "second", count: 1));
+        var third = await SingleJobIdAsync(await _factory.CreateSetAsync(_client, "third", count: 1));
+
+        (await MoveAsync(third, -1)).EnsureSuccessStatusCode();
+
+        Assert.Equal([first, third, second], (await GetQueueAsync(_client)).Active.Select(j => j.Id));
+        (await _client.PostAsync("/api/queue/resume", null)).EnsureSuccessStatusCode();
+        await WaitUntilAsync(() => Task.FromResult(_factory.Comfy.SubmittedPrompts.Count == 3), "all three rendered");
+        Assert.Equal(["first", "third", "second"], _factory.Comfy.SubmittedPrompts);
+    }
+
+    [Fact]
+    public async Task MovingPastTheEnds_OrARunningJob_IsRefused()
+    {
+        _factory.Comfy.HoldRuns = true;
+        var runningSet = await _factory.CreateSetAsync(_client, "running", count: 1);
+        await WaitForJobStatusAsync(runningSet, JobStatus.Running);
+        var first = await SingleJobIdAsync(await _factory.CreateSetAsync(_client, "first", count: 1));
+        var last = await SingleJobIdAsync(await _factory.CreateSetAsync(_client, "last", count: 1));
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await MoveAsync(first, -1)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await MoveAsync(last, 1)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await MoveAsync(await SingleJobIdAsync(runningSet), 1)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await MoveAsync(first, 2)).StatusCode);
+        _factory.Comfy.HoldRuns = false;
+    }
+
     [Fact]
     public async Task CancelRunningJob_StopsAndCleansUpComfy()
     {

@@ -22,8 +22,10 @@ export function useJobActions(job: Job) {
     error,
     canCancel: job.status === 'Queued' || job.status === 'Running',
     canRetry: job.status === 'Failed',
+    canMove: job.status === 'Queued',
     percent: job.requestedCount === 0 ? 0 : (job.completedCount / job.requestedCount) * 100,
     cancel: () => void run(() => api.cancelJob(job.id)),
     retry: () => void run(() => api.retryJob(job.id)),
+    move: (offset: -1 | 1) => void run(() => api.moveJob(job.id, offset)),
   }
 }

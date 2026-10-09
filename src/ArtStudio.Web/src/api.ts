@@ -235,6 +235,7 @@ export const api = {
   resumeQueue: () => request<void>('POST', '/api/queue/resume'),
   cancelJob: (jobId: number) => request<void>('POST', `/api/jobs/${jobId}/cancel`),
   retryJob: (jobId: number) => request<void>('POST', `/api/jobs/${jobId}/retry`),
+  moveJob: (jobId: number, offset: -1 | 1) => request<void>('POST', `/api/jobs/${jobId}/move`, { offset }),
 
   previewDeviation: (url: string) => request<DeviationPreview>('POST', '/api/deviantart/preview', { url }),
   blockedArtists: () => request<BlockedArtist[]>('GET', '/api/blocked-artists'),

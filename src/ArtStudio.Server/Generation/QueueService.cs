@@ -89,6 +89,33 @@ public sealed class QueueService(
         await SetPausedAsync(false, ct);
     }
 
+    /// <summary>Swaps a waiting job with its waiting neighbour; offset -1 runs it earlier, +1 later.</summary>
+    public async Task MoveAsync(int jobId, int offset, CancellationToken ct)
+    {
+        if (offset is not (-1 or 1))
+            throw new UserFacingException("A job moves one place at a time.");
+
+        var waiting = await db.Jobs
+            .Where(j => j.Status == JobStatus.Queued)
+            .OrderBy(j => j.QueuePosition)
+            .ToListAsync(ct);
+        var index = waiting.FindIndex(j => j.Id == jobId);
+        if (index < 0)
+            throw new UserFacingException("Only waiting jobs can be moved.");
+        var neighbourIndex = index + offset;
+        if (neighbourIndex < 0)
+            throw new UserFacingException("This job is already first.");
+        if (neighbourIndex >= waiting.Count)
+            throw new UserFacingException("This job is already last.");
+
+        var (job, neighbour) = (waiting[index], waiting[neighbourIndex]);
+        (job.QueuePosition, neighbour.QueuePosition) = (neighbour.QueuePosition, job.QueuePosition);
+        await db.SaveChangesAsync(ct);
+
+        await notifier.JobUpdated(job.Id, job.PromptSetId);
+        await notifier.JobUpdated(neighbour.Id, neighbour.PromptSetId);
+    }
+
     public async Task SetPausedAsync(bool paused, CancellationToken ct)
     {
         var settings = await SettingsStore.LoadAsync(db, paths, ct);

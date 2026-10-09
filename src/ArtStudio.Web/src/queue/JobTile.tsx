@@ -2,7 +2,13 @@ import { Link } from 'react-router-dom'
 import type { Job } from '../api'
 import { useJobActions } from './useJobActions'
 
-export function JobTile({ job }: { job: Job }) {
+interface Props {
+  job: Job
+  canMoveUp?: boolean
+  canMoveDown?: boolean
+}
+
+export function JobTile({ job, canMoveUp = false, canMoveDown = false }: Props) {
   const actions = useJobActions(job)
   const setUrl = `/sets/${job.setId}`
 
@@ -39,6 +45,26 @@ export function JobTile({ job }: { job: Job }) {
       </div>
 
       <div className="job-tile-controls">
+        {actions.canMove && (
+          <div className="job-tile-move">
+            <button
+              type="button"
+              disabled={actions.busy || !canMoveUp}
+              title="Move earlier in the queue"
+              onClick={() => actions.move(-1)}
+            >
+              ↑ Up
+            </button>
+            <button
+              type="button"
+              disabled={actions.busy || !canMoveDown}
+              title="Move later in the queue"
+              onClick={() => actions.move(1)}
+            >
+              ↓ Down
+            </button>
+          </div>
+        )}
         {actions.canRetry && (
           <button type="button" className="primary" disabled={actions.busy} onClick={actions.retry}>
             Retry
