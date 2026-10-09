@@ -2,7 +2,7 @@ import { useCallback, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PAGE_SIZE } from './pagination'
 
-const PAGE_PARAM = 'page'
+export const PAGE_PARAM = 'page'
 
 export interface PagedItems<T> {
   pageItems: T[]

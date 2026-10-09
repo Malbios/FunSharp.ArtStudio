@@ -4,7 +4,10 @@ import { api, type PromptGenerationState } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
+import { FilterBar } from '../paging/FilterBar'
+import { DRAFT_FILTERS } from '../paging/listFilters'
 import { Pager } from '../paging/Pager'
+import { useListFilter } from '../paging/useListFilter'
 import { BulkDeviantArtDrafts } from './BulkDeviantArtDrafts'
 import { DraftPromptStatus } from './DraftPromptStatus'
 import { usePagedItems } from '../paging/usePagedItems'
@@ -13,7 +16,8 @@ export function DraftsPage() {
   const drafts = useLoad(() => api.sets('draft'))
   const [error, setError] = useState<string>()
   useStudioEvents(['SetUpdated', 'SetDeleted'], drafts.reload)
-  const paged = usePagedItems(drafts.data)
+  const filter = useListFilter(drafts.data, DRAFT_FILTERS)
+  const paged = usePagedItems(filter.items)
   const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
   const countIn = (state: PromptGenerationState) => drafts.data?.filter((d) => d.promptGeneration.state === state).length ?? 0
   const promptSummary = [
@@ -47,6 +51,10 @@ export function DraftsPage() {
         <p className="hint">
           No drafts. Attach an image on the <Link to="/">New</Link> page and use "Save as draft" to add a prompt later.
         </p>
+      )}
+      {drafts.data && drafts.data.length > 0 && <FilterBar filter={filter} />}
+      {drafts.data && drafts.data.length > 0 && filter.items?.length === 0 && (
+        <p className="hint">No drafts match this filter.</p>
       )}
       {pager}
       <div className="set-grid">

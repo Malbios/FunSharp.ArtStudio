@@ -2,14 +2,18 @@ import { Link, useLocation } from 'react-router-dom'
 import { api } from '../api'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
+import { FilterBar } from '../paging/FilterBar'
+import { SET_FILTERS } from '../paging/listFilters'
 import { Pager } from '../paging/Pager'
+import { useListFilter } from '../paging/useListFilter'
 import { usePagedItems } from '../paging/usePagedItems'
 import type { SetsOverviewState } from './setsOverviewLink'
 
 export function SetsPage() {
   const sets = useLoad(() => api.sets('working'))
   useStudioEvents(['JobUpdated', 'ImageAdded', 'SetDeleted', 'SetUpdated'], sets.reload)
-  const paged = usePagedItems(sets.data)
+  const filter = useListFilter(sets.data, SET_FILTERS)
+  const paged = usePagedItems(filter.items)
   const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
   const location = useLocation()
   const overviewState: SetsOverviewState = { setsOverview: location.pathname + location.search }
@@ -24,6 +28,10 @@ export function SetsPage() {
         <p className="hint">
           No sets yet. <Link to="/">Create one</Link>.
         </p>
+      )}
+      {sets.data && sets.data.length > 0 && <FilterBar filter={filter} />}
+      {sets.data && sets.data.length > 0 && filter.items?.length === 0 && (
+        <p className="hint">No sets match this filter.</p>
       )}
       {pager}
       <div className="set-grid">
