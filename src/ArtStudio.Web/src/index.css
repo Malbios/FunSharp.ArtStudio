@@ -1079,9 +1079,36 @@ code {
 }
 
 .job-tile-image {
+  position: relative;
   display: block;
   aspect-ratio: 1;
   background: var(--panel-raised);
+}
+
+.job-tile-prompt {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 0.75rem;
+  background: rgb(15 16 20 / 0.9);
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.15s ease,
+    visibility 0s linear 0.15s;
+}
+
+.job-tile:hover .job-tile-prompt,
+.job-tile:focus-within .job-tile-prompt {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 0.15s ease 0.25s,
+    visibility 0s linear 0.25s;
 }
 
 .job-tile-image img {

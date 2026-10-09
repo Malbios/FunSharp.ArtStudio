@@ -17,6 +17,7 @@ export function JobTile({ job }: { job: Job }) {
             <span>{job.resolution}</span>
           </div>
         )}
+        {job.prompt.trim() && <div className="job-tile-prompt">{job.prompt}</div>}
       </Link>
 
       <div className="job-tile-details">
