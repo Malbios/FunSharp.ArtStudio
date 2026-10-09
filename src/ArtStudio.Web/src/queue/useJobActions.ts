@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api, type Job } from '../api'
+import { api, type Job, type QueueMove } from '../api'
 
 export function useJobActions(job: Job) {
   const [busy, setBusy] = useState(false)
@@ -26,6 +26,6 @@ export function useJobActions(job: Job) {
     percent: job.requestedCount === 0 ? 0 : (job.completedCount / job.requestedCount) * 100,
     cancel: () => void run(() => api.cancelJob(job.id)),
     retry: () => void run(() => api.retryJob(job.id)),
-    move: (offset: -1 | 1) => void run(() => api.moveJob(job.id, offset)),
+    move: (move: QueueMove) => void run(() => api.moveJob(job.id, move)),
   }
 }

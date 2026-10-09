@@ -7,6 +7,14 @@ namespace ArtStudio.Server.Generation;
 
 public class UserFacingException(string message) : Exception(message);
 
+public enum QueueMove
+{
+    Top,
+    Up,
+    Down,
+    Bottom,
+}
+
 public sealed class QueueService(
     StudioDbContext db, AppPaths paths, GenerationQueue queue, StudioNotifier notifier, TimeProvider clock)
 {
@@ -89,12 +97,9 @@ public sealed class QueueService(
         await SetPausedAsync(false, ct);
     }
 
-    /// <summary>Swaps a waiting job with its waiting neighbour; offset -1 runs it earlier, +1 later.</summary>
-    public async Task MoveAsync(int jobId, int offset, CancellationToken ct)
+    /// <summary>Moves a waiting job among the waiting jobs; the others keep their relative order.</summary>
+    public async Task MoveAsync(int jobId, QueueMove move, CancellationToken ct)
     {
-        if (offset is not (-1 or 1))
-            throw new UserFacingException("A job moves one place at a time.");
-
         var waiting = await db.Jobs
             .Where(j => j.Status == JobStatus.Queued)
             .OrderBy(j => j.QueuePosition)
@@ -102,18 +107,29 @@ public sealed class QueueService(
         var index = waiting.FindIndex(j => j.Id == jobId);
         if (index < 0)
             throw new UserFacingException("Only waiting jobs can be moved.");
-        var neighbourIndex = index + offset;
-        if (neighbourIndex < 0)
+        if (index == 0 && move is QueueMove.Top or QueueMove.Up)
             throw new UserFacingException("This job is already first.");
-        if (neighbourIndex >= waiting.Count)
+        if (index == waiting.Count - 1 && move is QueueMove.Down or QueueMove.Bottom)
             throw new UserFacingException("This job is already last.");
 
-        var (job, neighbour) = (waiting[index], waiting[neighbourIndex]);
-        (job.QueuePosition, neighbour.QueuePosition) = (neighbour.QueuePosition, job.QueuePosition);
+        var target = move switch
+        {
+            QueueMove.Top => 0,
+            QueueMove.Up => index - 1,
+            QueueMove.Down => index + 1,
+            _ => waiting.Count - 1,
+        };
+        var positions = waiting.Select(j => j.QueuePosition).ToList();
+        var job = waiting[index];
+        waiting.RemoveAt(index);
+        waiting.Insert(target, job);
+        var moved = waiting.Where((candidate, position) => candidate.QueuePosition != positions[position]).ToList();
+        for (var position = 0; position < waiting.Count; position++)
+            waiting[position].QueuePosition = positions[position];
         await db.SaveChangesAsync(ct);
 
-        await notifier.JobUpdated(job.Id, job.PromptSetId);
-        await notifier.JobUpdated(neighbour.Id, neighbour.PromptSetId);
+        foreach (var changed in moved)
+            await notifier.JobUpdated(changed.Id, changed.PromptSetId);
     }
 
     public async Task SetPausedAsync(bool paused, CancellationToken ct)

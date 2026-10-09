@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ArtStudio.Server.Api;
 
-public sealed record MoveJobRequest(int Offset);
+public sealed record MoveJobRequest(QueueMove Move);
 
 public static class QueueEndpoints
 {
@@ -17,7 +17,7 @@ public static class QueueEndpoints
         app.MapPost("/api/jobs/{id:int}/cancel", (int id, QueueService queue, CancellationToken ct) => queue.CancelAsync(id, ct));
         app.MapPost("/api/jobs/{id:int}/retry", (int id, QueueService queue, CancellationToken ct) => queue.RetryAsync(id, ct));
         app.MapPost("/api/jobs/{id:int}/move", (int id, MoveJobRequest request, QueueService queue, CancellationToken ct) =>
-            queue.MoveAsync(id, request.Offset, ct));
+            queue.MoveAsync(id, request.Move, ct));
     }
 
     private static async Task<QueueDto> GetQueueAsync(StudioDbContext db, AppPaths paths, CancellationToken ct)

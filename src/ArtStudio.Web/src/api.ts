@@ -34,6 +34,8 @@ export interface Job {
   finishedAt: string | null
 }
 
+export type QueueMove = 'Top' | 'Up' | 'Down' | 'Bottom'
+
 export interface QueueState {
   paused: boolean
   active: Job[]
@@ -235,7 +237,7 @@ export const api = {
   resumeQueue: () => request<void>('POST', '/api/queue/resume'),
   cancelJob: (jobId: number) => request<void>('POST', `/api/jobs/${jobId}/cancel`),
   retryJob: (jobId: number) => request<void>('POST', `/api/jobs/${jobId}/retry`),
-  moveJob: (jobId: number, offset: -1 | 1) => request<void>('POST', `/api/jobs/${jobId}/move`, { offset }),
+  moveJob: (jobId: number, move: QueueMove) => request<void>('POST', `/api/jobs/${jobId}/move`, { move }),
 
   previewDeviation: (url: string) => request<DeviationPreview>('POST', '/api/deviantart/preview', { url }),
   blockedArtists: () => request<BlockedArtist[]>('GET', '/api/blocked-artists'),

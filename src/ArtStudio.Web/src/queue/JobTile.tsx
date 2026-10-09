@@ -1,6 +1,13 @@
 import { Link } from 'react-router-dom'
-import type { Job } from '../api'
+import type { Job, QueueMove } from '../api'
 import { useJobActions } from './useJobActions'
+
+const MOVES: { move: QueueMove; label: string; title: string; earlier: boolean }[] = [
+  { move: 'Top', label: '⤒ Top', title: 'Run next, before all other waiting jobs', earlier: true },
+  { move: 'Up', label: '↑ Up', title: 'Move one place earlier in the queue', earlier: true },
+  { move: 'Down', label: '↓ Down', title: 'Move one place later in the queue', earlier: false },
+  { move: 'Bottom', label: '⤓ Bottom', title: 'Move after all other waiting jobs', earlier: false },
+]
 
 interface Props {
   job: Job
@@ -47,22 +54,17 @@ export function JobTile({ job, canMoveUp = false, canMoveDown = false }: Props) 
       <div className="job-tile-controls">
         {actions.canMove && (
           <div className="job-tile-move">
-            <button
-              type="button"
-              disabled={actions.busy || !canMoveUp}
-              title="Move earlier in the queue"
-              onClick={() => actions.move(-1)}
-            >
-              ↑ Up
-            </button>
-            <button
-              type="button"
-              disabled={actions.busy || !canMoveDown}
-              title="Move later in the queue"
-              onClick={() => actions.move(1)}
-            >
-              ↓ Down
-            </button>
+            {MOVES.map(({ move, label, title, earlier }) => (
+              <button
+                key={move}
+                type="button"
+                disabled={actions.busy || !(earlier ? canMoveUp : canMoveDown)}
+                title={title}
+                onClick={() => actions.move(move)}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         )}
         {actions.canRetry && (

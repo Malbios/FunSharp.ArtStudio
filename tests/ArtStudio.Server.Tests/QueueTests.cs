@@ -188,8 +188,8 @@ public sealed class QueueTests : IDisposable
         Assert.DoesNotContain("second", _factory.Comfy.SubmittedPrompts);
     }
 
-    private Task<HttpResponseMessage> MoveAsync(int jobId, int offset) =>
-        _client.PostAsJsonAsync($"/api/jobs/{jobId}/move", new { offset });
+    private Task<HttpResponseMessage> MoveAsync(int jobId, string move) =>
+        _client.PostAsJsonAsync($"/api/jobs/{jobId}/move", new { move });
 
     private async Task<int> SingleJobIdAsync(int setId) => (await GetSetAsync(_client, setId)).Jobs.Single().Id;
 
@@ -201,12 +201,28 @@ public sealed class QueueTests : IDisposable
         var second = await SingleJobIdAsync(await _factory.CreateSetAsync(_client, "second", count: 1));
         var third = await SingleJobIdAsync(await _factory.CreateSetAsync(_client, "third", count: 1));
 
-        (await MoveAsync(third, -1)).EnsureSuccessStatusCode();
+        (await MoveAsync(third, "Up")).EnsureSuccessStatusCode();
 
         Assert.Equal([first, third, second], (await GetQueueAsync(_client)).Active.Select(j => j.Id));
         (await _client.PostAsync("/api/queue/resume", null)).EnsureSuccessStatusCode();
         await WaitUntilAsync(() => Task.FromResult(_factory.Comfy.SubmittedPrompts.Count == 3), "all three rendered");
         Assert.Equal(["first", "third", "second"], _factory.Comfy.SubmittedPrompts);
+    }
+
+    [Fact]
+    public async Task TopAndBottom_KeepTheOthersInOrder()
+    {
+        (await _client.PostAsync("/api/queue/pause", null)).EnsureSuccessStatusCode();
+        var ids = new List<int>();
+        foreach (var prompt in new[] { "a", "b", "c", "d" })
+            ids.Add(await SingleJobIdAsync(await _factory.CreateSetAsync(_client, prompt, count: 1)));
+        async Task<IEnumerable<int>> OrderAsync() => (await GetQueueAsync(_client)).Active.Select(j => j.Id);
+
+        (await MoveAsync(ids[2], "Top")).EnsureSuccessStatusCode();
+        Assert.Equal([ids[2], ids[0], ids[1], ids[3]], await OrderAsync());
+
+        (await MoveAsync(ids[0], "Bottom")).EnsureSuccessStatusCode();
+        Assert.Equal([ids[2], ids[1], ids[3], ids[0]], await OrderAsync());
     }
 
     [Fact]
@@ -218,10 +234,11 @@ public sealed class QueueTests : IDisposable
         var first = await SingleJobIdAsync(await _factory.CreateSetAsync(_client, "first", count: 1));
         var last = await SingleJobIdAsync(await _factory.CreateSetAsync(_client, "last", count: 1));
 
-        Assert.Equal(HttpStatusCode.BadRequest, (await MoveAsync(first, -1)).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await MoveAsync(last, 1)).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await MoveAsync(await SingleJobIdAsync(runningSet), 1)).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await MoveAsync(first, 2)).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await MoveAsync(first, "Up")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await MoveAsync(first, "Top")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await MoveAsync(last, "Down")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await MoveAsync(last, "Bottom")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await MoveAsync(await SingleJobIdAsync(runningSet), "Down")).StatusCode);
         _factory.Comfy.HoldRuns = false;
     }
 
