@@ -11,8 +11,8 @@ const EMPTY_PRESET: PresetFields = { label: '', artStyle: null, resolution: null
 export function PresetsEditor() {
   const blocks = useLoad(api.buildingBlocks)
   const resolutions = useLoad(api.resolutions)
+  const [addingAt, setAddingAt] = useState<number>()
   const [newPreset, setNewPreset] = useState(EMPTY_PRESET)
-  const [addVersion, setAddVersion] = useState(0)
   const [error, setError] = useState<string>()
   const list = blocks.data?.filter((block) => block.kind === 'Preset') ?? []
 
@@ -26,12 +26,19 @@ export function PresetsEditor() {
     }
   }
 
-  async function add(event: FormEvent) {
+  function startAdding(position: number) {
+    setNewPreset(EMPTY_PRESET)
+    setAddingAt(position)
+  }
+
+  async function add(event: FormEvent, position: number) {
     event.preventDefault()
     await run(async () => {
-      await api.addPreset(newPreset)
-      setNewPreset(EMPTY_PRESET)
-      setAddVersion((version) => version + 1)
+      const created = await api.addPreset(newPreset)
+      const ids = list.map((block) => block.id)
+      ids.splice(position, 0, created.id)
+      await api.reorderBuildingBlocks(ids)
+      setAddingAt(undefined)
     })
   }
 
@@ -42,6 +49,34 @@ export function PresetsEditor() {
     void run(() => api.reorderBuildingBlocks(ids))
   }
 
+  const insertPoint = (position: number) =>
+    addingAt === position ? (
+      <form
+        key={`new-${position}`}
+        className="editable-row preset-row new-preset"
+        onSubmit={(e) => void add(e, position)}
+      >
+        <PresetInputs fields={newPreset} resolutions={resolutions.data ?? []} onChange={setNewPreset} />
+        <div className="row-actions">
+          <button type="button" onClick={() => setAddingAt(undefined)}>
+            Cancel
+          </button>
+          <button type="submit" className="primary" disabled={!newPreset.label.trim()}>
+            Add
+          </button>
+        </div>
+      </form>
+    ) : (
+      <button
+        key={`insert-${position}`}
+        type="button"
+        className="link-button add-preset-here"
+        onClick={() => startAdding(position)}
+      >
+        {list.length === 0 ? '+ Add preset' : '+ Add preset here'}
+      </button>
+    )
+
   return (
     <section className="panel" id="presets">
       <h3>Presets</h3>
@@ -50,7 +85,8 @@ export function PresetsEditor() {
         Images. Empty fields leave that part as it is. The example image shows when hovering the preset.
       </p>
       <div className="editable-list">
-        {list.map((preset, index) => (
+        {insertPoint(0)}
+        {list.map((preset, index) => [
           <PresetRow
             key={`${preset.id}-${preset.label}-${preset.artStyle}-${preset.resolution}-${preset.imageCount}`}
             preset={preset}
@@ -63,17 +99,10 @@ export function PresetsEditor() {
             onPasteFromClipboard={() => void run(async () => api.setPresetImage(preset.id, await readClipboardImage()))}
             onRemoveImage={() => void run(() => api.removePresetImage(preset.id))}
             onMove={(offset) => move(index, offset)}
-          />
-        ))}
+          />,
+          insertPoint(index + 1),
+        ])}
       </div>
-      <form className="editable-row preset-row new-preset" onSubmit={(e) => void add(e)}>
-        <PresetInputs key={addVersion} fields={newPreset} resolutions={resolutions.data ?? []} onChange={setNewPreset} />
-        <div className="row-actions">
-          <button type="submit" className="primary" disabled={!newPreset.label.trim()}>
-            Add
-          </button>
-        </div>
-      </form>
       {(error ?? blocks.error) && <p className="error">{error ?? blocks.error}</p>}
     </section>
   )

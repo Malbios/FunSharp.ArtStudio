@@ -1023,7 +1023,20 @@ main {
   grid-template-areas:
     'label resolution count . actions'
     'style style style style style';
-  border-bottom: none;
+  padding: 0.75rem;
+  border: 1px dashed var(--accent);
+  border-radius: var(--radius);
+}
+
+.add-preset-here {
+  align-self: flex-start;
+  padding: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.add-preset-here:hover {
+  color: var(--accent);
 }
 
 .preset-row .preset-label {
