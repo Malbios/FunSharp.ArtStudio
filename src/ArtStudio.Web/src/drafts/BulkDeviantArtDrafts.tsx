@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ClipboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api, ApiError } from '../api'
 import { MESSAGE_DURATION_MS } from '../messages'
+import { insertAtSelection } from '../prompt/insertAtSelection'
 import { parseDeviantArtUrls } from './parseUrls'
 
 type BulkResult =
@@ -33,6 +34,13 @@ export function BulkDeviantArtDrafts() {
     setProgress(undefined)
   }
 
+  function pasteWithTrailingSpace(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const pasted = event.clipboardData.getData('text')
+    if (!pasted || /\s$/.test(pasted)) return
+    event.preventDefault()
+    insertAtSelection(event.currentTarget, pasted + ' ')
+  }
+
   function removeResult(url: string) {
     setResults((previous) => previous.filter((result) => result.url !== url))
   }
@@ -55,6 +63,7 @@ export function BulkDeviantArtDrafts() {
         value={text}
         disabled={running}
         onChange={(e) => setText(e.target.value)}
+        onPaste={pasteWithTrailingSpace}
         placeholder="Paste DeviantArt URLs separated by spaces or line breaks. Each becomes a draft with the post's main image."
       />
       <div className="bulk-drafts-actions">
