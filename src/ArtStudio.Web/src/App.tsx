@@ -17,14 +17,21 @@ function NewSetRoute() {
   return <NewSetPage key={location.search} />
 }
 
-function DraftsNavLink() {
-  const drafts = useLoad(() => api.sets('draft'))
-  useStudioEvents(['SetUpdated', 'SetDeleted'], drafts.reload)
-  const count = drafts.data?.length ?? 0
+interface StageNavLinkProps {
+  stage: 'draft' | 'working' | 'ready'
+  to: string
+  label: string
+}
+
+/** A nav link with the number of sets in its stage; queueing a draft or finishing a job can move sets between stages. */
+function StageNavLink({ stage, to, label }: StageNavLinkProps) {
+  const sets = useLoad(() => api.sets(stage))
+  useStudioEvents(['SetUpdated', 'SetDeleted', 'JobUpdated'], sets.reload)
+  const count = sets.data?.length ?? 0
 
   return (
-    <NavLink to="/drafts">
-      Drafts
+    <NavLink to={to}>
+      {label}
       {count > 0 && <span className="nav-count">{count}</span>}
     </NavLink>
   )
@@ -55,10 +62,10 @@ export default function App() {
           <NavLink to="/" end>
             New
           </NavLink>
-          <DraftsNavLink />
+          <StageNavLink stage="draft" to="/drafts" label="Drafts" />
           <QueueNavLink />
-          <NavLink to="/sets">Sets</NavLink>
-          <NavLink to="/post">Post</NavLink>
+          <StageNavLink stage="working" to="/sets" label="Sets" />
+          <StageNavLink stage="ready" to="/post" label="Post" />
           <NavLink to="/archive">Archive</NavLink>
           <NavLink to="/settings">Settings</NavLink>
         </nav>
