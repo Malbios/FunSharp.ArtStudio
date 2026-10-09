@@ -12,7 +12,13 @@ public sealed record SettingsDto(string ComfyServerUrl, string OutputDirectory, 
         settings.ComfyServerUrl, settings.OutputDirectory, settings.NotifyOnJobDone, settings.NotifyOnQueueEmpty);
 }
 
-public sealed record BuildingBlockRequest(string Label, string Text);
+public sealed record BuildingBlockRequest(
+    string Label,
+    string? Text,
+    BuildingBlockKind Kind = BuildingBlockKind.Text,
+    string? ArtStyle = null,
+    string? Resolution = null,
+    int? ImageCount = null);
 
 public sealed record ReorderRequest(IReadOnlyList<int> Ids);
 
@@ -113,9 +119,43 @@ public static class SettingsEndpoints
 
     private static void Apply(BuildingBlock block, BuildingBlockRequest request)
     {
+        if (request.Kind == BuildingBlockKind.Preset)
+            ApplyPreset(block, request);
+        else
+            ApplyText(block, request);
+    }
+
+    private static void ApplyText(BuildingBlock block, BuildingBlockRequest request)
+    {
         if (string.IsNullOrEmpty(request.Text))
             throw new UserFacingException("A building block needs some text.");
+        block.Kind = BuildingBlockKind.Text;
         block.Text = request.Text;
         block.Label = string.IsNullOrWhiteSpace(request.Label) ? block.Text.Trim() : request.Label.Trim();
+        block.ArtStyle = null;
+        block.Resolution = null;
+        block.ImageCount = null;
+    }
+
+    private static void ApplyPreset(BuildingBlock block, BuildingBlockRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Label))
+            throw new UserFacingException("A preset needs a label.");
+        var artStyle = string.IsNullOrWhiteSpace(request.ArtStyle) ? null : request.ArtStyle.Trim();
+        var resolution = string.IsNullOrWhiteSpace(request.Resolution)
+            ? null
+            : Resolutions.Find(request.Resolution)?.Name
+                ?? throw new UserFacingException($"Unknown resolution '{request.Resolution}'.");
+        if (request.ImageCount is < 1 or > QueueService.MaxImagesPerJob)
+            throw new UserFacingException($"Image count must be between 1 and {QueueService.MaxImagesPerJob}.");
+        if (artStyle is null && resolution is null && request.ImageCount is null)
+            throw new UserFacingException("A preset needs an art style, a resolution or an image count.");
+
+        block.Kind = BuildingBlockKind.Preset;
+        block.Label = request.Label.Trim();
+        block.Text = "";
+        block.ArtStyle = artStyle;
+        block.Resolution = resolution;
+        block.ImageCount = request.ImageCount;
     }
 }

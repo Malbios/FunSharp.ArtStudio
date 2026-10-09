@@ -135,11 +135,25 @@ export interface DeviantArtApp {
   redirectUri: string
 }
 
+export type BuildingBlockKind = 'Text' | 'Preset'
+
 export interface BuildingBlock {
   id: number
+  kind: BuildingBlockKind
   label: string
   text: string
+  artStyle: string | null
+  resolution: string | null
+  imageCount: number | null
   sortOrder: number
+}
+
+/** What a preset changes on the page; null leaves that part as it is. */
+export interface PresetFields {
+  label: string
+  artStyle: string | null
+  resolution: string | null
+  imageCount: number | null
 }
 
 export interface BlockedArtist {
@@ -240,6 +254,10 @@ export const api = {
     request<BuildingBlock>('POST', '/api/building-blocks', { label, text }),
   updateBuildingBlock: (id: number, label: string, text: string) =>
     request<BuildingBlock>('PUT', `/api/building-blocks/${id}`, { label, text }),
+  addPreset: (preset: PresetFields) =>
+    request<BuildingBlock>('POST', '/api/building-blocks', { ...preset, kind: 'Preset' }),
+  updatePreset: (id: number, preset: PresetFields) =>
+    request<BuildingBlock>('PUT', `/api/building-blocks/${id}`, { ...preset, kind: 'Preset' }),
   deleteBuildingBlock: (id: number) => request<void>('DELETE', `/api/building-blocks/${id}`),
   reorderBuildingBlocks: (ids: number[]) => request<void>('POST', '/api/building-blocks/reorder', { ids }),
 }

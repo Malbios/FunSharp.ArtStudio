@@ -1,38 +1,61 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../api'
+import { api, type BuildingBlock } from '../api'
 import { useLoad } from '../live/useLoad'
+import { describePreset } from '../prompt/presets'
 
-const COPIED_FLASH_MS = 1200
+const FLASH_MS = 1200
 
-export function BuildingBlockChips() {
+interface Flash {
+  id: number
+  text: string
+}
+
+export function BuildingBlockChips({ onApplyPreset }: { onApplyPreset: (preset: BuildingBlock) => void }) {
   const blocks = useLoad(api.buildingBlocks)
-  const [copiedId, setCopiedId] = useState<number>()
+  const [flash, setFlash] = useState<Flash>()
+  const presets = blocks.data?.filter((block) => block.kind === 'Preset') ?? []
+  const textBlocks = blocks.data?.filter((block) => block.kind === 'Text')
 
-  async function copy(id: number, text: string) {
-    await navigator.clipboard.writeText(text)
-    setCopiedId(id)
-    setTimeout(() => setCopiedId((current) => (current === id ? undefined : current)), COPIED_FLASH_MS)
+  function flashChip(id: number, text: string) {
+    setFlash({ id, text })
+    setTimeout(() => setFlash((current) => (current?.id === id ? undefined : current)), FLASH_MS)
   }
+
+  async function copy(block: BuildingBlock) {
+    await navigator.clipboard.writeText(block.text)
+    flashChip(block.id, 'Copied!')
+  }
+
+  function apply(preset: BuildingBlock) {
+    onApplyPreset(preset)
+    flashChip(preset.id, 'Applied!')
+  }
+
+  const chip = (block: BuildingBlock, title: string, onClick: () => void) => (
+    <button
+      key={block.id}
+      type="button"
+      className={flash?.id === block.id ? 'chip copied' : 'chip'}
+      title={title}
+      onClick={onClick}
+    >
+      {flash?.id === block.id ? flash.text : block.label}
+    </button>
+  )
 
   return (
     <aside className="building-blocks">
+      {presets.length > 0 && (
+        <>
+          <h3>Presets</h3>
+          <div className="chips">{presets.map((preset) => chip(preset, describePreset(preset), () => apply(preset)))}</div>
+        </>
+      )}
       <h3>Building blocks</h3>
       {blocks.error && <p className="error">{blocks.error}</p>}
-      {blocks.data?.length === 0 && <p className="hint">No building blocks yet.</p>}
-      <div className="chips">
-        {blocks.data?.map((block) => (
-          <button
-            key={block.id}
-            type="button"
-            className={copiedId === block.id ? 'chip copied' : 'chip'}
-            title={block.text}
-            onClick={() => void copy(block.id, block.text)}
-          >
-            {copiedId === block.id ? 'Copied!' : block.label}
-          </button>
-        ))}
-      </div>
+      {textBlocks?.length === 0 && <p className="hint">No building blocks yet.</p>}
+      <div className="chips">{textBlocks?.map((block) => chip(block, block.text, () => void copy(block)))}</div>
       <Link to="/settings#building-blocks" className="hint">
         Manage building blocks
       </Link>

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { api, type PromptGeneration, type SetDetail } from '../api'
+import { api, type BuildingBlock, type PromptGeneration, type SetDetail } from '../api'
 import { useStudioEvents, type JobEventPayload } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { MESSAGE_DURATION_MS } from '../messages'
@@ -9,6 +9,7 @@ import { closestResolution } from '../prompt/closestResolution'
 import { generateActionLabel, isPromptPending } from '../prompt/generateAction'
 import { ModifyPromptDialog } from '../prompt/ModifyPromptDialog'
 import { joinedIndex, joinParagraphs, paragraphLabels, splitParagraphs } from '../prompt/paragraphs'
+import { withArtStyle } from '../prompt/presets'
 import { BuildingBlockChips } from './BuildingBlockChips'
 import { imageFileFrom, loadImageFile, NO_SOURCE, sourceDimensions, type ImageSource } from './imageSource'
 import { ImageSourcePicker, type SourceTab } from './ImageSourcePicker'
@@ -115,6 +116,18 @@ export function NewSetPage() {
     setError(undefined)
     setReplacePromptWhenGenerated(true)
     setGeneratedHere(true)
+  }
+
+  function applyPreset(preset: BuildingBlock) {
+    setParagraphs((current) => withArtStyle(current, preset.artStyle))
+    const nextResolution = preset.resolution ?? resolution
+    const nextCount = preset.imageCount ?? count
+    if (preset.resolution) {
+      setResolution(preset.resolution)
+      setResolutionIsAuto(false)
+    }
+    if (preset.imageCount) setCount(preset.imageCount)
+    if (preset.resolution || preset.imageCount) draftSettings.save(nextResolution, nextCount)
   }
 
   useEffect(() => {
@@ -359,7 +372,7 @@ export function NewSetPage() {
         )}
       </form>
 
-      <BuildingBlockChips />
+      <BuildingBlockChips onApplyPreset={applyPreset} />
     </div>
   )
 }

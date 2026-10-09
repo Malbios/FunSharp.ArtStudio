@@ -4,6 +4,7 @@ import { BlockedArtistsEditor } from './BlockedArtistsEditor'
 import { BuildingBlocksEditor } from './BuildingBlocksEditor'
 import { DeviantArtConnection } from './DeviantArtConnection'
 import { GeneralSettings } from './GeneralSettings'
+import { PresetsEditor } from './PresetsEditor'
 import { VisionSettings } from './VisionSettings'
 
 export function SettingsPage() {
@@ -19,6 +20,7 @@ export function SettingsPage() {
       <GeneralSettings />
       <DeviantArtConnection />
       <VisionSettings />
+      <PresetsEditor />
       <BuildingBlocksEditor />
       <BlockedArtistsEditor />
     </div>

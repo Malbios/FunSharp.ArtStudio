@@ -27,14 +27,14 @@ export function BuildingBlocksEditor() {
     })
   }
 
+  const list = blocks.data?.filter((block) => block.kind === 'Text') ?? []
+
   function move(index: number, offset: number) {
-    const ids = (blocks.data ?? []).map((block) => block.id)
+    const ids = list.map((block) => block.id)
     const [moved] = ids.splice(index, 1)
     ids.splice(index + offset, 0, moved)
     void run(() => api.reorderBuildingBlocks(ids))
   }
-
-  const list = blocks.data ?? []
 
   return (
     <section className="panel" id="building-blocks">

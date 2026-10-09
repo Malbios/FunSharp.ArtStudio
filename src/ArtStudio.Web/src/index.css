@@ -911,6 +911,10 @@ main {
   align-items: start;
 }
 
+.editable-row.preset-row {
+  grid-template-columns: 180px minmax(0, 1fr) 170px 130px 14rem;
+}
+
 .editable-row .row-actions {
   display: flex;
   gap: 0.3rem;
@@ -944,7 +948,8 @@ main {
     position: static;
   }
 
-  .editable-row {
+  .editable-row,
+  .editable-row.preset-row {
     grid-template-columns: 1fr;
   }
 }

@@ -78,6 +78,48 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(", cinematic lighting", block.GetProperty("label").GetString());
     }
 
+    [Fact]
+    public async Task Presets_CanBeAddedAndEdited_NextToTextBlocks()
+    {
+        var text = await AddBlockAsync("Light", "soft light");
+        var response = await _client.PostAsJsonAsync("/api/building-blocks",
+            new { label = " Oil ", kind = "Preset", artStyle = " Thick oil paint. ", resolution = "Portrait", imageCount = 4 });
+        response.EnsureSuccessStatusCode();
+        var preset = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal("Preset", preset.GetProperty("kind").GetString());
+        Assert.Equal(("Oil", "Thick oil paint.", "Portrait", 4), (
+            preset.GetProperty("label").GetString(),
+            preset.GetProperty("artStyle").GetString(),
+            preset.GetProperty("resolution").GetString(),
+            preset.GetProperty("imageCount").GetInt32()));
+
+        (await _client.PutAsJsonAsync($"/api/building-blocks/{preset.GetProperty("id")}",
+            new { label = "Oil", kind = "Preset", artStyle = "", resolution = "", imageCount = 2 })).EnsureSuccessStatusCode();
+
+        var blocks = (await _client.GetFromJsonAsync<JsonElement>("/api/building-blocks")).EnumerateArray().ToList();
+        var updated = blocks.Single(b => b.GetProperty("id").GetInt32() == preset.GetProperty("id").GetInt32());
+        Assert.Equal(JsonValueKind.Null, updated.GetProperty("artStyle").ValueKind);
+        Assert.Equal(JsonValueKind.Null, updated.GetProperty("resolution").ValueKind);
+        Assert.Equal(2, updated.GetProperty("imageCount").GetInt32());
+        var unchanged = blocks.Single(b => b.GetProperty("id").GetInt32() == text.GetProperty("id").GetInt32());
+        Assert.Equal(("Text", "soft light"), (unchanged.GetProperty("kind").GetString(), unchanged.GetProperty("text").GetString()));
+    }
+
+    [Theory]
+    [InlineData("", "Thick oil paint.", null, null)]
+    [InlineData("Empty", "  ", null, null)]
+    [InlineData("Huge", null, "Huge", null)]
+    [InlineData("None", null, null, 0)]
+    [InlineData("Many", null, null, 101)]
+    public async Task InvalidPresets_AreRejected(string label, string? artStyle, string? resolution, int? imageCount)
+    {
+        var response = await _client.PostAsJsonAsync("/api/building-blocks",
+            new { label, kind = "Preset", artStyle, resolution, imageCount });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     private async Task<JsonElement> AddBlockAsync(string label, string text)
     {
         var response = await _client.PostAsJsonAsync("/api/building-blocks", new { label, text });
