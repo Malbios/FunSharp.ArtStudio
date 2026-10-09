@@ -418,7 +418,7 @@ main {
 }
 
 .preset-grid {
-  --preset-tile-height: 180px;
+  --preset-tile-height: 250px;
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
