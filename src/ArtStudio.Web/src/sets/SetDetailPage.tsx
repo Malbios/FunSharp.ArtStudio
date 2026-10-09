@@ -9,6 +9,7 @@ import { Lightbox } from './Lightbox'
 import { PickedStrip } from './PickedStrip'
 import { RequeueWithPreset } from './RequeueWithPreset'
 import { setsOverviewFrom } from './setsOverviewLink'
+import { movedItem, useDragReorder } from './useDragReorder'
 
 const DEFAULT_MORE_COUNT = 2
 
@@ -31,6 +32,10 @@ export function SetDetailPage() {
   })
 
   const closeLightbox = useCallback(() => setLightboxIndex(null), [])
+  const dragPicks = useDragReorder((from, to) => {
+    const ids = set.data?.pickedImageIds
+    if (ids) void changePicks(() => api.reorderPicks(setId, movedItem(ids, from, to)))
+  })
 
   async function requestMore(event: FormEvent) {
     event.preventDefault()
@@ -206,22 +211,41 @@ export function SetDetailPage() {
 
       <div className={hasInspiration ? 'set-compare' : 'set-compare single'}>
         <section>
+          {isReadyToPost && shownImages.length > 1 && (
+            <p className="hint">
+              Drag the images to change their order. #1 is the main image of the post. To pick or remove images, move the
+              set back to Sets.
+            </p>
+          )}
           <div className="image-grid">
             {shownImages.map((image, index) => {
               const number = pickNumber(image)
+              const tileClass = [
+                'image-tile',
+                number > 0 ? 'selected' : '',
+                isReadyToPost ? dragPicks.itemClass(index) : '',
+              ]
               return (
-                <div key={image.id} className={number > 0 ? 'image-tile selected' : 'image-tile'}>
+                <div
+                  key={image.id}
+                  className={tileClass.filter(Boolean).join(' ')}
+                  {...(isReadyToPost ? dragPicks.itemProps(index) : {})}
+                >
                   <button type="button" className="image-tile-open" onClick={() => setLightboxIndex(index)}>
-                    <img src={image.url} alt={`Generated image ${index + 1}`} loading="lazy" />
+                    <img src={image.url} alt={`Generated image ${index + 1}`} loading="lazy" draggable={!isReadyToPost} />
                   </button>
-                  <button
-                    type="button"
-                    className="image-tile-pick"
-                    title={number > 0 ? 'Remove from picks' : 'Pick this image'}
-                    onClick={() => togglePick(image)}
-                  >
-                    {number > 0 ? `★ #${number}` : '☆'}
-                  </button>
+                  {isReadyToPost ? (
+                    <span className="image-tile-pick">★ #{number}</span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="image-tile-pick"
+                      title={number > 0 ? 'Remove from picks' : 'Pick this image'}
+                      onClick={() => togglePick(image)}
+                    >
+                      {number > 0 ? `★ #${number}` : '☆'}
+                    </button>
+                  )}
                 </div>
               )
             })}
@@ -262,12 +286,14 @@ export function SetDetailPage() {
         </div>
       )}
 
-      <PickedStrip
-        pickedImages={pickedImages}
-        onReorder={(imageIds) => void changePicks(() => api.reorderPicks(setId, imageIds))}
-        onUnpick={(image) => void changePicks(() => api.unpickImage(setId, image.id))}
-        onOpen={(image) => setLightboxIndex(shownImages.indexOf(image))}
-      />
+      {!isReadyToPost && (
+        <PickedStrip
+          pickedImages={pickedImages}
+          onReorder={(imageIds) => void changePicks(() => api.reorderPicks(setId, imageIds))}
+          onUnpick={(image) => void changePicks(() => api.unpickImage(setId, image.id))}
+          onOpen={(image) => setLightboxIndex(shownImages.indexOf(image))}
+        />
+      )}
 
       {error && <p className="error">{error}</p>}
       <div className="toolbar set-toolbar set-toolbar-bottom">{setActions}</div>
@@ -279,6 +305,7 @@ export function SetDetailPage() {
           sourceImageUrl={data.sourceImageUrl}
           pickedImageIds={data.pickedImageIds}
           canRequeue={isWorking}
+          canChangePicks={!isReadyToPost}
           requeueCount={moreCount}
           onRequeued={set.reload}
           onError={setError}

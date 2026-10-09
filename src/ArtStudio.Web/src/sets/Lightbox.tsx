@@ -9,6 +9,7 @@ interface Props {
   sourceImageUrl: string | null
   pickedImageIds: number[]
   canRequeue: boolean
+  canChangePicks: boolean
   /** Images queued by Requeue with preset when the preset has no image count. */
   requeueCount: number
   onRequeued: () => void
@@ -24,6 +25,7 @@ export function Lightbox({
   sourceImageUrl,
   pickedImageIds,
   canRequeue,
+  canChangePicks,
   requeueCount,
   onRequeued,
   onError,
@@ -75,9 +77,11 @@ export function Lightbox({
           Next →
         </button>
         <span className="spacer" />
-        <button type="button" className={pickNumber > 0 ? '' : 'primary'} onClick={() => onTogglePick(image)}>
-          {pickNumber > 0 ? `Unpick (#${pickNumber})` : 'Pick this image'}
-        </button>
+        {canChangePicks && (
+          <button type="button" className={pickNumber > 0 ? '' : 'primary'} onClick={() => onTogglePick(image)}>
+            {pickNumber > 0 ? `Unpick (#${pickNumber})` : 'Pick this image'}
+          </button>
+        )}
         <a href={image.url} target="_blank" rel="noreferrer">
           Open original
         </a>

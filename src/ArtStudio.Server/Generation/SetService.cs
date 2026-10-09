@@ -236,6 +236,7 @@ public sealed class SetService(
 
     public async Task PickAsync(int setId, int imageId, CancellationToken ct)
     {
+        await EnsurePicksCanChangeAsync(setId, ct);
         if (!await db.Images.AnyAsync(i => i.Id == imageId && i.PromptSetId == setId, ct))
             throw new UserFacingException("That image does not belong to this set.");
         if (await db.Picks.AnyAsync(p => p.PromptSetId == setId && p.GeneratedImageId == imageId, ct))
@@ -284,8 +285,7 @@ public sealed class SetService(
         var removed = picks.FirstOrDefault(p => p.GeneratedImageId == imageId);
         if (removed is null)
             return;
-        if (picks.Count == 1 && await db.PromptSets.AnyAsync(s => s.Id == setId && s.ReadyToPostAt != null, ct))
-            throw new UserFacingException("A set that is ready to post needs at least one pick. Move it back to Sets first.");
+        await EnsurePicksCanChangeAsync(setId, ct);
 
         db.Picks.Remove(removed);
         Renumber(picks.Where(p => p != removed));
@@ -301,6 +301,13 @@ public sealed class SetService(
         var picksByImageId = picks.ToDictionary(p => p.GeneratedImageId);
         Renumber(imageIds.Select(id => picksByImageId[id]));
         await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>A set that is ready to post keeps its picks; only their order can change.</summary>
+    private async Task EnsurePicksCanChangeAsync(int setId, CancellationToken ct)
+    {
+        if (await db.PromptSets.AnyAsync(s => s.Id == setId && s.ReadyToPostAt != null, ct))
+            throw new UserFacingException("Move the set back to Sets to pick or remove images.");
     }
 
     private Task<List<PickedImage>> LoadPicksAsync(int setId, CancellationToken ct) =>

@@ -117,18 +117,21 @@ public sealed class PostStageTests : IDisposable
     }
 
     [Fact]
-    public async Task ReadySet_KeepsAtLeastOnePick()
+    public async Task ReadySet_KeepsItsPicks_ButCanReorderThem()
     {
-        var (setId, images) = await CreateCompletedSetAsync(2);
+        var (setId, images) = await CreateCompletedSetAsync(3);
         await PickAsync(setId, images[0]);
         await PickAsync(setId, images[1]);
         (await MarkReadyAsync(setId)).EnsureSuccessStatusCode();
 
-        (await _client.DeleteAsync($"/api/sets/{setId}/picks/{images[0]}")).EnsureSuccessStatusCode();
-        var lastPick = await _client.DeleteAsync($"/api/sets/{setId}/picks/{images[1]}");
+        var unpick = await _client.DeleteAsync($"/api/sets/{setId}/picks/{images[0]}");
+        var pick = await _client.PostAsJsonAsync($"/api/sets/{setId}/picks", new { imageId = images[2] });
+        var reorder = await _client.PutAsJsonAsync($"/api/sets/{setId}/picks", new { imageIds = new[] { images[1], images[0] } });
 
-        Assert.Equal(HttpStatusCode.BadRequest, lastPick.StatusCode);
-        Assert.Equal([images[1]], (await GetSetAsync(_client, setId)).PickedImageIds);
+        Assert.Equal(HttpStatusCode.BadRequest, unpick.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, pick.StatusCode);
+        reorder.EnsureSuccessStatusCode();
+        Assert.Equal([images[1], images[0]], (await GetSetAsync(_client, setId)).PickedImageIds);
     }
 
     [Fact]

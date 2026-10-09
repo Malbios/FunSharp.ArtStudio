@@ -1,5 +1,5 @@
-import { useState, type DragEvent } from 'react'
 import type { ImageInfo } from '../api'
+import { movedItem, useDragReorder } from './useDragReorder'
 
 interface Props {
   pickedImages: ImageInfo[]
@@ -8,29 +8,15 @@ interface Props {
   onOpen: (image: ImageInfo) => void
 }
 
-function moved(ids: number[], from: number, to: number): number[] {
-  const result = [...ids]
-  const [item] = result.splice(from, 1)
-  result.splice(to, 0, item)
-  return result
-}
-
 export function PickedStrip({ pickedImages, onReorder, onUnpick, onOpen }: Props) {
-  const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const [dropIndex, setDropIndex] = useState<number | null>(null)
   const ids = pickedImages.map((image) => image.id)
 
   function move(from: number, to: number) {
     if (to < 0 || to >= ids.length || from === to) return
-    onReorder(moved(ids, from, to))
+    onReorder(movedItem(ids, from, to))
   }
 
-  function drop(event: DragEvent, to: number) {
-    event.preventDefault()
-    if (dragIndex !== null) move(dragIndex, to)
-    setDragIndex(null)
-    setDropIndex(null)
-  }
+  const drag = useDragReorder(move)
 
   return (
     <section className="panel picked-strip">
@@ -42,25 +28,7 @@ export function PickedStrip({ pickedImages, onReorder, onUnpick, onOpen }: Props
           <p className="hint">Drag to reorder, or use the arrows. #1 is the main image of the post.</p>
           <ol className="picked-list">
             {pickedImages.map((image, index) => (
-              <li
-                key={image.id}
-                className={[
-                  'picked-item',
-                  dragIndex === index ? 'dragging' : '',
-                  dropIndex === index && dragIndex !== index ? 'drop-target' : '',
-                ].join(' ')}
-                draggable
-                onDragStart={() => setDragIndex(index)}
-                onDragEnd={() => {
-                  setDragIndex(null)
-                  setDropIndex(null)
-                }}
-                onDragOver={(event) => {
-                  event.preventDefault()
-                  setDropIndex(index)
-                }}
-                onDrop={(event) => drop(event, index)}
-              >
+              <li key={image.id} className={`picked-item ${drag.itemClass(index)}`} {...drag.itemProps(index)}>
                 <button type="button" className="picked-thumb" onClick={() => onOpen(image)}>
                   <img src={image.url} alt={`Picked image ${index + 1}`} draggable={false} />
                   <span className="picked-number">{index === 0 ? '#1 ★ main' : `#${index + 1}`}</span>

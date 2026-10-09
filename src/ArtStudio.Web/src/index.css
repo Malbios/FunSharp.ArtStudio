@@ -896,6 +896,24 @@ main {
   font-weight: 600;
 }
 
+.image-tile[draggable='true'] {
+  cursor: grab;
+}
+
+.image-tile.dragging {
+  opacity: 0.4;
+}
+
+.image-tile.drop-target {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+span.image-tile-pick {
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+}
+
 .image-tile.selected .image-tile-pick {
   background: var(--success);
   color: #000;
