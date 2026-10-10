@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, type BuildingBlock, type PromptGeneration, type SetDetail } from '../api'
 import { useStudioEvents, type JobEventPayload } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
@@ -10,6 +10,7 @@ import { generateActionLabel, isPromptPending } from '../prompt/generateAction'
 import { ModifyPromptDialog } from '../prompt/ModifyPromptDialog'
 import { joinedIndex, joinParagraphs, paragraphLabels, splitParagraphs } from '../prompt/paragraphs'
 import { withArtStyle } from '../prompt/presets'
+import { returnToFrom } from '../sets/returnTo'
 import { BuildingBlockChips } from './BuildingBlockChips'
 import { imageFileFrom, loadImageFile, NO_SOURCE, sourceDimensions, type ImageSource } from './imageSource'
 import { ImageSourcePicker, type SourceTab } from './ImageSourcePicker'
@@ -35,6 +36,7 @@ export function NewSetPage() {
   const isDraft = draftId !== null
   const fromImageId = Number(searchParams.get('image')) || null
   const navigate = useNavigate()
+  const locationState: unknown = useLocation().state
   const resolutions = useLoad(api.resolutions)
 
   const [paragraphs, setParagraphs] = useState(() => splitParagraphs(''))
@@ -175,7 +177,7 @@ export function NewSetPage() {
         navigate('/drafts')
       } else if (baseSet) {
         await api.moreImages(baseSet.id, count, prompt, resolution)
-        navigate(`/sets/${baseSet.id}`)
+        navigate(locationState ? returnToFrom(locationState) : `/sets/${baseSet.id}`)
       } else {
         const { id } = await api.createSet(buildForm())
         resetForm()

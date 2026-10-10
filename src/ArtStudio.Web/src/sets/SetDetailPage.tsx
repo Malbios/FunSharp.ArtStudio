@@ -8,7 +8,7 @@ import { JobRow } from '../queue/JobRow'
 import { Lightbox } from './Lightbox'
 import { PickedStrip } from './PickedStrip'
 import { RequeueWithPreset } from './RequeueWithPreset'
-import { setsOverviewFrom } from './setsOverviewLink'
+import { returnToFrom, type ReturnState } from './returnTo'
 import { movedItem, useDragReorder } from './useDragReorder'
 
 const DEFAULT_MORE_COUNT = 2
@@ -22,7 +22,9 @@ export function SetDetailPage() {
   const [deleting, setDeleting] = useState(false)
   const [deletedElsewhere, setDeletedElsewhere] = useState(false)
   const navigate = useNavigate()
-  const setsOverview = setsOverviewFrom(useLocation().state)
+  const returnTo = returnToFrom(useLocation().state)
+  const returnState: ReturnState = { returnTo }
+  const goBack = () => navigate(returnTo)
 
   useStudioEvents(['JobUpdated', 'ImageAdded', 'SetDeleted', 'SetUpdated'], (event, payload) => {
     const affectsThisSet = event === 'Reconnected' || (payload as JobEventPayload).setId === setId
@@ -42,7 +44,7 @@ export function SetDetailPage() {
     setError(undefined)
     try {
       await api.moreImages(setId, moreCount)
-      set.reload()
+      goBack()
     } catch (failure) {
       setError((failure as Error).message)
     }
@@ -74,7 +76,7 @@ export function SetDetailPage() {
   }
 
   async function archiveSet() {
-    const destination = set.data?.readyToPostAt ? '/post' : setsOverview
+    const destination = set.data?.readyToPostAt ? '/post' : returnTo
     await changeStage(() => api.archiveSet(setId), destination)
   }
 
@@ -151,7 +153,7 @@ export function SetDetailPage() {
             />
             <button type="submit">More images</button>
           </form>
-          <Link to={`/?basedOn=${data.id}`} className="button-link inline">
+          <Link to={`/?basedOn=${data.id}`} state={returnState} className="button-link inline">
             Edit &amp; requeue
           </Link>
           <RequeueWithPreset
@@ -159,7 +161,7 @@ export function SetDetailPage() {
             prompt={data.prompt}
             resolution={data.resolution}
             fallbackCount={moreCount}
-            onQueued={set.reload}
+            onQueued={goBack}
             onError={setError}
           />
           <button
@@ -167,7 +169,7 @@ export function SetDetailPage() {
             className="success"
             disabled={readyBlocker !== null}
             title={readyBlocker ?? 'Move this set to Post'}
-            onClick={() => void changeStage(() => api.markReadyToPost(setId), setsOverview)}
+            onClick={() => void changeStage(() => api.markReadyToPost(setId), returnTo)}
           >
             Ready to post
           </button>
@@ -307,7 +309,7 @@ export function SetDetailPage() {
           canRequeue={isWorking}
           canChangePicks={!isReadyToPost}
           requeueCount={moreCount}
-          onRequeued={set.reload}
+          onRequeued={goBack}
           onError={setError}
           onIndexChange={setLightboxIndex}
           onTogglePick={togglePick}

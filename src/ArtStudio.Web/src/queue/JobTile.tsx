@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { Job, QueueMove } from '../api'
+import { useReturnState } from '../sets/returnTo'
 import { useJobActions } from './useJobActions'
 
 const MOVES: { move: QueueMove; label: string; title: string; earlier: boolean }[] = [
@@ -18,10 +19,11 @@ interface Props {
 export function JobTile({ job, canMoveUp = false, canMoveDown = false }: Props) {
   const actions = useJobActions(job)
   const setUrl = `/sets/${job.setId}`
+  const returnState = useReturnState()
 
   return (
     <div className="panel job-tile">
-      <Link to={setUrl} className="job-tile-image">
+      <Link to={setUrl} state={returnState} className="job-tile-image">
         {job.sourceImageUrl ? (
           <img src={job.sourceImageUrl} alt={`Base image of set #${job.setId}`} loading="lazy" />
         ) : (
@@ -77,7 +79,7 @@ export function JobTile({ job, canMoveUp = false, canMoveDown = false }: Props) 
             Cancel
           </button>
         )}
-        <Link to={setUrl} className="button-link">
+        <Link to={setUrl} state={returnState} className="button-link">
           Open set
         </Link>
       </div>

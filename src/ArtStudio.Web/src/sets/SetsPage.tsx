@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
@@ -6,7 +6,7 @@ import { SET_FILTERS } from '../paging/listFilters'
 import { Pager } from '../paging/Pager'
 import { useListFilter } from '../paging/useListFilter'
 import { usePagedItems } from '../paging/usePagedItems'
-import type { SetsOverviewState } from './setsOverviewLink'
+import { useReturnState } from './returnTo'
 
 export function SetsPage() {
   const sets = useLoad(() => api.sets('working'))
@@ -14,8 +14,7 @@ export function SetsPage() {
   const filter = useListFilter('sets', sets.data, SET_FILTERS)
   const paged = usePagedItems(filter.items)
   const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
-  const location = useLocation()
-  const overviewState: SetsOverviewState = { setsOverview: location.pathname + location.search }
+  const returnState = useReturnState()
 
   return (
     <div>
@@ -38,7 +37,7 @@ export function SetsPage() {
         {paged.pageItems.map((set) => {
           const thumbnail = set.previewImageUrl ?? set.sourceImageUrl
           return (
-            <Link key={set.id} to={`/sets/${set.id}`} state={overviewState} className="panel set-card">
+            <Link key={set.id} to={`/sets/${set.id}`} state={returnState} className="panel set-card">
               {thumbnail ? <img className="set-card-image" src={thumbnail} alt="" loading="lazy" /> : <div className="set-card-image" />}
               <div className="set-card-body">
                 <div className="job-prompt">{set.prompt}</div>

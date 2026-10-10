@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { Job } from '../api'
+import { useReturnState } from '../sets/returnTo'
 import { useJobActions } from './useJobActions'
 
 interface Props {
@@ -9,15 +10,16 @@ interface Props {
 
 export function JobRow({ job, showPrompt = true }: Props) {
   const actions = useJobActions(job)
+  const returnState = useReturnState()
 
   return (
     <div className="panel job">
-      <Link to={`/sets/${job.setId}`}>
+      <Link to={`/sets/${job.setId}`} state={returnState}>
         {job.sourceImageUrl ? <img className="job-thumb" src={job.sourceImageUrl} alt="" /> : <div className="job-thumb" />}
       </Link>
       <div>
         {showPrompt && (
-          <Link to={`/sets/${job.setId}`} className="job-prompt plain-link">
+          <Link to={`/sets/${job.setId}`} state={returnState} className="job-prompt plain-link">
             {job.prompt}
           </Link>
         )}
