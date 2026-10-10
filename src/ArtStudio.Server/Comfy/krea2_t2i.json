@@ -115,8 +115,10 @@
   },
   "79:7": {
     "inputs": {
+      "preset": 4,
       "multiplier": 4,
       "per_layer_weights": "1.0,1.0,1.0,1.0,1.0,1.0,1.0,2.5,5.0,1.1,4.0,1.0",
+      "renormalize": true,
       "conditioning": [
         "79:8",
         0
