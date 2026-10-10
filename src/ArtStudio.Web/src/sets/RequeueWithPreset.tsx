@@ -17,33 +17,43 @@ interface Props {
   onError: (message: string) => void
 }
 
-/** Queues more images of the set right away, with the chosen preset applied to the given prompt. */
+/** Queues more images of the set right away, one job per chosen preset applied to the given prompt. */
 export function RequeueWithPreset({ setId, prompt, resolution, fallbackCount, className, onQueued, onError }: Props) {
   const [picking, setPicking] = useState(false)
   const [queued, setQueued] = useState(false)
   const blocks = useLoad(api.buildingBlocks)
   const presets = blocks.data?.filter((block) => block.kind === 'Preset') ?? []
 
-  async function requeue(preset: BuildingBlock) {
+  async function requeue(chosen: BuildingBlock[]) {
     setPicking(false)
+    let queuedCount = 0
     try {
-      const request = presetRequeue(preset, prompt, resolution, fallbackCount)
-      await api.moreImages(setId, request.count, request.prompt, request.resolution)
+      for (const preset of chosen) {
+        const request = presetRequeue(preset, prompt, resolution, fallbackCount)
+        await api.moreImages(setId, request.count, request.prompt, request.resolution)
+        queuedCount++
+      }
       setQueued(true)
       setTimeout(() => setQueued(false), QUEUED_FLASH_MS)
-      onQueued()
     } catch (failure) {
-      onError((failure as Error).message)
+      const message = (failure as Error).message
+      onError(chosen.length > 1 ? `Queued ${queuedCount} of ${chosen.length} presets. ${message}` : message)
     }
+    if (queuedCount > 0) onQueued()
   }
 
   return (
     <>
       <button type="button" className={className} onClick={() => setPicking(true)}>
-        {queued ? 'Queued!' : 'Requeue with preset'}
+        {queued ? 'Queued!' : 'Requeue with preset(s)'}
       </button>
       {picking && (
-        <PresetPicker presets={presets} onChoose={(preset) => void requeue(preset)} onClose={() => setPicking(false)} />
+        <PresetPicker
+          presets={presets}
+          onChoose={(preset) => void requeue([preset])}
+          onChooseMany={(chosen) => void requeue(chosen)}
+          onClose={() => setPicking(false)}
+        />
       )}
     </>
   )

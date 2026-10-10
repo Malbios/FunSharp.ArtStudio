@@ -424,6 +424,39 @@ main {
   gap: 0.75rem;
 }
 
+.preset-picker-header .preset-picker-queue {
+  margin-left: auto;
+}
+
+.preset-picker-header .preset-picker-queue + .link-button {
+  margin-left: 0;
+}
+
+.preset-tile-wrap {
+  position: relative;
+  max-width: 100%;
+}
+
+.preset-tile-wrap.checked .preset-tile {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.preset-tile-check {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.preset-tile-wrap:has(.preset-tile-check) .preset-tile-text {
+  padding-top: 2.25rem;
+}
+
 .preset-tile {
   display: flex;
   flex-direction: column;
