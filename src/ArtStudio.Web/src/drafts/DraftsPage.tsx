@@ -14,6 +14,7 @@ import { usePagedItems } from '../paging/usePagedItems'
 export function DraftsPage() {
   const drafts = useLoad(() => api.sets('draft'))
   const [error, setError] = useState<string>()
+  const [retrying, setRetrying] = useState(false)
   useStudioEvents(['SetUpdated', 'SetDeleted'], drafts.reload)
   const filter = useListFilter('drafts', drafts.data, DRAFT_FILTERS)
   const paged = usePagedItems(filter.items)
@@ -25,6 +26,19 @@ export function DraftsPage() {
   ]
     .filter(Boolean)
     .join(', ')
+  const failedCount = countIn('Failed')
+
+  async function retryFailedPrompts() {
+    setRetrying(true)
+    setError(undefined)
+    try {
+      await api.retryFailedDraftPrompts()
+    } catch (failure) {
+      setError((failure as Error).message)
+    } finally {
+      setRetrying(false)
+    }
+  }
 
   async function deleteDraft(setId: number) {
     if (!window.confirm(`Delete draft #${setId}?`)) return
@@ -46,6 +60,14 @@ export function DraftsPage() {
       {drafts.error && <p className="error">{drafts.error}</p>}
       {error && <p className="error">{error}</p>}
       {promptSummary && <p className="hint">Prompts: {promptSummary}</p>}
+      {failedCount > 0 && (
+        <p className="hint">
+          {failedCount === 1 ? '1 prompt failed.' : `${failedCount} prompts failed.`}{' '}
+          <button type="button" disabled={retrying} onClick={() => void retryFailedPrompts()}>
+            {retrying ? 'Retrying…' : 'Retry all failed'}
+          </button>
+        </p>
+      )}
       {drafts.data?.length === 0 && (
         <p className="hint">
           No drafts. Attach an image on the <Link to="/">New</Link> page and use "Save as draft" to add a prompt later.

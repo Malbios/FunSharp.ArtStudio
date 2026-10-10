@@ -165,6 +165,29 @@ public sealed class SetService(
         await MarkPromptGenerationQueuedAsync(set, images, ct);
     }
 
+    /// <summary>Queues every failed draft prompt request again, generations and modifications alike.</summary>
+    public async Task<int> RetryFailedDraftPromptsAsync(CancellationToken ct)
+    {
+        if (!await visionApiKey.HasKeyAsync(ct))
+            throw new UserFacingException("Set the vision API key in Settings first.");
+        var failed = await db.PromptSets
+            .Where(s => s.IsDraft && s.PromptGeneration == PromptGenerationState.Failed)
+            .ToListAsync(ct);
+        var now = clock.GetUtcNow();
+        foreach (var set in failed)
+        {
+            set.PromptGeneration = PromptGenerationState.Queued;
+            set.PromptGenerationQueuedAt = now;
+            set.PromptGenerationError = null;
+            set.PromptGenerationTruncated = false;
+        }
+        await db.SaveChangesAsync(ct);
+        promptQueue.Wake();
+        foreach (var set in failed)
+            await notifier.SetUpdated(set.Id);
+        return failed.Count;
+    }
+
     /// <summary>Queues the images a finished prompt request on a set asked for.</summary>
     public async Task QueueImagesAfterPromptAsync(int setId, CancellationToken ct)
     {

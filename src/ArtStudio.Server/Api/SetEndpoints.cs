@@ -46,6 +46,8 @@ public static class SetEndpoints
         app.MapGet("/api/images/{id:int}", GetImageAsync);
         app.MapPost("/api/drafts/deviantart", async (DeviantArtDraftRequest request, SetService setService, CancellationToken ct) =>
             Results.Ok(new { (await setService.CreateDeviantArtDraftAsync(request.Url ?? "", ct)).Id }));
+        app.MapPost("/api/drafts/retry-failed-prompts", async (SetService setService, CancellationToken ct) =>
+            Results.Ok(new { Retried = await setService.RetryFailedDraftPromptsAsync(ct) }));
     }
 
     private static async Task<IReadOnlyList<SetSummaryDto>> ListSetsAsync(string? stage, StudioDbContext db, CancellationToken ct)

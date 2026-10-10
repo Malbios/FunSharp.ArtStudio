@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using ArtStudio.Server.Data;
 using ArtStudio.Server.Domain;
 using ArtStudio.Server.Generation;
@@ -174,6 +175,26 @@ public sealed class PromptGenerationTests : IDisposable
         (await GeneratePromptAsync(failing)).EnsureSuccessStatusCode();
         await WaitForStateAsync(failing, PromptGenerationState.Done);
         Assert.Null((await GetSetAsync(_client, failing)).PromptGeneration.Error);
+    }
+
+    [Fact]
+    public async Task RetryFailedPrompts_QueuesEveryFailedDraftAgain()
+    {
+        await SetVisionApiKeyAsync(_client);
+        _factory.Vision.Status = HttpStatusCode.ServiceUnavailable;
+        var first = await CreateUploadDraftAsync();
+        var second = await CreateUploadDraftAsync();
+        await WaitForStateAsync(first, PromptGenerationState.Failed);
+        await WaitForStateAsync(second, PromptGenerationState.Failed);
+
+        _factory.Vision.Status = HttpStatusCode.OK;
+        var response = await _client.PostAsync("/api/drafts/retry-failed-prompts", null);
+        response.EnsureSuccessStatusCode();
+
+        Assert.Equal(2, (await response.Content.ReadFromJsonAsync<JsonObject>())!["retried"]!.GetValue<int>());
+        await WaitForStateAsync(first, PromptGenerationState.Done);
+        await WaitForStateAsync(second, PromptGenerationState.Done);
+        Assert.Equal(_factory.Vision.Answer, (await GetSetAsync(_client, second)).Prompt);
     }
 
     [Fact]

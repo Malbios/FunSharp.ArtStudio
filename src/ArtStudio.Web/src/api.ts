@@ -205,6 +205,7 @@ export const api = {
   queueDraft: (setId: number, prompt: string, resolution: string, count: number) =>
     request<void>('POST', `/api/sets/${setId}/queue`, { prompt, resolution, count }),
   addDeviantArtDraft: (url: string) => request<{ id: number }>('POST', '/api/drafts/deviantart', { url }),
+  retryFailedDraftPrompts: () => request<{ retried: number }>('POST', '/api/drafts/retry-failed-prompts'),
   generatePrompt: (setId: number, images?: ImagesToQueue) =>
     request<void>('POST', `/api/sets/${setId}/generate-prompt`, {
       imageCount: images?.count,

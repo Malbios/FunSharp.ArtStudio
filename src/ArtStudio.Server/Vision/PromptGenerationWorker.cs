@@ -58,6 +58,7 @@ public sealed class PromptGenerationWorker(
         return await scope.ServiceProvider.GetRequiredService<StudioDbContext>().PromptSets
             .Where(s => s.PromptGeneration == PromptGenerationState.Queued)
             .OrderBy(s => s.PromptGenerationQueuedAt)
+            .ThenBy(s => s.Id)
             .Select(s => (int?)s.Id)
             .FirstOrDefaultAsync(ct);
     }
