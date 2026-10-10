@@ -36,3 +36,17 @@ export function presetRequeue(
     count: preset.imageCount ?? fallbackCount,
   }
 }
+
+export interface ResolvedBundle {
+  bundle: BuildingBlock
+  presets: BuildingBlock[]
+}
+
+/** Each bundle with its presets in order; deleted presets are skipped and bundles left empty are dropped. */
+export function resolveBundles(blocks: BuildingBlock[]): ResolvedBundle[] {
+  const presetsById = new Map(blocks.filter((block) => block.kind === 'Preset').map((preset) => [preset.id, preset]))
+  return blocks
+    .filter((block) => block.kind === 'Bundle')
+    .map((bundle) => ({ bundle, presets: bundle.presetIds.flatMap((id) => presetsById.get(id) ?? []) }))
+    .filter((resolved) => resolved.presets.length > 0)
+}

@@ -173,6 +173,64 @@ public sealed class SettingsTests : IDisposable
         Assert.Empty(Directory.GetFiles(Path.Combine(_factory.DataDirectory, "presets")));
     }
 
+    private static int Id(JsonElement block) => block.GetProperty("id").GetInt32();
+
+    private static int[] PresetIds(JsonElement block) =>
+        block.GetProperty("presetIds").EnumerateArray().Select(id => id.GetInt32()).ToArray();
+
+    private async Task<JsonElement[]> BlocksAsync() =>
+        (await _client.GetFromJsonAsync<JsonElement[]>("/api/building-blocks"))!;
+
+    [Fact]
+    public async Task Bundles_KeepTheirPresetsInOrder()
+    {
+        var first = Id(await AddPresetAsync());
+        var second = Id(await AddPresetAsync());
+        var response = await _client.PostAsJsonAsync("/api/building-blocks",
+            new { label = " Favourites ", kind = "Bundle", presetIds = new[] { second, first } });
+        response.EnsureSuccessStatusCode();
+        var bundle = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Bundle", bundle.GetProperty("kind").GetString());
+        Assert.Equal("Favourites", bundle.GetProperty("label").GetString());
+        Assert.Equal([second, first], PresetIds(bundle));
+
+        (await _client.PutAsJsonAsync($"/api/building-blocks/{Id(bundle)}",
+            new { label = "Favourites", kind = "Bundle", presetIds = new[] { first } })).EnsureSuccessStatusCode();
+
+        Assert.Equal([first], PresetIds((await BlocksAsync()).Single(b => Id(b) == Id(bundle))));
+    }
+
+    [Fact]
+    public async Task InvalidBundles_AreRejected()
+    {
+        var preset = Id(await AddPresetAsync());
+        var text = Id(await AddBlockAsync("Light", "soft light"));
+        object[] requests =
+        [
+            new { label = "", kind = "Bundle", presetIds = new[] { preset } },
+            new { label = "Empty", kind = "Bundle", presetIds = Array.Empty<int>() },
+            new { label = "Twice", kind = "Bundle", presetIds = new[] { preset, preset } },
+            new { label = "Unknown", kind = "Bundle", presetIds = new[] { preset, 9999 } },
+            new { label = "Text", kind = "Bundle", presetIds = new[] { text } },
+        ];
+
+        foreach (var request in requests)
+            Assert.Equal(HttpStatusCode.BadRequest, (await _client.PostAsJsonAsync("/api/building-blocks", request)).StatusCode);
+    }
+
+    [Fact]
+    public async Task DeletingAPreset_RemovesItFromBundles()
+    {
+        var kept = Id(await AddPresetAsync());
+        var deleted = Id(await AddPresetAsync());
+        var bundle = await (await _client.PostAsJsonAsync("/api/building-blocks",
+            new { label = "Both", kind = "Bundle", presetIds = new[] { deleted, kept } })).Content.ReadFromJsonAsync<JsonElement>();
+
+        (await _client.DeleteAsync($"/api/building-blocks/{deleted}")).EnsureSuccessStatusCode();
+
+        Assert.Equal([kept], PresetIds((await BlocksAsync()).Single(b => Id(b) == Id(bundle))));
+    }
+
     [Fact]
     public async Task PresetImage_IsRejectedForTextBlocksAndUnsupportedTypes()
     {

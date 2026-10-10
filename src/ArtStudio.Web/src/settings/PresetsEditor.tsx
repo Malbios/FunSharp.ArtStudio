@@ -1,6 +1,6 @@
 import { useState, type ClipboardEvent, type FormEvent } from 'react'
 import { api, type BuildingBlock, type PresetFields, type ResolutionPreset } from '../api'
-import { useLoad } from '../live/useLoad'
+import { useLoad, type Loaded } from '../live/useLoad'
 import { imageFileFrom } from '../newset/imageSource'
 import { cleanPrompt } from '../prompt/cleanPrompt'
 import { insertAtSelection } from '../prompt/insertAtSelection'
@@ -8,8 +8,8 @@ import { PresetImage, readClipboardImage } from './PresetImage'
 
 const EMPTY_PRESET: PresetFields = { label: '', artStyle: null, resolution: null, imageCount: null }
 
-export function PresetsEditor() {
-  const blocks = useLoad(api.buildingBlocks)
+/** `blocks` is shared with the bundles editor, so bundles see preset changes right away. */
+export function PresetsEditor({ blocks }: { blocks: Loaded<BuildingBlock[]> }) {
   const resolutions = useLoad(api.resolutions)
   const [addingAt, setAddingAt] = useState<number>()
   const [newPreset, setNewPreset] = useState(EMPTY_PRESET)

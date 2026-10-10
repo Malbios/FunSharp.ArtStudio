@@ -137,7 +137,7 @@ export interface DeviantArtApp {
   redirectUri: string
 }
 
-export type BuildingBlockKind = 'Text' | 'Preset'
+export type BuildingBlockKind = 'Text' | 'Preset' | 'Bundle'
 
 export interface BuildingBlock {
   id: number
@@ -149,6 +149,8 @@ export interface BuildingBlock {
   imageCount: number | null
   sortOrder: number
   imageUrl: string | null
+  /** A bundle's presets in order. */
+  presetIds: number[]
 }
 
 /** What a preset changes on the page; null leaves that part as it is. */
@@ -269,6 +271,10 @@ export const api = {
     return request<BuildingBlock>('PUT', `/api/building-blocks/${id}/image`, form)
   },
   removePresetImage: (id: number) => request<BuildingBlock>('DELETE', `/api/building-blocks/${id}/image`),
+  addBundle: (label: string, presetIds: number[]) =>
+    request<BuildingBlock>('POST', '/api/building-blocks', { label, presetIds, kind: 'Bundle' }),
+  updateBundle: (id: number, label: string, presetIds: number[]) =>
+    request<BuildingBlock>('PUT', `/api/building-blocks/${id}`, { label, presetIds, kind: 'Bundle' }),
   deleteBuildingBlock: (id: number) => request<void>('DELETE', `/api/building-blocks/${id}`),
   reorderBuildingBlocks: (ids: number[]) => request<void>('POST', '/api/building-blocks/reorder', { ids }),
 }

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api, type BuildingBlock } from '../api'
 import { useLoad } from '../live/useLoad'
 import { PresetPicker } from '../newset/PresetPicker'
-import { presetRequeue } from '../prompt/presets'
+import { presetRequeue, resolveBundles } from '../prompt/presets'
 
 const QUEUED_FLASH_MS = 1500
 
@@ -23,6 +23,7 @@ export function RequeueWithPreset({ setId, prompt, resolution, fallbackCount, cl
   const [queued, setQueued] = useState(false)
   const blocks = useLoad(api.buildingBlocks)
   const presets = blocks.data?.filter((block) => block.kind === 'Preset') ?? []
+  const bundles = resolveBundles(blocks.data ?? [])
 
   async function requeue(chosen: BuildingBlock[]) {
     setPicking(false)
@@ -52,6 +53,7 @@ export function RequeueWithPreset({ setId, prompt, resolution, fallbackCount, cl
           presets={presets}
           onChoose={(preset) => void requeue([preset])}
           onChooseMany={(chosen) => void requeue(chosen)}
+          bundles={bundles}
           onClose={() => setPicking(false)}
         />
       )}

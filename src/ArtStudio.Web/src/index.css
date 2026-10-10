@@ -424,12 +424,59 @@ main {
   gap: 0.75rem;
 }
 
-.preset-picker-header .preset-picker-queue {
+.preset-picker-header .preset-picker-several {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   margin-left: auto;
+  font-size: 0.9rem;
+  cursor: pointer;
 }
 
-.preset-picker-header .preset-picker-queue + .link-button {
+.preset-picker-several input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.preset-picker-header .preset-picker-several ~ .preset-picker-close {
   margin-left: 0;
+}
+
+.preset-picker-divider {
+  margin: 1rem 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.bundle-mosaic {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  width: var(--preset-tile-height);
+  max-width: 100%;
+  height: var(--preset-tile-height);
+}
+
+.preset-tile .bundle-mosaic img {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: cover;
+}
+
+.bundle-mosaic.count-1 img {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+}
+
+.bundle-mosaic.count-2 img {
+  grid-row: 1 / -1;
+}
+
+.bundle-mosaic.count-3 img:first-child {
+  grid-row: 1 / -1;
 }
 
 .preset-tile-wrap {
@@ -1142,6 +1189,36 @@ span.image-tile-pick {
   padding: 0.75rem;
   border: 1px dashed var(--accent);
   border-radius: var(--radius);
+}
+
+.editable-row.bundle-row {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.bundle-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.bundle-preset {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+
+.bundle-preset .link-button {
+  padding: 0 0.15rem;
+}
+
+.bundle-presets select {
+  width: auto;
 }
 
 .add-here {

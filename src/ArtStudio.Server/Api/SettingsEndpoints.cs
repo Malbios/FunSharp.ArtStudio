@@ -18,7 +18,8 @@ public sealed record BuildingBlockRequest(
     BuildingBlockKind Kind = BuildingBlockKind.Text,
     string? ArtStyle = null,
     string? Resolution = null,
-    int? ImageCount = null);
+    int? ImageCount = null,
+    IReadOnlyList<int>? PresetIds = null);
 
 public sealed record ReorderRequest(IReadOnlyList<int> Ids);
 
@@ -89,7 +90,7 @@ public static class SettingsEndpoints
     {
         var lastSortOrder = await db.BuildingBlocks.MaxAsync(b => (int?)b.SortOrder, ct) ?? 0;
         var block = new BuildingBlock { Label = "", Text = "", SortOrder = lastSortOrder + 1 };
-        Apply(block, request);
+        await ApplyAsync(block, request, db, ct);
         db.BuildingBlocks.Add(block);
         await db.SaveChangesAsync(ct);
         return BuildingBlockDto.From(block);
@@ -101,7 +102,7 @@ public static class SettingsEndpoints
         var block = await db.BuildingBlocks.FindAsync([id], ct);
         if (block is null)
             return Results.NotFound();
-        Apply(block, request);
+        await ApplyAsync(block, request, db, ct);
         if (block.Kind != BuildingBlockKind.Preset)
             DeleteImageFile(block);
         await db.SaveChangesAsync(ct);
@@ -114,6 +115,7 @@ public static class SettingsEndpoints
         {
             DeleteImageFile(block);
             db.BuildingBlocks.Remove(block);
+            await RemoveFromBundlesAsync(block, db, ct);
             await db.SaveChangesAsync(ct);
         }
         return Results.NoContent();
@@ -152,6 +154,15 @@ public static class SettingsEndpoints
         return Results.Ok(BuildingBlockDto.From(block));
     }
 
+    private static async Task RemoveFromBundlesAsync(BuildingBlock preset, StudioDbContext db, CancellationToken ct)
+    {
+        if (preset.Kind != BuildingBlockKind.Preset)
+            return;
+        var bundles = await db.BuildingBlocks.Where(b => b.Kind == BuildingBlockKind.Bundle).ToListAsync(ct);
+        foreach (var bundle in bundles.Where(b => b.BundledPresetIds().Contains(preset.Id)))
+            bundle.SetBundledPresetIds(bundle.BundledPresetIds().Where(id => id != preset.Id));
+    }
+
     private static void DeleteImageFile(BuildingBlock block)
     {
         if (block.ImagePath is { } path && File.Exists(path))
@@ -170,12 +181,46 @@ public static class SettingsEndpoints
         await db.SaveChangesAsync(ct);
     }
 
-    private static void Apply(BuildingBlock block, BuildingBlockRequest request)
+    private static async Task ApplyAsync(
+        BuildingBlock block, BuildingBlockRequest request, StudioDbContext db, CancellationToken ct)
     {
-        if (request.Kind == BuildingBlockKind.Preset)
-            ApplyPreset(block, request);
-        else
-            ApplyText(block, request);
+        switch (request.Kind)
+        {
+            case BuildingBlockKind.Preset:
+                ApplyPreset(block, request);
+                break;
+            case BuildingBlockKind.Bundle:
+                await ApplyBundleAsync(block, request, db, ct);
+                break;
+            default:
+                ApplyText(block, request);
+                break;
+        }
+        if (block.Kind != BuildingBlockKind.Bundle)
+            block.PresetIds = null;
+    }
+
+    private static async Task ApplyBundleAsync(
+        BuildingBlock block, BuildingBlockRequest request, StudioDbContext db, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Label))
+            throw new UserFacingException("A preset bundle needs a label.");
+        var ids = request.PresetIds ?? [];
+        if (ids.Count == 0)
+            throw new UserFacingException("A preset bundle needs at least one preset.");
+        if (ids.Distinct().Count() != ids.Count)
+            throw new UserFacingException("A preset bundle can contain each preset only once.");
+        var presetCount = await db.BuildingBlocks.CountAsync(b => ids.Contains(b.Id) && b.Kind == BuildingBlockKind.Preset, ct);
+        if (presetCount != ids.Count)
+            throw new UserFacingException("A preset bundle can only contain existing presets.");
+
+        block.Kind = BuildingBlockKind.Bundle;
+        block.Label = request.Label.Trim();
+        block.Text = "";
+        block.ArtStyle = null;
+        block.Resolution = null;
+        block.ImageCount = null;
+        block.SetBundledPresetIds(ids);
     }
 
     private static void ApplyText(BuildingBlock block, BuildingBlockRequest request)

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { describePreset, presetRequeue, withArtStyle } from './presets'
+import type { BuildingBlock } from '../api'
+import { describePreset, presetRequeue, resolveBundles, withArtStyle } from './presets'
 
 describe('withArtStyle', () => {
   it('replaces only the art style box', () => {
@@ -35,5 +36,19 @@ describe('presetRequeue', () => {
       resolution: 'Native',
       count: 3,
     })
+  })
+})
+
+describe('resolveBundles', () => {
+  const block = (id: number, kind: BuildingBlock['kind'], presetIds: number[] = []) =>
+    ({ id, kind, label: `#${id}`, presetIds }) as BuildingBlock
+
+  it('lists the presets of each bundle in bundle order, skipping missing ones', () => {
+    const resolved = resolveBundles([block(1, 'Preset'), block(2, 'Preset'), block(3, 'Text'), block(9, 'Bundle', [2, 7, 1, 3])])
+    expect(resolved.map((r) => [r.bundle.id, r.presets.map((p) => p.id)])).toEqual([[9, [2, 1]]])
+  })
+
+  it('drops bundles without any remaining preset', () => {
+    expect(resolveBundles([block(9, 'Bundle', [7])])).toEqual([])
   })
 })
