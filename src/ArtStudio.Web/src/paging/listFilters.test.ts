@@ -6,6 +6,7 @@ const summary = (overrides: Partial<SetSummary> & { state?: PromptGenerationStat
   ({
     prompt: '',
     hasActiveJob: false,
+    pickedCount: 0,
     ...overrides,
     promptGeneration: { state: overrides.state ?? 'None', kind: 'Generate', error: null, truncated: false, text: null },
   }) as SetSummary
@@ -18,6 +19,11 @@ describe('set filters', () => {
     expect(matches(SET_FILTERS, 'idle', summary({ hasActiveJob: false }))).toBe(true)
     expect(matches(SET_FILTERS, 'idle', summary({ hasActiveJob: true }))).toBe(false)
   })
+
+  it('shows only sets without picked images when without picks', () => {
+    expect(matches(SET_FILTERS, 'unpicked', summary({ pickedCount: 0 }))).toBe(true)
+    expect(matches(SET_FILTERS, 'unpicked', summary({ pickedCount: 2 }))).toBe(false)
+  })
 })
 
 describe('draft filters', () => {
@@ -27,9 +33,5 @@ describe('draft filters', () => {
     expect(matches(DRAFT_FILTERS, 'ready', summary({ prompt: '  ', state: 'Done' }))).toBe(false)
     expect(matches(DRAFT_FILTERS, 'ready', summary({ prompt: 'A fox.', state: 'Running' }))).toBe(false)
     expect(matches(DRAFT_FILTERS, 'ready', summary({ prompt: 'A fox.', state: 'Queued' }))).toBe(false)
-  })
-
-  it('shows everything under All', () => {
-    expect(matches(DRAFT_FILTERS, 'all', summary({ state: 'Running' }))).toBe(true)
   })
 })

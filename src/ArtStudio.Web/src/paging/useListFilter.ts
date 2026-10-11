@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { PAGE_PARAM } from './usePagedItems'
 
 const FILTER_PARAM = 'filter'
+const KEY_SEPARATOR = ','
 
 export interface ListFilter<T> {
   key: string
@@ -18,9 +19,12 @@ export interface FilterOption {
 
 export interface FilteredItems<T> {
   items: T[] | undefined
+  totalCount: number
   options: FilterOption[]
-  active: string
-  setActive: (key: string) => void
+  /** The keys of the filters that are on; none means everything is shown. */
+  active: string[]
+  toggle: (key: string) => void
+  clear: () => void
 }
 
 const storageKey = (list: string) => `artstudio.filter.${list}`
@@ -33,40 +37,46 @@ function rememberedFilter(list: string): string | null {
   }
 }
 
-function rememberFilter(list: string, key: string) {
+function rememberFilter(list: string, keys: string[]) {
   try {
-    localStorage.setItem(storageKey(list), key)
+    localStorage.setItem(storageKey(list), keys.join(KEY_SEPARATOR))
   } catch {
     // Without storage the filter is simply not remembered.
   }
 }
 
 /**
- * Narrows items by the filter named in the URL (?filter=), or else by the one last chosen for this list in this
- * browser. The first filter is the default and has no parameter; changing the filter goes back to page 1.
+ * Narrows items to those matching every filter named in the URL (?filter=a,b), or else the ones last chosen for this
+ * list in this browser. No filter shows everything; changing the filters goes back to page 1.
  */
 export function useListFilter<T>(list: string, items: T[] | undefined, filters: ListFilter<T>[]): FilteredItems<T> {
   const [searchParams, setSearchParams] = useSearchParams()
-  const requested = searchParams.get(FILTER_PARAM) ?? rememberedFilter(list)
-  const filter = filters.find((candidate) => candidate.key === requested) ?? filters[0]
+  const requested = (searchParams.get(FILTER_PARAM) ?? rememberedFilter(list) ?? '').split(KEY_SEPARATOR)
+  const activeFilters = filters.filter((filter) => requested.includes(filter.key))
+  const active = activeFilters.map((filter) => filter.key)
 
   const setActive = useCallback(
-    (key: string) => {
-      rememberFilter(list, key)
+    (keys: string[]) => {
+      rememberFilter(list, keys)
       setSearchParams((params) => {
-        if (key === filters[0].key) params.delete(FILTER_PARAM)
-        else params.set(FILTER_PARAM, key)
+        if (keys.length === 0) params.delete(FILTER_PARAM)
+        else params.set(FILTER_PARAM, keys.join(KEY_SEPARATOR))
         params.delete(PAGE_PARAM)
         return params
       })
     },
-    [list, filters, setSearchParams],
+    [list, setSearchParams],
   )
 
+  const toggle = (key: string) =>
+    setActive(filters.map((filter) => filter.key).filter((other) => (other === key) !== active.includes(other)))
+
   return {
-    items: items?.filter(filter.matches),
+    items: items?.filter((item) => activeFilters.every((filter) => filter.matches(item))),
+    totalCount: items?.length ?? 0,
     options: filters.map(({ key, label, matches }) => ({ key, label, count: items?.filter(matches).length ?? 0 })),
-    active: filter.key,
-    setActive,
+    active,
+    toggle,
+    clear: () => setActive([]),
   }
 }

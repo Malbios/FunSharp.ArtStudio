@@ -4,8 +4,8 @@ import type { FilteredItems } from './useListFilter'
 export function FilterMenu<T>({ filter }: { filter: FilteredItems<T> }) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const activeOption = filter.options.find((option) => option.key === filter.active)
-  const filtered = filter.active !== filter.options[0].key
+  const activeLabels = filter.options.filter((option) => filter.active.includes(option.key)).map((option) => option.label)
+  const filtered = activeLabels.length > 0
 
   useEffect(() => {
     if (!open) return
@@ -23,11 +23,6 @@ export function FilterMenu<T>({ filter }: { filter: FilteredItems<T> }) {
     }
   }, [open])
 
-  function choose(key: string) {
-    filter.setActive(key)
-    setOpen(false)
-  }
-
   return (
     <div className="filter-menu" ref={menuRef}>
       <button
@@ -35,7 +30,7 @@ export function FilterMenu<T>({ filter }: { filter: FilteredItems<T> }) {
         className={filtered ? 'filter-button active' : 'filter-button'}
         aria-label="Filter"
         aria-expanded={open}
-        title={filtered ? `Filter: ${activeOption?.label}` : 'Filter'}
+        title={filtered ? `Filter: ${activeLabels.join(' + ')}` : 'Filter'}
         onClick={() => setOpen((current) => !current)}
       >
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -43,14 +38,17 @@ export function FilterMenu<T>({ filter }: { filter: FilteredItems<T> }) {
         </svg>
       </button>
       {open && (
-        <div className="filter-dropdown" role="radiogroup" aria-label="Filter">
+        <div className="filter-dropdown" role="group" aria-label="Filter">
+          <label>
+            <input type="checkbox" checked={!filtered} disabled={!filtered} onChange={filter.clear} />
+            All ({filter.totalCount})
+          </label>
           {filter.options.map((option) => (
             <label key={option.key}>
               <input
-                type="radio"
-                name="list-filter"
-                checked={option.key === filter.active}
-                onChange={() => choose(option.key)}
+                type="checkbox"
+                checked={filter.active.includes(option.key)}
+                onChange={() => filter.toggle(option.key)}
               />
               {option.label} ({option.count})
             </label>
