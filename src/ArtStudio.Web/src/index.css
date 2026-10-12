@@ -1358,6 +1358,16 @@ span.image-tile-pick {
   background: var(--danger);
 }
 
+.nav-count.ready {
+  background: var(--success);
+  color: #000;
+}
+
+.nav-count.pending {
+  background: var(--muted);
+  color: #000;
+}
+
 .nav-count.paused {
   background: var(--warning);
   color: #000;

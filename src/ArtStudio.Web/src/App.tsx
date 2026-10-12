@@ -7,6 +7,7 @@ import { SettingsPage } from './settings/SettingsPage'
 import { useStudioEvents } from './live/studioHub'
 import { useLoad } from './live/useLoad'
 import { NewSetPage } from './newset/NewSetPage'
+import { isDraftReady } from './paging/listFilters'
 import { PostPage } from './post/PostPage'
 import { QueuePage } from './queue/QueuePage'
 import { SetDetailPage } from './sets/SetDetailPage'
@@ -18,7 +19,7 @@ function NewSetRoute() {
 }
 
 interface StageNavLinkProps {
-  stage: 'draft' | 'working' | 'ready'
+  stage: 'working' | 'ready'
   to: string
   label: string
 }
@@ -33,6 +34,29 @@ function StageNavLink({ stage, to, label }: StageNavLinkProps) {
     <NavLink to={to}>
       {label}
       {count > 0 && <span className="nav-count">{count}</span>}
+    </NavLink>
+  )
+}
+
+function DraftsNavLink() {
+  const drafts = useLoad(() => api.sets('draft'))
+  useStudioEvents(['SetUpdated', 'SetDeleted', 'JobUpdated'], drafts.reload)
+  const ready = drafts.data?.filter(isDraftReady).length ?? 0
+  const pending = (drafts.data?.length ?? 0) - ready
+
+  return (
+    <NavLink to="/drafts">
+      Drafts
+      {ready > 0 && (
+        <span className="nav-count ready" title={`${ready} ready to queue`}>
+          {ready}
+        </span>
+      )}
+      {pending > 0 && (
+        <span className="nav-count pending" title={`${pending} still without a prompt`}>
+          {pending}
+        </span>
+      )}
     </NavLink>
   )
 }
@@ -62,7 +86,7 @@ export default function App() {
           <NavLink to="/" end>
             New
           </NavLink>
-          <StageNavLink stage="draft" to="/drafts" label="Drafts" />
+          <DraftsNavLink />
           <QueueNavLink />
           <StageNavLink stage="working" to="/sets" label="Sets" />
           <StageNavLink stage="ready" to="/post" label="Post" />
