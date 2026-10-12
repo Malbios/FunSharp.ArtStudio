@@ -989,6 +989,12 @@ main {
   outline-offset: 2px;
 }
 
+button.image-tile-pick {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  font-size: 1.3rem;
+}
+
 span.image-tile-pick {
   border: 1px solid transparent;
   border-radius: var(--radius);
