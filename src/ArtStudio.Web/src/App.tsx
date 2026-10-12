@@ -19,7 +19,7 @@ function NewSetRoute() {
 }
 
 interface StageNavLinkProps {
-  stage: 'working' | 'ready'
+  stage: 'ready'
   to: string
   label: string
 }
@@ -61,6 +61,36 @@ function DraftsNavLink() {
   )
 }
 
+function SetsNavLink() {
+  const sets = useLoad(() => api.sets('working'))
+  useStudioEvents(['SetUpdated', 'SetDeleted', 'JobUpdated'], sets.reload)
+  const idle = sets.data?.filter((set) => !set.hasActiveJob) ?? []
+  const unpicked = idle.filter((set) => set.pickedCount === 0).length
+  const generating = (sets.data?.length ?? 0) - idle.length
+  const picked = idle.length - unpicked
+
+  return (
+    <NavLink to="/sets">
+      Sets
+      {unpicked > 0 && (
+        <span className="nav-count pending" title={`${unpicked} without picks and not generating`}>
+          {unpicked}
+        </span>
+      )}
+      {generating > 0 && (
+        <span className="nav-count" title={`${generating} generating or queued`}>
+          {generating}
+        </span>
+      )}
+      {picked > 0 && (
+        <span className="nav-count ready" title={`${picked} with picks and not generating`}>
+          {picked}
+        </span>
+      )}
+    </NavLink>
+  )
+}
+
 function QueueNavLink() {
   const queue = useLoad(api.queue)
   useStudioEvents(['JobUpdated', 'QueueStateChanged', 'SetDeleted'], queue.reload)
@@ -88,7 +118,7 @@ export default function App() {
           </NavLink>
           <DraftsNavLink />
           <QueueNavLink />
-          <StageNavLink stage="working" to="/sets" label="Sets" />
+          <SetsNavLink />
           <StageNavLink stage="ready" to="/post" label="Post" />
           <NavLink to="/archive">Archive</NavLink>
           <NavLink to="/settings">Settings</NavLink>
