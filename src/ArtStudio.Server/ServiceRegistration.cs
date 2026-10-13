@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json.Serialization;
 using ArtStudio.Server.Comfy;
 using ArtStudio.Server.Data;
@@ -42,8 +43,9 @@ public static class ServiceRegistration
         {
             http.Timeout = TimeSpan.FromSeconds(30);
             http.DefaultRequestHeaders.UserAgent.ParseAdd("ArtStudio/1.0");
-        });
+        }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AutomaticDecompression = DecompressionMethods.All });
         services.AddScoped<DeviantArtService>();
+        services.AddScoped<DeviantArtPosting>();
         services.AddDataProtection().SetApplicationName("ArtStudio");
         services.AddSingleton<DeviantArtAuth>();
         services.AddHostedService<QueueWorker>();

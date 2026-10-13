@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, type DeviantArtApp } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
+import { MatureGalleries } from './MatureGalleries'
 
 const DEVELOPER_APPS_URL = 'https://www.deviantart.com/developers/apps'
 
@@ -52,8 +53,8 @@ export function DeviantArtConnection() {
     <section className="panel" id="deviantart">
       <h3>DeviantArt</h3>
       <p className="hint">
-        Connecting your account lets the app fetch mature deviations without DeviantArt's blur, and is needed later
-        for uploading drafts.
+        Connecting your account lets the app fetch mature deviations without DeviantArt's blur, and is needed for
+        posting sets.
       </p>
 
       {loginOutcome === 'connected' && app.connected && <p className="success">DeviantArt is connected.</p>}
@@ -104,6 +105,8 @@ export function DeviantArtConnection() {
           {saved && <span className="success"> Saved.</span>}
         </form>
       </details>
+
+      {app.connected && <MatureGalleries />}
 
       {error && <p className="error">{error}</p>}
 

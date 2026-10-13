@@ -293,6 +293,12 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<string>("DeviantArtUsername")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("LastGalleryId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("MatureGalleryIds")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("NotifyOnJobDone")
                         .HasColumnType("INTEGER");
 

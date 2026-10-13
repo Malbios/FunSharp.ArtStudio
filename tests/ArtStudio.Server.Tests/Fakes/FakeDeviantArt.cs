@@ -24,6 +24,14 @@ public sealed class FakeDeviantArt : HttpMessageHandler
     public bool RejectRefresh { get; set; }
     public List<Dictionary<string, string>> TokenRequests { get; } = [];
 
+    /// <summary>Kept small so that listing galleries has to follow DeviantArt's paging.</summary>
+    public const int GalleryPageSize = 2;
+    public List<(string FolderId, string Name)> Galleries { get; } =
+        [("F-FEATURED", "Featured"), ("F-SPICY", "Spicy"), ("F-RANDOM", "RandomPile")];
+
+    /// <summary>When set, every gallery and Stash call answers with this instead.</summary>
+    public (HttpStatusCode Status, string Body)? ApiFailure { get; set; }
+
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
         var uri = request.RequestUri!;
@@ -42,6 +50,14 @@ public sealed class FakeDeviantArt : HttpMessageHandler
 
         if (uri.AbsolutePath == "/api/v1/oauth2/user/whoami")
             return FakeHttpHandler.Json($$"""{ "username": "{{Username}}" }""");
+
+        if (uri.AbsolutePath.StartsWith("/api/v1/oauth2/gallery/") || uri.AbsolutePath.StartsWith("/api/v1/oauth2/stash/"))
+        {
+            if (ApiFailure is { } failure)
+                return FakeHttpHandler.Json(failure.Body, failure.Status);
+            if (uri.AbsolutePath == "/api/v1/oauth2/gallery/folders")
+                return GalleryPage(int.Parse(HttpUtility.ParseQueryString(uri.Query)["offset"] ?? "0"));
+        }
 
         if (uri.AbsolutePath.StartsWith("/api/v1/oauth2/deviation/"))
         {
@@ -74,6 +90,17 @@ public sealed class FakeDeviantArt : HttpMessageHandler
             return Image(ApiJpegBytes);
 
         return new HttpResponseMessage(HttpStatusCode.NotFound);
+    }
+
+    private HttpResponseMessage GalleryPage(int offset)
+    {
+        var page = Galleries.Skip(offset).Take(GalleryPageSize).ToList();
+        var hasMore = offset + page.Count < Galleries.Count;
+        var results = string.Join(',', page.Select(gallery =>
+            $$"""{ "folderid": "{{gallery.FolderId}}", "parent": null, "name": "{{gallery.Name}}", "description": "", "thumb": null }"""));
+        return FakeHttpHandler.Json($$"""
+            { "results": [{{results}}], "has_more": {{(hasMore ? "true" : "false")}}, "next_offset": {{(hasMore ? offset + page.Count : "null")}} }
+            """);
     }
 
     private static HttpResponseMessage Image(byte[] bytes)

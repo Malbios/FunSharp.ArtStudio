@@ -137,6 +137,12 @@ export interface DeviantArtApp {
   redirectUri: string
 }
 
+export interface Gallery {
+  folderId: string
+  name: string
+  mature: boolean
+}
+
 export type BuildingBlockKind = 'Text' | 'Preset' | 'Bundle'
 
 export interface BuildingBlock {
@@ -252,6 +258,9 @@ export const api = {
     request<DeviantArtApp>('PUT', '/api/deviantart/app', { clientId, clientSecret }),
   disconnectDeviantArt: () => request<void>('POST', '/api/deviantart/disconnect'),
   deviantArtLoginUrl: '/api/deviantart/login',
+  galleries: () => request<Gallery[]>('GET', '/api/deviantart/galleries'),
+  saveMatureGalleries: (folderIds: string[]) =>
+    request<Gallery[]>('PUT', '/api/deviantart/mature-galleries', { folderIds }),
 
   settings: () => request<Settings>('GET', '/api/settings'),
   saveSettings: (settings: Settings) => request<Settings>('PUT', '/api/settings', settings),
