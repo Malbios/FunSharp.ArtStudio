@@ -25,16 +25,21 @@ public sealed class VisionClient(IHttpClientFactory httpClientFactory, IConfigur
 
     public Task<VisionAnswer> DescribeAsync(
         string apiKey, byte[] image, string contentType, string instruction, CancellationToken ct) =>
-        AskAsync(apiKey, new JsonArray(TextPart(instruction), ImagePart(image, contentType)), ct);
+        AskAsync(apiKey, new JsonArray(TextPart(instruction), ImagePart(image, contentType)), thinking: true, ct);
 
     public Task<VisionAnswer> CompleteAsync(string apiKey, string instruction, CancellationToken ct) =>
-        AskAsync(apiKey, new JsonArray(TextPart(instruction)), ct);
+        AskAsync(apiKey, new JsonArray(TextPart(instruction)), thinking: true, ct);
 
-    private async Task<VisionAnswer> AskAsync(string apiKey, JsonArray content, CancellationToken ct)
+    // A thinking model spends minutes reasoning over a one-line answer, and can use up the token
+    // budget before writing it, which comes back as an empty answer.
+    public Task<VisionAnswer> CompleteWithoutThinkingAsync(string apiKey, string instruction, CancellationToken ct) =>
+        AskAsync(apiKey, new JsonArray(TextPart(instruction)), thinking: false, ct);
+
+    private async Task<VisionAnswer> AskAsync(string apiKey, JsonArray content, bool thinking, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, ServerUrl + ChatCompletionsPath)
         {
-            Content = new StringContent(BuildPayload(content).ToJsonString(), Encoding.UTF8, "application/json"),
+            Content = new StringContent(BuildPayload(content, thinking).ToJsonString(), Encoding.UTF8, "application/json"),
         };
         request.Headers.Authorization = new("Bearer", apiKey);
 
@@ -56,14 +61,20 @@ public sealed class VisionClient(IHttpClientFactory httpClientFactory, IConfigur
         ["image_url"] = new JsonObject { ["url"] = $"data:{contentType};base64,{Convert.ToBase64String(image)}" },
     };
 
-    private static JsonObject BuildPayload(JsonArray content) => new()
+    private static JsonObject BuildPayload(JsonArray content, bool thinking)
     {
-        ["model"] = Model,
-        ["messages"] = new JsonArray(new JsonObject { ["role"] = "user", ["content"] = content }),
-        ["temperature"] = Temperature,
-        ["max_tokens"] = MaxTokens,
-        ["stream"] = false,
-    };
+        var payload = new JsonObject
+        {
+            ["model"] = Model,
+            ["messages"] = new JsonArray(new JsonObject { ["role"] = "user", ["content"] = content }),
+            ["temperature"] = Temperature,
+            ["max_tokens"] = MaxTokens,
+            ["stream"] = false,
+        };
+        if (!thinking)
+            payload["chat_template_kwargs"] = new JsonObject { ["enable_thinking"] = false };
+        return payload;
+    }
 
     private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {

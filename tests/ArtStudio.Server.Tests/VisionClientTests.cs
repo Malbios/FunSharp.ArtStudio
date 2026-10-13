@@ -31,6 +31,7 @@ public sealed class VisionClientTests
         Assert.Equal("vision", request.Body["model"]!.GetValue<string>());
         Assert.Equal(0.2, request.Body["temperature"]!.GetValue<double>());
         Assert.Equal(4096, request.Body["max_tokens"]!.GetValue<int>());
+        Assert.Null(request.Body["chat_template_kwargs"]);
         Assert.False(request.Body["stream"]!.GetValue<bool>());
 
         var message = request.Body["messages"]![0]!;

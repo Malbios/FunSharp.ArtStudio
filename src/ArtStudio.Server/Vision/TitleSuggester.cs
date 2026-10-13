@@ -21,7 +21,7 @@ public sealed class TitleSuggester(StudioDbContext db, VisionClient vision, Visi
         VisionAnswer answer;
         try
         {
-            answer = await vision.CompleteAsync(key, Instruction.Replace("{prompt}", prompt), ct);
+            answer = await vision.CompleteWithoutThinkingAsync(key, Instruction.Replace("{prompt}", prompt), ct);
         }
         catch (VisionException ex)
         {

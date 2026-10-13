@@ -262,6 +262,7 @@ public sealed class PostingTests : IDisposable
         Assert.Equal("The Lantern Keeper", (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("title").GetString());
         var instruction = _factory.Vision.Requests.Last().Body["messages"]![0]!["content"]![0]!["text"]!.GetValue<string>();
         Assert.Contains("<prompt>\nA fox guarding a lantern in the snow.\n</prompt>", instruction.ReplaceLineEndings("\n"));
+        Assert.False(_factory.Vision.Requests.Last().Body["chat_template_kwargs"]!["enable_thinking"]!.GetValue<bool>());
     }
 
     [Fact]
