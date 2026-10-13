@@ -261,6 +261,7 @@ export const api = {
   galleries: () => request<Gallery[]>('GET', '/api/deviantart/galleries'),
   saveMatureGalleries: (folderIds: string[]) =>
     request<Gallery[]>('PUT', '/api/deviantart/mature-galleries', { folderIds }),
+  suggestTitle: (setId: number) => request<{ title: string }>('POST', `/api/sets/${setId}/post/suggest-title`),
 
   settings: () => request<Settings>('GET', '/api/settings'),
   saveSettings: (settings: Settings) => request<Settings>('PUT', '/api/settings', settings),

@@ -1,0 +1,7 @@
+Here is the prompt an artwork was generated from:
+
+<prompt>
+{prompt}
+</prompt>
+
+Write one evocative title for this artwork, as it would appear on DeviantArt. Use at most 6 words and at most 50 characters. Name the subject or mood rather than describing the style. Return only the title, without quotes or commentary.

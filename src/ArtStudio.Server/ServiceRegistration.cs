@@ -58,6 +58,7 @@ public static class ServiceRegistration
         services.AddSingleton<VisionClient>();
         services.AddSingleton(VisionInstruction.FromEmbeddedText());
         services.AddSingleton<VisionApiKey>();
+        services.AddScoped<TitleSuggester>();
         services.AddSingleton<PromptGenerationQueue>();
         services.AddHostedService<PromptGenerationWorker>();
         return services;
