@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { api, type Gallery, type MatureLevel, type SetDetail } from '../api'
 import { initialPostFields, MAX_TITLE_LENGTH, stashEditorUrl } from './postDefaults'
 
@@ -28,25 +28,19 @@ function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>
   const [suggesting, setSuggesting] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string>()
-  const openedWithTitle = useRef<boolean>(undefined)
-  openedWithTitle.current ??= fields.title !== ''
 
-  const suggestTitle = useCallback(async (keepTypedTitle: boolean) => {
+  async function suggestTitle() {
     setSuggesting(true)
     setError(undefined)
     try {
       const { title } = await api.suggestTitle(set.id)
-      setFields((current) => (keepTypedTitle && current.title ? current : { ...current, title }))
+      setFields((current) => ({ ...current, title }))
     } catch (failure) {
       setError(`No title suggestion: ${(failure as Error).message}`)
     } finally {
       setSuggesting(false)
     }
-  }, [set.id])
-
-  useEffect(() => {
-    if (!openedWithTitle.current) void suggestTitle(true)
-  }, [suggestTitle])
+  }
 
   async function upload(event: FormEvent) {
     event.preventDefault()
@@ -80,7 +74,7 @@ function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>
             placeholder={suggesting ? 'Asking the vision model for a title…' : ''}
             onChange={(e) => setFields({ ...fields, title: e.target.value })}
           />
-          <button type="button" disabled={suggesting} onClick={() => void suggestTitle(false)}>
+          <button type="button" disabled={suggesting} onClick={() => void suggestTitle()}>
             {suggesting ? 'Suggesting…' : 'Suggest title'}
           </button>
         </div>
