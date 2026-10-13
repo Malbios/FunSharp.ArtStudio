@@ -9,6 +9,8 @@ export interface ListFilter<T> {
   key: string
   label: string
   matches: (item: T) => boolean
+  /** Filters that can never match together with this one; turning this one on turns them off. */
+  excludes?: string[]
 }
 
 export interface FilterOption {
@@ -68,8 +70,12 @@ export function useListFilter<T>(list: string, items: T[] | undefined, filters: 
     [list, setSearchParams],
   )
 
-  const toggle = (key: string) =>
-    setActive(filters.map((filter) => filter.key).filter((other) => (other === key) !== active.includes(other)))
+  const toggle = (key: string) => {
+    if (active.includes(key)) return setActive(active.filter((other) => other !== key))
+    const excluded = filters.find((filter) => filter.key === key)?.excludes ?? []
+    const keys = [...active.filter((other) => !excluded.includes(other)), key]
+    setActive(filters.map((filter) => filter.key).filter((other) => keys.includes(other)))
+  }
 
   return {
     items: items?.filter((item) => activeFilters.every((filter) => filter.matches(item))),

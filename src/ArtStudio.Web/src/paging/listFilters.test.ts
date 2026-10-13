@@ -24,6 +24,11 @@ describe('set filters', () => {
     expect(matches(SET_FILTERS, 'unpicked', summary({ pickedCount: 0 }))).toBe(true)
     expect(matches(SET_FILTERS, 'unpicked', summary({ pickedCount: 2 }))).toBe(false)
   })
+
+  it('shows only sets with picked images when with picks', () => {
+    expect(matches(SET_FILTERS, 'picked', summary({ pickedCount: 1 }))).toBe(true)
+    expect(matches(SET_FILTERS, 'picked', summary({ pickedCount: 0 }))).toBe(false)
+  })
 })
 
 describe('draft filters', () => {
