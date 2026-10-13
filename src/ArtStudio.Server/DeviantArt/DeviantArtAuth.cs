@@ -21,7 +21,7 @@ public sealed class DeviantArtAuth(
     public const string AuthorizeEndpoint = "https://www.deviantart.com/oauth2/authorize";
     public const string TokenEndpoint = "https://www.deviantart.com/oauth2/token";
     public const string WhoAmIEndpoint = "https://www.deviantart.com/api/v1/oauth2/user/whoami";
-    private const string Scopes = "browse user";
+    private const string Scopes = "browse user stash publish";
 
     private static readonly TimeSpan PendingLoginLifetime = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan AccessTokenSafetyMargin = TimeSpan.FromMinutes(1);
