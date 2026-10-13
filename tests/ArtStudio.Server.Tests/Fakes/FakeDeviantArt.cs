@@ -35,6 +35,10 @@ public sealed class FakeDeviantArt : HttpMessageHandler
     public const long StashItemId = 9_123_456_789_012_345_678;
     public List<List<StashPart>> StashSubmissions { get; } = [];
 
+    public const string PublishedUrl = "https://www.deviantart.com/studio-owner/art/Ember-Fox-1234567890";
+    /// <summary>Each publication's form fields in the order sent, as "name=value".</summary>
+    public List<List<string>> Publications { get; } = [];
+
     /// <summary>When set, every gallery and Stash call answers with this instead.</summary>
     public (HttpStatusCode Status, string Body)? ApiFailure { get; set; }
 
@@ -65,6 +69,15 @@ public sealed class FakeDeviantArt : HttpMessageHandler
                 return GalleryPage(int.Parse(HttpUtility.ParseQueryString(uri.Query)["offset"] ?? "0"));
             if (uri.AbsolutePath == "/api/v1/oauth2/stash/submit")
                 return await StashSubmit((MultipartFormDataContent)request.Content!, ct);
+            if (uri.AbsolutePath == "/api/v1/oauth2/stash/publish")
+            {
+                var form = await request.Content!.ReadAsStringAsync(ct);
+                lock (Publications)
+                    Publications.Add(form.Split('&').Select(pair => Uri.UnescapeDataString(pair.Replace('+', ' '))).ToList());
+                return FakeHttpHandler.Json($$"""
+                    { "status": "success", "url": "{{PublishedUrl}}", "deviationid": "DEV-1" }
+                    """);
+            }
         }
 
         if (uri.AbsolutePath.StartsWith("/api/v1/oauth2/deviation/"))

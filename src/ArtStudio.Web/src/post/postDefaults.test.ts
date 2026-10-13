@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest'
 import type { PostDetails } from '../api'
 import { DEFAULT_TAGS, initialPostFields, stashEditorUrl } from './postDefaults'
 
-const noPost: PostDetails = { title: null, description: null, tags: null, stashItemId: null, stashedAt: null }
+const noPost: PostDetails = {
+  title: null,
+  description: null,
+  tags: null,
+  stashItemId: null,
+  stashedAt: null,
+  publishedUrl: null,
+  publishedAt: null,
+}
 
 describe('initial post fields', () => {
   it('credits the DeviantArt inspiration and uses the default tags', () => {

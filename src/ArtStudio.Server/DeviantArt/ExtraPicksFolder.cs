@@ -32,10 +32,8 @@ public sealed class ExtraPicksFolder(StudioDbContext db, AppPaths paths, IFolder
         if (files.Count == 0)
             throw new UserFacingException("This set has no picks besides #1.");
 
-        var folder = Path.Combine(paths.ExtraPicksDirectory, $"set-{setId}");
-        if (Directory.Exists(folder))
-            Directory.Delete(folder, recursive: true);
-        Directory.CreateDirectory(folder);
+        Delete(paths, setId);
+        var folder = Directory.CreateDirectory(FolderFor(paths, setId)).FullName;
         foreach (var file in files)
         {
             if (!File.Exists(file.FilePath))
@@ -46,4 +44,13 @@ public sealed class ExtraPicksFolder(StudioDbContext db, AppPaths paths, IFolder
         opener.Open(folder);
         return folder;
     }
+
+    public static void Delete(AppPaths paths, int setId)
+    {
+        var folder = FolderFor(paths, setId);
+        if (Directory.Exists(folder))
+            Directory.Delete(folder, recursive: true);
+    }
+
+    private static string FolderFor(AppPaths paths, int setId) => Path.Combine(paths.ExtraPicksDirectory, $"set-{setId}");
 }

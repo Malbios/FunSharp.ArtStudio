@@ -39,7 +39,13 @@ export function ArchivePage() {
               <div className="set-card-body">
                 <div className="job-meta">
                   <Link to={`/sets/${set.id}`}>#{set.id}</Link>
-                  {set.readyToPostAt && <span className="badge status-Completed">was ready to post</span>}
+                  {set.publishedUrl ? (
+                    <a className="badge status-Completed" href={set.publishedUrl} target="_blank" rel="noreferrer">
+                      Posted
+                    </a>
+                  ) : (
+                    set.readyToPostAt && <span className="badge status-Completed">was ready to post</span>
+                  )}
                   {set.deviantArtAuthor && (
                     <span>
                       inspired by <DeviantArtUserLink username={set.deviantArtAuthor} />

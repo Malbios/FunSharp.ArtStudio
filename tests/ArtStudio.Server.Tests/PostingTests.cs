@@ -148,6 +148,84 @@ public sealed class PostingTests : IDisposable
         (await _client.DeleteAsync($"/api/sets/{setId}/ready")).EnsureSuccessStatusCode();
     }
 
+    private Task<HttpResponseMessage> PublishAsync(int setId, string galleryId = "F-RANDOM", bool isMature = false,
+        string? matureLevel = null) =>
+        _client.PostAsJsonAsync($"/api/sets/{setId}/post/publish", new { galleryId, isMature, matureLevel });
+
+    [Fact]
+    public async Task Publish_SendsTheOldAppsFields_ArchivesTheSetAndCleansUp()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, _) = await CreateReadySetAsync(2);
+        (await StashAsync(setId, tags: "digital_art made_with_ai fox")).EnsureSuccessStatusCode();
+        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null)).EnsureSuccessStatusCode();
+
+        (await PublishAsync(setId, "F-RANDOM")).EnsureSuccessStatusCode();
+
+        Assert.Equal(
+            [$"itemid={FakeDeviantArt.StashItemId}", "is_mature=false", "galleryids[]=F-RANDOM", "feature=false",
+                "allow_comments=true", "display_resolution=0", "license_options[creative_commons]=true",
+                "license_options[commercial]=true", "license_options[modify]=share", "allow_free_download=true",
+                "add_watermark=false", "tags[]=digital_art", "tags[]=made_with_ai", "tags[]=fox",
+                "is_ai_generated=true", "noai=false"],
+            Assert.Single(_factory.DeviantArt.Publications));
+
+        var set = await GetSetAsync(_client, setId);
+        Assert.Equal(FakeDeviantArt.PublishedUrl, set.Post.PublishedUrl);
+        Assert.NotNull(set.Post.PublishedAt);
+        Assert.NotNull(set.ArchivedAt);
+        Assert.False(Directory.Exists(_factory.FolderOpener.Opened.Single()));
+        var archived = (await _client.GetFromJsonAsync<JsonElement>("/api/sets?stage=archived")).EnumerateArray().Single();
+        Assert.Equal(FakeDeviantArt.PublishedUrl, archived.GetProperty("publishedUrl").GetString());
+        var lastUsed = (await GalleriesAsync()).Where(g => g.GetProperty("lastUsed").GetBoolean()).Select(g => g.GetProperty("folderId").GetString());
+        Assert.Equal(["F-RANDOM"], lastUsed);
+    }
+
+    [Fact]
+    public async Task Publish_AsMature_SendsTheLevel()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, _) = await CreateReadySetAsync(1);
+        (await StashAsync(setId)).EnsureSuccessStatusCode();
+
+        (await PublishAsync(setId, "F-SPICY", isMature: true, matureLevel: "strict")).EnsureSuccessStatusCode();
+
+        Assert.Equal(["itemid", "is_mature=true", "mature_level=strict", "galleryids[]=F-SPICY"],
+            _factory.DeviantArt.Publications.Single().Take(4).Select(f => f.StartsWith("itemid=") ? "itemid" : f));
+    }
+
+    [Fact]
+    public async Task Publish_IsRejected_WhenNotStashed_MatureWithoutLevel_WithoutGallery_OrAlreadyPublished()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, _) = await CreateReadySetAsync(1);
+
+        Assert.Contains("Upload the set to your Stash first", await ErrorOf(await PublishAsync(setId)));
+        (await StashAsync(setId)).EnsureSuccessStatusCode();
+        Assert.Contains("moderate or strict", await ErrorOf(await PublishAsync(setId, isMature: true)));
+        Assert.Contains("Choose a gallery", await ErrorOf(await PublishAsync(setId, galleryId: " ")));
+        Assert.Empty(_factory.DeviantArt.Publications);
+
+        (await PublishAsync(setId)).EnsureSuccessStatusCode();
+        (await _client.DeleteAsync($"/api/sets/{setId}/archive")).EnsureSuccessStatusCode();
+
+        Assert.Contains("already published", await ErrorOf(await PublishAsync(setId)));
+        Assert.Single(_factory.DeviantArt.Publications);
+    }
+
+    [Fact]
+    public async Task FakePublishHandler_AnswersPublishItself_AndPassesEverythingElseOn()
+    {
+        var network = new FakeHttpHandler(_ => FakeHttpHandler.Json("""{ "status": "success", "itemid": 1 }"""));
+        using var http = new HttpClient(new ArtStudio.Server.DeviantArt.FakeDeviantArtPublishHandler { InnerHandler = network });
+
+        var published = await http.PostAsync("https://www.deviantart.com/api/v1/oauth2/stash/publish", new StringContent("itemid=1"));
+        await http.PostAsync("https://www.deviantart.com/api/v1/oauth2/stash/submit", new StringContent("title=x"));
+
+        Assert.Contains("artstudio-fake", (await published.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("url").GetString());
+        Assert.Equal(["/api/v1/oauth2/stash/submit"], network.Requests.Select(r => r.PathAndQuery));
+    }
+
     [Fact]
     public async Task ExtraPicks_AreCopiedInPickOrderAndTheFolderOpened()
     {

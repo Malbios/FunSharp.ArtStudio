@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { api, type SetDetail } from '../api'
+import { api, type Gallery, type MatureLevel, type SetDetail } from '../api'
 import { initialPostFields, MAX_TITLE_LENGTH, stashEditorUrl } from './postDefaults'
 
 interface PostPanelProps {
   set: SetDetail
   onChanged: () => void
+  onPublished: () => void
 }
 
-export function PostPanel({ set, onChanged }: PostPanelProps) {
+export function PostPanel({ set, onChanged, onPublished }: PostPanelProps) {
   return (
     <section className="panel post-panel">
       <h3>Post to DeviantArt</h3>
-      {set.post.stashItemId ? (
-        <InStash set={set} stashItemId={set.post.stashItemId} onChanged={onChanged} />
+      {set.post.publishedUrl ? (
+        <Published set={set} />
+      ) : set.post.stashItemId ? (
+        <InStash set={set} stashItemId={set.post.stashItemId} onChanged={onChanged} onPublished={onPublished} />
       ) : (
         <StashForm set={set} onChanged={onChanged} />
       )}
@@ -20,7 +23,7 @@ export function PostPanel({ set, onChanged }: PostPanelProps) {
   )
 }
 
-function StashForm({ set, onChanged }: PostPanelProps) {
+function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>) {
   const [fields, setFields] = useState(() => initialPostFields(set))
   const [suggesting, setSuggesting] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -98,7 +101,7 @@ function StashForm({ set, onChanged }: PostPanelProps) {
   )
 }
 
-function InStash({ set, stashItemId, onChanged }: PostPanelProps & { stashItemId: string }) {
+function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & { stashItemId: string }) {
   const [error, setError] = useState<string>()
   const [folder, setFolder] = useState<string>()
   const extraPicks = set.pickedImageIds.length - 1
@@ -149,9 +152,104 @@ function InStash({ set, stashItemId, onChanged }: PostPanelProps & { stashItemId
         </li>
       </ol>
       {error && <p className="error">{error}</p>}
+      <PublishForm set={set} onPublished={onPublished} />
       <button type="button" className="link-button" onClick={() => void forget()}>
         Forget Stash item
       </button>
     </div>
+  )
+}
+
+function PublishForm({ set, onPublished }: Pick<PostPanelProps, 'set' | 'onPublished'>) {
+  const [galleries, setGalleries] = useState<Gallery[]>()
+  const [galleryId, setGalleryId] = useState('')
+  const [isMature, setIsMature] = useState(false)
+  const [matureLevel, setMatureLevel] = useState<MatureLevel>('moderate')
+  const [publishing, setPublishing] = useState(false)
+  const [error, setError] = useState<string>()
+
+  useEffect(() => {
+    api.galleries().then((loaded) => {
+      setGalleries(loaded)
+      const lastUsed = loaded.find((gallery) => gallery.lastUsed)
+      if (lastUsed) chooseGallery(lastUsed)
+    }, (failure: Error) => setError(failure.message))
+  }, [])
+
+  function chooseGallery(gallery: Gallery | undefined) {
+    setGalleryId(gallery?.folderId ?? '')
+    setIsMature(gallery?.mature ?? false)
+  }
+
+  async function publish(event: FormEvent) {
+    event.preventDefault()
+    const gallery = galleries?.find((candidate) => candidate.folderId === galleryId)
+    if (!gallery) return
+    const rating = isMature ? `mature (${matureLevel})` : 'not mature'
+    if (!window.confirm(`Publish "${set.post.title}" to ${gallery.name}, ${rating}? It goes live on DeviantArt right away.`)) return
+    setPublishing(true)
+    setError(undefined)
+    try {
+      await api.publish(set.id, galleryId, isMature, isMature ? matureLevel : null)
+      onPublished()
+    } catch (failure) {
+      setError((failure as Error).message)
+      setPublishing(false)
+    }
+  }
+
+  return (
+    <form className="publish-form" onSubmit={(e) => void publish(e)}>
+      <div className="field-row">
+        <label className="field">
+          <span>Gallery</span>
+          <select
+            value={galleryId}
+            disabled={!galleries}
+            onChange={(e) => chooseGallery(galleries?.find((gallery) => gallery.folderId === e.target.value))}
+          >
+            <option value="">{galleries ? 'Choose a gallery…' : 'Loading galleries…'}</option>
+            {galleries?.map((gallery) => (
+              <option key={gallery.folderId} value={gallery.folderId}>
+                {gallery.name}
+                {gallery.mature ? ' (mature)' : ''}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field narrow">
+          <span>Mature</span>
+          <select
+            aria-label="Mature level"
+            value={isMature ? matureLevel : 'no'}
+            onChange={(e) => {
+              setIsMature(e.target.value !== 'no')
+              if (e.target.value !== 'no') setMatureLevel(e.target.value as MatureLevel)
+            }}
+          >
+            <option value="no">No</option>
+            <option value="moderate">Moderate</option>
+            <option value="strict">Strict</option>
+          </select>
+        </label>
+      </div>
+      {error && <p className="error">{error}</p>}
+      <button type="submit" className="success" disabled={publishing || !galleryId}>
+        {publishing ? 'Publishing…' : 'Publish'}
+      </button>
+    </form>
+  )
+}
+
+function Published({ set }: Pick<PostPanelProps, 'set'>) {
+  return (
+    <p>
+      <strong>{set.post.title}</strong> was published
+      {set.post.publishedAt && ` on ${new Date(set.post.publishedAt).toLocaleString()}`}:{' '}
+      <a href={set.post.publishedUrl!} target="_blank" rel="noreferrer">
+        view on DeviantArt
+      </a>
+      .
+    </p>
   )
 }

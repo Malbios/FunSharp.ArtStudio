@@ -210,10 +210,27 @@ export function SetDetailPage() {
           </button>
         </div>
       )}
-      {isReadyToPost && <PostPanel key={data.post.stashItemId ?? 'new'} set={data} onChanged={set.reload} />}
+      {isReadyToPost && (
+        <PostPanel
+          key={data.post.stashItemId ?? 'new'}
+          set={data}
+          onChanged={set.reload}
+          onPublished={() => navigate('/post')}
+        />
+      )}
       {isArchived && (
         <div className="queue-banner">
-          <span>Archived since {new Date(data.archivedAt!).toLocaleString()}.</span>
+          <span>
+            Archived since {new Date(data.archivedAt!).toLocaleString()}.
+            {data.post.publishedUrl && (
+              <>
+                {' '}
+                <a href={data.post.publishedUrl} target="_blank" rel="noreferrer">
+                  Posted on DeviantArt
+                </a>
+              </>
+            )}
+          </span>
           <button type="button" onClick={() => void restoreSet()}>
             Restore
           </button>

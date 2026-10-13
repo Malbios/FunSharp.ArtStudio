@@ -97,7 +97,8 @@ public static class SetEndpoints
                 s.Set.ReadyToPostAt,
                 s.Set.ArchivedAt,
                 PromptGenerationDto.From(s.Set),
-                s.Set.StashItemId != null))
+                s.Set.StashItemId != null,
+                s.Set.PublishedUrl))
             .ToList();
     }
 

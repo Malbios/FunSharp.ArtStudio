@@ -10,7 +10,8 @@
         "ASPNETCORE_ENVIRONMENT": "Development",
         "ArtStudio__DataDirectory": "%LOCALAPPDATA%\\ArtStudio-dev",
         "ArtStudio__FakeComfyUi": "true",
-        "ArtStudio__FakeVision": "true"
+        "ArtStudio__FakeVision": "true",
+        "ArtStudio__FakeDeviantArtPublish": "true"
       }
     },
     "test-real-comfyui": {
@@ -20,7 +21,8 @@
       "applicationUrl": "http://localhost:5181",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "ArtStudio__DataDirectory": "%LOCALAPPDATA%\\ArtStudio-dev"
+        "ArtStudio__DataDirectory": "%LOCALAPPDATA%\\ArtStudio-dev",
+        "ArtStudio__FakeDeviantArtPublish": "true"
       }
     }
   }

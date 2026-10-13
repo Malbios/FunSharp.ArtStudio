@@ -54,6 +54,8 @@ public class PromptSet
     public string? PostTags { get; set; }
     public long? StashItemId { get; set; }
     public DateTimeOffset? StashedAt { get; set; }
+    public string? PublishedUrl { get; set; }
+    public DateTimeOffset? PublishedAt { get; set; }
 
     public List<GenerationJob> Jobs { get; set; } = [];
     public List<GeneratedImage> Images { get; set; } = [];

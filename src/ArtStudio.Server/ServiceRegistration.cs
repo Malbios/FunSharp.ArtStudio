@@ -43,7 +43,13 @@ public static class ServiceRegistration
         {
             http.Timeout = TimeSpan.FromSeconds(30);
             http.DefaultRequestHeaders.UserAgent.ParseAdd("ArtStudio/1.0");
-        }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AutomaticDecompression = DecompressionMethods.All });
+        }).ConfigurePrimaryHttpMessageHandler(sp =>
+        {
+            var network = new SocketsHttpHandler { AutomaticDecompression = DecompressionMethods.All };
+            return sp.GetRequiredService<IConfiguration>().GetValue<bool>(FakeDeviantArtPublishHandler.ConfigurationKey)
+                ? new FakeDeviantArtPublishHandler { InnerHandler = network }
+                : network;
+        });
         services.AddScoped<DeviantArtService>();
         services.AddScoped<DeviantArtPosting>();
         services.AddScoped<ExtraPicksFolder>();

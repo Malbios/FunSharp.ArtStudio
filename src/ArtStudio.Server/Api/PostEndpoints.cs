@@ -23,6 +23,8 @@ public static class PostEndpoints
             new SuggestedTitleDto(await titles.SuggestAsync(id, ct)));
         post.MapPost("stash", async (int id, StashRequest request, DeviantArtPosting posting, CancellationToken ct) =>
             await posting.StashAsync(id, request, ct));
+        post.MapPost("publish", async (int id, PublishRequest request, DeviantArtPosting posting, CancellationToken ct) =>
+            await posting.PublishAsync(id, request, ct));
         post.MapPost("forget-stash", async (int id, DeviantArtPosting posting, CancellationToken ct) =>
             await posting.ForgetStashAsync(id, ct));
         post.MapPost("extra-picks", async (int id, ExtraPicksFolder folder, CancellationToken ct) =>

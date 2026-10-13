@@ -266,6 +266,12 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<bool>("PromptGenerationTruncated")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long?>("PublishedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PublishedUrl")
+                        .HasColumnType("TEXT");
+
                     b.Property<long?>("ReadyToPostAt")
                         .HasColumnType("INTEGER");
 

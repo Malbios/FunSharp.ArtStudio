@@ -10,9 +10,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ArtStudio.Server.DeviantArt;
 
-public sealed record Gallery(string FolderId, string Name, bool Mature);
+public sealed record Gallery(string FolderId, string Name, bool Mature, bool LastUsed);
 
 public sealed record StashRequest(string Title, string? Description, string? Tags);
+
+public sealed record PublishRequest(string GalleryId, bool IsMature, string? MatureLevel);
 
 public sealed partial class DeviantArtPosting(
     StudioDbContext db,
@@ -26,6 +28,7 @@ public sealed partial class DeviantArtPosting(
     public const int MaxTitleLength = 50;
     private const int GalleryPageSize = 50;
     private const char IdSeparator = ',';
+    private static readonly string?[] MatureLevels = ["moderate", "strict"];
 
     public async Task StashAsync(int setId, StashRequest request, CancellationToken ct)
     {
@@ -77,6 +80,58 @@ public sealed partial class DeviantArtPosting(
         await notifier.SetUpdated(setId);
     }
 
+    public async Task PublishAsync(int setId, PublishRequest request, CancellationToken ct)
+    {
+        var set = await db.PromptSets.SingleOrDefaultAsync(s => s.Id == setId, ct) ?? throw new UserFacingException("Set not found.");
+        if (set.PublishedUrl is not null)
+            throw new UserFacingException("This set is already published.");
+        if (set.StashItemId is null || set.ArchivedAt is not null)
+            throw new UserFacingException("Upload the set to your Stash first.");
+        if (string.IsNullOrWhiteSpace(request.GalleryId))
+            throw new UserFacingException("Choose a gallery.");
+        if (request.IsMature && !MatureLevels.Contains(request.MatureLevel))
+            throw new UserFacingException("Choose how mature the deviation is: moderate or strict.");
+
+        List<KeyValuePair<string, string>> fields =
+        [
+            new("itemid", set.StashItemId.Value.ToString()),
+            new("is_mature", Flag(request.IsMature)),
+        ];
+        if (request.IsMature)
+            fields.Add(new("mature_level", request.MatureLevel!));
+        fields.AddRange(
+        [
+            new("galleryids[]", request.GalleryId.Trim()),
+            new("feature", "false"),
+            new("allow_comments", "true"),
+            new("display_resolution", "0"),
+            new("license_options[creative_commons]", "true"),
+            new("license_options[commercial]", "true"),
+            new("license_options[modify]", "share"),
+            new("allow_free_download", "true"),
+            new("add_watermark", "false"),
+        ]);
+        fields.AddRange(ParseTags(set.PostTags).Select(tag => new KeyValuePair<string, string>("tags[]", tag)));
+        fields.Add(new("is_ai_generated", "true"));
+        fields.Add(new("noai", "false"));
+
+        var answer = await SendAsync(HttpMethod.Post, "stash/publish", new FormUrlEncodedContent(fields), ct);
+        var url = answer["url"]?.GetValue<string>();
+        if (answer["status"]?.GetValue<string>() != "success" || url is null)
+            throw new UserFacingException("DeviantArt did not confirm the publication. Check your gallery before trying again.");
+
+        var now = clock.GetUtcNow();
+        set.PublishedUrl = url;
+        set.PublishedAt = now;
+        set.ArchivedAt = now;
+        (await SettingsStore.LoadAsync(db, paths, ct)).LastGalleryId = request.GalleryId.Trim();
+        await db.SaveChangesAsync(ct);
+        ExtraPicksFolder.Delete(paths, setId);
+        await notifier.SetUpdated(setId);
+    }
+
+    private static string Flag(bool value) => value ? "true" : "false";
+
     public async Task ForgetStashAsync(int setId, CancellationToken ct)
     {
         var set = await db.PromptSets.SingleOrDefaultAsync(s => s.Id == setId, ct) ?? throw new UserFacingException("Set not found.");
@@ -104,7 +159,8 @@ public sealed partial class DeviantArtPosting(
 
     public async Task<IReadOnlyList<Gallery>> GalleriesAsync(CancellationToken ct)
     {
-        var matureIds = await MatureGalleryIdsAsync(ct);
+        var settings = await SettingsStore.LoadAsync(db, paths, ct);
+        var matureIds = settings.MatureGalleryIds?.Split(IdSeparator).ToHashSet() ?? [];
         var galleries = new List<Gallery>();
         int? offset = 0;
         while (offset is not null)
@@ -115,7 +171,7 @@ public sealed partial class DeviantArtPosting(
                 var folderId = folder?["folderid"]?.GetValue<string>();
                 var name = folder?["name"]?.GetValue<string>();
                 if (folderId is not null && name is not null)
-                    galleries.Add(new Gallery(folderId, name, matureIds.Contains(folderId)));
+                    galleries.Add(new Gallery(folderId, name, matureIds.Contains(folderId), folderId == settings.LastGalleryId));
             }
             offset = page["has_more"]?.GetValue<bool>() == true ? page["next_offset"]?.GetValue<int>() : null;
         }
@@ -129,9 +185,6 @@ public sealed partial class DeviantArtPosting(
         settings.MatureGalleryIds = ids.Count == 0 ? null : string.Join(IdSeparator, ids);
         await db.SaveChangesAsync(ct);
     }
-
-    private async Task<HashSet<string>> MatureGalleryIdsAsync(CancellationToken ct) =>
-        (await SettingsStore.LoadAsync(db, paths, ct)).MatureGalleryIds?.Split(IdSeparator).ToHashSet() ?? [];
 
     private async Task<JsonNode> SendAsync(HttpMethod method, string path, HttpContent? content, CancellationToken ct)
     {

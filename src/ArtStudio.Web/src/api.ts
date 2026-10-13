@@ -59,6 +59,7 @@ export interface SetSummary {
   archivedAt: string | null
   promptGeneration: PromptGeneration
   stashed: boolean
+  publishedUrl: string | null
 }
 
 export type PromptGenerationState = 'None' | 'Queued' | 'Running' | 'Done' | 'Failed'
@@ -115,6 +116,8 @@ export interface PostDetails {
   /** A string, as DeviantArt's ids are too large for JavaScript numbers. */
   stashItemId: string | null
   stashedAt: string | null
+  publishedUrl: string | null
+  publishedAt: string | null
 }
 
 export interface DeviationImage {
@@ -152,7 +155,10 @@ export interface Gallery {
   folderId: string
   name: string
   mature: boolean
+  lastUsed: boolean
 }
+
+export type MatureLevel = 'moderate' | 'strict'
 
 export type BuildingBlockKind = 'Text' | 'Preset' | 'Bundle'
 
@@ -275,6 +281,8 @@ export const api = {
   suggestTitle: (setId: number) => request<{ title: string }>('POST', `/api/sets/${setId}/post/suggest-title`),
   stash: (setId: number, title: string, description: string, tags: string) =>
     request<void>('POST', `/api/sets/${setId}/post/stash`, { title, description, tags }),
+  publish: (setId: number, galleryId: string, isMature: boolean, matureLevel: MatureLevel | null) =>
+    request<void>('POST', `/api/sets/${setId}/post/publish`, { galleryId, isMature, matureLevel }),
   forgetStash: (setId: number) => request<void>('POST', `/api/sets/${setId}/post/forget-stash`),
   openExtraPicks: (setId: number) => request<{ folder: string }>('POST', `/api/sets/${setId}/post/extra-picks`),
 
