@@ -2,22 +2,19 @@ export const PAGE_SIZE = 12
 
 export type PageLink = number | '…'
 
-const NEIGHBOURS = 1
+/** Room for the first and last page, the current page with one neighbour on each side, and a gap on each side. */
+export const PAGE_LINK_SLOTS = 7
+const EDGE_RUN = PAGE_LINK_SLOTS - 2
 
-/** Page numbers to offer: always the first and last page and the pages around the current one, with gaps elided. */
+const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, index) => from + index)
+
+/**
+ * Page numbers to offer: always the first and last page and the pages around the current one, with gaps elided.
+ * Beyond a handful of pages the list always has PAGE_LINK_SLOTS entries, so the links keep their places while paging.
+ */
 export function pageNumbers(current: number, pageCount: number): PageLink[] {
-  const shown = new Set<number>([1, pageCount])
-  for (let page = current - NEIGHBOURS; page <= current + NEIGHBOURS; page++) {
-    if (page >= 1 && page <= pageCount) shown.add(page)
-  }
-
-  const links: PageLink[] = []
-  let previous = 0
-  for (const page of [...shown].sort((a, b) => a - b)) {
-    if (page - previous === 2) links.push(previous + 1)
-    else if (page - previous > 2) links.push('…')
-    links.push(page)
-    previous = page
-  }
-  return links
+  if (pageCount <= PAGE_LINK_SLOTS) return range(1, pageCount)
+  if (current < EDGE_RUN) return [...range(1, EDGE_RUN), '…', pageCount]
+  if (current > pageCount - EDGE_RUN + 1) return [1, '…', ...range(pageCount - EDGE_RUN + 1, pageCount)]
+  return [1, '…', current - 1, current, current + 1, '…', pageCount]
 }

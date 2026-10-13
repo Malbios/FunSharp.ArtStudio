@@ -1,5 +1,5 @@
 import { FilterMenu } from './FilterMenu'
-import { pageNumbers } from './pagination'
+import { PAGE_LINK_SLOTS, pageNumbers } from './pagination'
 import type { FilteredItems } from './useListFilter'
 
 interface PageProps {
@@ -12,8 +12,6 @@ interface Props<T> extends PageProps {
   /** Shown as a funnel button at the far right; the row then shows even with a single page. */
   filter?: FilteredItems<T>
 }
-
-const MIN_PAGES_FOR_FIRST_AND_LAST = 5
 
 export function Pager<T>({ page, pageCount, onChange, filter }: Props<T>) {
   if (!filter) return <PageButtons page={page} pageCount={pageCount} onChange={onChange} />
@@ -28,28 +26,27 @@ export function Pager<T>({ page, pageCount, onChange, filter }: Props<T>) {
 
 function PageButtons({ page, pageCount, onChange }: PageProps) {
   if (pageCount <= 1) return null
-  const showFirstAndLast = pageCount >= MIN_PAGES_FOR_FIRST_AND_LAST
+  const links = pageNumbers(page, pageCount)
+  const emptySlots = Array.from({ length: PAGE_LINK_SLOTS - links.length }, (_, index) => index)
 
   return (
     <nav className="pager" aria-label="Pages">
-      {showFirstAndLast && (
-        <button type="button" disabled={page === 1} onClick={() => onChange(1)}>
-          « First
-        </button>
-      )}
+      <button type="button" disabled={page === 1} onClick={() => onChange(1)}>
+        « First
+      </button>
       <button type="button" disabled={page === 1} onClick={() => onChange(page - 1)}>
         ‹ Prev
       </button>
-      {pageNumbers(page, pageCount).map((link, index) =>
+      {links.map((link, index) =>
         link === '…' ? (
-          <span key={`gap-${index}`} className="pager-gap">
+          <span key={`gap-${index}`} className="pager-slot pager-gap">
             …
           </span>
         ) : (
           <button
             key={link}
             type="button"
-            className={link === page ? 'current' : undefined}
+            className={link === page ? 'pager-slot current' : 'pager-slot'}
             aria-current={link === page ? 'page' : undefined}
             onClick={() => onChange(link)}
           >
@@ -57,14 +54,15 @@ function PageButtons({ page, pageCount, onChange }: PageProps) {
           </button>
         ),
       )}
+      {emptySlots.map((slot) => (
+        <span key={`empty-${slot}`} className="pager-slot" aria-hidden="true" />
+      ))}
       <button type="button" disabled={page === pageCount} onClick={() => onChange(page + 1)}>
         Next ›
       </button>
-      {showFirstAndLast && (
-        <button type="button" disabled={page === pageCount} onClick={() => onChange(pageCount)}>
-          Last »
-        </button>
-      )}
+      <button type="button" disabled={page === pageCount} onClick={() => onChange(pageCount)}>
+        Last »
+      </button>
     </nav>
   )
 }
