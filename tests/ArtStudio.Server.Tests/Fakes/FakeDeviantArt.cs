@@ -4,6 +4,8 @@ using System.Web;
 
 namespace ArtStudio.Server.Tests.Fakes;
 
+public sealed record StashPart(string Name, string? Value, byte[]? File, string? ContentType);
+
 public sealed class FakeDeviantArt : HttpMessageHandler
 {
     public const string ImageUrl = "https://images.example.test/deviation.jpg";
@@ -28,6 +30,10 @@ public sealed class FakeDeviantArt : HttpMessageHandler
     public const int GalleryPageSize = 2;
     public List<(string FolderId, string Name)> Galleries { get; } =
         [("F-FEATURED", "Featured"), ("F-SPICY", "Spicy"), ("F-RANDOM", "RandomPile")];
+
+    /// <summary>Larger than JavaScript can hold exactly, like real Stash ids can be.</summary>
+    public const long StashItemId = 9_123_456_789_012_345_678;
+    public List<List<StashPart>> StashSubmissions { get; } = [];
 
     /// <summary>When set, every gallery and Stash call answers with this instead.</summary>
     public (HttpStatusCode Status, string Body)? ApiFailure { get; set; }
@@ -57,6 +63,8 @@ public sealed class FakeDeviantArt : HttpMessageHandler
                 return FakeHttpHandler.Json(failure.Body, failure.Status);
             if (uri.AbsolutePath == "/api/v1/oauth2/gallery/folders")
                 return GalleryPage(int.Parse(HttpUtility.ParseQueryString(uri.Query)["offset"] ?? "0"));
+            if (uri.AbsolutePath == "/api/v1/oauth2/stash/submit")
+                return await StashSubmit((MultipartFormDataContent)request.Content!, ct);
         }
 
         if (uri.AbsolutePath.StartsWith("/api/v1/oauth2/deviation/"))
@@ -90,6 +98,23 @@ public sealed class FakeDeviantArt : HttpMessageHandler
             return Image(ApiJpegBytes);
 
         return new HttpResponseMessage(HttpStatusCode.NotFound);
+    }
+
+    private async Task<HttpResponseMessage> StashSubmit(MultipartFormDataContent form, CancellationToken ct)
+    {
+        var parts = new List<StashPart>();
+        foreach (var part in form)
+        {
+            var name = part.Headers.ContentDisposition!.Name!.Trim('"');
+            parts.Add(part.Headers.ContentDisposition.FileName is null
+                ? new StashPart(name, await part.ReadAsStringAsync(ct), null, null)
+                : new StashPart(name, null, await part.ReadAsByteArrayAsync(ct), part.Headers.ContentType?.MediaType));
+        }
+        lock (StashSubmissions)
+            StashSubmissions.Add(parts);
+        return FakeHttpHandler.Json($$"""
+            { "status": "success", "itemid": {{StashItemId}}, "stack": "Sta.sh", "stackid": 3307645702784122 }
+            """);
     }
 
     private HttpResponseMessage GalleryPage(int offset)

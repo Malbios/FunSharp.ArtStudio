@@ -49,6 +49,11 @@ public class PromptSet
     public string? ModifySection { get; set; }
     public int? ImagesAfterPromptCount { get; set; }
     public string? ImagesAfterPromptResolution { get; set; }
+    public string? PostTitle { get; set; }
+    public string? PostDescription { get; set; }
+    public string? PostTags { get; set; }
+    public long? StashItemId { get; set; }
+    public DateTimeOffset? StashedAt { get; set; }
 
     public List<GenerationJob> Jobs { get; set; } = [];
     public List<GeneratedImage> Images { get; set; } = [];

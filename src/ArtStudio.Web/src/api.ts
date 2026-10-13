@@ -58,6 +58,7 @@ export interface SetSummary {
   readyToPostAt: string | null
   archivedAt: string | null
   promptGeneration: PromptGeneration
+  stashed: boolean
 }
 
 export type PromptGenerationState = 'None' | 'Queued' | 'Running' | 'Done' | 'Failed'
@@ -104,6 +105,16 @@ export interface SetDetail {
   promptGeneration: PromptGeneration
   images: ImageInfo[]
   jobs: Job[]
+  post: PostDetails
+}
+
+export interface PostDetails {
+  title: string | null
+  description: string | null
+  tags: string | null
+  /** A string, as DeviantArt's ids are too large for JavaScript numbers. */
+  stashItemId: string | null
+  stashedAt: string | null
 }
 
 export interface DeviationImage {
@@ -262,6 +273,10 @@ export const api = {
   saveMatureGalleries: (folderIds: string[]) =>
     request<Gallery[]>('PUT', '/api/deviantart/mature-galleries', { folderIds }),
   suggestTitle: (setId: number) => request<{ title: string }>('POST', `/api/sets/${setId}/post/suggest-title`),
+  stash: (setId: number, title: string, description: string, tags: string) =>
+    request<void>('POST', `/api/sets/${setId}/post/stash`, { title, description, tags }),
+  forgetStash: (setId: number) => request<void>('POST', `/api/sets/${setId}/post/forget-stash`),
+  openExtraPicks: (setId: number) => request<{ folder: string }>('POST', `/api/sets/${setId}/post/extra-picks`),
 
   settings: () => request<Settings>('GET', '/api/settings'),
   saveSettings: (settings: Settings) => request<Settings>('PUT', '/api/settings', settings),

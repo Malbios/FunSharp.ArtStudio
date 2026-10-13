@@ -33,6 +33,8 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
 
     public FakeVisionServer Vision { get; } = new();
 
+    public FakeFolderOpener FolderOpener { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("ArtStudio:DataDirectory", DataDirectory);
@@ -43,6 +45,8 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
             services.AddHttpClient(ComfyClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Comfy);
             services.AddHttpClient(DeviantArtService.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => DeviantArt);
             services.AddHttpClient(VisionClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Vision);
+            services.RemoveAll<IFolderOpener>();
+            services.AddSingleton<IFolderOpener>(FolderOpener);
         });
     }
 

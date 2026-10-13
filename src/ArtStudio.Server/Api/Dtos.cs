@@ -65,7 +65,8 @@ public sealed record SetSummaryDto(
     bool IsDraft,
     DateTimeOffset? ReadyToPostAt,
     DateTimeOffset? ArchivedAt,
-    PromptGenerationDto PromptGeneration);
+    PromptGenerationDto PromptGeneration,
+    bool Stashed);
 
 public sealed record SetDetailDto(
     int Id,
@@ -83,7 +84,15 @@ public sealed record SetDetailDto(
     DateTimeOffset? ArchivedAt,
     PromptGenerationDto PromptGeneration,
     IReadOnlyList<ImageDto> Images,
-    IReadOnlyList<JobDto> Jobs);
+    IReadOnlyList<JobDto> Jobs,
+    PostDto Post);
+
+/// <summary>The item id is a string because DeviantArt's ids are too large for JavaScript numbers to be safe.</summary>
+public sealed record PostDto(string? Title, string? Description, string? Tags, string? StashItemId, DateTimeOffset? StashedAt)
+{
+    public static PostDto From(PromptSet set) =>
+        new(set.PostTitle, set.PostDescription, set.PostTags, set.StashItemId?.ToString(), set.StashedAt);
+}
 
 public sealed record MoreImagesRequest(int Count, string? Prompt, string? Resolution);
 

@@ -1580,3 +1580,24 @@ code {
   border-color: var(--success);
   color: var(--success);
 }
+
+.post-panel {
+  max-width: 760px;
+  margin-bottom: 1.5rem;
+}
+
+.post-title-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.post-title-row input {
+  flex: 1;
+}
+
+.post-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-left: 1.25rem;
+}

@@ -1,4 +1,5 @@
 using ArtStudio.Server.Data;
+using ArtStudio.Server.DeviantArt;
 using ArtStudio.Server.Generation;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,7 +7,7 @@ namespace ArtStudio.Server.Vision;
 
 public sealed class TitleSuggester(StudioDbContext db, VisionClient vision, VisionApiKey apiKey)
 {
-    public const int MaxTitleLength = 50;
+    private const int MaxTitleLength = DeviantArtPosting.MaxTitleLength;
 
     private static readonly string Instruction = EmbeddedText.Load("suggest-title.txt");
     private static readonly char[] Quotes = ['"', '\'', '“', '”', '‘', '’', '*'];

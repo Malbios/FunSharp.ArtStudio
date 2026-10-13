@@ -21,5 +21,11 @@ public static class PostEndpoints
         var post = app.MapGroup("/api/sets/{id:int}/post");
         post.MapPost("suggest-title", async (int id, TitleSuggester titles, CancellationToken ct) =>
             new SuggestedTitleDto(await titles.SuggestAsync(id, ct)));
+        post.MapPost("stash", async (int id, StashRequest request, DeviantArtPosting posting, CancellationToken ct) =>
+            await posting.StashAsync(id, request, ct));
+        post.MapPost("forget-stash", async (int id, DeviantArtPosting posting, CancellationToken ct) =>
+            await posting.ForgetStashAsync(id, ct));
+        post.MapPost("extra-picks", async (int id, ExtraPicksFolder folder, CancellationToken ct) =>
+            new { Folder = await folder.OpenAsync(id, ct) });
     }
 }

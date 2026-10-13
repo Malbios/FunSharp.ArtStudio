@@ -1,19 +1,106 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using ArtStudio.Server.Data;
 using ArtStudio.Server.Generation;
+using ArtStudio.Server.Hubs;
+using Microsoft.EntityFrameworkCore;
 
 namespace ArtStudio.Server.DeviantArt;
 
 public sealed record Gallery(string FolderId, string Name, bool Mature);
 
-public sealed class DeviantArtPosting(
-    StudioDbContext db, AppPaths paths, IHttpClientFactory httpClientFactory, DeviantArtAuth auth)
+public sealed record StashRequest(string Title, string? Description, string? Tags);
+
+public sealed partial class DeviantArtPosting(
+    StudioDbContext db,
+    AppPaths paths,
+    IHttpClientFactory httpClientFactory,
+    DeviantArtAuth auth,
+    StudioNotifier notifier,
+    TimeProvider clock)
 {
     public const string ApiBase = "https://www.deviantart.com/api/v1/oauth2";
+    public const int MaxTitleLength = 50;
     private const int GalleryPageSize = 50;
     private const char IdSeparator = ',';
+
+    public async Task StashAsync(int setId, StashRequest request, CancellationToken ct)
+    {
+        var set = await db.PromptSets.SingleOrDefaultAsync(s => s.Id == setId, ct) ?? throw new UserFacingException("Set not found.");
+        if (set.ReadyToPostAt is null || set.ArchivedAt is not null)
+            throw new UserFacingException("Only sets in Post can be uploaded to DeviantArt.");
+        if (set.StashItemId is not null)
+            throw new UserFacingException("This set is already in your Stash.");
+
+        var title = request.Title?.Trim() ?? "";
+        if (title.Length == 0)
+            throw new UserFacingException("Enter a title.");
+        if (title.Length > MaxTitleLength)
+            throw new UserFacingException($"The title must be at most {MaxTitleLength} characters.");
+        var tags = ParseTags(request.Tags);
+        var description = request.Description?.Trim() ?? "";
+
+        var mainPick = await db.Picks
+            .Where(p => p.PromptSetId == setId)
+            .OrderBy(p => p.Position)
+            .Join(db.Images, p => p.GeneratedImageId, i => i.Id, (p, i) => i.FilePath)
+            .FirstOrDefaultAsync(ct)
+            ?? throw new UserFacingException("The set has no picked image.");
+        if (!File.Exists(mainPick))
+            throw new UserFacingException("The file of pick #1 is missing.");
+
+        using var form = new MultipartFormDataContent { { new StringContent(title), "title" } };
+        if (description.Length > 0)
+            form.Add(new StringContent(description), "artist_comments");
+        foreach (var tag in tags)
+            form.Add(new StringContent(tag), "tags[]");
+        form.Add(new StringContent("true"), "is_ai_generated");
+        form.Add(new StringContent("false"), "noai");
+        var file = new ByteArrayContent(await File.ReadAllBytesAsync(mainPick, ct));
+        file.Headers.ContentType = new MediaTypeHeaderValue(ImageStore.ContentTypeFor(mainPick));
+        form.Add(file, "file", Path.GetFileName(mainPick));
+
+        var answer = await SendAsync(HttpMethod.Post, "stash/submit", form, ct);
+        var itemId = answer["itemid"]?.GetValueKind() == JsonValueKind.Number ? answer["itemid"]!.GetValue<long>() : (long?)null;
+        if (answer["status"]?.GetValue<string>() != "success" || itemId is null)
+            throw new UserFacingException("DeviantArt did not confirm the Stash upload.");
+
+        set.PostTitle = title;
+        set.PostDescription = description;
+        set.PostTags = string.Join(' ', tags);
+        set.StashItemId = itemId;
+        set.StashedAt = clock.GetUtcNow();
+        await db.SaveChangesAsync(ct);
+        await notifier.SetUpdated(setId);
+    }
+
+    public async Task ForgetStashAsync(int setId, CancellationToken ct)
+    {
+        var set = await db.PromptSets.SingleOrDefaultAsync(s => s.Id == setId, ct) ?? throw new UserFacingException("Set not found.");
+        set.StashItemId = null;
+        set.StashedAt = null;
+        await db.SaveChangesAsync(ct);
+        await notifier.SetUpdated(setId);
+    }
+
+    public static IReadOnlyList<string> ParseTags(string? tags)
+    {
+        var parsed = (tags ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+            .Select(tag => tag.TrimStart('#'))
+            .Where(tag => tag.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var invalid = parsed.FirstOrDefault(tag => !TagPattern().IsMatch(tag));
+        if (invalid is not null)
+            throw new UserFacingException($"The tag '{invalid}' may only contain letters, digits and underscores.");
+        return parsed;
+    }
+
+    [GeneratedRegex("^[A-Za-z0-9_]+$")]
+    private static partial Regex TagPattern();
 
     public async Task<IReadOnlyList<Gallery>> GalleriesAsync(CancellationToken ct)
     {

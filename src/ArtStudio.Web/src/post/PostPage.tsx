@@ -40,6 +40,7 @@ export function PostPage() {
                 <span>
                   {set.pickedCount} {set.pickedCount === 1 ? 'pick' : 'picks'}
                 </span>
+                {set.stashed && <span className="badge status-Running">In Stash</span>}
                 {set.deviantArtAuthor && (
                   <span>
                     inspired by <DeviantArtUserLink username={set.deviantArtAuthor} />

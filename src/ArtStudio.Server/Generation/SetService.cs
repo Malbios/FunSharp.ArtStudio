@@ -288,6 +288,7 @@ public sealed class SetService(
     {
         var set = await FindSetAsync(setId, ct);
         EnsureNotArchived(set);
+        EnsureNotStashed(set);
         set.ReadyToPostAt = null;
         await db.SaveChangesAsync(ct);
         await notifier.SetUpdated(setId);
@@ -297,6 +298,12 @@ public sealed class SetService(
     {
         if (set.ArchivedAt is not null)
             throw new UserFacingException("Restore the set from the archive first.");
+    }
+
+    private static void EnsureNotStashed(PromptSet set)
+    {
+        if (set.StashItemId is not null)
+            throw new UserFacingException("Pick #1 is already in your Stash. Forget the Stash item first.");
     }
 
     private async Task<PromptSet> FindSetAsync(int setId, CancellationToken ct) =>
@@ -317,6 +324,7 @@ public sealed class SetService(
 
     public async Task ReorderPicksAsync(int setId, IReadOnlyList<int> imageIds, CancellationToken ct)
     {
+        EnsureNotStashed(await FindSetAsync(setId, ct));
         var picks = await LoadPicksAsync(setId, ct);
         if (imageIds.Count != picks.Count || !imageIds.Order().SequenceEqual(picks.Select(p => p.GeneratedImageId).Order()))
             throw new UserFacingException("The new order must contain exactly the picked images. Reload and try again.");

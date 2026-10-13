@@ -46,6 +46,8 @@ public static class ServiceRegistration
         }).ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AutomaticDecompression = DecompressionMethods.All });
         services.AddScoped<DeviantArtService>();
         services.AddScoped<DeviantArtPosting>();
+        services.AddScoped<ExtraPicksFolder>();
+        services.AddSingleton<IFolderOpener, ExplorerFolderOpener>();
         services.AddDataProtection().SetApplicationName("ArtStudio");
         services.AddSingleton<DeviantArtAuth>();
         services.AddHostedService<QueueWorker>();

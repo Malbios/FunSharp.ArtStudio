@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ArtStudio.Server.Domain;
 using ArtStudio.Server.Tests.Fakes;
 using static ArtStudio.Server.Tests.Fakes.StudioAppFactory;
 
@@ -53,6 +54,121 @@ public sealed class PostingTests : IDisposable
         var error = await ErrorOf(await _client.GetAsync("/api/deviantart/galleries"));
 
         Assert.Contains("not connected", error);
+    }
+
+    private async Task<(int SetId, int[] PickedImageIds)> CreateReadySetAsync(int picks)
+    {
+        var setId = await _factory.CreateSetAsync(_client, "fox", count: picks);
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Jobs.All(j => j.Status == JobStatus.Completed), "images");
+        var picked = (await GetSetAsync(_client, setId)).Images.Select(i => i.Id).Reverse().ToArray();
+        foreach (var imageId in picked)
+            (await _client.PostAsJsonAsync($"/api/sets/{setId}/picks", new { imageId })).EnsureSuccessStatusCode();
+        (await _client.PostAsync($"/api/sets/{setId}/ready", null)).EnsureSuccessStatusCode();
+        return (setId, picked);
+    }
+
+    private Task<HttpResponseMessage> StashAsync(int setId, string title = "Ember Fox", string? description = "Inspired by a fox",
+        string? tags = "digital_art made_with_ai") =>
+        _client.PostAsJsonAsync($"/api/sets/{setId}/post/stash", new { title, description, tags });
+
+    [Fact]
+    public async Task Stash_UploadsPickOneWithTheDetails()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, picked) = await CreateReadySetAsync(2);
+
+        (await StashAsync(setId, " Ember Fox ", "Inspired by a fox", "digital_art  #made_with_ai digital_art")).EnsureSuccessStatusCode();
+
+        var parts = Assert.Single(_factory.DeviantArt.StashSubmissions);
+        Assert.Equal(
+            ["title=Ember Fox", "artist_comments=Inspired by a fox", "tags[]=digital_art", "tags[]=made_with_ai",
+                "is_ai_generated=true", "noai=false"],
+            parts.Where(p => p.File is null).Select(p => $"{p.Name}={p.Value}"));
+        var file = Assert.Single(parts, p => p.File is not null);
+        Assert.Equal("file", file.Name);
+        Assert.Equal("image/png", file.ContentType);
+        Assert.Equal(await _client.GetByteArrayAsync($"/api/images/{picked[0]}"), file.File);
+
+        var post = (await GetSetAsync(_client, setId)).Post;
+        Assert.Equal(FakeDeviantArt.StashItemId.ToString(), post.StashItemId);
+        Assert.Equal(("Ember Fox", "Inspired by a fox", "digital_art made_with_ai"), (post.Title, post.Description, post.Tags));
+        Assert.NotNull(post.StashedAt);
+        var summary = (await _client.GetFromJsonAsync<JsonElement>("/api/sets?stage=ready")).EnumerateArray().Single();
+        Assert.True(summary.GetProperty("stashed").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Stash_WithoutDescription_SendsNoArtistComments()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, _) = await CreateReadySetAsync(1);
+
+        (await StashAsync(setId, description: "  ", tags: null)).EnsureSuccessStatusCode();
+
+        Assert.Equal(["title", "is_ai_generated", "noai", "file"], _factory.DeviantArt.StashSubmissions.Single().Select(p => p.Name));
+    }
+
+    [Theory]
+    [InlineData("", "digital_art", "Enter a title")]
+    [InlineData("This title is far too long to fit DeviantArt's limit", "digital_art", "at most 50 characters")]
+    [InlineData("Ember Fox", "made-with-ai", "'made-with-ai' may only contain")]
+    public async Task Stash_WithInvalidDetails_IsRejected(string title, string tags, string expected)
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, _) = await CreateReadySetAsync(1);
+
+        Assert.Contains(expected, await ErrorOf(await StashAsync(setId, title, tags: tags)));
+        Assert.Empty(_factory.DeviantArt.StashSubmissions);
+    }
+
+    [Fact]
+    public async Task Stash_OfASetNotInPost_IsRejected()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var setId = await _factory.CreateSetAsync(_client, "fox");
+
+        Assert.Contains("Only sets in Post", await ErrorOf(await StashAsync(setId)));
+    }
+
+    [Fact]
+    public async Task StashedSet_CannotBeStashedAgain_MovedBackOrReordered_UntilForgotten()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, picked) = await CreateReadySetAsync(2);
+        (await StashAsync(setId)).EnsureSuccessStatusCode();
+
+        Assert.Contains("already in your Stash", await ErrorOf(await StashAsync(setId)));
+        Assert.Contains("Forget the Stash item", await ErrorOf(await _client.DeleteAsync($"/api/sets/{setId}/ready")));
+        Assert.Contains("Forget the Stash item",
+            await ErrorOf(await _client.PutAsJsonAsync($"/api/sets/{setId}/picks", new { imageIds = picked.Reverse() })));
+
+        (await _client.PostAsync($"/api/sets/{setId}/post/forget-stash", null)).EnsureSuccessStatusCode();
+
+        Assert.Null((await GetSetAsync(_client, setId)).Post.StashItemId);
+        (await _client.DeleteAsync($"/api/sets/{setId}/ready")).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task ExtraPicks_AreCopiedInPickOrderAndTheFolderOpened()
+    {
+        var (setId, picked) = await CreateReadySetAsync(3);
+
+        var response = await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null);
+
+        response.EnsureSuccessStatusCode();
+        var folder = Assert.Single(_factory.FolderOpener.Opened);
+        Assert.Equal(["02.png", "03.png"], Directory.GetFiles(folder).Select(Path.GetFileName).Order());
+        Assert.Equal(await _client.GetByteArrayAsync($"/api/images/{picked[1]}"), await File.ReadAllBytesAsync(Path.Combine(folder, "02.png")));
+        Assert.Equal(await _client.GetByteArrayAsync($"/api/images/{picked[2]}"), await File.ReadAllBytesAsync(Path.Combine(folder, "03.png")));
+    }
+
+    [Fact]
+    public async Task ExtraPicks_WithOnlyOnePick_IsRejected()
+    {
+        var (setId, _) = await CreateReadySetAsync(1);
+
+        Assert.Contains("no picks besides #1", await ErrorOf(await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null)));
+        Assert.Empty(_factory.FolderOpener.Opened);
     }
 
     [Fact]

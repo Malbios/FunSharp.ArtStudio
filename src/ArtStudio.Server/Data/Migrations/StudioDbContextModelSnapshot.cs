@@ -240,6 +240,15 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<string>("ModifySection")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("PostDescription")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PostTags")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PostTitle")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Prompt")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -270,6 +279,12 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<string>("SourceKind")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<long?>("StashItemId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("StashedAt")
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 

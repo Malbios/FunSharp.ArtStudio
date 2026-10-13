@@ -4,6 +4,7 @@ import { api, type ImageInfo } from '../api'
 import { useStudioEvents, type JobEventPayload } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
+import { PostPanel } from '../post/PostPanel'
 import { JobRow } from '../queue/JobRow'
 import { Lightbox } from './Lightbox'
 import { PickedStrip } from './PickedStrip'
@@ -125,6 +126,8 @@ export function SetDetailPage() {
   const isArchived = data.archivedAt !== null
   const isReadyToPost = data.readyToPostAt !== null && !isArchived
   const isWorking = !isReadyToPost && !isArchived
+  const isStashed = data.post.stashItemId !== null
+  const canReorderPicks = isReadyToPost && !isStashed
   const shownImages = isReadyToPost ? pickedImages : data.images
   const overview = isArchived
     ? { to: '/archive', label: 'All archived' }
@@ -197,11 +200,17 @@ export function SetDetailPage() {
       {isReadyToPost && (
         <div className="queue-banner ready-banner">
           <span>Ready to post since {new Date(data.readyToPostAt!).toLocaleString()}.</span>
-          <button type="button" onClick={() => void changeStage(() => api.moveBackToSets(setId), '/sets')}>
+          <button
+            type="button"
+            disabled={isStashed}
+            title={isStashed ? 'Pick #1 is in your Stash. Forget the Stash item first.' : undefined}
+            onClick={() => void changeStage(() => api.moveBackToSets(setId), '/sets')}
+          >
             Back to sets
           </button>
         </div>
       )}
+      {isReadyToPost && <PostPanel key={data.post.stashItemId ?? 'new'} set={data} onChanged={set.reload} />}
       {isArchived && (
         <div className="queue-banner">
           <span>Archived since {new Date(data.archivedAt!).toLocaleString()}.</span>
@@ -213,7 +222,7 @@ export function SetDetailPage() {
 
       <div className={hasInspiration ? 'set-compare' : 'set-compare single'}>
         <section>
-          {isReadyToPost && shownImages.length > 1 && (
+          {canReorderPicks && shownImages.length > 1 && (
             <p className="hint">
               Drag the images to change their order. #1 is the main image of the post. To pick or remove images, move the
               set back to Sets.
@@ -225,13 +234,13 @@ export function SetDetailPage() {
               const tileClass = [
                 'image-tile',
                 number > 0 ? 'selected' : '',
-                isReadyToPost ? dragPicks.itemClass(index) : '',
+                canReorderPicks ? dragPicks.itemClass(index) : '',
               ]
               return (
                 <div
                   key={image.id}
                   className={tileClass.filter(Boolean).join(' ')}
-                  {...(isReadyToPost ? dragPicks.itemProps(index) : {})}
+                  {...(canReorderPicks ? dragPicks.itemProps(index) : {})}
                 >
                   <button type="button" className="image-tile-open" onClick={() => setLightboxIndex(index)}>
                     <img src={image.url} alt={`Generated image ${index + 1}`} loading="lazy" draggable={!isReadyToPost} />

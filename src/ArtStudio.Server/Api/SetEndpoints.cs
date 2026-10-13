@@ -96,7 +96,8 @@ public static class SetEndpoints
                 s.Set.IsDraft,
                 s.Set.ReadyToPostAt,
                 s.Set.ArchivedAt,
-                PromptGenerationDto.From(s.Set)))
+                PromptGenerationDto.From(s.Set),
+                s.Set.StashItemId != null))
             .ToList();
     }
 
@@ -128,7 +129,8 @@ public static class SetEndpoints
             set.ArchivedAt,
             PromptGenerationDto.From(set),
             set.Images.Select(image => ImageDto.From(image, jobsById[image.GenerationJobId])).ToList(),
-            set.Jobs.Select(JobDto.From).ToList()));
+            set.Jobs.Select(JobDto.From).ToList(),
+            PostDto.From(set)));
     }
 
     private static async Task<IResult> CreateSetAsync(HttpRequest request, SetService setService, CancellationToken ct)
