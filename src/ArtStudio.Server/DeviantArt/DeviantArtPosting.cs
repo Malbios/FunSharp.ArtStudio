@@ -44,7 +44,8 @@ public sealed partial class DeviantArtPosting(
         if (title.Length > MaxTitleLength)
             throw new UserFacingException($"The title must be at most {MaxTitleLength} characters.");
         var tags = ParseTags(request.Tags);
-        var description = request.Description?.Trim() ?? "";
+        // Not trimmed: a description ending in "Inspired by" keeps its final line break for the link to be pasted after.
+        var description = string.IsNullOrWhiteSpace(request.Description) ? "" : request.Description;
 
         var mainPick = await db.Picks
             .Where(p => p.PromptSetId == setId)

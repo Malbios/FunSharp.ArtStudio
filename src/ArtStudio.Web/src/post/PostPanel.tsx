@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { api, type Gallery, type MatureLevel, type SetDetail } from '../api'
-import { initialPostFields, inspirationCredit, MAX_TITLE_LENGTH, stashEditorUrl } from './postDefaults'
+import { initialPostFields, MAX_TITLE_LENGTH, stashDescription, stashEditorUrl } from './postDefaults'
 
 interface PostPanelProps {
   set: SetDetail
@@ -47,7 +47,7 @@ function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>
     setUploading(true)
     setError(undefined)
     try {
-      await api.stash(set.id, fields.title, fields.description, fields.tags)
+      await api.stash(set.id, fields.title, stashDescription(fields.description, set.deviantArtUrl), fields.tags)
       onChanged()
     } catch (failure) {
       setError((failure as Error).message)
@@ -80,7 +80,7 @@ function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>
         </div>
       </div>
       <label className="field">
-        <span>Description</span>
+        <span>Description{set.deviantArtUrl ? ' ("Inspired by" is added at the end on upload)' : ''}</span>
         <textarea rows={3} value={fields.description} onChange={(e) => setFields({ ...fields, description: e.target.value })} />
       </label>
       <label className="field">
@@ -98,16 +98,16 @@ function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>
 function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & { stashItemId: string }) {
   const [error, setError] = useState<string>()
   const [folder, setFolder] = useState<string>()
-  const [creditCopied, setCreditCopied] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
   const extraPicks = set.pickedImageIds.length - 1
 
-  async function copyCredit() {
+  async function copyInspirationLink() {
     if (!set.deviantArtUrl) return
     try {
-      await navigator.clipboard.writeText(inspirationCredit(set.deviantArtUrl))
-      setCreditCopied(true)
+      await navigator.clipboard.writeText(set.deviantArtUrl)
+      setLinkCopied(true)
     } catch {
-      setError('Could not copy the "Inspired by" link to the clipboard.')
+      setError('Could not copy the inspiration link to the clipboard.')
     }
   }
 
@@ -150,13 +150,13 @@ function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & 
           </li>
         )}
         <li>
-          <a href={stashEditorUrl(stashItemId)} target="_blank" rel="noreferrer" onClick={() => void copyCredit()}>
+          <a href={stashEditorUrl(stashItemId)} target="_blank" rel="noreferrer" onClick={() => void copyInspirationLink()}>
             Open in DeviantArt's editor
           </a>
           {extraPicks > 0 ? ', add the other picks in order' : ''}
-          {set.deviantArtUrl ? ', paste the copied "Inspired by" link into the description' : ''}
+          {set.deviantArtUrl ? ', paste the copied inspiration link after "Inspired by"' : ''}
           {extraPicks > 0 || set.deviantArtUrl ? ' and save.' : ' to check it.'}
-          {creditCopied && <span className="hint"> Copied "Inspired by…" to the clipboard.</span>}
+          {linkCopied && <span className="hint"> Copied the inspiration link to the clipboard.</span>}
         </li>
       </ol>
       {error && <p className="error">{error}</p>}

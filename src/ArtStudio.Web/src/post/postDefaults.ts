@@ -2,12 +2,21 @@ import type { SetDetail } from '../api'
 
 export const DEFAULT_TAGS = 'digital_art made_with_ai'
 export const MAX_TITLE_LENGTH = 50
+const INSPIRED_BY = 'Inspired by'
 
 export const stashEditorUrl = (stashItemId: string) =>
   `https://www.deviantart.com/_deviation_submit/?deviationid=${stashItemId}`
 
-/** Pasted into DeviantArt's editor, the link becomes an embedded thumbnail. Through the API it stays a plain link. */
-export const inspirationCredit = (deviantArtUrl: string) => `Inspired by ${deviantArtUrl}`
+/**
+ * Ends with "Inspired by" on its own line, for the inspiration's link to be pasted after it in DeviantArt's
+ * editor: pasted there, the link becomes an embedded thumbnail, while through the API it stays a plain link.
+ */
+export function stashDescription(description: string, deviantArtUrl: string | null) {
+  const typed = description.trim()
+  if (!deviantArtUrl) return typed
+  if (typed.endsWith(INSPIRED_BY)) return `${typed}\n`
+  return `${typed ? `${typed}\n\n` : ''}${INSPIRED_BY}\n`
+}
 
 export function initialPostFields(set: Pick<SetDetail, 'post'>) {
   return {

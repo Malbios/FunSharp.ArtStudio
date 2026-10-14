@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PostDetails } from '../api'
-import { DEFAULT_TAGS, initialPostFields, inspirationCredit, stashEditorUrl } from './postDefaults'
+import { DEFAULT_TAGS, initialPostFields, stashDescription, stashEditorUrl } from './postDefaults'
 
 const noPost: PostDetails = {
   title: null,
@@ -23,10 +23,21 @@ describe('initial post fields', () => {
   })
 })
 
-it('credits the inspiration with its link', () => {
-  expect(inspirationCredit('https://www.deviantart.com/someone/art/Fox-123')).toBe(
-    'Inspired by https://www.deviantart.com/someone/art/Fox-123',
-  )
+describe('stash description', () => {
+  const url = 'https://www.deviantart.com/someone/art/Fox-123'
+
+  it('ends with an Inspired by line for the link to be pasted after', () => {
+    expect(stashDescription('', url)).toBe('Inspired by\n')
+    expect(stashDescription(' A fox at dawn. ', url)).toBe('A fox at dawn.\n\nInspired by\n')
+  })
+
+  it('adds no second Inspired by line to a description uploaded before', () => {
+    expect(stashDescription('A fox at dawn.\n\nInspired by\n', url)).toBe('A fox at dawn.\n\nInspired by\n')
+  })
+
+  it('is just the typed description without a DeviantArt inspiration', () => {
+    expect(stashDescription(' A fox at dawn. ', null)).toBe('A fox at dawn.')
+  })
 })
 
 it('links a Stash item to its DeviantArt editor', () => {
