@@ -30,20 +30,21 @@ export function PostPage() {
     })
   }
 
+  const presetSelect = presets.length > 0 && (
+    <select aria-label="Preset" value={presetId ?? ''} onChange={(e) => choosePreset(e.target.value)}>
+      <option value="">All presets</option>
+      {presets.map((preset) => (
+        <option key={preset.id} value={preset.id}>
+          {preset.label}
+        </option>
+      ))}
+    </select>
+  )
+
   return (
     <div>
       <div className="toolbar">
         <h2>Post</h2>
-        {presets.length > 0 && (
-          <select aria-label="Preset" value={presetId ?? ''} onChange={(e) => choosePreset(e.target.value)}>
-            <option value="">All presets</option>
-            {presets.map((preset) => (
-              <option key={preset.id} value={preset.id}>
-                {preset.label}
-              </option>
-            ))}
-          </select>
-        )}
       </div>
       {sets.error && <p className="error">{sets.error}</p>}
       {sets.data?.length === 0 &&
@@ -54,8 +55,14 @@ export function PostPage() {
             Nothing is ready to post yet. Pick images in a set, then use "Ready to post" on its page.
           </p>
         ))}
-      {sets.data && sets.data.length > 0 && (
-        <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} filter={filter} />
+      {sets.data && (sets.data.length > 0 || presetId) && (
+        <Pager
+          page={paged.page}
+          pageCount={paged.pageCount}
+          onChange={paged.setPage}
+          filter={filter}
+          tools={presetSelect}
+        />
       )}
       {sets.data && sets.data.length > 0 && filter.items?.length === 0 && (
         <p className="hint">No sets match this filter.</p>

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { FilterMenu } from './FilterMenu'
 import { PAGE_LINK_SLOTS, pageNumbers } from './pagination'
 import type { FilteredItems } from './useListFilter'
@@ -11,15 +12,20 @@ interface PageProps {
 interface Props<T> extends PageProps {
   /** Shown as a funnel button at the far right; the row then shows even with a single page. */
   filter?: FilteredItems<T>
+  /** Shown left of the funnel button. */
+  tools?: ReactNode
 }
 
-export function Pager<T>({ page, pageCount, onChange, filter }: Props<T>) {
+export function Pager<T>({ page, pageCount, onChange, filter, tools }: Props<T>) {
   if (!filter) return <PageButtons page={page} pageCount={pageCount} onChange={onChange} />
 
   return (
-    <div className="pager-row">
+    <div className={tools ? 'pager-row with-tools' : 'pager-row'}>
       <PageButtons page={page} pageCount={pageCount} onChange={onChange} />
-      <FilterMenu filter={filter} />
+      <div className="pager-tools">
+        {tools}
+        <FilterMenu filter={filter} />
+      </div>
     </div>
   )
 }
