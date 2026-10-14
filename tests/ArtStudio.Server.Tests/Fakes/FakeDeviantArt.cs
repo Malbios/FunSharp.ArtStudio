@@ -45,6 +45,8 @@ public sealed class FakeDeviantArt : HttpMessageHandler
     /// <summary>Tags that at least one deviation uses.</summary>
     public HashSet<string> KnownTags { get; } = [];
     public List<string> TagChecks { get; } = [];
+    /// <summary>How many tag checks are answered with DeviantArt's rate limit before they succeed again.</summary>
+    public int RateLimitedTagChecks { get; set; }
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
@@ -74,7 +76,14 @@ public sealed class FakeDeviantArt : HttpMessageHandler
             {
                 var tag = HttpUtility.ParseQueryString(uri.Query)["tag"]!;
                 lock (TagChecks)
+                {
                     TagChecks.Add(uri.PathAndQuery);
+                    if (RateLimitedTagChecks > 0)
+                    {
+                        RateLimitedTagChecks--;
+                        return FakeHttpHandler.Json("""{ "error": "rate_limited" }""", HttpStatusCode.TooManyRequests);
+                    }
+                }
                 var results = KnownTags.Contains(tag) ? """[{ "deviationid": "DEV-T" }]""" : "[]";
                 return FakeHttpHandler.Json($$"""{ "has_more": false, "results": {{results}} }""");
             }

@@ -48,9 +48,15 @@ public sealed class PostSuggestionQueue
     public static bool NeedsSuggestions(PromptSet set) => NeedsTitle(set) || NeedsTags(set);
 }
 
+public sealed record PostSuggestionTiming(TimeSpan FirstRetryDelay, TimeSpan MaxRetryDelay, TimeSpan PauseBetweenSets)
+{
+    public static readonly PostSuggestionTiming Default = new(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(16), TimeSpan.FromSeconds(5));
+}
+
 public sealed class PostSuggestionWorker(
     IServiceScopeFactory scopeFactory,
     PostSuggestionQueue queue,
+    PostSuggestionTiming timing,
     StudioNotifier notifier,
     ILogger<PostSuggestionWorker> logger) : BackgroundService
 {
@@ -87,6 +93,16 @@ public sealed class PostSuggestionWorker(
                 queue.Done(setId);
                 await notifier.SetUpdated(setId);
             }
+
+            try
+            {
+                // Each set costs up to 20 DeviantArt tag checks; back to back they run into its rate limit.
+                await Task.Delay(timing.PauseBetweenSets, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                return;
+            }
         }
     }
 
@@ -104,33 +120,80 @@ public sealed class PostSuggestionWorker(
 
     private async Task SuggestAsync(int setId, CancellationToken ct)
     {
-        using var scope = scopeFactory.CreateScope();
-        var services = scope.ServiceProvider;
-        var db = services.GetRequiredService<StudioDbContext>();
-        var set = await db.PromptSets.AsNoTracking().SingleOrDefaultAsync(s => s.Id == setId, ct);
-        if (set is null || set.ReadyToPostAt is null || set.ArchivedAt is not null || set.StashItemId is not null)
+        var set = await StillWaitingAsync(setId, ct);
+        if (set is null)
             return;
 
-        var title = PostSuggestionQueue.NeedsTitle(set)
-            ? await TryAsync("title", setId, () => services.GetRequiredService<TitleSuggester>().SuggestAsync(setId, ct))
-            : null;
-        var tags = PostSuggestionQueue.NeedsTags(set)
-            ? await TryAsync("tags", setId, () => services.GetRequiredService<TagSuggester>().SuggestAsync(setId, ct))
-            : null;
+        if (PostSuggestionQueue.NeedsTitle(set))
+        {
+            var title = await TryAsync("title", setId, services => services.GetRequiredService<TitleSuggester>().SuggestAsync(setId, ct));
+            if (title is { Length: > 0 })
+                await SaveAsync(setId, PostSuggestionQueue.NeedsTitle, current => current.PostTitle = title, ct);
+        }
 
-        var current = await db.PromptSets.SingleAsync(s => s.Id == setId, ct);
-        if (title is { Length: > 0 } && PostSuggestionQueue.NeedsTitle(current))
-            current.PostTitle = title;
-        if (tags is { Count: > 0 } && PostSuggestionQueue.NeedsTags(current))
-            current.PostTags = string.Join(' ', TagSuggester.DefaultTags.Concat(tags));
-        await db.SaveChangesAsync(ct);
+        if (PostSuggestionQueue.NeedsTags(set))
+        {
+            var tags = await SuggestTagsAsync(setId, ct);
+            if (tags is { Count: > 0 })
+                await SaveAsync(setId, PostSuggestionQueue.NeedsTags,
+                    current => current.PostTags = string.Join(' ', TagSuggester.DefaultTags.Concat(tags)), ct);
+        }
     }
 
-    private async Task<T?> TryAsync<T>(string what, int setId, Func<Task<T>> suggest) where T : class
+    private async Task<IReadOnlyList<string>?> SuggestTagsAsync(int setId, CancellationToken ct)
+    {
+        var delay = timing.FirstRetryDelay;
+        while (true)
+        {
+            try
+            {
+                using var scope = scopeFactory.CreateScope();
+                return await scope.ServiceProvider.GetRequiredService<TagSuggester>().SuggestAsync(setId, ct);
+            }
+            catch (DeviantArtRateLimitedException)
+            {
+                logger.LogWarning("DeviantArt is limiting requests; retrying the tags for set {SetId} in {Delay}", setId, delay);
+                await Task.Delay(delay, ct);
+                delay = TimeSpan.FromTicks(Math.Min(delay.Ticks * 2, timing.MaxRetryDelay.Ticks));
+                if (await StillWaitingAsync(setId, ct) is not { } set || !PostSuggestionQueue.NeedsTags(set))
+                    return null;
+            }
+            catch (UserFacingException ex)
+            {
+                logger.LogWarning("No tags suggested for set {SetId}: {Reason}", setId, ex.Message);
+                return null;
+            }
+        }
+    }
+
+    /// <summary>The set, unless it left Post or went to the Stash, after which suggestions are no use.</summary>
+    private async Task<PromptSet?> StillWaitingAsync(int setId, CancellationToken ct)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var set = await scope.ServiceProvider.GetRequiredService<StudioDbContext>().PromptSets.AsNoTracking()
+            .SingleOrDefaultAsync(s => s.Id == setId, ct);
+        return set is { ReadyToPostAt: not null, ArchivedAt: null, StashItemId: null } ? set : null;
+    }
+
+    // Loads the set afresh, so a title or tags entered meanwhile are never overwritten.
+    private async Task SaveAsync(int setId, Func<PromptSet, bool> stillNeeded, Action<PromptSet> apply, CancellationToken ct)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<StudioDbContext>();
+        var current = await db.PromptSets.SingleAsync(s => s.Id == setId, ct);
+        if (!stillNeeded(current))
+            return;
+        apply(current);
+        await db.SaveChangesAsync(ct);
+        await notifier.SetUpdated(setId);
+    }
+
+    private async Task<T?> TryAsync<T>(string what, int setId, Func<IServiceProvider, Task<T>> suggest) where T : class
     {
         try
         {
-            return await suggest();
+            using var scope = scopeFactory.CreateScope();
+            return await suggest(scope.ServiceProvider);
         }
         catch (UserFacingException ex)
         {

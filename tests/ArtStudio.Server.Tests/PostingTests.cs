@@ -379,6 +379,19 @@ public sealed class PostingTests : IDisposable
     }
 
     [Fact]
+    public async Task MarkingReady_WhenDeviantArtIsLimiting_RetriesTheTags()
+    {
+        await PrepareSuggestionsAsync();
+        _factory.DeviantArt.RateLimitedTagChecks = 2;
+        var setId = await CreateSetReadyToMarkAsync();
+
+        var post = await PostAfterSuggestionsAsync(setId);
+
+        Assert.Equal(("Ember Fox", "digital_art made_with_ai ember_fox"), (post.Title, post.Tags));
+        Assert.Equal(0, _factory.DeviantArt.RateLimitedTagChecks);
+    }
+
+    [Fact]
     public async Task MarkingReady_KeepsAnExistingTitle()
     {
         await PrepareSuggestionsAsync();

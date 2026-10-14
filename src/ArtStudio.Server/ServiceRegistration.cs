@@ -69,6 +69,7 @@ public static class ServiceRegistration
         services.AddScoped<TitleSuggester>();
         services.AddScoped<TagSuggester>();
         services.AddSingleton<PostSuggestionQueue>();
+        services.AddSingleton(PostSuggestionTiming.Default);
         services.AddHostedService<PostSuggestionWorker>();
         services.AddSingleton<PromptGenerationQueue>();
         services.AddHostedService<PromptGenerationWorker>();

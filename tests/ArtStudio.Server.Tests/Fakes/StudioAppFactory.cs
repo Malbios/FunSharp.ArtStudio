@@ -42,6 +42,8 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
         {
             services.RemoveAll<GenerationTiming>();
             services.AddSingleton(new GenerationTiming(TimeSpan.FromMilliseconds(10), TimeSpan.FromSeconds(30)));
+            services.RemoveAll<PostSuggestionTiming>();
+            services.AddSingleton(new PostSuggestionTiming(TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(40), TimeSpan.Zero));
             services.AddHttpClient(ComfyClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Comfy);
             services.AddHttpClient(DeviantArtService.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => DeviantArt);
             services.AddHttpClient(VisionClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Vision);

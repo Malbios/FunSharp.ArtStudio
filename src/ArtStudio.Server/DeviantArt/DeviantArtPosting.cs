@@ -16,6 +16,8 @@ public sealed record StashRequest(string Title, string? Description, string? Tag
 
 public sealed record PublishRequest(string GalleryId, bool IsMature, string? MatureLevel);
 
+public sealed class DeviantArtRateLimitedException(string message) : UserFacingException(message);
+
 public sealed partial class DeviantArtPosting(
     StudioDbContext db,
     AppPaths paths,
@@ -204,7 +206,10 @@ public sealed partial class DeviantArtPosting(
 
         if (response.IsSuccessStatusCode && body is not null)
             return body;
-        throw new UserFacingException(ErrorMessage(response.StatusCode, body));
+        var message = ErrorMessage(response.StatusCode, body);
+        throw response.StatusCode == HttpStatusCode.TooManyRequests
+            ? new DeviantArtRateLimitedException(message)
+            : new UserFacingException(message);
     }
 
     private static string ErrorMessage(HttpStatusCode status, JsonNode? body)
