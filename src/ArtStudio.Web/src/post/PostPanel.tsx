@@ -158,7 +158,8 @@ function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & 
   async function copyInspirationLink() {
     if (!set.deviantArtUrl) return
     try {
-      await navigator.clipboard.writeText(set.deviantArtUrl)
+      // DeviantArt drops the line break after "Inspired by" on upload, so the pasted link brings its own.
+      await navigator.clipboard.writeText(`\n${set.deviantArtUrl}`)
       setLinkCopied(true)
     } catch {
       setError('Could not copy the inspiration link to the clipboard.')
