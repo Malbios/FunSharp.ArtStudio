@@ -21,10 +21,16 @@ public static class PostEndpoints
         });
 
         var post = app.MapGroup("/api/sets/{id:int}/post");
-        post.MapPost("suggest-title", async (int id, TitleSuggester titles, CancellationToken ct) =>
-            new SuggestedTitleDto(await titles.SuggestAsync(id, ct)));
-        post.MapPost("suggest-tags", async (int id, TagSuggester tags, CancellationToken ct) =>
-            new SuggestedTagsDto(await tags.SuggestAsync(id, ct)));
+        post.MapPost("suggest-title", async (int id, TitleSuggester titles, PostSuggestionTurns turns, CancellationToken ct) =>
+        {
+            using var turn = await turns.ClickedAsync(ct);
+            return new SuggestedTitleDto(await titles.SuggestAsync(id, ct));
+        });
+        post.MapPost("suggest-tags", async (int id, TagSuggester tags, PostSuggestionTurns turns, CancellationToken ct) =>
+        {
+            using var turn = await turns.ClickedAsync(ct);
+            return new SuggestedTagsDto(await tags.SuggestAsync(id, ct));
+        });
         post.MapPost("stash", async (int id, StashRequest request, DeviantArtPosting posting, CancellationToken ct) =>
             await posting.StashAsync(id, request, ct));
         post.MapPost("publish", async (int id, PublishRequest request, DeviantArtPosting posting, CancellationToken ct) =>

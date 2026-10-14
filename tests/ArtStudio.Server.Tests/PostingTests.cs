@@ -392,6 +392,29 @@ public sealed class PostingTests : IDisposable
     }
 
     [Fact]
+    public async Task ClickedSuggestion_WaitsForTheRunningBackgroundOne_ThenGoesBeforeItsNextStep()
+    {
+        await PrepareSuggestionsAsync();
+        var backgroundSet = await CreateSetReadyToMarkAsync();
+        var clickedSet = await _factory.CreateSetAsync(_client, "A heron at dawn.");
+        _factory.Vision.HoldAnswers = true;
+        (await _client.PostAsync($"/api/sets/{backgroundSet}/ready", null)).EnsureSuccessStatusCode();
+        await WaitUntilAsync(() => Task.FromResult(_factory.Vision.Requests.Count == 1), "the background title request");
+
+        var click = _client.PostAsync($"/api/sets/{clickedSet}/post/suggest-title", null);
+        await Task.Delay(200);
+        Assert.False(click.IsCompleted);
+        Assert.Single(_factory.Vision.Requests);
+        _factory.Vision.HoldAnswers = false;
+
+        (await click).EnsureSuccessStatusCode();
+        Assert.Contains("A heron at dawn.", _factory.Vision.Requests[1].Body.ToJsonString());
+        await WaitUntilAsync(async () => !(await GetSetAsync(_client, backgroundSet)).Post.Suggesting, "suggestions");
+        var post = (await GetSetAsync(_client, backgroundSet)).Post;
+        Assert.Equal(("Ember Fox", "digital_art made_with_ai ember_fox"), (post.Title, post.Tags));
+    }
+
+    [Fact]
     public async Task MarkingReady_KeepsAnExistingTitle()
     {
         await PrepareSuggestionsAsync();
