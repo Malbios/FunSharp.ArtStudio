@@ -56,6 +56,8 @@ public sealed class PostSuggestionWorker(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        await QueueReadySetsMissingSuggestionsAsync(stoppingToken);
+
         while (!stoppingToken.IsCancellationRequested)
         {
             int setId;
@@ -86,6 +88,18 @@ public sealed class PostSuggestionWorker(
                 await notifier.SetUpdated(setId);
             }
         }
+    }
+
+    // Covers sets that became ready before this feature existed and suggestions a restart interrupted.
+    private async Task QueueReadySetsMissingSuggestionsAsync(CancellationToken ct)
+    {
+        using var scope = scopeFactory.CreateScope();
+        var readySets = await scope.ServiceProvider.GetRequiredService<StudioDbContext>().PromptSets.AsNoTracking()
+            .Where(s => s.ReadyToPostAt != null && s.ArchivedAt == null && s.StashItemId == null)
+            .OrderBy(s => s.ReadyToPostAt).ThenBy(s => s.Id)
+            .ToListAsync(ct);
+        foreach (var set in readySets.Where(PostSuggestionQueue.NeedsSuggestions))
+            queue.Enqueue(set.Id);
     }
 
     private async Task SuggestAsync(int setId, CancellationToken ct)

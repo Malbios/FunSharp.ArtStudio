@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using ArtStudio.Server.Data;
 using ArtStudio.Server.Domain;
 using ArtStudio.Server.Tests.Fakes;
@@ -43,6 +44,36 @@ public sealed class RestartTests
         var job = await SingleJobAsync(after);
         Assert.Null(job.CurrentComfyPromptId);
         Assert.Null(job.CurrentSeed);
+    }
+
+    [Fact]
+    public async Task Startup_SuggestsTitleAndTagsForReadySetsMissingThem()
+    {
+        var dataDirectory = Path.Combine(Path.GetTempPath(), "ArtStudioTests", Guid.NewGuid().ToString("N"));
+
+        int setId;
+        using (var before = new StudioAppFactory { DataDirectory = dataDirectory, KeepDataDirectory = true })
+        {
+            var client = before.CreateClient();
+            await SetVisionApiKeyAsync(client);
+            await before.ConnectDeviantArtAsync();
+            setId = await before.CreateSetAsync(client, "fox", count: 1);
+            await WaitForJobAsync(client, setId, JobStatus.Completed);
+            var imageId = (await GetSetAsync(client, setId)).Images.Single().Id;
+            (await client.PostAsJsonAsync($"/api/sets/{setId}/picks", new { imageId })).EnsureSuccessStatusCode();
+            using var scope = before.Services.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<StudioDbContext>().PromptSets
+                .ExecuteUpdateAsync(s => s.SetProperty(set => set.ReadyToPostAt, DateTimeOffset.UtcNow));
+        }
+
+        using var after = new StudioAppFactory { DataDirectory = dataDirectory };
+        after.Vision.Answer = "Ember Fox";
+        after.DeviantArt.KnownTags.Add("ember_fox");
+        var restartedClient = after.CreateClient();
+        await WaitUntilAsync(async () => (await GetSetAsync(restartedClient, setId)).Post.Title is not null, "suggestions");
+
+        var post = (await GetSetAsync(restartedClient, setId)).Post;
+        Assert.Equal(("Ember Fox", "digital_art made_with_ai ember_fox"), (post.Title, post.Tags));
     }
 
     [Fact]
