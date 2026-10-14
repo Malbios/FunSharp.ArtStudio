@@ -67,7 +67,8 @@ public sealed record SetSummaryDto(
     DateTimeOffset? ArchivedAt,
     PromptGenerationDto PromptGeneration,
     bool Stashed,
-    string? PublishedUrl);
+    string? PublishedUrl,
+    bool HasTitleAndTags);
 
 public sealed record SetDetailDto(
     int Id,

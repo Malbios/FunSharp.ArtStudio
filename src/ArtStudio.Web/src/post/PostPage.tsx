@@ -2,7 +2,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
+import { POST_FILTERS } from '../paging/listFilters'
 import { Pager } from '../paging/Pager'
+import { useListFilter } from '../paging/useListFilter'
 import { PAGE_PARAM, usePagedItems } from '../paging/usePagedItems'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 
@@ -15,7 +17,8 @@ export function PostPage() {
   const blocks = useLoad(api.buildingBlocks)
   const presets = blocks.data?.filter((block) => block.kind === 'Preset' && block.artStyle) ?? []
   useStudioEvents(['SetUpdated', 'SetDeleted'], sets.reload)
-  const paged = usePagedItems(sets.data)
+  const filter = useListFilter('post', sets.data, POST_FILTERS)
+  const paged = usePagedItems(filter.items)
   const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
 
   function choosePreset(value: string) {
@@ -51,7 +54,12 @@ export function PostPage() {
             Nothing is ready to post yet. Pick images in a set, then use "Ready to post" on its page.
           </p>
         ))}
-      {pager}
+      {sets.data && sets.data.length > 0 && (
+        <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} filter={filter} />
+      )}
+      {sets.data && sets.data.length > 0 && filter.items?.length === 0 && (
+        <p className="hint">No sets match this filter.</p>
+      )}
       <div className="set-grid">
         {paged.pageItems.map((set) => (
           <div key={set.id} className="panel set-card">

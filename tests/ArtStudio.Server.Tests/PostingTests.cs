@@ -386,6 +386,21 @@ public sealed class PostingTests : IDisposable
         Assert.Equal((null, null), (post.Title, post.Tags));
     }
 
+    [Theory]
+    [InlineData(null, null, false)]
+    [InlineData("Ember Fox", "digital_art made_with_ai", false)]
+    [InlineData(null, "digital_art fox", false)]
+    [InlineData("Ember Fox", "digital_art fox", true)]
+    public async Task ReadyList_TellsWhetherASetHasATitleAndTags(string? title, string? tags, bool expected)
+    {
+        var setId = await CreateSetReadyToMarkAsync(title, tags);
+        (await _client.PostAsync($"/api/sets/{setId}/ready", null)).EnsureSuccessStatusCode();
+
+        var summary = (await _client.GetFromJsonAsync<JsonElement>("/api/sets?stage=ready")).EnumerateArray().Single();
+
+        Assert.Equal(expected, summary.GetProperty("hasTitleAndTags").GetBoolean());
+    }
+
     [Fact]
     public async Task SuggestTags_WithoutVisionKey_AsksForIt()
     {

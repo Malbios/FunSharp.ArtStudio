@@ -60,6 +60,8 @@ export interface SetSummary {
   promptGeneration: PromptGeneration
   stashed: boolean
   publishedUrl: string | null
+  /** Has a title and tags beyond the default ones. */
+  hasTitleAndTags: boolean
 }
 
 export type PromptGenerationState = 'None' | 'Queued' | 'Running' | 'Done' | 'Failed'

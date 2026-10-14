@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PromptGenerationState, SetSummary } from '../api'
-import { DRAFT_FILTERS, SET_FILTERS } from './listFilters'
+import { DRAFT_FILTERS, POST_FILTERS, SET_FILTERS } from './listFilters'
 
 const summary = (overrides: Partial<SetSummary> & { state?: PromptGenerationState }): SetSummary =>
   ({
@@ -28,6 +28,15 @@ describe('set filters', () => {
   it('shows only sets with picked images when with picks', () => {
     expect(matches(SET_FILTERS, 'picked', summary({ pickedCount: 1 }))).toBe(true)
     expect(matches(SET_FILTERS, 'picked', summary({ pickedCount: 0 }))).toBe(false)
+  })
+})
+
+describe('post filters', () => {
+  it('splits ready sets by whether they have a title and tags', () => {
+    expect(matches(POST_FILTERS, 'described', summary({ hasTitleAndTags: true }))).toBe(true)
+    expect(matches(POST_FILTERS, 'described', summary({ hasTitleAndTags: false }))).toBe(false)
+    expect(matches(POST_FILTERS, 'undescribed', summary({ hasTitleAndTags: false }))).toBe(true)
+    expect(matches(POST_FILTERS, 'undescribed', summary({ hasTitleAndTags: true }))).toBe(false)
   })
 })
 
