@@ -1,5 +1,6 @@
-import { useRef } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { BuildingBlock } from '../api'
+import { ImageLightbox } from './ImageLightbox'
 
 const ACCEPTED_TYPES = 'image/png,image/jpeg,image/webp,image/gif'
 
@@ -27,11 +28,15 @@ interface Props {
 
 export function PresetImage({ preset, onImage, onPasteFromClipboard, onRemove }: Props) {
   const fileInput = useRef<HTMLInputElement>(null)
+  const [viewing, setViewing] = useState(false)
+  const closeViewer = useCallback(() => setViewing(false), [])
 
   return (
     <div className="preset-image">
       {preset.imageUrl ? (
-        <img src={preset.imageUrl} alt={`Example for ${preset.label}`} />
+        <button type="button" className="preset-image-open" title="View full size" onClick={() => setViewing(true)}>
+          <img src={preset.imageUrl} alt={`Example for ${preset.label}`} />
+        </button>
       ) : (
         <span className="preset-image-empty">No image</span>
       )}
@@ -57,6 +62,9 @@ export function PresetImage({ preset, onImage, onPasteFromClipboard, onRemove }:
           if (file) onImage(file)
         }}
       />
+      {viewing && preset.imageUrl && (
+        <ImageLightbox url={preset.imageUrl} caption={`Example for ${preset.label}`} onClose={closeViewer} />
+      )}
     </div>
   )
 }

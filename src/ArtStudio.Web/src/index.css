@@ -1129,6 +1129,10 @@ span.image-tile-pick {
   padding: 0 1rem 1rem;
 }
 
+.lightbox-body.single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .lightbox-images {
   display: flex;
   flex-direction: column;
@@ -1290,21 +1294,31 @@ span.image-tile-pick {
   align-content: start;
 }
 
-.preset-image > img,
+.preset-image > .preset-image-open,
 .preset-image > .preset-image-empty {
   grid-row: 1 / 4;
+  align-self: start;
 }
 
-.preset-image img,
+.preset-image-open {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+}
+
+.preset-image img {
+  display: block;
+  width: 96px;
+  height: auto;
+  border-radius: var(--radius);
+}
+
 .preset-image-empty {
   width: 96px;
   height: 96px;
   border-radius: var(--radius);
   background: var(--panel-raised);
-}
-
-.preset-image img {
-  object-fit: cover;
 }
 
 .preset-image-empty {
