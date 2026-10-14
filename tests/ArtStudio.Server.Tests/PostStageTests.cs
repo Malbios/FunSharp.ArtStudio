@@ -144,4 +144,46 @@ public sealed class PostStageTests : IDisposable
         Assert.Equal(HttpStatusCode.NoContent, (await _client.DeleteAsync($"/api/sets/{setId}")).StatusCode);
         Assert.Empty(await SetIdsAsync("ready"));
     }
+
+    private async Task<int> AddPresetAsync(string? artStyle)
+    {
+        var response = await _client.PostAsJsonAsync("/api/building-blocks",
+            new { label = "Low poly", kind = "Preset", artStyle, resolution = artStyle is null ? "Portrait" : null });
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+    }
+
+    private async Task<int[]> ImagesOfNewJobAsync(int setId, string prompt)
+    {
+        var before = (await GetSetAsync(_client, setId)).Images.Select(i => i.Id).ToHashSet();
+        (await _client.PostAsJsonAsync($"/api/sets/{setId}/more", new { count = 1, prompt })).EnsureSuccessStatusCode();
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Jobs.All(j => j.Status == JobStatus.Completed), "images");
+        return (await GetSetAsync(_client, setId)).Images.Select(i => i.Id).Where(id => !before.Contains(id)).ToArray();
+    }
+
+    [Fact]
+    public async Task ReadySets_CanBeFilteredByThePresetTheirPicksCameFrom()
+    {
+        var presetId = await AddPresetAsync("Low-poly 3D render.");
+        var (matching, _) = await CreateCompletedSetAsync(1);
+        var lowPoly = await ImagesOfNewJobAsync(matching, "A fox.\n\nLow-poly 3D render.");
+        await PickAsync(matching, lowPoly[0]);
+        var (unpickedPreset, plain) = await CreateCompletedSetAsync(1);
+        await ImagesOfNewJobAsync(unpickedPreset, "A fox.\n\nLow-poly 3D render.");
+        await PickAsync(unpickedPreset, plain[0]);
+        (await MarkReadyAsync(matching)).EnsureSuccessStatusCode();
+        (await MarkReadyAsync(unpickedPreset)).EnsureSuccessStatusCode();
+
+        Assert.Equal([matching], await SetIdsAsync($"ready&preset={presetId}"));
+        Assert.Equal([matching, unpickedPreset], await SetIdsAsync("ready"));
+    }
+
+    [Fact]
+    public async Task FilteringByAnUnknownPresetOrOneWithoutArtStyle_IsRejected()
+    {
+        var withoutArtStyle = await AddPresetAsync(null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await _client.GetAsync("/api/sets?stage=ready&preset=999")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await _client.GetAsync($"/api/sets?stage=ready&preset={withoutArtStyle}")).StatusCode);
+    }
 }

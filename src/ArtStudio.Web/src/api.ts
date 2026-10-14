@@ -220,7 +220,8 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
 export const api = {
   resolutions: () => request<ResolutionPreset[]>('GET', '/api/resolutions'),
 
-  sets: (stage: 'draft' | 'working' | 'ready' | 'archived') => request<SetSummary[]>('GET', `/api/sets?stage=${stage}`),
+  sets: (stage: 'draft' | 'working' | 'ready' | 'archived', presetId?: number) =>
+    request<SetSummary[]>('GET', `/api/sets?stage=${stage}${presetId ? `&preset=${presetId}` : ''}`),
   set: (id: number) => request<SetDetail>('GET', `/api/sets/${id}`),
   createSet: (form: FormData) => request<{ id: number }>('POST', '/api/sets', form),
   moreImages: (setId: number, count: number, prompt?: string, resolution?: string) =>

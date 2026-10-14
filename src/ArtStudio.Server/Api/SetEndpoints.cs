@@ -50,7 +50,8 @@ public static class SetEndpoints
             Results.Ok(new { Retried = await setService.RetryFailedDraftPromptsAsync(ct) }));
     }
 
-    private static async Task<IReadOnlyList<SetSummaryDto>> ListSetsAsync(string? stage, StudioDbContext db, CancellationToken ct)
+    private static async Task<IReadOnlyList<SetSummaryDto>> ListSetsAsync(
+        string? stage, int? preset, StudioDbContext db, CancellationToken ct)
     {
         var activeStatuses = new[] { JobStatus.Queued, JobStatus.Running };
         IQueryable<PromptSet> inStage = stage switch
@@ -67,6 +68,12 @@ public static class SetEndpoints
                 .OrderByDescending(s => s.ArchivedAt).ThenByDescending(s => s.Id),
             _ => throw new UserFacingException($"Unknown stage '{stage}'. Use 'draft', 'working', 'ready' or 'archived'."),
         };
+        if (preset is int presetId)
+        {
+            var artStyle = await PresetArtStyleAsync(presetId, db, ct);
+            inStage = inStage.Where(s => s.Picks.Any(p => db.Images.Any(i =>
+                i.Id == p.GeneratedImageId && db.Jobs.Any(j => j.Id == i.GenerationJobId && j.Prompt.Contains(artStyle)))));
+        }
         var sets = await inStage
             .Select(s => new
             {
@@ -100,6 +107,16 @@ public static class SetEndpoints
                 s.Set.StashItemId != null,
                 s.Set.PublishedUrl))
             .ToList();
+    }
+
+    // Jobs don't record their preset, only the prompt the preset's art style was written into.
+    private static async Task<string> PresetArtStyleAsync(int presetId, StudioDbContext db, CancellationToken ct)
+    {
+        var block = await db.BuildingBlocks.SingleOrDefaultAsync(b => b.Id == presetId && b.Kind == BuildingBlockKind.Preset, ct)
+            ?? throw new UserFacingException("Preset not found.");
+        return block.ArtStyle is { Length: > 0 } artStyle
+            ? artStyle
+            : throw new UserFacingException("That preset has no art style to match.");
     }
 
     private static async Task<IResult> GetSetAsync(int id, StudioDbContext db, CancellationToken ct)
