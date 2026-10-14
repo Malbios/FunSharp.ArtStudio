@@ -118,6 +118,8 @@ export interface PostDetails {
   stashedAt: string | null
   publishedUrl: string | null
   publishedAt: string | null
+  /** A title and tags are being suggested in the background. */
+  suggesting: boolean
 }
 
 export interface DeviationImage {

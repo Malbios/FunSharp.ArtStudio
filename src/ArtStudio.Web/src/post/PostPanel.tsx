@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { api, type Gallery, type MatureLevel, type SetDetail } from '../api'
-import { initialPostFields, MAX_TITLE_LENGTH, stashDescription, stashEditorUrl, withSuggestedTags } from './postDefaults'
+import { hasOnlyDefaultTags, initialPostFields, MAX_TITLE_LENGTH, stashDescription, stashEditorUrl, withSuggestedTags } from './postDefaults'
 
 interface PostPanelProps {
   set: SetDetail
@@ -29,6 +29,18 @@ function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>
   const [suggestingTags, setSuggestingTags] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string>()
+
+  const backgroundSuggesting = set.post.suggesting
+  const [saved, setSaved] = useState({ title: set.post.title, tags: set.post.tags })
+  if (saved.title !== set.post.title || saved.tags !== set.post.tags) {
+    const { title, tags } = set.post
+    setSaved({ title, tags })
+    setFields((current) => ({
+      ...current,
+      title: !current.title && title ? title : current.title,
+      tags: hasOnlyDefaultTags(current.tags) && tags ? tags : current.tags,
+    }))
+  }
 
   async function suggestTitle() {
     setSuggesting(true)
@@ -76,6 +88,7 @@ function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>
         Uploads pick #1 to your private Stash. DeviantArt's API takes one image per deviation, so the other picks are
         added by hand in DeviantArt's editor afterwards.
       </p>
+      {backgroundSuggesting && <p className="hint">Suggesting a title and tags…</p>}
       <div className="field">
         <span>
           Title ({fields.title.length}/{MAX_TITLE_LENGTH})
@@ -88,7 +101,7 @@ function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>
             placeholder={suggesting ? 'Asking the vision model for a title…' : ''}
             onChange={(e) => setFields({ ...fields, title: e.target.value })}
           />
-          <button type="button" disabled={suggesting} onClick={() => void suggestTitle()}>
+          <button type="button" disabled={suggesting || backgroundSuggesting} onClick={() => void suggestTitle()}>
             {suggesting ? 'Suggesting…' : 'Suggest title'}
           </button>
         </div>
@@ -101,7 +114,7 @@ function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>
         <span>Tags (separated by spaces; letters, digits and _ only)</span>
         <div className="post-title-row">
           <input aria-label="Tags" value={fields.tags} onChange={(e) => setFields({ ...fields, tags: e.target.value })} />
-          <button type="button" disabled={suggestingTags} onClick={() => void suggestTags()}>
+          <button type="button" disabled={suggestingTags || backgroundSuggesting} onClick={() => void suggestTags()}>
             {suggestingTags ? 'Suggesting…' : 'Suggest tags'}
           </button>
         </div>

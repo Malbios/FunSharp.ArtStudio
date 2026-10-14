@@ -26,6 +26,7 @@ public sealed class SetService(
     DeviantArtService deviantArtService,
     GenerationQueue queue,
     PromptGenerationQueue promptQueue,
+    PostSuggestionQueue postSuggestions,
     VisionApiKey visionApiKey,
     StudioNotifier notifier,
     TimeProvider clock)
@@ -281,6 +282,8 @@ public sealed class SetService(
 
         set.ReadyToPostAt = clock.GetUtcNow();
         await db.SaveChangesAsync(ct);
+        if (PostSuggestionQueue.NeedsSuggestions(set))
+            postSuggestions.Enqueue(setId);
         await notifier.SetUpdated(setId);
     }
 

@@ -68,6 +68,8 @@ public static class ServiceRegistration
         services.AddSingleton<VisionApiKey>();
         services.AddScoped<TitleSuggester>();
         services.AddScoped<TagSuggester>();
+        services.AddSingleton<PostSuggestionQueue>();
+        services.AddHostedService<PostSuggestionWorker>();
         services.AddSingleton<PromptGenerationQueue>();
         services.AddHostedService<PromptGenerationWorker>();
         return services;

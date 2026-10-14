@@ -14,7 +14,7 @@ public sealed partial class TagSuggester(StudioDbContext db, VisionClient vision
     private const int ConcurrentChecks = 4;
 
     private static readonly string Instruction = EmbeddedText.Load("suggest-tags.txt");
-    private static readonly HashSet<string> DefaultTags = ["digital_art", "made_with_ai"];
+    public static readonly IReadOnlyList<string> DefaultTags = ["digital_art", "made_with_ai"];
     private static readonly char[] Separators = ['\n', '\r', ','];
     private static readonly char[] Decoration = ['#', '"', '\'', '*', '`', '.'];
 

@@ -1,8 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ArtStudio.Server.Api;
+using ArtStudio.Server.Data;
 using ArtStudio.Server.Domain;
 using ArtStudio.Server.Tests.Fakes;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using static ArtStudio.Server.Tests.Fakes.StudioAppFactory;
 
 namespace ArtStudio.Server.Tests;
@@ -308,6 +312,78 @@ public sealed class PostingTests : IDisposable
         _factory.Vision.Answer = "fox";
 
         Assert.Contains("DeviantArt", await ErrorOf(await _client.PostAsync($"/api/sets/{setId}/post/suggest-tags", null)));
+    }
+
+    private async Task<int> CreateSetReadyToMarkAsync(string? title = null, string? tags = null)
+    {
+        var setId = await _factory.CreateSetAsync(_client, "fox");
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Jobs.All(j => j.Status == JobStatus.Completed), "images");
+        var imageId = (await GetSetAsync(_client, setId)).Images.First().Id;
+        (await _client.PostAsJsonAsync($"/api/sets/{setId}/picks", new { imageId })).EnsureSuccessStatusCode();
+        using var scope = _factory.Services.CreateScope();
+        await scope.ServiceProvider.GetRequiredService<StudioDbContext>().PromptSets.Where(s => s.Id == setId)
+            .ExecuteUpdateAsync(s => s.SetProperty(set => set.PostTitle, title).SetProperty(set => set.PostTags, tags));
+        return setId;
+    }
+
+    private async Task<PostDto> PostAfterSuggestionsAsync(int setId)
+    {
+        (await _client.PostAsync($"/api/sets/{setId}/ready", null)).EnsureSuccessStatusCode();
+        await WaitUntilAsync(async () => !(await GetSetAsync(_client, setId)).Post.Suggesting, "suggestions");
+        return (await GetSetAsync(_client, setId)).Post;
+    }
+
+    private async Task PrepareSuggestionsAsync()
+    {
+        await SetVisionApiKeyAsync(_client);
+        await _factory.ConnectDeviantArtAsync();
+        _factory.DeviantArt.KnownTags.Add("ember_fox");
+        _factory.Vision.Answer = "Ember Fox";
+    }
+
+    [Fact]
+    public async Task MarkingReady_SuggestsTheMissingTitleAndTags()
+    {
+        await PrepareSuggestionsAsync();
+        var setId = await CreateSetReadyToMarkAsync(tags: "digital_art #made_with_ai");
+
+        var post = await PostAfterSuggestionsAsync(setId);
+
+        Assert.Equal(("Ember Fox", "digital_art made_with_ai ember_fox"), (post.Title, post.Tags));
+    }
+
+    [Fact]
+    public async Task MarkingReady_KeepsAnExistingTitle()
+    {
+        await PrepareSuggestionsAsync();
+        var setId = await CreateSetReadyToMarkAsync(title: "My Own Title");
+
+        var post = await PostAfterSuggestionsAsync(setId);
+
+        Assert.Equal(("My Own Title", "digital_art made_with_ai ember_fox"), (post.Title, post.Tags));
+    }
+
+    [Fact]
+    public async Task MarkingReady_KeepsExistingTags_AndOnlySuggestsTheTitle()
+    {
+        await PrepareSuggestionsAsync();
+        var setId = await CreateSetReadyToMarkAsync(tags: "digital_art fox");
+
+        var post = await PostAfterSuggestionsAsync(setId);
+
+        Assert.Equal(("Ember Fox", "digital_art fox"), (post.Title, post.Tags));
+        Assert.Empty(_factory.DeviantArt.TagChecks);
+    }
+
+    [Fact]
+    public async Task MarkingReady_WithoutVisionKey_StillMovesTheSet_WithoutSuggestions()
+    {
+        var setId = await CreateSetReadyToMarkAsync();
+
+        var post = await PostAfterSuggestionsAsync(setId);
+
+        Assert.NotNull((await GetSetAsync(_client, setId)).ReadyToPostAt);
+        Assert.Equal((null, null), (post.Title, post.Tags));
     }
 
     [Fact]

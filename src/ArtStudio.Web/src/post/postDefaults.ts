@@ -18,6 +18,14 @@ export function stashDescription(description: string, deviantArtUrl: string | nu
   return `${typed ? `${typed}\n\n` : ''}${INSPIRED_BY}\n`
 }
 
+export function hasOnlyDefaultTags(tags: string) {
+  const defaults = DEFAULT_TAGS.split(' ')
+  return tags
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((tag) => defaults.includes(tag.replace(/^#/, '').toLowerCase()))
+}
+
 /** The tags already in the field, then the suggestions it doesn't have yet. */
 export function withSuggestedTags(tags: string, suggested: string[]) {
   const current = tags.split(/\s+/).filter(Boolean)

@@ -1,6 +1,7 @@
 using ArtStudio.Server.Data;
 using ArtStudio.Server.Domain;
 using ArtStudio.Server.Generation;
+using ArtStudio.Server.Vision;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArtStudio.Server.Api;
@@ -119,7 +120,8 @@ public static class SetEndpoints
             : throw new UserFacingException("That preset has no art style to match.");
     }
 
-    private static async Task<IResult> GetSetAsync(int id, StudioDbContext db, CancellationToken ct)
+    private static async Task<IResult> GetSetAsync(
+        int id, StudioDbContext db, PostSuggestionQueue postSuggestions, CancellationToken ct)
     {
         var set = await db.PromptSets
             .Include(s => s.Images.OrderBy(i => i.Id))
@@ -148,7 +150,7 @@ public static class SetEndpoints
             PromptGenerationDto.From(set),
             set.Images.Select(image => ImageDto.From(image, jobsById[image.GenerationJobId])).ToList(),
             set.Jobs.Select(JobDto.From).ToList(),
-            PostDto.From(set)));
+            PostDto.From(set, postSuggestions.IsSuggesting(set.Id))));
     }
 
     private static async Task<IResult> CreateSetAsync(HttpRequest request, SetService setService, CancellationToken ct)

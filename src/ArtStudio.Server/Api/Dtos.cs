@@ -96,10 +96,12 @@ public sealed record PostDto(
     string? StashItemId,
     DateTimeOffset? StashedAt,
     string? PublishedUrl,
-    DateTimeOffset? PublishedAt)
+    DateTimeOffset? PublishedAt,
+    bool Suggesting)
 {
-    public static PostDto From(PromptSet set) => new(
-        set.PostTitle, set.PostDescription, set.PostTags, set.StashItemId?.ToString(), set.StashedAt, set.PublishedUrl, set.PublishedAt);
+    public static PostDto From(PromptSet set, bool suggesting) => new(
+        set.PostTitle, set.PostDescription, set.PostTags, set.StashItemId?.ToString(), set.StashedAt, set.PublishedUrl, set.PublishedAt,
+        suggesting);
 }
 
 public sealed record MoreImagesRequest(int Count, string? Prompt, string? Resolution);

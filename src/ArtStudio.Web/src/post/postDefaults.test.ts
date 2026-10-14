@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PostDetails } from '../api'
-import { DEFAULT_TAGS, initialPostFields, stashDescription, stashEditorUrl, withSuggestedTags } from './postDefaults'
+import { DEFAULT_TAGS, hasOnlyDefaultTags, initialPostFields, stashDescription, stashEditorUrl, withSuggestedTags } from './postDefaults'
 
 const noPost: PostDetails = {
   title: null,
@@ -10,7 +10,14 @@ const noPost: PostDetails = {
   stashedAt: null,
   publishedUrl: null,
   publishedAt: null,
+  suggesting: false,
 }
+
+it('tells default-only tags from real ones', () => {
+  expect(hasOnlyDefaultTags('')).toBe(true)
+  expect(hasOnlyDefaultTags(' made_with_ai  #Digital_Art ')).toBe(true)
+  expect(hasOnlyDefaultTags('digital_art fox')).toBe(false)
+})
 
 describe('initial post fields', () => {
   it('starts with an empty title and description and the default tags', () => {
