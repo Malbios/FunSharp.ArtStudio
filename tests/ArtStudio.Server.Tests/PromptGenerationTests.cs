@@ -25,7 +25,7 @@ public sealed class PromptGenerationTests : IDisposable
 
     public void Dispose() => _factory.Dispose();
 
-    private async Task<int> CreateUploadDraftAsync()
+    private async Task<int> CreateUploadDraftAsync(byte[]? image = null)
     {
         var form = new MultipartFormDataContent
         {
@@ -35,7 +35,7 @@ public sealed class PromptGenerationTests : IDisposable
             { new StringContent("true"), "draft" },
             { new StringContent("Upload"), "sourceKind" },
         };
-        var file = new ByteArrayContent(SourcePng);
+        var file = new ByteArrayContent(image ?? SourcePng);
         file.Headers.ContentType = new MediaTypeHeaderValue("image/png");
         form.Add(file, "image", "fox.png");
         var response = await _client.PostAsync("/api/sets", form);
@@ -195,6 +195,28 @@ public sealed class PromptGenerationTests : IDisposable
         await WaitForStateAsync(first, PromptGenerationState.Done);
         await WaitForStateAsync(second, PromptGenerationState.Done);
         Assert.Equal(_factory.Vision.Answer, (await GetSetAsync(_client, second)).Prompt);
+    }
+
+    [Fact]
+    public async Task ClickedPrompt_GoesAheadOfWaitingAutomaticOnes_WithoutStoppingTheRunningOne()
+    {
+        byte[] Png(byte marker) => [0x89, 0x50, 0x4E, 0x47, marker];
+        var clicked = await CreateUploadDraftAsync(Png(3));
+        await SetVisionApiKeyAsync(_client);
+        _factory.Vision.HoldAnswers = true;
+        var running = await CreateUploadDraftAsync(Png(1));
+        await WaitForStateAsync(running, PromptGenerationState.Running);
+        var waiting = await CreateUploadDraftAsync(Png(2));
+
+        (await GeneratePromptAsync(clicked)).EnsureSuccessStatusCode();
+        _factory.Vision.HoldAnswers = false;
+        await WaitForStateAsync(waiting, PromptGenerationState.Done);
+
+        Assert.Equal(PromptGenerationState.Done, await StateAsync(running));
+        Assert.Equal(PromptGenerationState.Done, await StateAsync(clicked));
+        Assert.Equal<byte>([1, 3, 2], _factory.Vision.Requests.Select(request =>
+            Convert.FromBase64String(request.Body["messages"]![0]!["content"]![1]!["image_url"]!["url"]!.GetValue<string>()
+                .Split(',')[1])[^1]));
     }
 
     [Fact]

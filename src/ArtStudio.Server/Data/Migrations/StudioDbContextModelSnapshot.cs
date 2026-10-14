@@ -263,6 +263,9 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<long?>("PromptGenerationQueuedAt")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("PromptGenerationRequested")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("PromptGenerationTruncated")
                         .HasColumnType("INTEGER");
 

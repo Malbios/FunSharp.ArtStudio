@@ -40,6 +40,8 @@ public class PromptSet
     public DateTimeOffset? ArchivedAt { get; set; }
     public PromptGenerationState PromptGeneration { get; set; }
     public DateTimeOffset? PromptGenerationQueuedAt { get; set; }
+    /// <summary>Clicked for rather than queued automatically for a new draft; such prompts go first.</summary>
+    public bool PromptGenerationRequested { get; set; }
     public string? PromptGenerationError { get; set; }
     public bool PromptGenerationTruncated { get; set; }
     public string? GeneratedPrompt { get; set; }

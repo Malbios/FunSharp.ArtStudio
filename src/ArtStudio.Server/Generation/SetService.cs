@@ -145,7 +145,7 @@ public sealed class SetService(
         await EnsureVisionCanStartAsync(set, ct);
 
         SetModification(set, null);
-        await MarkPromptGenerationQueuedAsync(set, images, ct);
+        await MarkPromptGenerationQueuedAsync(set, images, requested: true, ct);
     }
 
     public async Task QueuePromptModificationAsync(
@@ -163,7 +163,7 @@ public sealed class SetService(
         await EnsureVisionCanStartAsync(set, ct);
 
         SetModification(set, new(instructions.Trim(), prompt.Trim(), paragraphIndex, section?.Trim()));
-        await MarkPromptGenerationQueuedAsync(set, images, ct);
+        await MarkPromptGenerationQueuedAsync(set, images, requested: true, ct);
     }
 
     /// <summary>Queues every failed draft prompt request again, generations and modifications alike.</summary>
@@ -179,6 +179,7 @@ public sealed class SetService(
         {
             set.PromptGeneration = PromptGenerationState.Queued;
             set.PromptGenerationQueuedAt = now;
+            set.PromptGenerationRequested = true;
             set.PromptGenerationError = null;
             set.PromptGenerationTruncated = false;
         }
@@ -240,15 +241,16 @@ public sealed class SetService(
     private async Task QueuePromptGenerationIfKeySetAsync(PromptSet set, CancellationToken ct)
     {
         if (await visionApiKey.HasKeyAsync(ct))
-            await MarkPromptGenerationQueuedAsync(set, images: null, ct);
+            await MarkPromptGenerationQueuedAsync(set, images: null, requested: false, ct);
         else
             await notifier.SetUpdated(set.Id);
     }
 
-    private async Task MarkPromptGenerationQueuedAsync(PromptSet set, ImagesToQueue? images, CancellationToken ct)
+    private async Task MarkPromptGenerationQueuedAsync(PromptSet set, ImagesToQueue? images, bool requested, CancellationToken ct)
     {
         set.PromptGeneration = PromptGenerationState.Queued;
         set.PromptGenerationQueuedAt = clock.GetUtcNow();
+        set.PromptGenerationRequested = requested;
         set.PromptGenerationError = null;
         set.PromptGenerationTruncated = false;
         set.ImagesAfterPromptCount = images?.Count;
