@@ -13,3 +13,7 @@ export function generateActionLabel(
 export function isPromptPending({ state }: Pick<PromptGeneration, 'state'>): boolean {
   return state === 'Queued' || state === 'Running'
 }
+
+export function isPromptBeingModified(generation: Pick<PromptGeneration, 'state' | 'kind'>): boolean {
+  return generation.kind === 'Modify' && isPromptPending(generation)
+}

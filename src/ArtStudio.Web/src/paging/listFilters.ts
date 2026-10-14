@@ -1,11 +1,23 @@
 import type { SetSummary } from '../api'
-import { isPromptPending } from '../prompt/generateAction'
+import { isPromptBeingModified, isPromptPending } from '../prompt/generateAction'
 import type { ListFilter } from './useListFilter'
 
 export const SET_FILTERS: ListFilter<SetSummary>[] = [
   { key: 'idle', label: 'Not generating', matches: (set) => !set.hasActiveJob },
   { key: 'unpicked', label: 'No picks', matches: (set) => set.pickedCount === 0, excludes: ['picked'] },
   { key: 'picked', label: 'Has picks', matches: (set) => set.pickedCount > 0, excludes: ['unpicked'] },
+  {
+    key: 'modifying',
+    label: 'Prompt being modified',
+    matches: (set) => isPromptBeingModified(set.promptGeneration),
+    excludes: ['unmodifying'],
+  },
+  {
+    key: 'unmodifying',
+    label: 'Prompt not being modified',
+    matches: (set) => !isPromptBeingModified(set.promptGeneration),
+    excludes: ['modifying'],
+  },
 ]
 
 export const POST_FILTERS: ListFilter<SetSummary>[] = [

@@ -6,6 +6,8 @@ import { SET_FILTERS } from '../paging/listFilters'
 import { Pager } from '../paging/Pager'
 import { useListFilter } from '../paging/useListFilter'
 import { usePagedItems } from '../paging/usePagedItems'
+import { isPromptBeingModified } from '../prompt/generateAction'
+import { PROMPT_BADGES } from '../prompt/promptBadges'
 import { useReturnState } from './returnTo'
 
 export function SetsPage() {
@@ -36,6 +38,9 @@ export function SetsPage() {
       <div className="set-grid">
         {paged.pageItems.map((set) => {
           const thumbnail = set.previewImageUrl ?? set.sourceImageUrl
+          const promptBadge = isPromptBeingModified(set.promptGeneration)
+            ? PROMPT_BADGES.Modify[set.promptGeneration.state]
+            : undefined
           return (
             <Link key={set.id} to={`/sets/${set.id}`} state={returnState} className="panel set-card">
               {thumbnail ? <img className="set-card-image" src={thumbnail} alt="" loading="lazy" /> : <div className="set-card-image" />}
@@ -45,6 +50,7 @@ export function SetsPage() {
                   <span>#{set.id}</span>
                   <span>{set.imageCount} images</span>
                   {set.hasActiveJob && <span className="badge status-Running">generating</span>}
+                  {promptBadge && <span className={`badge status-${promptBadge.status}`}>{promptBadge.label}</span>}
                   {set.hasFailedJob && <span className="badge status-Failed">failed</span>}
                   {set.pickedCount > 0 && <span className="badge status-Completed">{set.pickedCount} picked</span>}
                 </div>

@@ -1,14 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import type { PromptGenerationState, SetSummary } from '../api'
+import type { PromptGenerationKind, PromptGenerationState, SetSummary } from '../api'
 import { DRAFT_FILTERS, POST_FILTERS, SET_FILTERS } from './listFilters'
 
-const summary = (overrides: Partial<SetSummary> & { state?: PromptGenerationState }): SetSummary =>
+const summary = (
+  overrides: Partial<SetSummary> & { state?: PromptGenerationState; kind?: PromptGenerationKind },
+): SetSummary =>
   ({
     prompt: '',
     hasActiveJob: false,
     pickedCount: 0,
     ...overrides,
-    promptGeneration: { state: overrides.state ?? 'None', kind: 'Generate', error: null, truncated: false, text: null },
+    promptGeneration: {
+      state: overrides.state ?? 'None',
+      kind: overrides.kind ?? 'Generate',
+      error: null,
+      truncated: false,
+      text: null,
+    },
   }) as SetSummary
 
 const matches = (filters: typeof SET_FILTERS, key: string, item: SetSummary) =>
@@ -28,6 +36,22 @@ describe('set filters', () => {
   it('shows only sets with picked images when with picks', () => {
     expect(matches(SET_FILTERS, 'picked', summary({ pickedCount: 1 }))).toBe(true)
     expect(matches(SET_FILTERS, 'picked', summary({ pickedCount: 0 }))).toBe(false)
+  })
+
+  it('splits sets by whether their prompt is waiting for or being modified', () => {
+    for (const state of ['Queued', 'Running'] as const) {
+      expect(matches(SET_FILTERS, 'modifying', summary({ kind: 'Modify', state }))).toBe(true)
+      expect(matches(SET_FILTERS, 'unmodifying', summary({ kind: 'Modify', state }))).toBe(false)
+    }
+    const notModifying = [
+      { kind: 'Modify', state: 'Done' },
+      { kind: 'Modify', state: 'Failed' },
+      { kind: 'Generate', state: 'Running' },
+    ] as const
+    for (const generation of notModifying) {
+      expect(matches(SET_FILTERS, 'modifying', summary(generation))).toBe(false)
+      expect(matches(SET_FILTERS, 'unmodifying', summary(generation))).toBe(true)
+    }
   })
 })
 

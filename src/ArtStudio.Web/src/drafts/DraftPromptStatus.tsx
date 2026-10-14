@@ -1,28 +1,12 @@
 import { useState } from 'react'
-import { api, type PromptGenerationKind, type PromptGenerationState, type SetSummary } from '../api'
+import { api, type SetSummary } from '../api'
 import { generateActionLabel } from '../prompt/generateAction'
-
-type Badges = Partial<Record<PromptGenerationState, { label: string; status: string }>>
-
-const BADGES: Record<PromptGenerationKind, Badges> = {
-  Generate: {
-    Queued: { label: 'prompt waiting', status: 'Queued' },
-    Running: { label: 'generating prompt…', status: 'Running' },
-    Done: { label: 'prompt ready', status: 'Completed' },
-    Failed: { label: 'prompt failed', status: 'Failed' },
-  },
-  Modify: {
-    Queued: { label: 'modification waiting', status: 'Queued' },
-    Running: { label: 'modifying prompt…', status: 'Running' },
-    Done: { label: 'prompt modified', status: 'Completed' },
-    Failed: { label: 'modifying failed', status: 'Failed' },
-  },
-}
+import { PROMPT_BADGES } from '../prompt/promptBadges'
 
 export function DraftPromptStatus({ draft, onError }: { draft: SetSummary; onError: (message: string) => void }) {
   const [busy, setBusy] = useState(false)
   const { state, kind, error, truncated } = draft.promptGeneration
-  const badge = BADGES[kind][state]
+  const badge = PROMPT_BADGES[kind][state]
   const action = generateActionLabel(draft.promptGeneration, draft.prompt.trim() !== '')
 
   async function generate() {
