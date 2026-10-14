@@ -58,7 +58,7 @@ public sealed partial class DeviantArtPosting(
 
         using var form = new MultipartFormDataContent { { new StringContent(title), "title" } };
         if (description.Length > 0)
-            form.Add(new StringContent(description), "artist_comments");
+            form.Add(new StringContent(DescriptionHtml(description)), "artist_comments");
         foreach (var tag in tags)
             form.Add(new StringContent(tag), "tags[]");
         form.Add(new StringContent("true"), "is_ai_generated");
@@ -157,6 +157,10 @@ public sealed partial class DeviantArtPosting(
 
     [GeneratedRegex("^[A-Za-z0-9_]+$")]
     private static partial Regex TagPattern();
+
+    // DeviantArt descriptions are HTML with <br /> line breaks; its editor could not read plain text line breaks.
+    private static string DescriptionHtml(string description) =>
+        WebUtility.HtmlEncode(description).ReplaceLineEndings("<br />");
 
     // The tag autocomplete misses common exact tags, so a tag counts as known when any deviation uses it.
     public async Task<bool> IsKnownTagAsync(string tag, CancellationToken ct)

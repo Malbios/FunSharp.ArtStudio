@@ -81,11 +81,11 @@ public sealed class PostingTests : IDisposable
         await _factory.ConnectDeviantArtAsync();
         var (setId, picked) = await CreateReadySetAsync(2);
 
-        (await StashAsync(setId, " Ember Fox ", "A fox at dawn.\n\nInspired by\n", "digital_art  #made_with_ai digital_art")).EnsureSuccessStatusCode();
+        (await StashAsync(setId, " Ember Fox ", "A fox at <dawn> & dusk.\r\n\nInspired by\n", "digital_art  #made_with_ai digital_art")).EnsureSuccessStatusCode();
 
         var parts = Assert.Single(_factory.DeviantArt.StashSubmissions);
         Assert.Equal(
-            ["title=Ember Fox", "artist_comments=A fox at dawn.\n\nInspired by\n", "tags[]=digital_art", "tags[]=made_with_ai",
+            ["title=Ember Fox", "artist_comments=A fox at &lt;dawn&gt; &amp; dusk.<br /><br />Inspired by<br />", "tags[]=digital_art", "tags[]=made_with_ai",
                 "is_ai_generated=true", "noai=false"],
             parts.Where(p => p.File is null).Select(p => $"{p.Name}={p.Value}"));
         var file = Assert.Single(parts, p => p.File is not null);
@@ -95,7 +95,7 @@ public sealed class PostingTests : IDisposable
 
         var post = (await GetSetAsync(_client, setId)).Post;
         Assert.Equal(FakeDeviantArt.StashItemId.ToString(), post.StashItemId);
-        Assert.Equal(("Ember Fox", "A fox at dawn.\n\nInspired by\n", "digital_art made_with_ai"), (post.Title, post.Description, post.Tags));
+        Assert.Equal(("Ember Fox", "A fox at <dawn> & dusk.\r\n\nInspired by\n", "digital_art made_with_ai"), (post.Title, post.Description, post.Tags));
         Assert.NotNull(post.StashedAt);
         var summary = (await _client.GetFromJsonAsync<JsonElement>("/api/sets?stage=ready")).EnumerateArray().Single();
         Assert.True(summary.GetProperty("stashed").GetBoolean());
