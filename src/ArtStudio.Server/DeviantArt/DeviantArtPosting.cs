@@ -158,6 +158,13 @@ public sealed partial class DeviantArtPosting(
     [GeneratedRegex("^[A-Za-z0-9_]+$")]
     private static partial Regex TagPattern();
 
+    // The tag autocomplete misses common exact tags, so a tag counts as known when any deviation uses it.
+    public async Task<bool> IsKnownTagAsync(string tag, CancellationToken ct)
+    {
+        var page = await SendAsync(HttpMethod.Get, $"browse/tags?tag={Uri.EscapeDataString(tag)}&limit=1&mature_content=true", null, ct);
+        return page["results"]?.AsArray().Count > 0;
+    }
+
     public async Task<IReadOnlyList<Gallery>> GalleriesAsync(CancellationToken ct)
     {
         var settings = await SettingsStore.LoadAsync(db, paths, ct);

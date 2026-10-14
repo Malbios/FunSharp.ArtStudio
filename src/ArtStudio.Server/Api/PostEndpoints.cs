@@ -7,6 +7,8 @@ public sealed record MatureGalleriesRequest(IReadOnlyList<string> FolderIds);
 
 public sealed record SuggestedTitleDto(string Title);
 
+public sealed record SuggestedTagsDto(IReadOnlyList<string> Tags);
+
 public static class PostEndpoints
 {
     public static void MapPostEndpoints(this IEndpointRouteBuilder app)
@@ -21,6 +23,8 @@ public static class PostEndpoints
         var post = app.MapGroup("/api/sets/{id:int}/post");
         post.MapPost("suggest-title", async (int id, TitleSuggester titles, CancellationToken ct) =>
             new SuggestedTitleDto(await titles.SuggestAsync(id, ct)));
+        post.MapPost("suggest-tags", async (int id, TagSuggester tags, CancellationToken ct) =>
+            new SuggestedTagsDto(await tags.SuggestAsync(id, ct)));
         post.MapPost("stash", async (int id, StashRequest request, DeviantArtPosting posting, CancellationToken ct) =>
             await posting.StashAsync(id, request, ct));
         post.MapPost("publish", async (int id, PublishRequest request, DeviantArtPosting posting, CancellationToken ct) =>

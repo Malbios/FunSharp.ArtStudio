@@ -18,6 +18,13 @@ export function stashDescription(description: string, deviantArtUrl: string | nu
   return `${typed ? `${typed}\n\n` : ''}${INSPIRED_BY}\n`
 }
 
+/** The tags already in the field, then the suggestions it doesn't have yet. */
+export function withSuggestedTags(tags: string, suggested: string[]) {
+  const current = tags.split(/\s+/).filter(Boolean)
+  const known = new Set(current.map((tag) => tag.replace(/^#/, '').toLowerCase()))
+  return [...current, ...suggested.filter((tag) => !known.has(tag.toLowerCase()))].join(' ')
+}
+
 export function initialPostFields(set: Pick<SetDetail, 'post'>) {
   return {
     title: set.post.title ?? '',

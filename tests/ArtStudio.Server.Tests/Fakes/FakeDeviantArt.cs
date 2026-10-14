@@ -39,8 +39,12 @@ public sealed class FakeDeviantArt : HttpMessageHandler
     /// <summary>Each publication's form fields in the order sent, as "name=value".</summary>
     public List<List<string>> Publications { get; } = [];
 
-    /// <summary>When set, every gallery and Stash call answers with this instead.</summary>
+    /// <summary>When set, every gallery, Stash and tag call answers with this instead.</summary>
     public (HttpStatusCode Status, string Body)? ApiFailure { get; set; }
+
+    /// <summary>Tags that at least one deviation uses.</summary>
+    public HashSet<string> KnownTags { get; } = [];
+    public List<string> TagChecks { get; } = [];
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
@@ -61,10 +65,19 @@ public sealed class FakeDeviantArt : HttpMessageHandler
         if (uri.AbsolutePath == "/api/v1/oauth2/user/whoami")
             return FakeHttpHandler.Json($$"""{ "username": "{{Username}}" }""");
 
-        if (uri.AbsolutePath.StartsWith("/api/v1/oauth2/gallery/") || uri.AbsolutePath.StartsWith("/api/v1/oauth2/stash/"))
+        if (uri.AbsolutePath.StartsWith("/api/v1/oauth2/gallery/") || uri.AbsolutePath.StartsWith("/api/v1/oauth2/stash/")
+            || uri.AbsolutePath == "/api/v1/oauth2/browse/tags")
         {
             if (ApiFailure is { } failure)
                 return FakeHttpHandler.Json(failure.Body, failure.Status);
+            if (uri.AbsolutePath == "/api/v1/oauth2/browse/tags")
+            {
+                var tag = HttpUtility.ParseQueryString(uri.Query)["tag"]!;
+                lock (TagChecks)
+                    TagChecks.Add(uri.PathAndQuery);
+                var results = KnownTags.Contains(tag) ? """[{ "deviationid": "DEV-T" }]""" : "[]";
+                return FakeHttpHandler.Json($$"""{ "has_more": false, "results": {{results}} }""");
+            }
             if (uri.AbsolutePath == "/api/v1/oauth2/gallery/folders")
                 return GalleryPage(int.Parse(HttpUtility.ParseQueryString(uri.Query)["offset"] ?? "0"));
             if (uri.AbsolutePath == "/api/v1/oauth2/stash/submit")

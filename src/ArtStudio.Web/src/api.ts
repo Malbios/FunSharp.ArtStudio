@@ -280,6 +280,7 @@ export const api = {
   saveMatureGalleries: (folderIds: string[]) =>
     request<Gallery[]>('PUT', '/api/deviantart/mature-galleries', { folderIds }),
   suggestTitle: (setId: number) => request<{ title: string }>('POST', `/api/sets/${setId}/post/suggest-title`),
+  suggestTags: (setId: number) => request<{ tags: string[] }>('POST', `/api/sets/${setId}/post/suggest-tags`),
   stash: (setId: number, title: string, description: string, tags: string) =>
     request<void>('POST', `/api/sets/${setId}/post/stash`, { title, description, tags }),
   publish: (setId: number, galleryId: string, isMature: boolean, matureLevel: MatureLevel | null) =>

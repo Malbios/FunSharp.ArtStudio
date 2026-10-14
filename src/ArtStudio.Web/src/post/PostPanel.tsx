@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { api, type Gallery, type MatureLevel, type SetDetail } from '../api'
-import { initialPostFields, MAX_TITLE_LENGTH, stashDescription, stashEditorUrl } from './postDefaults'
+import { initialPostFields, MAX_TITLE_LENGTH, stashDescription, stashEditorUrl, withSuggestedTags } from './postDefaults'
 
 interface PostPanelProps {
   set: SetDetail
@@ -26,6 +26,7 @@ export function PostPanel({ set, onChanged, onPublished }: PostPanelProps) {
 function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>) {
   const [fields, setFields] = useState(() => initialPostFields(set))
   const [suggesting, setSuggesting] = useState(false)
+  const [suggestingTags, setSuggestingTags] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string>()
 
@@ -39,6 +40,19 @@ function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>
       setError(`No title suggestion: ${(failure as Error).message}`)
     } finally {
       setSuggesting(false)
+    }
+  }
+
+  async function suggestTags() {
+    setSuggestingTags(true)
+    setError(undefined)
+    try {
+      const { tags } = await api.suggestTags(set.id)
+      setFields((current) => ({ ...current, tags: withSuggestedTags(current.tags, tags) }))
+    } catch (failure) {
+      setError(`No tag suggestions: ${(failure as Error).message}`)
+    } finally {
+      setSuggestingTags(false)
     }
   }
 
@@ -83,10 +97,15 @@ function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>
         <span>Description{set.deviantArtUrl ? ' ("Inspired by" is added at the end on upload)' : ''}</span>
         <textarea rows={3} value={fields.description} onChange={(e) => setFields({ ...fields, description: e.target.value })} />
       </label>
-      <label className="field">
+      <div className="field">
         <span>Tags (separated by spaces; letters, digits and _ only)</span>
-        <input value={fields.tags} onChange={(e) => setFields({ ...fields, tags: e.target.value })} />
-      </label>
+        <div className="post-title-row">
+          <input aria-label="Tags" value={fields.tags} onChange={(e) => setFields({ ...fields, tags: e.target.value })} />
+          <button type="button" disabled={suggestingTags} onClick={() => void suggestTags()}>
+            {suggestingTags ? 'Suggesting…' : 'Suggest tags'}
+          </button>
+        </div>
+      </div>
       {error && <p className="error">{error}</p>}
       <button type="submit" className="success" disabled={uploading || title.length === 0}>
         {uploading ? 'Uploading…' : 'Upload #1 to Stash'}

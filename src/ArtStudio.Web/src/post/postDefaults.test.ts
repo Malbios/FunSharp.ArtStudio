@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PostDetails } from '../api'
-import { DEFAULT_TAGS, initialPostFields, stashDescription, stashEditorUrl } from './postDefaults'
+import { DEFAULT_TAGS, initialPostFields, stashDescription, stashEditorUrl, withSuggestedTags } from './postDefaults'
 
 const noPost: PostDetails = {
   title: null,
@@ -21,6 +21,13 @@ describe('initial post fields', () => {
     const post = { ...noPost, title: 'Ember Fox', description: 'A fox.', tags: 'fox' }
     expect(initialPostFields({ post })).toEqual({ title: 'Ember Fox', description: 'A fox.', tags: 'fox' })
   })
+})
+
+it('adds suggested tags after the current ones, skipping those already there', () => {
+  expect(withSuggestedTags(' digital_art  #Fox made_with_ai ', ['fox', 'lantern', 'digital_art', 'snow'])).toBe(
+    'digital_art #Fox made_with_ai lantern snow',
+  )
+  expect(withSuggestedTags('', ['fox'])).toBe('fox')
 })
 
 describe('stash description', () => {

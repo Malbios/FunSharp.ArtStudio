@@ -1,0 +1,7 @@
+Here is the prompt an artwork was generated from:
+
+<prompt>
+{prompt}
+</prompt>
+
+Suggest 20 DeviantArt tags for this artwork, covering its subject, setting, mood and art style. Prefer common tags that people search for. Write each tag in lowercase, using only letters, digits and underscores, without a leading #. Do not suggest digital_art or made_with_ai. Return only the tags, one per line, without numbering or commentary.

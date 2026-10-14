@@ -265,6 +265,59 @@ public sealed class PostingTests : IDisposable
         Assert.False(_factory.Vision.Requests.Last().Body["chat_template_kwargs"]!["enable_thinking"]!.GetValue<bool>());
     }
 
+    private async Task<string[]> SuggestTagsAsync(int setId)
+    {
+        var response = await _client.PostAsync($"/api/sets/{setId}/post/suggest-tags", null);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("tags").EnumerateArray()
+            .Select(tag => tag.GetString()!).ToArray();
+    }
+
+    [Fact]
+    public async Task SuggestTags_KeepsOnlyTagsDeviantArtKnows_InTheModelsOrder()
+    {
+        await SetVisionApiKeyAsync(_client);
+        await _factory.ConnectDeviantArtAsync();
+        var setId = await _factory.CreateSetAsync(_client, "A fox guarding a lantern in the snow.");
+        _factory.DeviantArt.KnownTags.UnionWith(["fox", "lantern", "winter_night", "snow", "digital_art"]);
+        _factory.Vision.Answer = "1. #Fox\n2. \"lantern\"\n- **Winter night**\nnotarealtag, snow, fox\ndigital_art\nab";
+
+        Assert.Equal(["fox", "lantern", "winter_night", "snow"], await SuggestTagsAsync(setId));
+        Assert.False(_factory.Vision.Requests.Last().Body["chat_template_kwargs"]!["enable_thinking"]!.GetValue<bool>());
+        Assert.Contains("/api/v1/oauth2/browse/tags?tag=notarealtag&limit=1&mature_content=true", _factory.DeviantArt.TagChecks);
+    }
+
+    [Fact]
+    public async Task SuggestTags_ReturnsAtMostTenTags()
+    {
+        await SetVisionApiKeyAsync(_client);
+        await _factory.ConnectDeviantArtAsync();
+        var setId = await _factory.CreateSetAsync(_client, "fox");
+        var tags = Enumerable.Range(1, 15).Select(n => $"tag{n:00}").ToArray();
+        _factory.DeviantArt.KnownTags.UnionWith(tags);
+        _factory.Vision.Answer = string.Join('\n', tags);
+
+        Assert.Equal(tags.Take(10), await SuggestTagsAsync(setId));
+    }
+
+    [Fact]
+    public async Task SuggestTags_WithoutDeviantArtLogin_SaysSo()
+    {
+        await SetVisionApiKeyAsync(_client);
+        var setId = await _factory.CreateSetAsync(_client, "fox");
+        _factory.Vision.Answer = "fox";
+
+        Assert.Contains("DeviantArt", await ErrorOf(await _client.PostAsync($"/api/sets/{setId}/post/suggest-tags", null)));
+    }
+
+    [Fact]
+    public async Task SuggestTags_WithoutVisionKey_AsksForIt()
+    {
+        var setId = await _factory.CreateSetAsync(_client, "fox");
+
+        Assert.Contains("vision API key", await ErrorOf(await _client.PostAsync($"/api/sets/{setId}/post/suggest-tags", null)));
+    }
+
     [Fact]
     public async Task SuggestTitle_WithoutVisionKey_AsksForIt()
     {
