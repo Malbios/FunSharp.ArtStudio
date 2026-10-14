@@ -27,10 +27,7 @@ public sealed class VisionClient(IHttpClientFactory httpClientFactory, IConfigur
         string apiKey, byte[] image, string contentType, string instruction, CancellationToken ct) =>
         AskAsync(apiKey, new JsonArray(TextPart(instruction), ImagePart(image, contentType)), thinking: true, ct);
 
-    public Task<VisionAnswer> CompleteAsync(string apiKey, string instruction, CancellationToken ct) =>
-        AskAsync(apiKey, new JsonArray(TextPart(instruction)), thinking: true, ct);
-
-    // A thinking model spends minutes reasoning over a one-line answer, and can use up the token
+    // A thinking model spends minutes reasoning over a short answer, and can use up the token
     // budget before writing it, which comes back as an empty answer.
     public Task<VisionAnswer> CompleteWithoutThinkingAsync(string apiKey, string instruction, CancellationToken ct) =>
         AskAsync(apiKey, new JsonArray(TextPart(instruction)), thinking: false, ct);

@@ -59,6 +59,7 @@ public sealed class PromptModifyTests : IDisposable
         var job = set.Jobs.MaxBy(j => j.Id)!;
         Assert.Equal(("A fox at night.", "Portrait", 3), (job.Prompt, job.Resolution, job.RequestedCount));
         Assert.Equal("A fox at night.", set.Prompt);
+        Assert.False(_factory.Vision.Requests.Last().Body["chat_template_kwargs"]!["enable_thinking"]!.GetValue<bool>());
     }
 
     [Fact]

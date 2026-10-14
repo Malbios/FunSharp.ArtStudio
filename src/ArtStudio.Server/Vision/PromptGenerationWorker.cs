@@ -130,7 +130,7 @@ public sealed class PromptGenerationWorker(
     private async Task<(VisionAnswer Answer, string Prompt)> ModifyAsync(
         string key, string basePrompt, int? paragraphIndex, string? section, string instructions, CancellationToken ct)
     {
-        var answer = await visionClient.CompleteAsync(
+        var answer = await visionClient.CompleteWithoutThinkingAsync(
             key, PromptModifier.BuildInstruction(basePrompt, paragraphIndex, section, instructions), ct);
         return (answer, PromptModifier.Apply(basePrompt, paragraphIndex, answer.Text));
     }
