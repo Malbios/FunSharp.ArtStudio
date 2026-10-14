@@ -62,12 +62,15 @@ public static class SetEndpoints
                 .Where(s => !s.IsDraft && s.ReadyToPostAt == null && s.ArchivedAt == null)
                 .OrderBy(s => s.Id),
             "ready" => db.PromptSets
-                .Where(s => s.ReadyToPostAt != null && s.ArchivedAt == null)
+                .Where(s => s.ReadyToPostAt != null && s.PublishedAt == null && s.ArchivedAt == null)
                 .OrderBy(s => s.ReadyToPostAt).ThenBy(s => s.Id),
+            "published" => db.PromptSets
+                .Where(s => s.PublishedAt != null && s.ArchivedAt == null)
+                .OrderByDescending(s => s.PublishedAt).ThenByDescending(s => s.Id),
             "archived" => db.PromptSets
                 .Where(s => s.ArchivedAt != null)
                 .OrderByDescending(s => s.ArchivedAt).ThenByDescending(s => s.Id),
-            _ => throw new UserFacingException($"Unknown stage '{stage}'. Use 'draft', 'working', 'ready' or 'archived'."),
+            _ => throw new UserFacingException($"Unknown stage '{stage}'. Use 'draft', 'working', 'ready', 'published' or 'archived'."),
         };
         if (preset is int presetId)
         {

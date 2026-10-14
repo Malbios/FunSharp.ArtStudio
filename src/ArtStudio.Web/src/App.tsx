@@ -9,6 +9,7 @@ import { useLoad } from './live/useLoad'
 import { NewSetPage } from './newset/NewSetPage'
 import { isDraftReady } from './paging/listFilters'
 import { PostPage } from './post/PostPage'
+import { PublishedPage } from './post/PublishedPage'
 import { QueuePage } from './queue/QueuePage'
 import { SetDetailPage } from './sets/SetDetailPage'
 import { SetsPage } from './sets/SetsPage'
@@ -120,6 +121,7 @@ export default function App() {
           <QueueNavLink />
           <SetsNavLink />
           <StageNavLink stage="ready" to="/post" label="Post" />
+          <NavLink to="/published">Published</NavLink>
           <NavLink to="/archive">Archive</NavLink>
           <NavLink to="/settings">Settings</NavLink>
         </nav>
@@ -133,6 +135,7 @@ export default function App() {
           <Route path="/sets" element={<SetsPage />} />
           <Route path="/sets/:id" element={<SetDetailPage />} />
           <Route path="/post" element={<PostPage />} />
+          <Route path="/published" element={<PublishedPage />} />
           <Route path="/archive" element={<ArchivePage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>

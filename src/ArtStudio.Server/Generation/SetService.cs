@@ -387,6 +387,7 @@ public sealed class SetService(
 
         set.ArchivedAt = clock.GetUtcNow();
         await db.SaveChangesAsync(ct);
+        ExtraPicksFolder.Delete(paths, setId);
         await notifier.SetUpdated(setId);
     }
 

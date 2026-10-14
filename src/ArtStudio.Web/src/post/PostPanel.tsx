@@ -127,9 +127,31 @@ function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>
   )
 }
 
+function ExtraPicksButton({ set, onError }: { set: SetDetail; onError: (message: string | undefined) => void }) {
+  const [folder, setFolder] = useState<string>()
+  const extraPicks = set.pickedImageIds.length - 1
+
+  async function openExtraPicks() {
+    onError(undefined)
+    try {
+      setFolder((await api.openExtraPicks(set.id)).folder)
+    } catch (failure) {
+      onError((failure as Error).message)
+    }
+  }
+
+  return (
+    <>
+      <button type="button" onClick={() => void openExtraPicks()}>
+        Open picks #2{extraPicks > 1 ? `–#${extraPicks + 1}` : ''} folder
+      </button>
+      {folder && <span className="hint"> Opened {folder}</span>}
+    </>
+  )
+}
+
 function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & { stashItemId: string }) {
   const [error, setError] = useState<string>()
-  const [folder, setFolder] = useState<string>()
   const [linkCopied, setLinkCopied] = useState(false)
   const extraPicks = set.pickedImageIds.length - 1
 
@@ -140,15 +162,6 @@ function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & 
       setLinkCopied(true)
     } catch {
       setError('Could not copy the inspiration link to the clipboard.')
-    }
-  }
-
-  async function openExtraPicks() {
-    setError(undefined)
-    try {
-      setFolder((await api.openExtraPicks(set.id)).folder)
-    } catch (failure) {
-      setError((failure as Error).message)
     }
   }
 
@@ -175,10 +188,7 @@ function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & 
       <ol className="post-steps">
         {extraPicks > 0 && (
           <li>
-            <button type="button" onClick={() => void openExtraPicks()}>
-              Open picks #2{extraPicks > 1 ? `–#${extraPicks + 1}` : ''} folder
-            </button>
-            {folder && <span className="hint"> Opened {folder}</span>}
+            <ExtraPicksButton set={set} onError={setError} />
           </li>
         )}
         <li>
@@ -279,14 +289,20 @@ function PublishForm({ set, onPublished }: Pick<PostPanelProps, 'set' | 'onPubli
 }
 
 function Published({ set }: Pick<PostPanelProps, 'set'>) {
+  const [error, setError] = useState<string>()
+
   return (
-    <p>
-      <strong>{set.post.title}</strong> was published
-      {set.post.publishedAt && ` on ${new Date(set.post.publishedAt).toLocaleString()}`}:{' '}
-      <a href={set.post.publishedUrl!} target="_blank" rel="noreferrer">
-        view on DeviantArt
-      </a>
-      .
-    </p>
+    <div>
+      <p>
+        <strong>{set.post.title}</strong> was published
+        {set.post.publishedAt && ` on ${new Date(set.post.publishedAt).toLocaleString()}`}:{' '}
+        <a href={set.post.publishedUrl!} target="_blank" rel="noreferrer">
+          view on DeviantArt
+        </a>
+        .
+      </p>
+      {set.pickedImageIds.length > 1 && <ExtraPicksButton set={set} onError={setError} />}
+      {error && <p className="error">{error}</p>}
+    </div>
   )
 }

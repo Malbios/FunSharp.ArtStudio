@@ -71,6 +71,9 @@ public sealed class PostingTests : IDisposable
         return (setId, picked);
     }
 
+    private async Task<JsonElement[]> SetsInStageAsync(string stage) =>
+        (await _client.GetFromJsonAsync<JsonElement>($"/api/sets?stage={stage}")).EnumerateArray().ToArray();
+
     private Task<HttpResponseMessage> StashAsync(int setId, string title = "Ember Fox", string? description = "Inspired by a fox",
         string? tags = "digital_art made_with_ai") =>
         _client.PostAsJsonAsync($"/api/sets/{setId}/post/stash", new { title, description, tags });
@@ -157,7 +160,7 @@ public sealed class PostingTests : IDisposable
         _client.PostAsJsonAsync($"/api/sets/{setId}/post/publish", new { galleryId, isMature, matureLevel });
 
     [Fact]
-    public async Task Publish_SendsTheOldAppsFields_ArchivesTheSetAndCleansUp()
+    public async Task Publish_SendsTheOldAppsFields_AndMovesTheSetToPublished()
     {
         await _factory.ConnectDeviantArtAsync();
         var (setId, _) = await CreateReadySetAsync(2);
@@ -177,12 +180,35 @@ public sealed class PostingTests : IDisposable
         var set = await GetSetAsync(_client, setId);
         Assert.Equal(FakeDeviantArt.PublishedUrl, set.Post.PublishedUrl);
         Assert.NotNull(set.Post.PublishedAt);
-        Assert.NotNull(set.ArchivedAt);
-        Assert.False(Directory.Exists(_factory.FolderOpener.Opened.Single()));
-        var archived = (await _client.GetFromJsonAsync<JsonElement>("/api/sets?stage=archived")).EnumerateArray().Single();
-        Assert.Equal(FakeDeviantArt.PublishedUrl, archived.GetProperty("publishedUrl").GetString());
+        Assert.Null(set.ArchivedAt);
+        Assert.True(Directory.Exists(_factory.FolderOpener.Opened.Single()));
+        var published = Assert.Single(await SetsInStageAsync("published"));
+        Assert.Equal((setId, FakeDeviantArt.PublishedUrl), (published.GetProperty("id").GetInt32(), published.GetProperty("publishedUrl").GetString()));
+        Assert.Empty(await SetsInStageAsync("ready"));
+        Assert.Empty(await SetsInStageAsync("archived"));
         var lastUsed = (await GalleriesAsync()).Where(g => g.GetProperty("lastUsed").GetBoolean()).Select(g => g.GetProperty("folderId").GetString());
         Assert.Equal(["F-RANDOM"], lastUsed);
+    }
+
+    [Fact]
+    public async Task ArchivingAPublishedSet_DeletesItsExtraPicksFolder_AndRestoringReturnsItToPublished()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, _) = await CreateReadySetAsync(2);
+        (await StashAsync(setId)).EnsureSuccessStatusCode();
+        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null)).EnsureSuccessStatusCode();
+        (await PublishAsync(setId, "F-RANDOM")).EnsureSuccessStatusCode();
+
+        (await _client.PostAsync($"/api/sets/{setId}/archive", null)).EnsureSuccessStatusCode();
+
+        Assert.False(Directory.Exists(_factory.FolderOpener.Opened.Single()));
+        Assert.Empty(await SetsInStageAsync("published"));
+        Assert.Single(await SetsInStageAsync("archived"));
+
+        (await _client.DeleteAsync($"/api/sets/{setId}/archive")).EnsureSuccessStatusCode();
+
+        Assert.Single(await SetsInStageAsync("published"));
+        Assert.Empty(await SetsInStageAsync("archived"));
     }
 
     [Fact]

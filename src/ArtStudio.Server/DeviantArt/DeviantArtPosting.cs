@@ -121,13 +121,10 @@ public sealed partial class DeviantArtPosting(
         if (answer["status"]?.GetValue<string>() != "success" || url is null)
             throw new UserFacingException("DeviantArt did not confirm the publication. Check your gallery before trying again.");
 
-        var now = clock.GetUtcNow();
         set.PublishedUrl = url;
-        set.PublishedAt = now;
-        set.ArchivedAt = now;
+        set.PublishedAt = clock.GetUtcNow();
         (await SettingsStore.LoadAsync(db, paths, ct)).LastGalleryId = request.GalleryId.Trim();
         await db.SaveChangesAsync(ct);
-        ExtraPicksFolder.Delete(paths, setId);
         await notifier.SetUpdated(setId);
     }
 

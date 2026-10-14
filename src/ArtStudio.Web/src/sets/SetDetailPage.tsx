@@ -77,7 +77,7 @@ export function SetDetailPage() {
   }
 
   async function archiveSet() {
-    const destination = set.data?.readyToPostAt ? '/post' : returnTo
+    const destination = set.data?.post.publishedAt ? '/published' : set.data?.readyToPostAt ? '/post' : returnTo
     await changeStage(() => api.archiveSet(setId), destination)
   }
 
@@ -124,16 +124,20 @@ export function SetDetailPage() {
   const pickedImages = data.pickedImageIds.flatMap((id) => imagesById.get(id) ?? [])
   const pickNumber = (image: ImageInfo) => data.pickedImageIds.indexOf(image.id) + 1
   const isArchived = data.archivedAt !== null
-  const isReadyToPost = data.readyToPostAt !== null && !isArchived
-  const isWorking = !isReadyToPost && !isArchived
+  const isPublished = data.post.publishedAt !== null && !isArchived
+  const isReadyToPost = data.readyToPostAt !== null && !isArchived && !isPublished
+  const isWorking = !isReadyToPost && !isPublished && !isArchived
   const isStashed = data.post.stashItemId !== null
   const canReorderPicks = isReadyToPost && !isStashed
-  const shownImages = isReadyToPost ? pickedImages : data.images
+  const showsPicksOnly = isReadyToPost || isPublished
+  const shownImages = showsPicksOnly ? pickedImages : data.images
   const overview = isArchived
     ? { to: '/archive', label: 'All archived' }
-    : isReadyToPost
-      ? { to: '/post', label: 'All posts' }
-      : { to: '/sets', label: 'All sets' }
+    : isPublished
+      ? { to: '/published', label: 'All published' }
+      : isReadyToPost
+        ? { to: '/post', label: 'All posts' }
+        : { to: '/sets', label: 'All sets' }
   const readyBlocker =
     data.pickedImageIds.length === 0
       ? 'Pick at least one image first.'
@@ -210,7 +214,7 @@ export function SetDetailPage() {
           </button>
         </div>
       )}
-      {isReadyToPost && (
+      {showsPicksOnly && (
         <PostPanel
           key={data.post.stashItemId ?? 'new'}
           set={data}
@@ -260,9 +264,9 @@ export function SetDetailPage() {
                   {...(canReorderPicks ? dragPicks.itemProps(index) : {})}
                 >
                   <button type="button" className="image-tile-open" onClick={() => setLightboxIndex(index)}>
-                    <img src={image.url} alt={`Generated image ${index + 1}`} loading="lazy" draggable={!isReadyToPost} />
+                    <img src={image.url} alt={`Generated image ${index + 1}`} loading="lazy" draggable={!showsPicksOnly} />
                   </button>
-                  {isReadyToPost ? (
+                  {showsPicksOnly ? (
                     <span className="image-tile-pick">★ #{number}</span>
                   ) : (
                     <button
@@ -314,7 +318,7 @@ export function SetDetailPage() {
         </div>
       )}
 
-      {!isReadyToPost && (
+      {!showsPicksOnly && (
         <PickedStrip
           pickedImages={pickedImages}
           onReorder={(imageIds) => void changePicks(() => api.reorderPicks(setId, imageIds))}
@@ -333,7 +337,7 @@ export function SetDetailPage() {
           sourceImageUrl={data.sourceImageUrl}
           pickedImageIds={data.pickedImageIds}
           canRequeue={isWorking}
-          canChangePicks={!isReadyToPost}
+          canChangePicks={!showsPicksOnly}
           requeueCount={moreCount}
           onRequeued={goBack}
           onError={setError}
