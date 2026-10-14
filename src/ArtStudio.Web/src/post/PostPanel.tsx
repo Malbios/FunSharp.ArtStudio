@@ -177,10 +177,7 @@ function PublishForm({ set, onPublished }: Pick<PostPanelProps, 'set' | 'onPubli
 
   async function publish(event: FormEvent) {
     event.preventDefault()
-    const gallery = galleries?.find((candidate) => candidate.folderId === galleryId)
-    if (!gallery) return
-    const rating = isMature ? `mature (${matureLevel})` : 'not mature'
-    if (!window.confirm(`Publish "${set.post.title}" to ${gallery.name}, ${rating}? It goes live on DeviantArt right away.`)) return
+    if (!galleryId) return
     setPublishing(true)
     setError(undefined)
     try {
