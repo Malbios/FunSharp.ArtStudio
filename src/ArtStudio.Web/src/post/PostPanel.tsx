@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { api, type Gallery, type MatureLevel, type SetDetail } from '../api'
-import { initialPostFields, MAX_TITLE_LENGTH, stashEditorUrl } from './postDefaults'
+import { initialPostFields, inspirationCredit, MAX_TITLE_LENGTH, stashEditorUrl } from './postDefaults'
 
 interface PostPanelProps {
   set: SetDetail
@@ -98,7 +98,18 @@ function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>
 function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & { stashItemId: string }) {
   const [error, setError] = useState<string>()
   const [folder, setFolder] = useState<string>()
+  const [creditCopied, setCreditCopied] = useState(false)
   const extraPicks = set.pickedImageIds.length - 1
+
+  async function copyCredit() {
+    if (!set.deviantArtUrl) return
+    try {
+      await navigator.clipboard.writeText(inspirationCredit(set.deviantArtUrl))
+      setCreditCopied(true)
+    } catch {
+      setError('Could not copy the "Inspired by" link to the clipboard.')
+    }
+  }
 
   async function openExtraPicks() {
     setError(undefined)
@@ -139,10 +150,13 @@ function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & 
           </li>
         )}
         <li>
-          <a href={stashEditorUrl(stashItemId)} target="_blank" rel="noreferrer">
+          <a href={stashEditorUrl(stashItemId)} target="_blank" rel="noreferrer" onClick={() => void copyCredit()}>
             Open in DeviantArt's editor
           </a>
-          {extraPicks > 0 ? ', add the other picks in order and save.' : ' to check it.'}
+          {extraPicks > 0 ? ', add the other picks in order' : ''}
+          {set.deviantArtUrl ? ', paste the copied "Inspired by" link into the description' : ''}
+          {extraPicks > 0 || set.deviantArtUrl ? ' and save.' : ' to check it.'}
+          {creditCopied && <span className="hint"> Copied "Inspired by…" to the clipboard.</span>}
         </li>
       </ol>
       {error && <p className="error">{error}</p>}
