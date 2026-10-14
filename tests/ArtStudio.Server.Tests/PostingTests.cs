@@ -88,7 +88,7 @@ public sealed class PostingTests : IDisposable
 
         var parts = Assert.Single(_factory.DeviantArt.StashSubmissions);
         Assert.Equal(
-            ["title=Ember Fox", "artist_comments=A fox at &lt;dawn&gt; &amp; dusk.<br /><br />Inspired by<br /><br />", "tags[]=digital_art", "tags[]=made_with_ai",
+            ["title=Ember Fox", "artist_comments=A fox at &lt;dawn&gt; &amp; dusk.<br /><br />Inspired by<br />", "tags[]=digital_art", "tags[]=made_with_ai",
                 "is_ai_generated=true", "noai=false"],
             parts.Where(p => p.File is null).Select(p => $"{p.Name}={p.Value}"));
         var file = Assert.Single(parts, p => p.File is not null);
