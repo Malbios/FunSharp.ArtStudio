@@ -159,8 +159,12 @@ public sealed partial class DeviantArtPosting(
     private static partial Regex TagPattern();
 
     // DeviantArt descriptions are HTML with <br /> line breaks; its editor could not read plain text line breaks.
-    private static string DescriptionHtml(string description) =>
-        WebUtility.HtmlEncode(description).ReplaceLineEndings("<br />");
+    // HTML shows no empty line after a final <br />, so a trailing line break needs a second one.
+    private static string DescriptionHtml(string description)
+    {
+        var html = WebUtility.HtmlEncode(description).ReplaceLineEndings("<br />");
+        return html.EndsWith("<br />") ? html + "<br />" : html;
+    }
 
     // The tag autocomplete misses common exact tags, so a tag counts as known when any deviation uses it.
     public async Task<bool> IsKnownTagAsync(string tag, CancellationToken ct)
