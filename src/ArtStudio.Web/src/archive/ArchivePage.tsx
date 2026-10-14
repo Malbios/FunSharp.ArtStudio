@@ -15,7 +15,7 @@ export function ArchivePage() {
   return (
     <div>
       <div className="toolbar">
-        <h2>Archive</h2>
+        <h2>Archived</h2>
       </div>
       {sets.error && <p className="error">{sets.error}</p>}
       {sets.data?.length === 0 && (

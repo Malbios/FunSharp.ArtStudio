@@ -20,7 +20,7 @@ function NewSetRoute() {
 }
 
 interface StageNavLinkProps {
-  stage: 'ready'
+  stage: 'ready' | 'published' | 'archived'
   to: string
   label: string
 }
@@ -121,8 +121,8 @@ export default function App() {
           <QueueNavLink />
           <SetsNavLink />
           <StageNavLink stage="ready" to="/post" label="Post" />
-          <NavLink to="/published">Published</NavLink>
-          <NavLink to="/archive">Archive</NavLink>
+          <StageNavLink stage="published" to="/published" label="Published" />
+          <StageNavLink stage="archived" to="/archive" label="Archived" />
           <NavLink to="/settings">Settings</NavLink>
         </nav>
       </header>
