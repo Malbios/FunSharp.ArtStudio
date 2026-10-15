@@ -160,7 +160,7 @@ public sealed class PostingTests : IDisposable
         _client.PostAsJsonAsync($"/api/sets/{setId}/post/publish", new { galleryId, isMature, matureLevel });
 
     [Fact]
-    public async Task Publish_SendsTheOldAppsFields_AndMovesTheSetToPublished()
+    public async Task Publish_SendsTheOldAppsFields_MovesTheSetToPublished_AndDeletesItsExtraPicksFolder()
     {
         await _factory.ConnectDeviantArtAsync();
         var (setId, _) = await CreateReadySetAsync(2);
@@ -181,7 +181,7 @@ public sealed class PostingTests : IDisposable
         Assert.Equal(FakeDeviantArt.PublishedUrl, set.Post.PublishedUrl);
         Assert.NotNull(set.Post.PublishedAt);
         Assert.Null(set.ArchivedAt);
-        Assert.True(Directory.Exists(_factory.FolderOpener.Opened.Single()));
+        Assert.False(Directory.Exists(_factory.FolderOpener.Opened.Single()));
         var published = Assert.Single(await SetsInStageAsync("published"));
         Assert.Equal((setId, FakeDeviantArt.PublishedUrl), (published.GetProperty("id").GetInt32(), published.GetProperty("publishedUrl").GetString()));
         Assert.Empty(await SetsInStageAsync("ready"));
@@ -191,17 +191,26 @@ public sealed class PostingTests : IDisposable
     }
 
     [Fact]
-    public async Task ArchivingAPublishedSet_DeletesItsExtraPicksFolder_AndRestoringReturnsItToPublished()
+    public async Task ArchivingAReadySet_DeletesItsExtraPicksFolder()
     {
-        await _factory.ConnectDeviantArtAsync();
         var (setId, _) = await CreateReadySetAsync(2);
-        (await StashAsync(setId)).EnsureSuccessStatusCode();
         (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null)).EnsureSuccessStatusCode();
-        (await PublishAsync(setId, "F-RANDOM")).EnsureSuccessStatusCode();
 
         (await _client.PostAsync($"/api/sets/{setId}/archive", null)).EnsureSuccessStatusCode();
 
         Assert.False(Directory.Exists(_factory.FolderOpener.Opened.Single()));
+    }
+
+    [Fact]
+    public async Task ArchivingAPublishedSet_AndRestoringReturnsItToPublished()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, _) = await CreateReadySetAsync(2);
+        (await StashAsync(setId)).EnsureSuccessStatusCode();
+        (await PublishAsync(setId, "F-RANDOM")).EnsureSuccessStatusCode();
+
+        (await _client.PostAsync($"/api/sets/{setId}/archive", null)).EnsureSuccessStatusCode();
+
         Assert.Empty(await SetsInStageAsync("published"));
         Assert.Single(await SetsInStageAsync("archived"));
 

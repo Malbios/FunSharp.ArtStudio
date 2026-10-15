@@ -127,6 +127,7 @@ public sealed partial class DeviantArtPosting(
         set.PublishedAt = clock.GetUtcNow();
         (await SettingsStore.LoadAsync(db, paths, ct)).LastGalleryId = request.GalleryId.Trim();
         await db.SaveChangesAsync(ct);
+        ExtraPicksFolder.Delete(paths, setId);
         await notifier.SetUpdated(setId);
     }
 

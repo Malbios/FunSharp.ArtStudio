@@ -289,8 +289,6 @@ function PublishForm({ set, onPublished }: Pick<PostPanelProps, 'set' | 'onPubli
 }
 
 function Published({ set }: Pick<PostPanelProps, 'set'>) {
-  const [error, setError] = useState<string>()
-
   return (
     <div>
       <p>
@@ -301,8 +299,6 @@ function Published({ set }: Pick<PostPanelProps, 'set'>) {
         </a>
         .
       </p>
-      {set.pickedImageIds.length > 1 && <ExtraPicksButton set={set} onError={setError} />}
-      {error && <p className="error">{error}</p>}
     </div>
   )
 }
