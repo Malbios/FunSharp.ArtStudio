@@ -20,7 +20,7 @@ function NewSetRoute() {
 }
 
 interface StageNavLinkProps {
-  stage: 'ready' | 'published' | 'archived'
+  stage: 'published' | 'archived'
   to: string
   label: string
 }
@@ -92,6 +92,29 @@ function SetsNavLink() {
   )
 }
 
+function PostNavLink() {
+  const sets = useLoad(() => api.sets('ready'))
+  useStudioEvents(['SetUpdated', 'SetDeleted', 'JobUpdated'], sets.reload)
+  const stashed = sets.data?.filter((set) => set.stashed).length ?? 0
+  const toUpload = (sets.data?.length ?? 0) - stashed
+
+  return (
+    <NavLink to="/post">
+      Post
+      {toUpload > 0 && (
+        <span className="nav-count" title={`${toUpload} to upload to the Stash`}>
+          {toUpload}
+        </span>
+      )}
+      {stashed > 0 && (
+        <span className="nav-count ready" title={`${stashed} in the Stash, ready to publish`}>
+          {stashed}
+        </span>
+      )}
+    </NavLink>
+  )
+}
+
 function QueueNavLink() {
   const queue = useLoad(api.queue)
   useStudioEvents(['JobUpdated', 'QueueStateChanged', 'SetDeleted'], queue.reload)
@@ -120,7 +143,7 @@ export default function App() {
           <DraftsNavLink />
           <QueueNavLink />
           <SetsNavLink />
-          <StageNavLink stage="ready" to="/post" label="Post" />
+          <PostNavLink />
           <StageNavLink stage="published" to="/published" label="Published" />
           <StageNavLink stage="archived" to="/archive" label="Archived" />
           <NavLink to="/settings">Settings</NavLink>
