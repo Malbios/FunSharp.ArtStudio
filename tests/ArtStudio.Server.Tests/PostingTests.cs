@@ -184,6 +184,7 @@ public sealed class PostingTests : IDisposable
         Assert.False(Directory.Exists(_factory.FolderOpener.Opened.Single()));
         var published = Assert.Single(await SetsInStageAsync("published"));
         Assert.Equal((setId, FakeDeviantArt.PublishedUrl), (published.GetProperty("id").GetInt32(), published.GetProperty("publishedUrl").GetString()));
+        Assert.Equal(set.Post.PublishedAt, published.GetProperty("publishedAt").GetDateTimeOffset());
         Assert.Empty(await SetsInStageAsync("ready"));
         Assert.Empty(await SetsInStageAsync("archived"));
         var lastUsed = (await GalleriesAsync()).Where(g => g.GetProperty("lastUsed").GetBoolean()).Select(g => g.GetProperty("folderId").GetString());

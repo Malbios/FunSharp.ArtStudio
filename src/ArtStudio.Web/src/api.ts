@@ -60,6 +60,7 @@ export interface SetSummary {
   promptGeneration: PromptGeneration
   stashed: boolean
   publishedUrl: string | null
+  publishedAt: string | null
   /** Has a title and tags beyond the default ones. */
   hasTitleAndTags: boolean
 }

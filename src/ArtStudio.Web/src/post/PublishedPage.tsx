@@ -39,6 +39,7 @@ export function PublishedPage() {
                 <a className="badge status-Completed" href={set.publishedUrl!} target="_blank" rel="noreferrer">
                   Posted
                 </a>
+                {set.publishedAt && <span>{new Date(set.publishedAt).toLocaleString()}</span>}
                 {set.deviantArtAuthor && (
                   <span>
                     inspired by <DeviantArtUserLink username={set.deviantArtAuthor} />

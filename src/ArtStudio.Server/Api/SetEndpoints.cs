@@ -110,6 +110,7 @@ public static class SetEndpoints
                 PromptGenerationDto.From(s.Set),
                 s.Set.StashItemId != null,
                 s.Set.PublishedUrl,
+                s.Set.PublishedAt,
                 !PostSuggestionQueue.NeedsSuggestions(s.Set)))
             .ToList();
     }
