@@ -5,6 +5,7 @@ using ArtStudio.Server.Data;
 using ArtStudio.Server.DeviantArt;
 using ArtStudio.Server.Generation;
 using ArtStudio.Server.Hubs;
+using ArtStudio.Server.Stats;
 using ArtStudio.Server.Vision;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -54,6 +55,7 @@ public static class ServiceRegistration
         services.AddSingleton<DeviantArtApi>();
         services.AddScoped<DeviantArtPosting>();
         services.AddScoped<DeviationStatsCollector>();
+        services.AddScoped<StatsService>();
         services.AddScoped<ExtraPicksFolder>();
         services.AddSingleton<IFolderOpener, ExplorerFolderOpener>();
         services.AddDataProtection().SetApplicationName("ArtStudio");
