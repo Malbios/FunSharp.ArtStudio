@@ -77,7 +77,13 @@ export function SetDetailPage() {
   }
 
   async function archiveSet() {
-    const destination = set.data?.post.publishedAt ? '/published' : set.data?.readyToPostAt ? '/post' : returnTo
+    const destination = set.data?.post.publishedAt
+      ? '/published'
+      : set.data?.post.stashItemId
+        ? '/stashed'
+        : set.data?.readyToPostAt
+          ? '/post'
+          : returnTo
     await changeStage(() => api.archiveSet(setId), destination)
   }
 
@@ -135,9 +141,11 @@ export function SetDetailPage() {
     ? { to: '/archive', label: 'All archived' }
     : isPublished
       ? { to: '/published', label: 'All published' }
-      : isReadyToPost
-        ? { to: '/post', label: 'All posts' }
-        : { to: '/sets', label: 'All sets' }
+      : isReadyToPost && isStashed
+        ? { to: '/stashed', label: 'All stashed' }
+        : isReadyToPost
+          ? { to: '/post', label: 'All posts' }
+          : { to: '/sets', label: 'All sets' }
   const readyBlocker =
     data.pickedImageIds.length === 0
       ? 'Pick at least one image first.'
@@ -219,7 +227,7 @@ export function SetDetailPage() {
           key={data.post.stashItemId ?? 'new'}
           set={data}
           onChanged={set.reload}
-          onPublished={() => navigate('/post')}
+          onPublished={() => navigate('/stashed')}
         />
       )}
       {isArchived && (

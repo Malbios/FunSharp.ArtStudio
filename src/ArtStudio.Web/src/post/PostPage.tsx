@@ -17,7 +17,8 @@ export function PostPage() {
   const blocks = useLoad(api.buildingBlocks)
   const presets = blocks.data?.filter((block) => block.kind === 'Preset' && block.artStyle) ?? []
   useStudioEvents(['SetUpdated', 'SetDeleted'], sets.reload)
-  const filter = useListFilter('post', sets.data, POST_FILTERS)
+  const unstashed = sets.data?.filter((set) => !set.stashed)
+  const filter = useListFilter('post', unstashed, POST_FILTERS)
   const paged = usePagedItems(filter.items)
   const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
 
@@ -47,15 +48,15 @@ export function PostPage() {
         <h2>Post</h2>
       </div>
       {sets.error && <p className="error">{sets.error}</p>}
-      {sets.data?.length === 0 &&
+      {unstashed?.length === 0 &&
         (presetId ? (
-          <p className="hint">No ready sets have picks from this preset.</p>
+          <p className="hint">No sets waiting for the Stash have picks from this preset.</p>
         ) : (
           <p className="hint">
-            Nothing is ready to post yet. Pick images in a set, then use "Ready to post" on its page.
+            Nothing is waiting to go to the Stash. Pick images in a set, then use "Ready to post" on its page.
           </p>
         ))}
-      {sets.data && (sets.data.length > 0 || presetId) && (
+      {unstashed && (unstashed.length > 0 || presetId) && (
         <Pager
           page={paged.page}
           pageCount={paged.pageCount}
@@ -64,7 +65,7 @@ export function PostPage() {
           tools={presetSelect}
         />
       )}
-      {sets.data && sets.data.length > 0 && filter.items?.length === 0 && (
+      {unstashed && unstashed.length > 0 && filter.items?.length === 0 && (
         <p className="hint">No sets match this filter.</p>
       )}
       <div className="set-grid">
@@ -83,7 +84,6 @@ export function PostPage() {
                 <span>
                   {set.pickedCount} {set.pickedCount === 1 ? 'pick' : 'picks'}
                 </span>
-                {set.stashed && <span className="badge status-Running">In Stash</span>}
                 {set.deviantArtAuthor && (
                   <span>
                     inspired by <DeviantArtUserLink username={set.deviantArtAuthor} />

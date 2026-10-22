@@ -62,13 +62,6 @@ describe('post filters', () => {
     expect(matches(POST_FILTERS, 'undescribed', summary({ hasTitleAndTags: false }))).toBe(true)
     expect(matches(POST_FILTERS, 'undescribed', summary({ hasTitleAndTags: true }))).toBe(false)
   })
-
-  it('splits ready sets by whether they still need uploading to the Stash or are ready to publish', () => {
-    expect(matches(POST_FILTERS, 'unstashed', summary({ stashed: false }))).toBe(true)
-    expect(matches(POST_FILTERS, 'unstashed', summary({ stashed: true }))).toBe(false)
-    expect(matches(POST_FILTERS, 'stashed', summary({ stashed: true }))).toBe(true)
-    expect(matches(POST_FILTERS, 'stashed', summary({ stashed: false }))).toBe(false)
-  })
 })
 
 describe('draft filters', () => {

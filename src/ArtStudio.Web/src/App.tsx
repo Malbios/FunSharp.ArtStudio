@@ -10,6 +10,7 @@ import { NewSetPage } from './newset/NewSetPage'
 import { isDraftReady } from './paging/listFilters'
 import { PostPage } from './post/PostPage'
 import { PublishedPage } from './post/PublishedPage'
+import { StashedPage } from './post/StashedPage'
 import { QueuePage } from './queue/QueuePage'
 import { SetDetailPage } from './sets/SetDetailPage'
 import { SetsPage } from './sets/SetsPage'
@@ -95,8 +96,7 @@ function SetsNavLink() {
 function PostNavLink() {
   const sets = useLoad(() => api.sets('ready'))
   useStudioEvents(['SetUpdated', 'SetDeleted', 'JobUpdated'], sets.reload)
-  const stashed = sets.data?.filter((set) => set.stashed).length ?? 0
-  const toUpload = (sets.data?.length ?? 0) - stashed
+  const toUpload = sets.data?.filter((set) => !set.stashed).length ?? 0
 
   return (
     <NavLink to="/post">
@@ -106,6 +106,18 @@ function PostNavLink() {
           {toUpload}
         </span>
       )}
+    </NavLink>
+  )
+}
+
+function StashedNavLink() {
+  const sets = useLoad(() => api.sets('ready'))
+  useStudioEvents(['SetUpdated', 'SetDeleted', 'JobUpdated'], sets.reload)
+  const stashed = sets.data?.filter((set) => set.stashed).length ?? 0
+
+  return (
+    <NavLink to="/stashed">
+      Stashed
       {stashed > 0 && (
         <span className="nav-count ready" title={`${stashed} in the Stash, ready to publish`}>
           {stashed}
@@ -144,6 +156,7 @@ export default function App() {
           <QueueNavLink />
           <SetsNavLink />
           <PostNavLink />
+          <StashedNavLink />
           <StageNavLink stage="published" to="/published" label="Published" />
           <StageNavLink stage="archived" to="/archive" label="Archived" />
           <NavLink to="/settings">Settings</NavLink>
@@ -158,6 +171,7 @@ export default function App() {
           <Route path="/sets" element={<SetsPage />} />
           <Route path="/sets/:id" element={<SetDetailPage />} />
           <Route path="/post" element={<PostPage />} />
+          <Route path="/stashed" element={<StashedPage />} />
           <Route path="/published" element={<PublishedPage />} />
           <Route path="/archive" element={<ArchivePage />} />
           <Route path="/settings" element={<SettingsPage />} />
