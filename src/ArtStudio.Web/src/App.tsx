@@ -14,6 +14,7 @@ import { StashedPage } from './post/StashedPage'
 import { QueuePage } from './queue/QueuePage'
 import { SetDetailPage } from './sets/SetDetailPage'
 import { SetsPage } from './sets/SetsPage'
+import { StatsPage } from './stats/StatsPage'
 
 function NewSetRoute() {
   const location = useLocation()
@@ -159,6 +160,7 @@ export default function App() {
           <StashedNavLink />
           <StageNavLink stage="published" to="/published" label="Published" />
           <StageNavLink stage="archived" to="/archive" label="Archived" />
+          <NavLink to="/stats">Stats</NavLink>
           <NavLink to="/settings">Settings</NavLink>
         </nav>
       </header>
@@ -174,6 +176,7 @@ export default function App() {
           <Route path="/stashed" element={<StashedPage />} />
           <Route path="/published" element={<PublishedPage />} />
           <Route path="/archive" element={<ArchivePage />} />
+          <Route path="/stats" element={<StatsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>

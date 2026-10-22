@@ -195,6 +195,83 @@ export interface BlockedArtist {
   createdAt: string
 }
 
+export interface DeviantArtTotals {
+  published: number
+  tracked: number
+  views: number
+  favourites: number
+  comments: number
+  downloads: number
+  viewsLast7Days: number
+  favouritesLast7Days: number
+}
+
+/** The numbers are null until the deviation's stats were first fetched. */
+export interface DeviationStats {
+  setId: number
+  title: string | null
+  url: string
+  previewImageUrl: string | null
+  publishedAt: string
+  daysOnline: number
+  preset: string | null
+  views: number | null
+  favourites: number | null
+  comments: number | null
+  downloads: number | null
+  favouritesPer100Views: number | null
+  viewsPerDay: number | null
+  viewsLast7Days: number | null
+  favouritesLast7Days: number | null
+}
+
+export interface DeviantArtStats {
+  connected: boolean
+  fetchedAt: string | null
+  stale: boolean
+  historySince: string | null
+  totals: DeviantArtTotals
+  deviations: DeviationStats[]
+  daily: { day: string; views: number; favourites: number }[]
+}
+
+export interface PresetStats {
+  presetId: number | null
+  name: string
+  images: number
+  picks: number
+  pickRate: number | null
+  published: number
+  averageViews: number | null
+  averageFavourites: number | null
+}
+
+export interface PipelineStats {
+  stages: { drafts: number; working: number; post: number; stashed: number; published: number; archived: number }
+  images: number
+  imagesLast7Days: number
+  imagesLast30Days: number
+  imagesPerDay: { day: string; count: number }[]
+  pickRate: number | null
+  secondsPerImage: number | null
+  jobsCompletedLast30Days: number
+  jobsFailedLast30Days: number
+  medianDaysToReady: number | null
+  medianDaysReadyToPublished: number | null
+}
+
+export interface InspirationStats {
+  sources: { source: SourceKind; sets: number }[]
+  topArtists: { username: string; sets: number; published: number; averageFavourites: number | null }[]
+}
+
+export interface Stats {
+  deviantArt: DeviantArtStats
+  presets: PresetStats[]
+  pipeline: PipelineStats
+  inspiration: InspirationStats
+}
+
 export class ApiError extends Error {
   readonly existingSetId: number | null
 
@@ -317,4 +394,8 @@ export const api = {
     request<BuildingBlock>('PUT', `/api/building-blocks/${id}`, { label, presetIds, kind: 'Bundle' }),
   deleteBuildingBlock: (id: number) => request<void>('DELETE', `/api/building-blocks/${id}`),
   reorderBuildingBlocks: (ids: number[]) => request<void>('POST', '/api/building-blocks/reorder', { ids }),
+
+  stats: () => request<Stats>('GET', '/api/stats'),
+  refreshDeviantArtStats: (force: boolean) =>
+    request<{ error: string | null }>('POST', '/api/stats/deviantart/refresh', { force }),
 }
