@@ -26,6 +26,7 @@ app.MapDeviantArtEndpoints();
 app.MapDeviantArtLoginEndpoints();
 app.MapSettingsEndpoints();
 app.MapPostEndpoints();
+app.MapStatsEndpoints();
 app.MapHub<StudioHub>("/hubs/studio");
 app.MapFallbackToFile("index.html");
 

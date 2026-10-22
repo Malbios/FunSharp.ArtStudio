@@ -16,17 +16,13 @@ public sealed record StashRequest(string Title, string? Description, string? Tag
 
 public sealed record PublishRequest(string GalleryId, bool IsMature, string? MatureLevel);
 
-public sealed class DeviantArtRateLimitedException(string message) : UserFacingException(message);
-
 public sealed partial class DeviantArtPosting(
     StudioDbContext db,
     AppPaths paths,
-    IHttpClientFactory httpClientFactory,
-    DeviantArtAuth auth,
+    DeviantArtApi api,
     StudioNotifier notifier,
     TimeProvider clock)
 {
-    public const string ApiBase = "https://www.deviantart.com/api/v1/oauth2";
     public const int MaxTitleLength = 50;
     private const int GalleryPageSize = 50;
     private const char IdSeparator = ',';
@@ -124,6 +120,7 @@ public sealed partial class DeviantArtPosting(
             throw new UserFacingException("DeviantArt did not confirm the publication. Check your gallery before trying again.");
 
         set.PublishedUrl = url;
+        set.PublishedDeviationId = answer["deviationid"]?.GetValue<string>();
         set.PublishedAt = clock.GetUtcNow();
         (await SettingsStore.LoadAsync(db, paths, ct)).LastGalleryId = request.GalleryId.Trim();
         await db.SaveChangesAsync(ct);
@@ -198,46 +195,6 @@ public sealed partial class DeviantArtPosting(
         await db.SaveChangesAsync(ct);
     }
 
-    private async Task<JsonNode> SendAsync(HttpMethod method, string path, HttpContent? content, CancellationToken ct)
-    {
-        using var request = new HttpRequestMessage(method, $"{ApiBase}/{path}") { Content = content };
-        request.Headers.Authorization = new("Bearer", await auth.GetAccessTokenAsync(ct));
-        using var response = await httpClientFactory.CreateClient(DeviantArtService.HttpClientName).SendAsync(request, ct);
-        var body = ParseJsonOrNull(await response.Content.ReadAsStringAsync(ct));
-
-        if (response.IsSuccessStatusCode && body is not null)
-            return body;
-        var message = ErrorMessage(response.StatusCode, body);
-        throw response.StatusCode == HttpStatusCode.TooManyRequests
-            ? new DeviantArtRateLimitedException(message)
-            : new UserFacingException(message);
-    }
-
-    private static string ErrorMessage(HttpStatusCode status, JsonNode? body)
-    {
-        var error = body?["error"]?.GetValue<string>();
-        var description = body?["error_description"]?.GetValue<string>();
-        return status switch
-        {
-            HttpStatusCode.Unauthorized => "DeviantArt rejected the login. Reconnect it in Settings.",
-            HttpStatusCode.Forbidden when error == "insufficient_scope" || description?.Contains("scope") == true =>
-                "The DeviantArt login does not allow Stash and publishing yet. Reconnect DeviantArt in Settings.",
-            HttpStatusCode.TooManyRequests => "DeviantArt is limiting requests. Try again in a minute.",
-            _ when description is not null => $"DeviantArt refused: {description}",
-            _ when body is null => $"DeviantArt returned an unreadable response ({(int)status}).",
-            _ => $"DeviantArt refused the request ({(int)status}).",
-        };
-    }
-
-    private static JsonNode? ParseJsonOrNull(string text)
-    {
-        try
-        {
-            return string.IsNullOrWhiteSpace(text) ? null : JsonNode.Parse(text);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
+    private Task<JsonNode> SendAsync(HttpMethod method, string path, HttpContent? content, CancellationToken ct) =>
+        api.SendAsync(method, path, content, ct);
 }

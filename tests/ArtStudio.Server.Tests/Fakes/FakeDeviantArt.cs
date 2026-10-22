@@ -48,6 +48,15 @@ public sealed class FakeDeviantArt : HttpMessageHandler
     /// <summary>How many tag checks are answered with DeviantArt's rate limit before they succeed again.</summary>
     public int RateLimitedTagChecks { get; set; }
 
+    public const string PublishedDeviationId = "DEV-1";
+    /// <summary>The account's own deviations as gallery/all lists them, newest first.</summary>
+    public List<(string DeviationId, string Url, DateTimeOffset PublishedTime)> OwnDeviations { get; } = [];
+    public List<string> GalleryAllRequests { get; } = [];
+    public Dictionary<string, (int Views, int Favourites, int Comments, int Downloads)> Stats { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public List<string> MetadataRequests { get; } = [];
+    /// <summary>When set, metadata requests answer with this instead.</summary>
+    public (HttpStatusCode Status, string Body)? MetadataFailure { get; set; }
+
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
         var uri = request.RequestUri!;
@@ -89,6 +98,8 @@ public sealed class FakeDeviantArt : HttpMessageHandler
             }
             if (uri.AbsolutePath == "/api/v1/oauth2/gallery/folders")
                 return GalleryPage(int.Parse(HttpUtility.ParseQueryString(uri.Query)["offset"] ?? "0"));
+            if (uri.AbsolutePath == "/api/v1/oauth2/gallery/all")
+                return GalleryAllPage(HttpUtility.ParseQueryString(uri.Query));
             if (uri.AbsolutePath == "/api/v1/oauth2/stash/submit")
                 return await StashSubmit((MultipartFormDataContent)request.Content!, ct);
             if (uri.AbsolutePath == "/api/v1/oauth2/stash/publish")
@@ -97,10 +108,13 @@ public sealed class FakeDeviantArt : HttpMessageHandler
                 lock (Publications)
                     Publications.Add(form.Split('&').Select(pair => Uri.UnescapeDataString(pair.Replace('+', ' '))).ToList());
                 return FakeHttpHandler.Json($$"""
-                    { "status": "success", "url": "{{PublishedUrl}}", "deviationid": "DEV-1" }
+                    { "status": "success", "url": "{{PublishedUrl}}", "deviationid": "{{PublishedDeviationId}}" }
                     """);
             }
         }
+
+        if (uri.AbsolutePath == "/api/v1/oauth2/deviation/metadata")
+            return Metadata(uri);
 
         if (uri.AbsolutePath.StartsWith("/api/v1/oauth2/deviation/"))
         {
@@ -161,6 +175,38 @@ public sealed class FakeDeviantArt : HttpMessageHandler
         return FakeHttpHandler.Json($$"""
             { "results": [{{results}}], "has_more": {{(hasMore ? "true" : "false")}}, "next_offset": {{(hasMore ? offset + page.Count : "null")}} }
             """);
+    }
+
+    private HttpResponseMessage GalleryAllPage(System.Collections.Specialized.NameValueCollection query)
+    {
+        lock (GalleryAllRequests)
+            GalleryAllRequests.Add(query.ToString()!);
+        var offset = int.Parse(query["offset"] ?? "0");
+        var page = OwnDeviations.Skip(offset).Take(int.Parse(query["limit"] ?? "10")).ToList();
+        var hasMore = offset + page.Count < OwnDeviations.Count;
+        var results = string.Join(',', page.Select(deviation =>
+            $$"""{ "deviationid": "{{deviation.DeviationId}}", "url": "{{deviation.Url}}", "published_time": "{{deviation.PublishedTime.ToUnixTimeSeconds()}}" }"""));
+        return FakeHttpHandler.Json($$"""
+            { "results": [{{results}}], "has_more": {{(hasMore ? "true" : "false")}}, "next_offset": {{(hasMore ? offset + page.Count : "null")}} }
+            """);
+    }
+
+    private HttpResponseMessage Metadata(Uri uri)
+    {
+        lock (MetadataRequests)
+            MetadataRequests.Add(Uri.UnescapeDataString(uri.Query));
+        if (MetadataFailure is { } failure)
+            return FakeHttpHandler.Json(failure.Body, failure.Status);
+        var ids = HttpUtility.ParseQueryString(uri.Query).GetValues("deviationids[]") ?? [];
+        var metadata = string.Join(',', ids.Where(Stats.ContainsKey).Select(id =>
+        {
+            var stats = Stats[id];
+            return $$"""
+                { "deviationid": "{{id}}", "stats": { "views": {{stats.Views}}, "views_today": 0, "favourites": {{stats.Favourites}},
+                  "comments": {{stats.Comments}}, "downloads": {{stats.Downloads}}, "downloads_today": 0 } }
+                """;
+        }));
+        return FakeHttpHandler.Json($$"""{ "metadata": [{{metadata}}] }""");
     }
 
     private static HttpResponseMessage Image(byte[] bytes)

@@ -57,6 +57,7 @@ public class PromptSet
     public long? StashItemId { get; set; }
     public DateTimeOffset? StashedAt { get; set; }
     public string? PublishedUrl { get; set; }
+    public string? PublishedDeviationId { get; set; }
     public DateTimeOffset? PublishedAt { get; set; }
 
     public List<GenerationJob> Jobs { get; set; } = [];

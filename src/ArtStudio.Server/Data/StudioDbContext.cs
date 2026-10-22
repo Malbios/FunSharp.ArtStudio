@@ -13,6 +13,7 @@ public class StudioDbContext(DbContextOptions<StudioDbContext> options) : DbCont
     public DbSet<BuildingBlock> BuildingBlocks => Set<BuildingBlock>();
     public DbSet<BlockedArtist> BlockedArtists => Set<BlockedArtist>();
     public DbSet<StudioSettings> Settings => Set<StudioSettings>();
+    public DbSet<DeviationStatsSnapshot> DeviationStats => Set<DeviationStatsSnapshot>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -53,5 +54,11 @@ public class StudioDbContext(DbContextOptions<StudioDbContext> options) : DbCont
         });
 
         modelBuilder.Entity<StudioSettings>().Property(s => s.Id).ValueGeneratedNever();
+
+        modelBuilder.Entity<DeviationStatsSnapshot>(snapshot =>
+        {
+            snapshot.HasOne<PromptSet>().WithMany().HasForeignKey(s => s.PromptSetId);
+            snapshot.HasIndex(s => new { s.PromptSetId, s.Day }).IsUnique();
+        });
     }
 }

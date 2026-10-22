@@ -368,6 +368,7 @@ public sealed class SetService(
             await db.Picks.Where(p => p.PromptSetId == setId).ExecuteDeleteAsync(ct);
             await db.Images.Where(i => i.PromptSetId == setId).ExecuteDeleteAsync(ct);
             await db.Jobs.Where(j => j.PromptSetId == setId).ExecuteDeleteAsync(ct);
+            await db.DeviationStats.Where(s => s.PromptSetId == setId).ExecuteDeleteAsync(ct);
             await db.PromptSets.Where(s => s.Id == setId).ExecuteDeleteAsync(ct);
             await transaction.CommitAsync(ct);
         }

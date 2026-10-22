@@ -17,4 +17,5 @@ public class StudioSettings
     public string? ProtectedVisionApiKey { get; set; }
     public string? MatureGalleryIds { get; set; }
     public string? LastGalleryId { get; set; }
+    public DateTimeOffset? DeviationStatsFetchedAt { get; set; }
 }

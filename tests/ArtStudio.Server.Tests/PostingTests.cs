@@ -181,6 +181,11 @@ public sealed class PostingTests : IDisposable
         Assert.Equal(FakeDeviantArt.PublishedUrl, set.Post.PublishedUrl);
         Assert.NotNull(set.Post.PublishedAt);
         Assert.Null(set.ArchivedAt);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var stored = await scope.ServiceProvider.GetRequiredService<StudioDbContext>().PromptSets.SingleAsync(s => s.Id == setId);
+            Assert.Equal(FakeDeviantArt.PublishedDeviationId, stored.PublishedDeviationId);
+        }
         Assert.False(Directory.Exists(_factory.FolderOpener.Opened.Single()));
         var published = Assert.Single(await SetsInStageAsync("published"));
         Assert.Equal((setId, FakeDeviantArt.PublishedUrl), (published.GetProperty("id").GetInt32(), published.GetProperty("publishedUrl").GetString()));

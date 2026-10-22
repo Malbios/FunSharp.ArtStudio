@@ -51,7 +51,9 @@ public static class ServiceRegistration
                 : network;
         });
         services.AddScoped<DeviantArtService>();
+        services.AddSingleton<DeviantArtApi>();
         services.AddScoped<DeviantArtPosting>();
+        services.AddScoped<DeviationStatsCollector>();
         services.AddScoped<ExtraPicksFolder>();
         services.AddSingleton<IFolderOpener, ExplorerFolderOpener>();
         services.AddDataProtection().SetApplicationName("ArtStudio");
