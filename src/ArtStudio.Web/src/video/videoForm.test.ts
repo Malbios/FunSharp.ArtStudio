@@ -6,8 +6,8 @@ const options: VideoOptions = {
   promptTemplate: 'Start.\n\n???\n\nEnd.',
   durationPresets: [3, 5, 6, 8, 10, 15, 20, 30],
   resolutionPresets: [
-    { name: '896 x 512', megapixels: 0.46 },
-    { name: '1344 x 768', megapixels: 0.98 },
+    { name: '896 x 512', megapixels: 0.46, note: null },
+    { name: '1344 x 768', megapixels: 0.98, note: 'official 768p, the largest' },
   ],
   defaultSeconds: 5,
   defaultResolution: '896 x 512',

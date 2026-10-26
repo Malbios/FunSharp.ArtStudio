@@ -1,15 +1,24 @@
-import type { VideoOptions } from '../api'
+import type { VideoOptions, VideoResolutionPreset } from '../api'
 import { chosenSeconds, CUSTOM, renderedSeconds, type VideoForm } from './videoForm'
 
-interface Props {
+interface FieldsProps {
   form: VideoForm
   options: VideoOptions
   disabled?: boolean
   onChange: (form: VideoForm) => void
 }
 
-/** Duration, size, turbo, count and the editable prompt of a video job; shared by the set page and the New page. */
-export function VideoOptionsFields({ form, options, disabled, onChange }: Props) {
+interface OptionsProps extends FieldsProps {
+  /** The start image's shape, e.g. "896×1152 (7:9) - Portrait", when known. */
+  startShape?: string
+}
+
+function presetLabel(preset: VideoResolutionPreset): string {
+  return `${preset.name} (16:9 widescreen) · ${preset.megapixels} MP${preset.note ? ` - ${preset.note}` : ''}`
+}
+
+/** Duration, size, turbo and count of a video job; shared by the set's Make video page and the New page. */
+export function VideoOptionsFields({ form, options, disabled, startShape, onChange }: OptionsProps) {
   const update = (changes: Partial<VideoForm>) => onChange({ ...form, ...changes })
   const seconds = chosenSeconds(form)
   const lengthHint = seconds > 0 ? `renders ${renderedSeconds(seconds).toFixed(2)} s` : undefined
@@ -42,12 +51,12 @@ export function VideoOptionsFields({ form, options, disabled, onChange }: Props)
             />
           </label>
         )}
-        <label className="field">
+        <label className="field video-size-field">
           <span>Size</span>
           <select value={form.resolution} disabled={disabled} onChange={(e) => update({ resolution: e.target.value })}>
             {options.resolutionPresets.map((preset) => (
               <option key={preset.name} value={preset.name}>
-                {preset.name} ({preset.megapixels} MP)
+                {presetLabel(preset)}
               </option>
             ))}
             <option value={CUSTOM}>Custom megapixels…</option>
@@ -80,35 +89,43 @@ export function VideoOptionsFields({ form, options, disabled, onChange }: Props)
         </label>
       </div>
       <p className="hint">
-        Sizes are named for a 16:9 start image; other shapes keep the same number of pixels.
+        The sizes are what a 16:9 widescreen start image gets. The video always takes the start image's shape, with about
+        the same number of pixels.
+        {startShape && <> This start image is {startShape}.</>}
       </p>
       <label className="inline-check" title="The Lightning LoRA: 8 steps instead of 20">
         <input type="checkbox" checked={form.turbo} disabled={disabled} onChange={(e) => update({ turbo: e.target.checked })} />
         Turbo (8 steps instead of 20)
       </label>
-      <label className="field">
-        <span className="prompt-label-row">
-          Prompt
-          {form.prompt !== options.promptTemplate && (
-            <button
-              type="button"
-              className="link-button"
-              disabled={disabled}
-              onClick={() => update({ prompt: options.promptTemplate })}
-            >
-              Reset to template
-            </button>
-          )}
-        </span>
-        <textarea
-          className="video-prompt"
-          rows={10}
-          value={form.prompt}
-          disabled={disabled}
-          onChange={(e) => update({ prompt: e.target.value })}
-        />
-        <span className="hint">Replace ??? with what happens. The sound and music lines describe the audio track.</span>
-      </label>
     </>
+  )
+}
+
+/** The video's whole prompt, pre-filled with the workflow's template. */
+export function VideoPromptField({ form, options, disabled, onChange }: FieldsProps) {
+  return (
+    <label className="field">
+      <span className="prompt-label-row">
+        Prompt
+        {form.prompt !== options.promptTemplate && (
+          <button
+            type="button"
+            className="link-button"
+            disabled={disabled}
+            onClick={() => onChange({ ...form, prompt: options.promptTemplate })}
+          >
+            Reset to template
+          </button>
+        )}
+      </span>
+      <textarea
+        className="video-prompt"
+        rows={10}
+        value={form.prompt}
+        disabled={disabled}
+        onChange={(e) => onChange({ ...form, prompt: e.target.value })}
+      />
+      <span className="hint">Replace ??? with what happens. The sound and music lines describe the audio track.</span>
+    </label>
   )
 }

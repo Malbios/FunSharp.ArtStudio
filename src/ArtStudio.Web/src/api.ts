@@ -58,8 +58,10 @@ export interface VideoInfo {
 }
 
 export interface VideoResolutionPreset {
+  /** The size a 16:9 start image gets, e.g. "896 x 512". */
   name: string
   megapixels: number
+  note: string | null
 }
 
 export interface VideoOptions {

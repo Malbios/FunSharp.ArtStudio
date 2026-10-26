@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace ArtStudio.Server.Generation;
 
-public sealed record VideoResolutionPreset(string Name, double Megapixels);
+public sealed record VideoResolutionPreset(string Name, double Megapixels, string? Note = null);
 
 /// <summary>The MiniMax H3 workflow's duration and resolution choices and their limits.</summary>
 public static class VideoOptions
@@ -16,19 +16,21 @@ public static class VideoOptions
 
     public static readonly IReadOnlyList<double> DurationPresets = [3, 5, 6, 8, 10, 15, 20, 30];
 
-    /// <summary>Named after the size a 16:9 start image gets; other shapes keep the pixel count.</summary>
+    /// <summary>
+    /// Named after the size a 16:9 start image gets; other shapes keep the pixel count. The notes are the workflow's.
+    /// </summary>
     public static readonly IReadOnlyList<VideoResolutionPreset> ResolutionPresets =
     [
         new("608 x 352", 0.2),
         new("736 x 416", 0.3),
-        new("864 x 480", 0.4),
+        new("864 x 480", 0.4, "official 480p"),
         new("896 x 512", 0.46),
         new("960 x 544", 0.5),
         new("1056 x 608", 0.6),
         new("1152 x 640", 0.7),
         new("1216 x 672", 0.8),
         new("1280 x 736", 0.9),
-        new("1344 x 768", 0.98),
+        new("1344 x 768", 0.98, "official 768p, the largest"),
     ];
 
     public static string ResolutionLabel(double megapixels) =>

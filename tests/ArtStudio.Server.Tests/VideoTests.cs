@@ -409,7 +409,8 @@ public sealed class VideoTests : IDisposable
         var options = await _client.GetFromJsonAsync<VideoOptionsDto>("/api/videos/options", Json);
 
         Assert.Contains("???", options!.PromptTemplate);
-        Assert.Contains(options.ResolutionPresets, p => p is { Name: "896 x 512", Megapixels: 0.46 });
+        Assert.Contains(options.ResolutionPresets, p => p is { Name: "896 x 512", Megapixels: 0.46, Note: null });
+        Assert.Contains(options.ResolutionPresets, p => p is { Name: "864 x 480", Note: "official 480p" });
         Assert.Equal([3, 5, 6, 8, 10, 15, 20, 30], options.DurationPresets);
     }
 }

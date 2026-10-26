@@ -166,7 +166,7 @@ public sealed record VideoOptionsDto(
     double MaxMegapixels,
     int MaxCount);
 
-public sealed record VideoResolutionPresetDto(string Name, double Megapixels);
+public sealed record VideoResolutionPresetDto(string Name, double Megapixels, string? Note);
 
 public sealed record DeviantArtDraftRequest(string Url);
 

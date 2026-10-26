@@ -5,7 +5,7 @@ import { useLoad } from '../live/useLoad'
 import { MESSAGE_DURATION_MS } from '../messages'
 import { closestResolution } from '../prompt/closestResolution'
 import { initialVideoForm, resolveVideoForm, type VideoForm } from '../video/videoForm'
-import { VideoOptionsFields } from '../video/VideoOptionsFields'
+import { VideoOptionsFields, VideoPromptField } from '../video/VideoOptionsFields'
 import { imageFileFrom, loadImageFile, NO_SOURCE, type ImageSource } from './imageSource'
 import { ImageSourcePicker, type SourceTabOption } from './ImageSourcePicker'
 import { NewModeTabs } from './NewModeTabs'
@@ -134,7 +134,10 @@ export function NewVideoPage() {
 
         {options.error && <p className="error">{options.error}</p>}
         {form && options.data && (
-          <VideoOptionsFields form={form} options={options.data} disabled={submitting} onChange={setForm} />
+          <>
+            <VideoOptionsFields form={form} options={options.data} disabled={submitting} onChange={setForm} />
+            <VideoPromptField form={form} options={options.data} disabled={submitting} onChange={setForm} />
+          </>
         )}
 
         <div className="field-row submit-row">

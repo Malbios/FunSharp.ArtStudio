@@ -1,9 +1,15 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { api, type ImageInfo } from '../api'
 import { useLoad } from '../live/useLoad'
 import { initialVideoForm, resolveVideoForm, type VideoForm } from '../video/videoForm'
-import { VideoOptionsFields } from '../video/VideoOptionsFields'
+import { VideoOptionsFields, VideoPromptField } from '../video/VideoOptionsFields'
+import { ImageViewer } from './ImageViewer'
+
+interface ViewedFrame {
+  url: string
+  caption: string
+}
 
 /** Queues videos of a set that start from one of its images, and optionally end on another. */
 export function MakeVideoPage() {
@@ -20,6 +26,8 @@ export function MakeVideoPage() {
   const [endImageId, setEndImageId] = useState<number | null>(null)
   const [queueing, setQueueing] = useState(false)
   const [error, setError] = useState<string>()
+  const resolutions = useLoad(api.resolutions)
+  const [viewed, setViewed] = useState<ViewedFrame>()
 
   // Opened from the set page's viewer, which may have been scrolled far down.
   useEffect(() => window.scrollTo(0, 0), [])
@@ -28,6 +36,8 @@ export function MakeVideoPage() {
   const startId = chosenStartId ?? (Number(searchParams.get('start')) || images[0]?.id)
   const start = images.find((image) => image.id === startId)
   const end = images.find((image) => image.id === endImageId)
+  const startShape = resolutions.data?.find((preset) => preset.name === start?.resolution)?.comfyLabel
+  const closeViewer = useCallback(() => setViewed(undefined), [])
   const backToSet = () => navigate(`/sets/${setId}`, { state: setPageState })
 
   async function submit(event: FormEvent) {
@@ -65,18 +75,17 @@ export function MakeVideoPage() {
         </Link>
       </div>
 
+      {options.error && <p className="error">{options.error}</p>}
+      {form && options.data && (
+        <VideoPromptField form={form} options={options.data} disabled={queueing} onChange={setForm} />
+      )}
+
       <div className="video-frames">
-        <figure>
-          {start ? <img src={start.url} alt="Start frame" /> : <div className="video-frame-empty">None</div>}
-          <figcaption>Start</figcaption>
-        </figure>
+        <FramePreview image={start} caption="Start" emptyText="None" onOpen={setViewed} />
         <span className="video-frames-arrow" aria-hidden>
           →
         </span>
-        <figure>
-          {end ? <img src={end.url} alt="End frame" /> : <div className="video-frame-empty">Free</div>}
-          <figcaption>End</figcaption>
-        </figure>
+        <FramePreview image={end} caption="End" emptyText="Free" onOpen={setViewed} />
       </div>
 
       <FrameChooser label="Start frame" images={images} chosenId={startId ?? null} onChoose={(id) => setStartId(id!)} />
@@ -88,9 +97,14 @@ export function MakeVideoPage() {
         onChoose={setEndImageId}
       />
 
-      {options.error && <p className="error">{options.error}</p>}
       {form && options.data && (
-        <VideoOptionsFields form={form} options={options.data} disabled={queueing} onChange={setForm} />
+        <VideoOptionsFields
+          form={form}
+          options={options.data}
+          disabled={queueing}
+          startShape={startShape}
+          onChange={setForm}
+        />
       )}
 
       <div className="field-row submit-row">
@@ -110,7 +124,35 @@ export function MakeVideoPage() {
         </button>
       </div>
       {error && <p className="error">{error}</p>}
+      {viewed && <ImageViewer url={viewed.url} caption={viewed.caption} onClose={closeViewer} />}
     </form>
+  )
+}
+
+interface FramePreviewProps {
+  image: ImageInfo | undefined
+  caption: string
+  emptyText: string
+  onOpen: (viewed: ViewedFrame) => void
+}
+
+function FramePreview({ image, caption, emptyText, onOpen }: FramePreviewProps) {
+  return (
+    <figure>
+      {image ? (
+        <button
+          type="button"
+          className="video-frame-open"
+          title="Show at full resolution"
+          onClick={() => onOpen({ url: image.url, caption: `${caption} frame` })}
+        >
+          <img src={image.url} alt={`${caption} frame`} />
+        </button>
+      ) : (
+        <div className="video-frame-empty">{emptyText}</div>
+      )}
+      <figcaption>{caption}</figcaption>
+    </figure>
   )
 }
 

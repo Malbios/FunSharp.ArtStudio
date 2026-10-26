@@ -12,7 +12,7 @@ public static class VideoEndpoints
         app.MapGet("/api/videos/options", (VideoWorkflowBuilder workflow) => new VideoOptionsDto(
             workflow.PromptTemplate,
             VideoOptions.DurationPresets,
-            VideoOptions.ResolutionPresets.Select(p => new VideoResolutionPresetDto(p.Name, p.Megapixels)).ToList(),
+            VideoOptions.ResolutionPresets.Select(p => new VideoResolutionPresetDto(p.Name, p.Megapixels, p.Note)).ToList(),
             VideoOptions.DefaultSeconds,
             VideoOptions.DefaultResolution,
             VideoOptions.MaxSeconds,
