@@ -135,7 +135,13 @@ export function NewVideoPage() {
         {options.error && <p className="error">{options.error}</p>}
         {form && options.data && (
           <>
-            <VideoOptionsFields form={form} options={options.data} disabled={submitting} onChange={setForm} />
+            <VideoOptionsFields
+              form={form}
+              options={options.data}
+              disabled={submitting}
+              startSize={isUploaded(start) ? start : undefined}
+              onChange={setForm}
+            />
             <VideoPromptField form={form} options={options.data} disabled={submitting} onChange={setForm} />
           </>
         )}

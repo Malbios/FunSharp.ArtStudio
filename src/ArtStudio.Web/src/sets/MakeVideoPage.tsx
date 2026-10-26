@@ -36,7 +36,7 @@ export function MakeVideoPage() {
   const startId = chosenStartId ?? (Number(searchParams.get('start')) || images[0]?.id)
   const start = images.find((image) => image.id === startId)
   const end = images.find((image) => image.id === endImageId)
-  const startShape = resolutions.data?.find((preset) => preset.name === start?.resolution)?.comfyLabel
+  const startSize = resolutions.data?.find((preset) => preset.name === start?.resolution)
   const closeViewer = useCallback(() => setViewed(undefined), [])
   const backToSet = () => navigate(`/sets/${setId}`, { state: setPageState })
 
@@ -102,7 +102,7 @@ export function MakeVideoPage() {
           form={form}
           options={options.data}
           disabled={queueing}
-          startShape={startShape}
+          startSize={startSize}
           onChange={setForm}
         />
       )}

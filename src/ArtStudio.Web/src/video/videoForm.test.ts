@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { VideoOptions } from '../api'
-import { CUSTOM, initialVideoForm, renderedSeconds, resolveVideoForm, videoFrameCount } from './videoForm'
+import {
+  approximateVideoSize,
+  CUSTOM,
+  initialVideoForm,
+  renderedSeconds,
+  resolveVideoForm,
+  videoFrameCount,
+} from './videoForm'
 
 const options: VideoOptions = {
   promptTemplate: 'Start.\n\n???\n\nEnd.',
@@ -28,6 +35,14 @@ describe('videoFrameCount', () => {
   it('gives the length that is actually rendered', () => {
     expect(renderedSeconds(5)).toBeCloseTo(5.1667, 3)
     expect(renderedSeconds(8)).toBe(8)
+  })
+})
+
+describe('approximateVideoSize', () => {
+  it('keeps the start image shape at about the chosen pixel count, in steps of 32', () => {
+    expect(approximateVideoSize({ width: 1920, height: 1080 }, 0.46)).toEqual({ width: 928, height: 512 })
+    expect(approximateVideoSize({ width: 768, height: 1344 }, 0.46)).toEqual({ width: 512, height: 928 })
+    expect(approximateVideoSize({ width: 1152, height: 896 }, 0.46)).toEqual({ width: 800, height: 608 })
   })
 })
 

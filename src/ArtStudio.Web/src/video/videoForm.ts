@@ -41,6 +41,23 @@ export function renderedSeconds(seconds: number): number {
   return videoFrameCount(seconds) / FRAMES_PER_SECOND
 }
 
+export interface Size {
+  width: number
+  height: number
+}
+
+const SIZE_STEP = 32
+
+/**
+ * Roughly what the workflow's "scale to total pixels" node makes of the start image: the same shape with about
+ * megapixels × 1024² pixels, rounded to multiples of 32. An estimate; ComfyUI's exact rounding is not mirrored.
+ */
+export function approximateVideoSize(start: Size, megapixels: number): Size {
+  const scale = Math.sqrt((megapixels * 1024 * 1024) / (start.width * start.height))
+  const snap = (length: number) => Math.max(SIZE_STEP, Math.round((length * scale) / SIZE_STEP) * SIZE_STEP)
+  return { width: snap(start.width), height: snap(start.height) }
+}
+
 function parseNumber(text: string): number {
   return text.trim() === '' ? Number.NaN : Number(text.replace(',', '.'))
 }

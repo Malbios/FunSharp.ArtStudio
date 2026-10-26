@@ -1,5 +1,13 @@
 import type { VideoOptions, VideoResolutionPreset } from '../api'
-import { chosenSeconds, CUSTOM, renderedSeconds, type VideoForm } from './videoForm'
+import {
+  approximateVideoSize,
+  chosenMegapixels,
+  chosenSeconds,
+  CUSTOM,
+  renderedSeconds,
+  type Size,
+  type VideoForm,
+} from './videoForm'
 
 interface FieldsProps {
   form: VideoForm
@@ -9,8 +17,8 @@ interface FieldsProps {
 }
 
 interface OptionsProps extends FieldsProps {
-  /** The start image's shape, e.g. "896×1152 (7:9) - Portrait", when known. */
-  startShape?: string
+  /** The start image's size, when known, for the approximate size of the video. */
+  startSize?: Size
 }
 
 function presetLabel(preset: VideoResolutionPreset): string {
@@ -18,10 +26,13 @@ function presetLabel(preset: VideoResolutionPreset): string {
 }
 
 /** Duration, size, turbo and count of a video job; shared by the set's Make video page and the New page. */
-export function VideoOptionsFields({ form, options, disabled, startShape, onChange }: OptionsProps) {
+export function VideoOptionsFields({ form, options, disabled, startSize, onChange }: OptionsProps) {
   const update = (changes: Partial<VideoForm>) => onChange({ ...form, ...changes })
   const seconds = chosenSeconds(form)
   const lengthHint = seconds > 0 ? `renders ${renderedSeconds(seconds).toFixed(2)} s` : undefined
+  const megapixels = chosenMegapixels(form, options)
+  const videoSize = startSize && megapixels > 0 ? approximateVideoSize(startSize, megapixels) : undefined
+  const sizeHint = videoSize && `about ${videoSize.width} × ${videoSize.height} with this start image`
 
   return (
     <>
@@ -52,7 +63,7 @@ export function VideoOptionsFields({ form, options, disabled, startShape, onChan
           </label>
         )}
         <label className="field video-size-field">
-          <span>Size</span>
+          <span>Size {sizeHint && <em className="hint">({sizeHint})</em>}</span>
           <select value={form.resolution} disabled={disabled} onChange={(e) => update({ resolution: e.target.value })}>
             {options.resolutionPresets.map((preset) => (
               <option key={preset.name} value={preset.name}>
@@ -88,11 +99,6 @@ export function VideoOptionsFields({ form, options, disabled, startShape, onChan
           />
         </label>
       </div>
-      <p className="hint">
-        The sizes are what a 16:9 widescreen start image gets. The video always takes the start image's shape, with about
-        the same number of pixels.
-        {startShape && <> This start image is {startShape}.</>}
-      </p>
       <label className="inline-check" title="The Lightning LoRA: 8 steps instead of 20">
         <input type="checkbox" checked={form.turbo} disabled={disabled} onChange={(e) => update({ turbo: e.target.checked })} />
         Turbo (8 steps instead of 20)
