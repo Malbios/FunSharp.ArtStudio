@@ -106,9 +106,9 @@ public sealed record PostDto(
         suggesting);
 }
 
-public sealed record MoreImagesRequest(int Count, string? Prompt, string? Resolution);
+public sealed record MoreImagesRequest(int Count, string? Prompt, string? Resolution, bool QueueFirst = false);
 
-public sealed record QueueDraftRequest(string Prompt, string Resolution, int Count);
+public sealed record QueueDraftRequest(string Prompt, string Resolution, int Count, bool QueueFirst = false);
 
 public sealed record DraftSettingsRequest(string Resolution, int ImageCount);
 

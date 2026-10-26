@@ -46,6 +46,7 @@ export function NewSetPage() {
   const [resolution, setResolution] = useState('')
   const [resolutionIsAuto, setResolutionIsAuto] = useState(false)
   const [count, setCount] = useState(DEFAULT_COUNT)
+  const [queueFirst, setQueueFirst] = useState(false)
   const [pickerVersion, setPickerVersion] = useState(0)
   const [pickerTab, setPickerTab] = useState<SourceTab>('DeviantArt')
   const [baseSet, setBaseSet] = useState<SetDetail>()
@@ -165,6 +166,7 @@ export function NewSetPage() {
     setResolution('')
     setResolutionIsAuto(false)
     setCount(DEFAULT_COUNT)
+    setQueueFirst(false)
   }
 
   async function submit(event: FormEvent) {
@@ -173,13 +175,15 @@ export function NewSetPage() {
     await send(async () => {
       if (baseSet && isDraft) {
         draftSettings.cancel()
-        await api.queueDraft(baseSet.id, prompt, resolution, count)
+        await api.queueDraft(baseSet.id, prompt, resolution, count, queueFirst)
         navigate('/drafts')
       } else if (baseSet) {
-        await api.moreImages(baseSet.id, count, prompt, resolution)
+        await api.moreImages(baseSet.id, count, prompt, resolution, queueFirst)
         navigate(locationState ? returnToFrom(locationState) : `/sets/${baseSet.id}`)
       } else {
-        const { id } = await api.createSet(buildForm())
+        const form = buildForm()
+        form.append('queueFirst', String(queueFirst))
+        const { id } = await api.createSet(form)
         resetForm()
         setCreated({ id, asDraft: false })
       }
@@ -344,6 +348,10 @@ export function NewSetPage() {
               Save as draft
             </button>
           )}
+          <label className="submit-in-row queue-first" title="Put it ahead of the waiting jobs instead of at the end">
+            <input type="checkbox" checked={queueFirst} onChange={(e) => setQueueFirst(e.target.checked)} />
+            Queue first
+          </label>
           <button type="submit" className="primary submit-in-row" disabled={submitting}>
             {submitting ? 'Sending…' : 'Add to queue'}
           </button>

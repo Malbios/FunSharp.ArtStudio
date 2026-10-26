@@ -306,12 +306,12 @@ export const api = {
     request<SetSummary[]>('GET', `/api/sets?stage=${stage}${presetId ? `&preset=${presetId}` : ''}`),
   set: (id: number) => request<SetDetail>('GET', `/api/sets/${id}`),
   createSet: (form: FormData) => request<{ id: number }>('POST', '/api/sets', form),
-  moreImages: (setId: number, count: number, prompt?: string, resolution?: string) =>
-    request<{ id: number }>('POST', `/api/sets/${setId}/more`, { count, prompt, resolution }),
+  moreImages: (setId: number, count: number, prompt?: string, resolution?: string, queueFirst?: boolean) =>
+    request<{ id: number }>('POST', `/api/sets/${setId}/more`, { count, prompt, resolution, queueFirst }),
   saveDraftSettings: (setId: number, resolution: string, imageCount: number) =>
     request<void>('PUT', `/api/sets/${setId}/draft-settings`, { resolution, imageCount }),
-  queueDraft: (setId: number, prompt: string, resolution: string, count: number) =>
-    request<void>('POST', `/api/sets/${setId}/queue`, { prompt, resolution, count }),
+  queueDraft: (setId: number, prompt: string, resolution: string, count: number, queueFirst?: boolean) =>
+    request<void>('POST', `/api/sets/${setId}/queue`, { prompt, resolution, count, queueFirst }),
   addDeviantArtDraft: (url: string) => request<{ id: number }>('POST', '/api/drafts/deviantart', { url }),
   retryFailedDraftPrompts: () => request<{ retried: number }>('POST', '/api/drafts/retry-failed-prompts'),
   generatePrompt: (setId: number, images?: ImagesToQueue) =>

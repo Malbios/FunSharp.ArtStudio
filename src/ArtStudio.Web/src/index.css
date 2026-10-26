@@ -1604,6 +1604,20 @@ code {
   white-space: nowrap;
 }
 
+.queue-first {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: calc(0.4rem + 1px) 0;
+  cursor: pointer;
+}
+
+.queue-first input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 .ready-banner {
   border-color: var(--success);
   color: var(--success);

@@ -17,7 +17,8 @@ public abstract record SetSource
     public sealed record DeviantArtUrl(string Url, int ImageIndex) : SetSource;
 }
 
-public sealed record NewSetRequest(string Prompt, string Resolution, int Count, SetSource Source, bool AsDraft = false);
+public sealed record NewSetRequest(
+    string Prompt, string Resolution, int Count, SetSource Source, bool AsDraft = false, bool QueueFirst = false);
 
 public sealed class SetService(
     StudioDbContext db,
@@ -77,7 +78,7 @@ public sealed class SetService(
         if (set.IsDraft)
             await QueuePromptGenerationIfKeySetAsync(set, ct);
         else
-            await queueService.EnqueueAsync(set.Id, request.Count, prompt: null, resolution: null, ct);
+            await queueService.EnqueueAsync(set.Id, request.Count, prompt: null, resolution: null, request.QueueFirst, ct);
         return set;
     }
 
@@ -110,7 +111,8 @@ public sealed class SetService(
         await AttachSourceImageAsync(set, SourceKind.DeviantArt, new MemoryStream(deviation.Content), deviation.Extension, ct);
     }
 
-    public async Task QueueDraftAsync(int setId, string prompt, string resolution, int count, CancellationToken ct)
+    public async Task QueueDraftAsync(
+        int setId, string prompt, string resolution, int count, bool queueFirst, CancellationToken ct)
     {
         var set = await FindSetAsync(setId, ct);
         if (!set.IsDraft)
@@ -119,7 +121,7 @@ public sealed class SetService(
         set.IsDraft = false;
         if (set.PromptGeneration is PromptGenerationState.Queued or PromptGenerationState.Running)
             set.PromptGeneration = PromptGenerationState.None;
-        await queueService.EnqueueAsync(setId, count, prompt, resolution, ct);
+        await queueService.EnqueueAsync(setId, count, prompt, resolution, queueFirst, ct);
         promptQueue.CancelRunning(setId);
         await notifier.SetUpdated(setId);
     }
@@ -197,7 +199,7 @@ public sealed class SetService(
         if (set is not { IsDraft: false, ImagesAfterPromptCount: { } count, ImagesAfterPromptResolution: { } resolution })
             return;
 
-        await queueService.EnqueueAsync(setId, count, set.Prompt, resolution, ct);
+        await queueService.EnqueueAsync(setId, count, set.Prompt, resolution, queueFirst: false, ct);
         await notifier.SetUpdated(setId);
     }
 

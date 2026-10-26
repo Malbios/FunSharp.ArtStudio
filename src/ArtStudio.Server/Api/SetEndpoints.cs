@@ -18,7 +18,7 @@ public static class SetEndpoints
         sets.MapPost("", CreateSetAsync).DisableAntiforgery();
         sets.MapPost("{id:int}/more", RequestMoreImagesAsync);
         sets.MapPost("{id:int}/queue", async (int id, QueueDraftRequest request, SetService setService, CancellationToken ct) =>
-            await setService.QueueDraftAsync(id, request.Prompt, request.Resolution, request.Count, ct));
+            await setService.QueueDraftAsync(id, request.Prompt, request.Resolution, request.Count, request.QueueFirst, ct));
         sets.MapPut("{id:int}/draft-settings", async (int id, DraftSettingsRequest request, SetService setService, CancellationToken ct) =>
             await setService.SaveDraftSettingsAsync(id, request.Resolution ?? "", request.ImageCount, ct));
         sets.MapPost("{id:int}/picks", async (int id, PickImageRequest request, SetService setService, CancellationToken ct) =>
@@ -170,8 +170,9 @@ public static class SetEndpoints
         var source = ReadSource(form, fileStream);
 
         var asDraft = bool.TryParse(form["draft"], out var draft) && draft;
+        var queueFirst = bool.TryParse(form["queueFirst"], out var first) && first;
 
-        var set = await setService.CreateAsync(new NewSetRequest(prompt, resolution, count, source, asDraft), ct);
+        var set = await setService.CreateAsync(new NewSetRequest(prompt, resolution, count, source, asDraft, queueFirst), ct);
         return Results.Created($"/api/sets/{set.Id}", new { set.Id });
     }
 
@@ -204,7 +205,7 @@ public static class SetEndpoints
     {
         if (!await db.PromptSets.AnyAsync(s => s.Id == id, ct))
             return Results.NotFound();
-        var job = await queueService.EnqueueAsync(id, request.Count, request.Prompt, request.Resolution, ct);
+        var job = await queueService.EnqueueAsync(id, request.Count, request.Prompt, request.Resolution, request.QueueFirst, ct);
         return Results.Ok(new { job.Id });
     }
 

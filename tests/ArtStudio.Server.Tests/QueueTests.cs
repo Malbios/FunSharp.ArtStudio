@@ -225,6 +225,50 @@ public sealed class QueueTests : IDisposable
         Assert.Equal([ids[2], ids[1], ids[3], ids[0]], await OrderAsync());
     }
 
+    private static void QueueFirst(MultipartFormDataContent form) => form.Add(new StringContent("true"), "queueFirst");
+
+    [Fact]
+    public async Task CreateSet_QueueFirst_GoesAheadOfTheWaitingJobs()
+    {
+        (await _client.PostAsync("/api/queue/pause", null)).EnsureSuccessStatusCode();
+        var a = await _factory.CreateSetAsync(_client, "a", count: 1);
+        var b = await _factory.CreateSetAsync(_client, "b", count: 1);
+
+        var c = await _factory.CreateSetAsync(_client, "c", count: 1, addSource: QueueFirst);
+        var d = await _factory.CreateSetAsync(_client, "d", count: 1);
+
+        Assert.Equal([c, a, b, d], (await GetQueueAsync(_client)).Active.Select(j => j.SetId));
+        (await _client.PostAsync("/api/queue/resume", null)).EnsureSuccessStatusCode();
+        await WaitUntilAsync(() => Task.FromResult(_factory.Comfy.SubmittedPrompts.Count == 4), "all four rendered");
+        Assert.Equal(["c", "a", "b", "d"], _factory.Comfy.SubmittedPrompts);
+    }
+
+    [Fact]
+    public async Task CreateSet_QueueFirst_OnAnEmptyQueue_IsQueued()
+    {
+        (await _client.PostAsync("/api/queue/pause", null)).EnsureSuccessStatusCode();
+
+        var setId = await _factory.CreateSetAsync(_client, "a", count: 1, addSource: QueueFirst);
+
+        Assert.Equal([setId], (await GetQueueAsync(_client)).Active.Select(j => j.SetId));
+    }
+
+    [Fact]
+    public async Task MoreImages_QueueFirst_WaitsForTheRunningJob()
+    {
+        _factory.Comfy.HoldRuns = true;
+        var runningSet = await _factory.CreateSetAsync(_client, "running", count: 1);
+        await WaitForJobStatusAsync(runningSet, JobStatus.Running);
+        var waitingSet = await _factory.CreateSetAsync(_client, "waiting", count: 1);
+
+        (await _client.PostAsJsonAsync($"/api/sets/{runningSet}/more", new { count = 1, queueFirst = true }))
+            .EnsureSuccessStatusCode();
+
+        Assert.Equal([runningSet, runningSet, waitingSet], (await GetQueueAsync(_client)).Active.Select(j => j.SetId));
+        Assert.Equal(JobStatus.Running, (await GetQueueAsync(_client)).Active[0].Status);
+        _factory.Comfy.HoldRuns = false;
+    }
+
     [Fact]
     public async Task MovingPastTheEnds_OrARunningJob_IsRefused()
     {

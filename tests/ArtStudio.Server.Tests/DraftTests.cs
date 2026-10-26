@@ -160,6 +160,19 @@ public sealed class DraftTests : IDisposable
     }
 
     [Fact]
+    public async Task QueueDraft_QueueFirst_GoesAheadOfTheWaitingJobs()
+    {
+        (await _client.PostAsync("/api/queue/pause", null)).EnsureSuccessStatusCode();
+        var waitingSetId = await _factory.CreateSetAsync(_client, "a fox");
+        var setId = await CreateDraftAsync(AddUpload);
+
+        (await _client.PostAsJsonAsync($"/api/sets/{setId}/queue",
+            new { prompt = "an owl", resolution = "Portrait", count = 3, queueFirst = true })).EnsureSuccessStatusCode();
+
+        Assert.Equal([setId, waitingSetId], (await GetQueueAsync(_client)).Active.Select(j => j.SetId));
+    }
+
+    [Fact]
     public async Task QueueDraft_OnQueuedSet_IsRejected()
     {
         var setId = await CreateDraftAsync(AddUpload);

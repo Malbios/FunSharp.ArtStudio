@@ -20,9 +20,12 @@ public sealed class QueueService(
 {
     public const int MaxImagesPerJob = 100;
 
-    /// <summary>Queues a batch for the set; a missing prompt or resolution falls back to the set's most recent one.</summary>
+    /// <summary>
+    /// Queues a batch for the set, after the waiting jobs or, with <paramref name="queueFirst"/>, ahead of them;
+    /// a missing prompt or resolution falls back to the set's most recent one.
+    /// </summary>
     public async Task<GenerationJob> EnqueueAsync(
-        int setId, int count, string? prompt, string? resolution, CancellationToken ct)
+        int setId, int count, string? prompt, string? resolution, bool queueFirst, CancellationToken ct)
     {
         if (count is < 1 or > MaxImagesPerJob)
             throw new UserFacingException($"Image count must be between 1 and {MaxImagesPerJob}.");
@@ -43,6 +46,9 @@ public sealed class QueueService(
         set.Prompt = jobPrompt.Trim();
         set.Resolution = preset.Name;
 
+        var firstQueuedPosition = queueFirst
+            ? await db.Jobs.Where(j => j.Status == JobStatus.Queued).MinAsync(j => (long?)j.QueuePosition, ct)
+            : null;
         var lastPosition = await db.Jobs.MaxAsync(j => (long?)j.QueuePosition, ct) ?? 0;
         var job = new GenerationJob
         {
@@ -51,7 +57,7 @@ public sealed class QueueService(
             Resolution = set.Resolution,
             RequestedCount = count,
             Status = JobStatus.Queued,
-            QueuePosition = lastPosition + 1,
+            QueuePosition = firstQueuedPosition - 1 ?? lastPosition + 1,
             CreatedAt = clock.GetUtcNow(),
         };
         db.Jobs.Add(job);
