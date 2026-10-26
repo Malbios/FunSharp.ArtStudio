@@ -1604,7 +1604,7 @@ code {
   white-space: nowrap;
 }
 
-.queue-first {
+.inline-check {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -1612,7 +1612,7 @@ code {
   cursor: pointer;
 }
 
-.queue-first input {
+.inline-check input {
   width: auto;
   margin: 0;
   accent-color: var(--accent);

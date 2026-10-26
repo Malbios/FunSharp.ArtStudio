@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, ApiError } from '../api'
 import { MESSAGE_DURATION_MS } from '../messages'
 import { insertAtSelection } from '../prompt/insertAtSelection'
-import { parseDeviantArtUrls } from './parseUrls'
+import { parseDeviantArtUrls, takeCompleteEntries } from './parseUrls'
 
 type BulkResult =
   | { url: string; status: 'pending' }
@@ -15,23 +15,81 @@ interface Progress {
   total: number
 }
 
+const ADD_RIGHT_AWAY_KEY = 'artstudio.drafts.addRightAway'
+
+function rememberedAddRightAway(): boolean {
+  try {
+    return localStorage.getItem(ADD_RIGHT_AWAY_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function rememberAddRightAway(on: boolean) {
+  try {
+    localStorage.setItem(ADD_RIGHT_AWAY_KEY, String(on))
+  } catch {
+    // Without storage the choice is simply not remembered.
+  }
+}
+
 export function BulkDeviantArtDrafts() {
   const [text, setText] = useState('')
   const [results, setResults] = useState<BulkResult[]>([])
   const [progress, setProgress] = useState<Progress>()
+  const [addRightAway, setAddRightAway] = useState(rememberedAddRightAway)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const waitingRef = useRef<string[]>([])
+  const workingRef = useRef(false)
   const urls = parseDeviantArtUrls(text)
-  const running = progress !== undefined
 
-  async function addAll() {
-    setProgress({ done: 0, total: urls.length })
-    setText('')
-    setResults(urls.map((url) => ({ url, status: 'pending' })))
-    for (const [index, url] of urls.entries()) {
+  function enqueue(newUrls: string[]) {
+    const fresh = newUrls.filter((url) => !waitingRef.current.includes(url))
+    if (fresh.length === 0) return
+    waitingRef.current.push(...fresh)
+    setResults((previous) => [
+      ...previous.filter((existing) => !fresh.includes(existing.url)),
+      ...fresh.map((url): BulkResult => ({ url, status: 'pending' })),
+    ])
+    setProgress((previous) => ({ done: previous?.done ?? 0, total: (previous?.total ?? 0) + fresh.length }))
+    if (!workingRef.current) void addWaiting()
+  }
+
+  // One at a time, so DeviantArt never sees parallel downloads from this box.
+  async function addWaiting() {
+    workingRef.current = true
+    while (waitingRef.current.length > 0) {
+      const url = waitingRef.current[0]
       const result = await addOne(url)
+      waitingRef.current.shift()
       setResults((previous) => previous.map((existing) => (existing.url === url ? result : existing)))
-      setProgress({ done: index + 1, total: urls.length })
+      setProgress((previous) => previous && { ...previous, done: previous.done + 1 })
     }
+    workingRef.current = false
     setProgress(undefined)
+  }
+
+  function addAll() {
+    enqueue(urls)
+    setText('')
+    textareaRef.current?.focus()
+  }
+
+  function changeText(next: string) {
+    if (!addRightAway) return setText(next)
+    const { complete, rest } = takeCompleteEntries(next)
+    setText(rest)
+    enqueue(complete)
+  }
+
+  function toggleAddRightAway(on: boolean) {
+    setAddRightAway(on)
+    rememberAddRightAway(on)
+    if (on) {
+      const { complete, rest } = takeCompleteEntries(text)
+      setText(rest)
+      enqueue(complete)
+    }
   }
 
   function pasteWithTrailingSpace(event: ClipboardEvent<HTMLTextAreaElement>) {
@@ -59,17 +117,21 @@ export function BulkDeviantArtDrafts() {
     <section className="panel bulk-drafts">
       <h3>Bulk add from DeviantArt</h3>
       <textarea
+        ref={textareaRef}
         rows={4}
         value={text}
-        disabled={running}
-        onChange={(e) => setText(e.target.value)}
+        onChange={(e) => changeText(e.target.value)}
         onPaste={pasteWithTrailingSpace}
         placeholder="Paste DeviantArt URLs separated by spaces or line breaks. Each becomes a draft with the post's main image."
       />
       <div className="bulk-drafts-actions">
-        <button type="button" className="primary" disabled={running || urls.length === 0} onClick={() => void addAll()}>
+        <button type="button" className="primary" disabled={urls.length === 0} onClick={addAll}>
           {urls.length > 1 ? `Add ${urls.length} drafts` : 'Add draft'}
         </button>
+        <label className="inline-check" title="Add each URL as a draft as soon as a space or line break follows it">
+          <input type="checkbox" checked={addRightAway} onChange={(e) => toggleAddRightAway(e.target.checked)} />
+          Add each URL right away
+        </label>
         {progress && (
           <span className="hint">
             Adding {Math.min(progress.done + 1, progress.total)} of {progress.total}…

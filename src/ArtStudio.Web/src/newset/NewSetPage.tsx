@@ -348,7 +348,7 @@ export function NewSetPage() {
               Save as draft
             </button>
           )}
-          <label className="submit-in-row queue-first" title="Put it ahead of the waiting jobs instead of at the end">
+          <label className="submit-in-row inline-check" title="Put it ahead of the waiting jobs instead of at the end">
             <input type="checkbox" checked={queueFirst} onChange={(e) => setQueueFirst(e.target.checked)} />
             Queue first
           </label>
