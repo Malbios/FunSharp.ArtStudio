@@ -44,7 +44,9 @@ export function MakeVideoPage() {
   const [viewed, setViewed] = useState<ViewedFrame>()
 
   // Opened from the set page's viewer, which may have been scrolled far down.
-  useEffect(() => window.scrollTo(0, 0), [])
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [])
 
   const fromVideoId = Number(searchParams.get('from'))
   const fromVideo = fromVideoId ? set.data?.videos.find((video) => video.id === fromVideoId) : undefined
