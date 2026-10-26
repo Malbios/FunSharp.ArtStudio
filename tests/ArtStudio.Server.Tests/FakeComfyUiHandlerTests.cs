@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using ArtStudio.Server.Comfy;
 using ArtStudio.Server.Generation;
+using ArtStudio.Server.Google;
 using ArtStudio.Server.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -19,7 +20,7 @@ public class FakeComfyUiHandlerTests
     [Fact]
     public async Task Run_ProducesPngAtRequestedResolution()
     {
-        var handler = new FakeComfyUiHandler(TimeSpan.Zero, TimeProvider.System);
+        var handler = new FakeComfyUiHandler(TimeSpan.Zero, TimeProvider.System, new FakeGoogleDriveHandler());
         var runner = new GenerationRunner(FastTiming, NullLogger<GenerationRunner>.Instance);
 
         var image = Assert.Single(await runner.RunAsync(ClientFor(handler), Workflow("Wide"), _ => Task.CompletedTask, CancellationToken.None));
@@ -32,7 +33,7 @@ public class FakeComfyUiHandlerTests
     [Fact]
     public async Task Interrupt_FailsTheRunningPrompt()
     {
-        var handler = new FakeComfyUiHandler(TimeSpan.FromMinutes(1), TimeProvider.System);
+        var handler = new FakeComfyUiHandler(TimeSpan.FromMinutes(1), TimeProvider.System, new FakeGoogleDriveHandler());
         var client = ClientFor(handler);
         var runner = new GenerationRunner(FastTiming, NullLogger<GenerationRunner>.Instance);
         string? promptId = null;
@@ -44,6 +45,27 @@ public class FakeComfyUiHandlerTests
 
         var error = await Assert.ThrowsAsync<ComfyException>(() => run);
         Assert.Contains("execution_interrupted", error.Message);
+    }
+
+    [Fact]
+    public async Task VideoRun_PutsAPlayableClipIntoTheDriveOutputFolder()
+    {
+        var drive = new FakeGoogleDriveHandler();
+        var handler = new FakeComfyUiHandler(TimeSpan.Zero, TimeProvider.System, drive);
+        var runner = new GenerationRunner(FastTiming, NullLogger<GenerationRunner>.Instance);
+        var workflow = VideoWorkflowBuilder.FromEmbeddedTemplate().Build(new VideoWorkflowInputs(
+            "start.png", null, "a fox", 5, 0.46, true, 42, "video/artstudio-test"));
+
+        var output = Assert.Single(await runner.RunForOutputsAsync(
+            ClientFor(handler), workflow, _ => Task.CompletedTask, TimeSpan.FromSeconds(5), CancellationToken.None));
+
+        Assert.Equal(("video", "artstudio-test_00001_.mp4"), (output.Subfolder, output.Filename));
+        using var http = new HttpClient(drive);
+        var query = Uri.EscapeDataString("name = 'artstudio-test_00001_.mp4' and 'root/ComfyUI/output/video' in parents and trashed = false");
+        var listing = JsonNode.Parse(await http.GetStringAsync($"https://www.googleapis.com/drive/v3/files?q={query}"))!;
+        var fileId = listing["files"]![0]!["id"]!.GetValue<string>();
+        var clip = await http.GetByteArrayAsync($"https://www.googleapis.com/drive/v3/files/{fileId}?alt=media");
+        Assert.Equal("ftyp", System.Text.Encoding.ASCII.GetString(clip, 4, 4));
     }
 
     private static int ReadBigEndian(byte[] bytes, int offset) =>

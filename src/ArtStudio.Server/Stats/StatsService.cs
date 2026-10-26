@@ -37,7 +37,9 @@ public sealed class StatsService(StudioDbContext db, DeviantArtAuth auth, TimePr
             .Select(s => new SetRow(s.Id, s.IsDraft, s.SourceKind, s.DeviantArtAuthor, s.CreatedAt, s.ReadyToPostAt,
                 s.StashItemId != null, s.ArchivedAt, s.PostTitle, s.PublishedUrl, s.PublishedAt))
             .ToListAsync(ct);
+        // The studio numbers are about images; a video job's render time would skew the seconds per image.
         var jobs = await db.Jobs
+            .Where(j => j.Kind == JobKind.Image)
             .Select(j => new JobRow(j.Id, j.Prompt, j.Status, j.CompletedCount, j.CreatedAt, j.StartedAt, j.FinishedAt))
             .ToListAsync(ct);
         var images = await db.Images.Select(i => new ImageRow(i.Id, i.PromptSetId, i.GenerationJobId, i.CreatedAt)).ToListAsync(ct);

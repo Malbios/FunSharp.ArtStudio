@@ -12,6 +12,7 @@ public sealed class QueueWorker(
     ComfyWorkflowBuilder workflowBuilder,
     SeedGenerator seeds,
     GenerationRunner runner,
+    VideoJobRunner videoRunner,
     ComfyClientFactory clientFactory,
     StudioNotifier notifier,
     TimeProvider clock,
@@ -63,11 +64,11 @@ public sealed class QueueWorker(
             if (settings.QueuePaused)
                 return;
 
-            var nextJobId = await db.Jobs
+            var waiting = await db.Jobs
                 .Where(j => j.Status == JobStatus.Queued)
-                .OrderBy(j => j.QueuePosition)
-                .Select(j => (int?)j.Id)
-                .FirstOrDefaultAsync(stoppingToken);
+                .Select(j => new { j.Id, j.Kind, j.QueuePosition })
+                .ToListAsync(stoppingToken);
+            var nextJobId = queue.InRunOrder(waiting, j => j.Kind, j => j.QueuePosition).Select(j => (int?)j.Id).FirstOrDefault();
 
             if (nextJobId is null)
             {
@@ -95,12 +96,16 @@ public sealed class QueueWorker(
                 return;
 
             var job = await db.Jobs.Include(j => j.PromptSet).SingleAsync(j => j.Id == jobId, stoppingToken);
+            queue.LoadedKind = job.Kind;
             await notifier.JobUpdated(job.Id, job.PromptSetId);
 
             var client = clientFactory.Create(settings.ComfyServerUrl);
             try
             {
-                await GenerateRemainingImagesAsync(db, client, settings, job, jobToken);
+                if (job.Kind == JobKind.Video)
+                    await videoRunner.GenerateRemainingVideosAsync(db, client, settings, job, jobToken);
+                else
+                    await GenerateRemainingImagesAsync(db, client, settings, job, jobToken);
                 await FinishAsync(db, job, JobStatus.Completed, error: null);
                 await notifier.JobCompleted(job.Id, job.PromptSetId, job.Prompt);
             }
@@ -204,7 +209,13 @@ public sealed class QueueWorker(
         job.Status = status;
         job.Error = error;
         job.CurrentComfyPromptId = null;
-        job.CurrentSeed = null;
+        // A rendered video that could not be fetched from Drive (e.g. an expired Google login) is fetched on retry
+        // instead of being rendered again.
+        if (status != JobStatus.Failed || job.CurrentOutputFileName is null)
+        {
+            job.CurrentSeed = null;
+            job.CurrentOutputFileName = null;
+        }
         job.FinishedAt = clock.GetUtcNow();
         await db.SaveChangesAsync(CancellationToken.None);
         await notifier.JobUpdated(job.Id, job.PromptSetId);

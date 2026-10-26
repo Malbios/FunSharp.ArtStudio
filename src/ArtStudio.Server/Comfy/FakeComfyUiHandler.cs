@@ -4,25 +4,31 @@ using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using ArtStudio.Server.Google;
 
 namespace ArtStudio.Server.Comfy;
 
 /// <summary>
-/// Stands in for a ComfyUI server so the app can be exercised without a GPU: every prompt "renders" after a short
-/// delay into a solid-color PNG at the requested resolution.
+/// Stands in for a ComfyUI server so the app can be exercised without a GPU: every image prompt "renders" after a short
+/// delay into a solid-color PNG at the requested resolution, and every video prompt into a stock clip that appears in
+/// the fake Google Drive's ComfyUI output folder, as a real ComfyUI writing to Drive would.
 /// </summary>
-public sealed partial class FakeComfyUiHandler(TimeSpan renderTime, TimeProvider clock) : HttpMessageHandler
+public sealed partial class FakeComfyUiHandler(TimeSpan renderTime, TimeProvider clock, FakeGoogleDriveHandler drive)
+    : HttpMessageHandler
 {
     public const string ConfigurationKey = "ArtStudio:FakeComfyUi";
 
     private const string ResolutionNodeId = "80";
     private const string SeedNodeId = "79:129";
+    private const string VideoSubfolder = "video";
+    private const string FakeVideoResourceName = "ArtStudio.Server.Comfy.fake-video.mp4";
 
     private readonly ConcurrentDictionary<string, FakeRun> _runs = new();
 
-    private sealed record FakeRun(DateTimeOffset ReadyAt, int Width, int Height, long Seed)
+    private sealed record FakeRun(DateTimeOffset ReadyAt, int Width, int Height, long Seed, string? VideoFileName = null)
     {
         public bool Interrupted { get; set; }
+        public bool VideoOnDrive { get; set; }
     }
 
     [GeneratedRegex(@"^(?<width>\d+)×(?<height>\d+)")]
@@ -36,6 +42,7 @@ public sealed partial class FakeComfyUiHandler(TimeSpan renderTime, TimeProvider
         return (request.Method.Method, path) switch
         {
             ("POST", "/prompt") => QueuePrompt(body!),
+            ("POST", "/upload/image") => Upload(request.Content as MultipartFormDataContent),
             ("GET", var p) when p.StartsWith("/history/") => History(p["/history/".Length..]),
             ("GET", "/view") => View(request.RequestUri),
             ("GET", "/queue") => Json(new JsonObject
@@ -49,9 +56,20 @@ public sealed partial class FakeComfyUiHandler(TimeSpan renderTime, TimeProvider
         };
     }
 
+    private static HttpResponseMessage Upload(MultipartFormDataContent? form)
+    {
+        var fileName = form?.Select(part => part.Headers.ContentDisposition?.FileName?.Trim('"')).FirstOrDefault(name => name is not null);
+        return fileName is null
+            ? new HttpResponseMessage(HttpStatusCode.BadRequest)
+            : Json(new JsonObject { ["name"] = fileName, ["subfolder"] = "", ["type"] = "input" });
+    }
+
     private HttpResponseMessage QueuePrompt(string body)
     {
         var workflow = JsonNode.Parse(body)!["prompt"]!;
+        if (workflow[VideoWorkflowBuilder.SaveVideoNodeId]?["inputs"]?["filename_prefix"]?.GetValue<string>() is { } prefix)
+            return QueueVideo(prefix, workflow[VideoWorkflowBuilder.SeedNodeId]?["inputs"]?["seed"]?.GetValue<long>() ?? 0);
+
         var label = workflow[ResolutionNodeId]?["inputs"]?["resolution"]?.GetValue<string>() ?? "";
         var match = ResolutionLabel().Match(label);
         var (width, height) = match.Success
@@ -62,6 +80,23 @@ public sealed partial class FakeComfyUiHandler(TimeSpan renderTime, TimeProvider
         var promptId = Guid.NewGuid().ToString();
         _runs[promptId] = new FakeRun(clock.GetUtcNow() + renderTime, width, height, seed);
         return Json(new JsonObject { ["prompt_id"] = promptId, ["number"] = _runs.Count, ["node_errors"] = new JsonObject() });
+    }
+
+    private HttpResponseMessage QueueVideo(string prefix, long seed)
+    {
+        var promptId = Guid.NewGuid().ToString();
+        // Videos take noticeably longer than images on a real GPU.
+        _runs[promptId] = new FakeRun(clock.GetUtcNow() + renderTime * 3, 0, 0, seed, $"{prefix.Split('/').Last()}_00001_.mp4");
+        return Json(new JsonObject { ["prompt_id"] = promptId, ["number"] = _runs.Count, ["node_errors"] = new JsonObject() });
+    }
+
+    private static byte[] FakeVideo()
+    {
+        using var stream = typeof(FakeComfyUiHandler).Assembly.GetManifestResourceStream(FakeVideoResourceName)
+            ?? throw new InvalidOperationException($"Embedded clip '{FakeVideoResourceName}' is missing.");
+        using var copy = new MemoryStream();
+        stream.CopyTo(copy);
+        return copy.ToArray();
     }
 
     private HttpResponseMessage History(string promptId)
@@ -85,6 +120,35 @@ public sealed partial class FakeComfyUiHandler(TimeSpan renderTime, TimeProvider
 
         if (clock.GetUtcNow() < run.ReadyAt)
             return Json(new JsonObject());
+
+        if (run.VideoFileName is { } videoFileName)
+        {
+            if (!run.VideoOnDrive)
+            {
+                run.VideoOnDrive = true;
+                drive.AddFile($"{Domain.StudioSettings.DefaultGoogleDriveOutputFolder}/{VideoSubfolder}", videoFileName, FakeVideo());
+            }
+            return Json(new JsonObject
+            {
+                [promptId] = new JsonObject
+                {
+                    ["status"] = new JsonObject { ["status_str"] = "success", ["completed"] = true, ["messages"] = new JsonArray() },
+                    ["outputs"] = new JsonObject
+                    {
+                        [VideoWorkflowBuilder.SaveVideoNodeId] = new JsonObject
+                        {
+                            ["images"] = new JsonArray(new JsonObject
+                            {
+                                ["filename"] = videoFileName,
+                                ["subfolder"] = VideoSubfolder,
+                                ["type"] = "output",
+                            }),
+                            ["animated"] = new JsonArray(true),
+                        },
+                    },
+                },
+            });
+        }
 
         return Json(new JsonObject
         {

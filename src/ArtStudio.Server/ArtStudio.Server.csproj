@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Comfy\krea2_t2i.json" LogicalName="ArtStudio.Server.Comfy.krea2_t2i.json" />
+    <EmbeddedResource Include="Comfy\minimax_h3_i2v.json" LogicalName="ArtStudio.Server.Comfy.minimax_h3_i2v.json" />
+    <EmbeddedResource Include="Comfy\fake-video.mp4" LogicalName="ArtStudio.Server.Comfy.fake-video.mp4" />
     <EmbeddedResource Include="Vision\*.txt" LogicalName="ArtStudio.Server.Vision.%(Filename)%(Extension)" />
   </ItemGroup>
 

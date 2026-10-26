@@ -1,5 +1,6 @@
 using ArtStudio.Server.Data;
 using ArtStudio.Server.Domain;
+using ArtStudio.Server.Google;
 using ArtStudio.Server.Hubs;
 using Microsoft.EntityFrameworkCore;
 
@@ -15,8 +16,12 @@ public enum QueueMove
     Bottom,
 }
 
+public sealed record VideoJobRequest(
+    string StartImagePath, string? EndImagePath, string Prompt, double Seconds, double Megapixels, bool Turbo, int Count,
+    bool QueueFirst);
+
 public sealed class QueueService(
-    StudioDbContext db, AppPaths paths, GenerationQueue queue, StudioNotifier notifier, TimeProvider clock)
+    StudioDbContext db, AppPaths paths, GenerationQueue queue, StudioNotifier notifier, GoogleAuth googleAuth, TimeProvider clock)
 {
     public const int MaxImagesPerJob = 100;
 
@@ -46,24 +51,64 @@ public sealed class QueueService(
         set.Prompt = jobPrompt.Trim();
         set.Resolution = preset.Name;
 
-        var firstQueuedPosition = queueFirst
-            ? await db.Jobs.Where(j => j.Status == JobStatus.Queued).MinAsync(j => (long?)j.QueuePosition, ct)
-            : null;
-        var lastPosition = await db.Jobs.MaxAsync(j => (long?)j.QueuePosition, ct) ?? 0;
-        var job = new GenerationJob
+        return await AddJobAsync(new GenerationJob
         {
             PromptSetId = setId,
+            Kind = JobKind.Image,
             Prompt = set.Prompt,
             Resolution = set.Resolution,
             RequestedCount = count,
-            Status = JobStatus.Queued,
-            QueuePosition = firstQueuedPosition - 1 ?? lastPosition + 1,
-            CreatedAt = clock.GetUtcNow(),
-        };
+        }, queueFirst, ct);
+    }
+
+    /// <summary>Queues videos of the set: the start image (and optional end image) set the first (and last) frame.</summary>
+    public async Task<GenerationJob> EnqueueVideoAsync(int setId, VideoJobRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Prompt))
+            throw new UserFacingException("The prompt must not be empty.");
+        await EnsureCanQueueVideoAsync(request.Seconds, request.Megapixels, request.Count, ct);
+        var set = await db.PromptSets.SingleOrDefaultAsync(s => s.Id == setId, ct)
+            ?? throw new UserFacingException("Set not found.");
+        if (set.IsDraft)
+            throw new UserFacingException("Add a prompt and queue the draft first.");
+        SetService.EnsureNotArchived(set);
+
+        return await AddJobAsync(new GenerationJob
+        {
+            PromptSetId = setId,
+            Kind = JobKind.Video,
+            Prompt = request.Prompt.Trim(),
+            Resolution = VideoOptions.ResolutionLabel(request.Megapixels),
+            RequestedCount = request.Count,
+            VideoSeconds = request.Seconds,
+            VideoMegapixels = request.Megapixels,
+            VideoTurbo = request.Turbo,
+            VideoStartImagePath = request.StartImagePath,
+            VideoEndImagePath = request.EndImagePath,
+        }, request.QueueFirst, ct);
+    }
+
+    public async Task EnsureCanQueueVideoAsync(double seconds, double megapixels, int count, CancellationToken ct)
+    {
+        VideoOptions.Validate(seconds, megapixels, count);
+        if (!await googleAuth.IsConnectedAsync(ct))
+            throw new UserFacingException("Videos are fetched from Google Drive. Connect Google Drive in Settings first.");
+    }
+
+    private async Task<GenerationJob> AddJobAsync(GenerationJob job, bool queueFirst, CancellationToken ct)
+    {
+        // "First" means first among the waiting jobs of its own kind: it never makes ComfyUI switch models early.
+        var firstQueuedPosition = queueFirst
+            ? await db.Jobs.Where(j => j.Status == JobStatus.Queued && j.Kind == job.Kind).MinAsync(j => (long?)j.QueuePosition, ct)
+            : null;
+        var lastPosition = await db.Jobs.MaxAsync(j => (long?)j.QueuePosition, ct) ?? 0;
+        job.Status = JobStatus.Queued;
+        job.QueuePosition = firstQueuedPosition - 1 ?? lastPosition + 1;
+        job.CreatedAt = clock.GetUtcNow();
         db.Jobs.Add(job);
         await db.SaveChangesAsync(ct);
 
-        await notifier.JobUpdated(job.Id, setId);
+        await notifier.JobUpdated(job.Id, job.PromptSetId);
         queue.Wake();
         return job;
     }
@@ -103,11 +148,12 @@ public sealed class QueueService(
         await SetPausedAsync(false, ct);
     }
 
-    /// <summary>Moves a waiting job among the waiting jobs; the others keep their relative order.</summary>
+    /// <summary>Moves a waiting job among the waiting jobs of its kind; the others keep their relative order.</summary>
     public async Task MoveAsync(int jobId, QueueMove move, CancellationToken ct)
     {
+        var kind = await db.Jobs.Where(j => j.Id == jobId).Select(j => (JobKind?)j.Kind).SingleOrDefaultAsync(ct);
         var waiting = await db.Jobs
-            .Where(j => j.Status == JobStatus.Queued)
+            .Where(j => j.Status == JobStatus.Queued && j.Kind == kind)
             .OrderBy(j => j.QueuePosition)
             .ToListAsync(ct);
         var index = waiting.FindIndex(j => j.Id == jobId);

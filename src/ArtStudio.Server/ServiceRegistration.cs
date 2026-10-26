@@ -27,16 +27,20 @@ public static class ServiceRegistration
             options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
         services.AddSingleton(TimeProvider.System);
-        services.AddSingleton(sp => new FakeComfyUiHandler(TimeSpan.FromSeconds(2), sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton(sp => new FakeComfyUiHandler(
+            TimeSpan.FromSeconds(2), sp.GetRequiredService<TimeProvider>(), sp.GetRequiredService<FakeGoogleDriveHandler>()));
         services.AddHttpClient(ComfyClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(sp =>
             sp.GetRequiredService<IConfiguration>().GetValue<bool>(FakeComfyUiHandler.ConfigurationKey)
                 ? sp.GetRequiredService<FakeComfyUiHandler>()
                 : new SocketsHttpHandler());
         services.AddSingleton<ComfyClientFactory>();
         services.AddSingleton(ComfyWorkflowBuilder.FromEmbeddedTemplate());
+        services.AddSingleton(VideoWorkflowBuilder.FromEmbeddedTemplate());
         services.AddSingleton<SeedGenerator>();
         services.AddSingleton(GenerationTiming.Default);
+        services.AddSingleton(VideoTiming.Default);
         services.AddSingleton<GenerationRunner>();
+        services.AddSingleton<VideoJobRunner>();
         services.AddSingleton<GenerationQueue>();
         services.AddSingleton<StudioNotifier>();
         services.AddScoped<QueueService>();

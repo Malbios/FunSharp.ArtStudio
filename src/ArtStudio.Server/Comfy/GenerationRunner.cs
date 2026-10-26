@@ -31,6 +31,27 @@ public sealed class GenerationRunner(GenerationTiming timing, ILogger<Generation
         return await DownloadWhenDoneAsync(client, promptId, ct);
     }
 
+    /// <summary>Runs a workflow and returns ComfyUI's output files without downloading them.</summary>
+    public async Task<IReadOnlyList<ComfyImageRef>> RunForOutputsAsync(
+        ComfyClient client, JsonObject workflow, Func<string, Task> onQueued, TimeSpan timeout, CancellationToken ct)
+    {
+        var queued = await client.QueuePromptAsync(workflow, ct);
+        if (queued.NodeErrors is not null)
+            logger.LogWarning("ComfyUI reported node errors for {PromptId}: {NodeErrors}", queued.PromptId, queued.NodeErrors);
+        await onQueued(queued.PromptId);
+
+        return (await WaitForCompletionAsync(client, queued.PromptId, timeout, ct)).Images;
+    }
+
+    /// <summary>The outputs of a run queued before a restart; null if ComfyUI no longer knows it.</summary>
+    public async Task<IReadOnlyList<ComfyImageRef>?> ResumeForOutputsAsync(
+        ComfyClient client, string promptId, TimeSpan timeout, CancellationToken ct)
+    {
+        if (!await IsKnownAsync(client, promptId, ct))
+            return null;
+        return (await WaitForCompletionAsync(client, promptId, timeout, ct)).Images;
+    }
+
     private static async Task<bool> IsKnownAsync(ComfyClient client, string promptId, CancellationToken ct)
     {
         if ((await client.GetRunStatusAsync(promptId, ct)).State != ComfyRunState.Pending)
@@ -43,7 +64,7 @@ public sealed class GenerationRunner(GenerationTiming timing, ILogger<Generation
 
     private async Task<IReadOnlyList<DownloadedImage>> DownloadWhenDoneAsync(ComfyClient client, string promptId, CancellationToken ct)
     {
-        var status = await WaitForCompletionAsync(client, promptId, ct);
+        var status = await WaitForCompletionAsync(client, promptId, timing.Timeout, ct);
 
         var images = new List<DownloadedImage>();
         foreach (var image in status.Images)
@@ -54,10 +75,11 @@ public sealed class GenerationRunner(GenerationTiming timing, ILogger<Generation
         return images;
     }
 
-    private async Task<ComfyRunStatus> WaitForCompletionAsync(ComfyClient client, string promptId, CancellationToken ct)
+    private async Task<ComfyRunStatus> WaitForCompletionAsync(
+        ComfyClient client, string promptId, TimeSpan timeout, CancellationToken ct)
     {
         var timer = Stopwatch.StartNew();
-        while (timer.Elapsed < timing.Timeout)
+        while (timer.Elapsed < timeout)
         {
             var status = await client.GetRunStatusAsync(promptId, ct);
             switch (status.State)

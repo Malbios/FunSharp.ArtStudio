@@ -22,6 +22,7 @@ app.UseStaticFiles();
 
 app.MapSetEndpoints();
 app.MapQueueEndpoints();
+app.MapVideoEndpoints();
 app.MapDeviantArtEndpoints();
 app.MapDeviantArtLoginEndpoints();
 app.MapGoogleEndpoints();

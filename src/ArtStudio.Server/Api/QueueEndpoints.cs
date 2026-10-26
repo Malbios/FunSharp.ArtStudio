@@ -20,7 +20,7 @@ public static class QueueEndpoints
             queue.MoveAsync(id, request.Move, ct));
     }
 
-    private static async Task<QueueDto> GetQueueAsync(StudioDbContext db, AppPaths paths, CancellationToken ct)
+    private static async Task<QueueDto> GetQueueAsync(StudioDbContext db, AppPaths paths, GenerationQueue queue, CancellationToken ct)
     {
         var settings = await SettingsStore.LoadAsync(db, paths, ct);
         var activeStatuses = new[] { JobStatus.Running, JobStatus.Queued, JobStatus.Failed };
@@ -29,12 +29,12 @@ public static class QueueEndpoints
             .Include(j => j.PromptSet)
             .Where(j => activeStatuses.Contains(j.Status))
             .ToListAsync(ct);
-        var ordered = active
-            .OrderBy(j => j.Status switch { JobStatus.Running => 0, JobStatus.Failed => 1, _ => 2 })
-            .ThenBy(j => j.QueuePosition)
-            .Select(JobDto.From)
-            .ToList();
+        var started = active
+            .Where(j => j.Status != JobStatus.Queued)
+            .OrderBy(j => j.Status == JobStatus.Running ? 0 : 1)
+            .ThenBy(j => j.QueuePosition);
+        var waiting = queue.InRunOrder(active.Where(j => j.Status == JobStatus.Queued), j => j.Kind, j => j.QueuePosition);
 
-        return new QueueDto(settings.QueuePaused, ordered);
+        return new QueueDto(settings.QueuePaused, started.Concat(waiting).Select(JobDto.From).ToList());
     }
 }

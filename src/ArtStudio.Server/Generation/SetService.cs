@@ -17,8 +17,12 @@ public abstract record SetSource
     public sealed record DeviantArtUrl(string Url, int ImageIndex) : SetSource;
 }
 
+/// <summary>A new set that starts with videos of its source image instead of images.</summary>
+public sealed record NewSetVideo(SetSource.ImageFile? EndImage, double Seconds, double Megapixels, bool Turbo);
+
 public sealed record NewSetRequest(
-    string Prompt, string Resolution, int Count, SetSource Source, bool AsDraft = false, bool QueueFirst = false);
+    string Prompt, string Resolution, int Count, SetSource Source, bool AsDraft = false, bool QueueFirst = false,
+    NewSetVideo? Video = null);
 
 public sealed class SetService(
     StudioDbContext db,
@@ -45,6 +49,13 @@ public sealed class SetService(
             throw new UserFacingException("The prompt must not be empty.");
         var resolution = Resolutions.Find(request.Resolution)
             ?? throw new UserFacingException($"Unknown resolution '{request.Resolution}'.");
+        if (request.Video is { } video)
+        {
+            // Videos animate the start image directly, so only the user's own images qualify, not other artists' work.
+            if (request.AsDraft || request.Source is not SetSource.ImageFile { Kind: SourceKind.Upload or SourceKind.Paste })
+                throw new UserFacingException("A video needs an uploaded or pasted start image.");
+            await queueService.EnsureCanQueueVideoAsync(video.Seconds, video.Megapixels, request.Count, ct);
+        }
 
         var set = new PromptSet
         {
@@ -77,9 +88,25 @@ public sealed class SetService(
 
         if (set.IsDraft)
             await QueuePromptGenerationIfKeySetAsync(set, ct);
+        else if (request.Video is { } videoOptions)
+            await queueService.EnqueueVideoAsync(set.Id, new VideoJobRequest(
+                set.SourceImagePath!,
+                videoOptions.EndImage is { } end ? await SaveEndFrameAsync(set.Id, end, ct) : null,
+                set.Prompt,
+                videoOptions.Seconds,
+                videoOptions.Megapixels,
+                videoOptions.Turbo,
+                request.Count,
+                request.QueueFirst), ct);
         else
             await queueService.EnqueueAsync(set.Id, request.Count, prompt: null, resolution: null, request.QueueFirst, ct);
         return set;
+    }
+
+    private async Task<string> SaveEndFrameAsync(int setId, SetSource.ImageFile endImage, CancellationToken ct)
+    {
+        var settings = await SettingsStore.LoadAsync(db, paths, ct);
+        return await ImageStore.SaveSourceAsync(settings.OutputDirectory, $"{setId}-end", endImage.Content, endImage.Extension, ct);
     }
 
     public async Task<PromptSet> CreateDeviantArtDraftAsync(string url, CancellationToken ct)
@@ -369,6 +396,7 @@ public sealed class SetService(
         {
             await db.Picks.Where(p => p.PromptSetId == setId).ExecuteDeleteAsync(ct);
             await db.Images.Where(i => i.PromptSetId == setId).ExecuteDeleteAsync(ct);
+            await db.Videos.Where(v => v.PromptSetId == setId).ExecuteDeleteAsync(ct);
             await db.Jobs.Where(j => j.PromptSetId == setId).ExecuteDeleteAsync(ct);
             await db.DeviationStats.Where(s => s.PromptSetId == setId).ExecuteDeleteAsync(ct);
             await db.PromptSets.Where(s => s.Id == setId).ExecuteDeleteAsync(ct);
@@ -448,7 +476,7 @@ public sealed class SetService(
     {
         var settings = await SettingsStore.LoadAsync(db, paths, ct);
         set.SourceKind = kind;
-        set.SourceImagePath = await ImageStore.SaveSourceAsync(settings.OutputDirectory, set.Id, content, extension, ct);
+        set.SourceImagePath = await ImageStore.SaveSourceAsync(settings.OutputDirectory, set.Id.ToString(), content, extension, ct);
         await db.SaveChangesAsync(ct);
     }
 

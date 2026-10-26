@@ -21,6 +21,7 @@ public sealed record ImageDto(
 public sealed record JobDto(
     int Id,
     int SetId,
+    JobKind Kind,
     string Prompt,
     string Resolution,
     string? SourceImageUrl,
@@ -30,21 +31,58 @@ public sealed record JobDto(
     string? Error,
     DateTimeOffset CreatedAt,
     DateTimeOffset? StartedAt,
-    DateTimeOffset? FinishedAt)
+    DateTimeOffset? FinishedAt,
+    double? VideoSeconds,
+    bool VideoTurbo,
+    bool HasEndFrame)
 {
     public static JobDto From(GenerationJob job) => new(
         job.Id,
         job.PromptSetId,
+        job.Kind,
         job.Prompt,
         job.Resolution,
-        ApiUrls.SourceImage(job.PromptSet),
+        // A video job shows the image it starts from.
+        job.Kind == JobKind.Video ? ApiUrls.VideoFrame(job.Id, "start") : ApiUrls.SourceImage(job.PromptSet),
         job.RequestedCount,
         job.CompletedCount,
         job.Status,
         job.Error,
         job.CreatedAt,
         job.StartedAt,
-        job.FinishedAt);
+        job.FinishedAt,
+        job.VideoSeconds,
+        job.VideoTurbo,
+        job.VideoEndImagePath is not null);
+}
+
+public sealed record VideoDto(
+    int Id,
+    int SetId,
+    int JobId,
+    string Url,
+    string Seed,
+    string Prompt,
+    string Resolution,
+    double Seconds,
+    bool Turbo,
+    string StartImageUrl,
+    string? EndImageUrl,
+    DateTimeOffset CreatedAt)
+{
+    public static VideoDto From(GeneratedVideo video, GenerationJob job) => new(
+        video.Id,
+        video.PromptSetId,
+        video.GenerationJobId,
+        ApiUrls.Video(video.Id),
+        video.Seed.ToString(CultureInfo.InvariantCulture),
+        job.Prompt,
+        job.Resolution,
+        job.VideoSeconds ?? 0,
+        job.VideoTurbo,
+        ApiUrls.VideoFrame(job.Id, "start"),
+        job.VideoEndImagePath is null ? null : ApiUrls.VideoFrame(job.Id, "end"),
+        video.CreatedAt);
 }
 
 public sealed record QueueDto(bool Paused, IReadOnlyList<JobDto> Active);
@@ -87,6 +125,7 @@ public sealed record SetDetailDto(
     DateTimeOffset? ArchivedAt,
     PromptGenerationDto PromptGeneration,
     IReadOnlyList<ImageDto> Images,
+    IReadOnlyList<VideoDto> Videos,
     IReadOnlyList<JobDto> Jobs,
     PostDto Post);
 
@@ -111,6 +150,22 @@ public sealed record MoreImagesRequest(int Count, string? Prompt, string? Resolu
 public sealed record QueueDraftRequest(string Prompt, string Resolution, int Count, bool QueueFirst = false);
 
 public sealed record DraftSettingsRequest(string Resolution, int ImageCount);
+
+public sealed record MakeVideoRequest(
+    int StartImageId, int? EndImageId, string Prompt, double Seconds, double Megapixels, bool Turbo, int Count,
+    bool QueueFirst = false);
+
+public sealed record VideoOptionsDto(
+    string PromptTemplate,
+    IReadOnlyList<double> DurationPresets,
+    IReadOnlyList<VideoResolutionPresetDto> ResolutionPresets,
+    double DefaultSeconds,
+    string DefaultResolution,
+    double MaxSeconds,
+    double MaxMegapixels,
+    int MaxCount);
+
+public sealed record VideoResolutionPresetDto(string Name, double Megapixels);
 
 public sealed record DeviantArtDraftRequest(string Url);
 
@@ -153,6 +208,11 @@ public sealed record ReorderPicksRequest(IReadOnlyList<int> ImageIds);
 public static class ApiUrls
 {
     public static string Image(int imageId) => $"/api/images/{imageId}";
+
+    public static string Video(int videoId) => $"/api/videos/{videoId}";
+
+    /// <summary>The start or end frame a video job renders from.</summary>
+    public static string VideoFrame(int jobId, string frame) => $"/api/jobs/{jobId}/frames/{frame}";
 
     public static string? SourceImage(PromptSet set) =>
         set.SourceImagePath is null ? null : $"/api/sets/{set.Id}/source";

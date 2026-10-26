@@ -9,6 +9,7 @@ public class StudioDbContext(DbContextOptions<StudioDbContext> options) : DbCont
     public DbSet<PromptSet> PromptSets => Set<PromptSet>();
     public DbSet<GenerationJob> Jobs => Set<GenerationJob>();
     public DbSet<GeneratedImage> Images => Set<GeneratedImage>();
+    public DbSet<GeneratedVideo> Videos => Set<GeneratedVideo>();
     public DbSet<PickedImage> Picks => Set<PickedImage>();
     public DbSet<BuildingBlock> BuildingBlocks => Set<BuildingBlock>();
     public DbSet<BlockedArtist> BlockedArtists => Set<BlockedArtist>();
@@ -40,6 +41,12 @@ public class StudioDbContext(DbContextOptions<StudioDbContext> options) : DbCont
 
         modelBuilder.Entity<GeneratedImage>()
             .HasOne<GenerationJob>().WithMany().HasForeignKey(i => i.GenerationJobId);
+
+        modelBuilder.Entity<GeneratedVideo>(video =>
+        {
+            video.HasOne<PromptSet>().WithMany().HasForeignKey(v => v.PromptSetId);
+            video.HasOne<GenerationJob>().WithMany().HasForeignKey(v => v.GenerationJobId);
+        });
 
         modelBuilder.Entity<PickedImage>(pick =>
         {

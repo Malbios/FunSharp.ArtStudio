@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using ArtStudio.Server.Api;
 using ArtStudio.Server.Comfy;
 using ArtStudio.Server.DeviantArt;
+using ArtStudio.Server.Generation;
 using ArtStudio.Server.Google;
 using ArtStudio.Server.Vision;
 using Microsoft.AspNetCore.Hosting;
@@ -38,13 +39,28 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
 
     public FakeFolderOpener FolderOpener { get; } = new();
 
+    public static readonly byte[] VideoBytes = [0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70];
+
+    public TimeSpan DriveTimeout { get; init; } = TimeSpan.FromSeconds(10);
+
+    /// <summary>When false, rendered videos never show up on the fake Drive.</summary>
+    public bool VideosReachDrive { get; set; } = true;
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // ComfyUI on Colab writes its output folder straight into Drive.
+        Comfy.VideoRendered += (subfolder, name) =>
+        {
+            if (VideosReachDrive)
+                Google.AddFile($"ComfyUI/output/{subfolder}", name, VideoBytes);
+        };
         builder.UseSetting("ArtStudio:DataDirectory", DataDirectory);
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<GenerationTiming>();
             services.AddSingleton(new GenerationTiming(TimeSpan.FromMilliseconds(10), TimeSpan.FromSeconds(30)));
+            services.RemoveAll<VideoTiming>();
+            services.AddSingleton(new VideoTiming(TimeSpan.FromSeconds(30), DriveTimeout));
             services.RemoveAll<PostSuggestionTiming>();
             services.AddSingleton(new PostSuggestionTiming(TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(40), TimeSpan.Zero));
             services.AddHttpClient(ComfyClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Comfy);

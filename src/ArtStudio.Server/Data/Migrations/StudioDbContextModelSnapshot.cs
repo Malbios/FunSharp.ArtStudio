@@ -146,6 +146,37 @@ namespace ArtStudio.Server.Data.Migrations
                     b.ToTable("Images");
                 });
 
+            modelBuilder.Entity("ArtStudio.Server.Domain.GeneratedVideo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("FilePath")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("GenerationJobId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PromptSetId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("Seed")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GenerationJobId");
+
+                    b.HasIndex("PromptSetId");
+
+                    b.ToTable("Videos");
+                });
+
             modelBuilder.Entity("ArtStudio.Server.Domain.GenerationJob", b =>
                 {
                     b.Property<int>("Id")
@@ -161,6 +192,9 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<string>("CurrentComfyPromptId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("CurrentOutputFileName")
+                        .HasColumnType("TEXT");
+
                     b.Property<long?>("CurrentSeed")
                         .HasColumnType("INTEGER");
 
@@ -169,6 +203,10 @@ namespace ArtStudio.Server.Data.Migrations
 
                     b.Property<long?>("FinishedAt")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Prompt")
                         .IsRequired()
@@ -193,6 +231,21 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<string>("VideoEndImagePath")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("VideoMegapixels")
+                        .HasColumnType("REAL");
+
+                    b.Property<double?>("VideoSeconds")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("VideoStartImagePath")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("VideoTurbo")
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -430,6 +483,21 @@ namespace ArtStudio.Server.Data.Migrations
 
                     b.HasOne("ArtStudio.Server.Domain.PromptSet", null)
                         .WithMany("Images")
+                        .HasForeignKey("PromptSetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("ArtStudio.Server.Domain.GeneratedVideo", b =>
+                {
+                    b.HasOne("ArtStudio.Server.Domain.GenerationJob", null)
+                        .WithMany()
+                        .HasForeignKey("GenerationJobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ArtStudio.Server.Domain.PromptSet", null)
+                        .WithMany()
                         .HasForeignKey("PromptSetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

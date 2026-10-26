@@ -185,7 +185,7 @@ public sealed class GoogleDriveTests : IDisposable
             Drive.FindFolderAsync("ComfyUI/elsewhere", CancellationToken.None));
         var missingFile = await Drive.FindCompleteFileAsync(folderId, "nothing.mp4", CancellationToken.None);
 
-        Assert.Contains("'elsewhere'", missingFolder.Message);
+        Assert.Contains("'ComfyUI/elsewhere'", missingFolder.Message);
         Assert.Null(missingFile);
     }
 

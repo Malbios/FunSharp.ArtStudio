@@ -61,6 +61,35 @@ public sealed class ComfyClient(HttpClient http)
         return await response.Content.ReadAsByteArrayAsync(ct);
     }
 
+    /// <summary>Uploads an image into ComfyUI's input folder; returns the name a LoadImage node refers to it by.</summary>
+    public async Task<string> UploadImageAsync(string path, string uploadName, CancellationToken ct)
+    {
+        using var form = new MultipartFormDataContent();
+        var file = new ByteArrayContent(await File.ReadAllBytesAsync(path, ct));
+        file.Headers.ContentType = new(Generation.ImageStore.ContentTypeFor(path));
+        form.Add(file, "image", uploadName + Path.GetExtension(path));
+
+        HttpResponseMessage response;
+        try
+        {
+            response = await http.PostAsync("/upload/image", form, ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new ComfyException($"ComfyUI request failed: POST /upload/image\n{ex.Message}");
+        }
+
+        using (response)
+        {
+            await EnsureSuccessAsync(response, "POST /upload/image", ct);
+            var answer = JsonNode.Parse(await response.Content.ReadAsStringAsync(ct));
+            var name = answer?["name"]?.GetValue<string>()
+                ?? throw new ComfyException("ComfyUI's upload answer names no file.");
+            var subfolder = answer["subfolder"]?.GetValue<string>();
+            return string.IsNullOrEmpty(subfolder) ? name : $"{subfolder}/{name}";
+        }
+    }
+
     public async Task InterruptAsync(CancellationToken ct)
     {
         await SendForJsonAsync(HttpMethod.Post, "/interrupt", new JsonObject(), ct);

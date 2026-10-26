@@ -12,19 +12,22 @@ public sealed class GoogleDrive(GoogleAuth auth, IHttpClientFactory httpClientFa
     public const string FolderMimeType = "application/vnd.google-apps.folder";
 
     /// <summary>The id of a folder given as a path from the root of My Drive, e.g. "ComfyUI/output/video".</summary>
-    public async Task<string> FindFolderAsync(string path, CancellationToken ct)
+    public async Task<string> FindFolderAsync(string path, CancellationToken ct) =>
+        await TryFindFolderAsync(path, ct) ?? throw new UserFacingException($"The Google Drive folder '{path}' does not exist.");
+
+    /// <summary>Like <see cref="FindFolderAsync"/>, but null while any folder of the path does not exist (yet).</summary>
+    public async Task<string?> TryFindFolderAsync(string path, CancellationToken ct)
     {
         var parentId = "root";
         foreach (var name in path.Split('/', StringSplitOptions.RemoveEmptyEntries))
         {
             var query = $"name = '{EscapeQuery(name)}' and mimeType = '{FolderMimeType}' and '{parentId}' in parents and trashed = false";
             var found = await ListAsync(query, "files(id)", ct);
-            parentId = found.Count switch
-            {
-                1 => found[0]["id"]!.GetValue<string>(),
-                0 => throw new UserFacingException($"The Google Drive folder '{name}' (in '{path}') does not exist."),
-                _ => throw new UserFacingException($"Google Drive has {found.Count} folders named '{name}' (in '{path}')."),
-            };
+            if (found.Count == 0)
+                return null;
+            if (found.Count > 1)
+                throw new UserFacingException($"Google Drive has {found.Count} folders named '{name}' (in '{path}').");
+            parentId = found[0]["id"]!.GetValue<string>();
         }
         return parentId;
     }

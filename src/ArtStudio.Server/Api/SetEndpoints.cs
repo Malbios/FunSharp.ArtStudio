@@ -137,6 +137,7 @@ public static class SetEndpoints
         if (set is null)
             return Results.NotFound();
         var jobsById = set.Jobs.ToDictionary(j => j.Id);
+        var videos = await db.Videos.Where(v => v.PromptSetId == id).OrderBy(v => v.Id).ToListAsync(ct);
 
         return Results.Ok(new SetDetailDto(
             set.Id,
@@ -154,6 +155,7 @@ public static class SetEndpoints
             set.ArchivedAt,
             PromptGenerationDto.From(set),
             set.Images.Select(image => ImageDto.From(image, jobsById[image.GenerationJobId])).ToList(),
+            videos.Select(video => VideoDto.From(video, jobsById[video.GenerationJobId])).ToList(),
             set.Jobs.Select(JobDto.From).ToList(),
             PostDto.From(set, postSuggestions.IsSuggesting(set.Id))));
     }
@@ -172,8 +174,30 @@ public static class SetEndpoints
         var asDraft = bool.TryParse(form["draft"], out var draft) && draft;
         var queueFirst = bool.TryParse(form["queueFirst"], out var first) && first;
 
-        var set = await setService.CreateAsync(new NewSetRequest(prompt, resolution, count, source, asDraft, queueFirst), ct);
+        await using var endImageStream = form.Files.GetFile("endImage")?.OpenReadStream();
+        var video = form["mode"] == "video" ? ReadVideo(form, endImageStream) : null;
+
+        var set = await setService.CreateAsync(
+            new NewSetRequest(prompt, resolution, count, source, asDraft, queueFirst, video), ct);
         return Results.Created($"/api/sets/{set.Id}", new { set.Id });
+    }
+
+    private static NewSetVideo ReadVideo(IFormCollection form, Stream? endImageStream)
+    {
+        double Number(string name) =>
+            double.TryParse(form[name], System.Globalization.CultureInfo.InvariantCulture, out var value)
+                ? value
+                : throw new UserFacingException($"The video's {name} must be a number.");
+
+        var endImage = form.Files.GetFile("endImage");
+        var endImageFile = endImage is null
+            ? null
+            : new SetSource.ImageFile(
+                SourceKind.Upload,
+                endImageStream!,
+                ImageStore.ExtensionFor(endImage.ContentType)
+                    ?? throw new UserFacingException($"Unsupported image type '{endImage.ContentType}'."));
+        return new NewSetVideo(endImageFile, Number("seconds"), Number("megapixels"), form["turbo"] != "false");
     }
 
     private static SetSource ReadSource(IFormCollection form, Stream? fileStream)

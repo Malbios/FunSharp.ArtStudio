@@ -15,16 +15,25 @@ public static class ImageStore
             ? extension
             : null;
 
+    // Only for serving generated videos; uploads stay limited to the image types above.
+    private static readonly Dictionary<string, string> VideoContentTypesByExtension = new(StringComparer.OrdinalIgnoreCase)
+    {
+        [".mp4"] = "video/mp4",
+        [".webm"] = "video/webm",
+    };
+
     public static string ContentTypeFor(string path) =>
         ExtensionsByContentType.FirstOrDefault(
             pair => pair.Value.Equals(Path.GetExtension(path), StringComparison.OrdinalIgnoreCase)).Key
+        ?? VideoContentTypesByExtension.GetValueOrDefault(Path.GetExtension(path))
         ?? "application/octet-stream";
 
+    /// <summary>Saves an image a set starts from as sources/{name}{extension}, e.g. "12" or "12-end".</summary>
     public static async Task<string> SaveSourceAsync(
-        string outputDirectory, int setId, Stream content, string extension, CancellationToken ct)
+        string outputDirectory, string name, Stream content, string extension, CancellationToken ct)
     {
         var directory = Directory.CreateDirectory(Path.Combine(outputDirectory, "sources"));
-        var path = Path.Combine(directory.FullName, $"{setId}{extension}");
+        var path = Path.Combine(directory.FullName, $"{name}{extension}");
         await using var file = File.Create(path);
         await content.CopyToAsync(file, ct);
         return path;
