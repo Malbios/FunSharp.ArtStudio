@@ -9,7 +9,8 @@ public class StudioSettings
     public required string OutputDirectory { get; set; }
     public bool NotifyOnJobDone { get; set; }
     public bool NotifyOnQueueEmpty { get; set; }
-    public bool QueuePaused { get; set; }
+    public bool ImageQueuePaused { get; set; }
+    public bool VideoQueuePaused { get; set; }
     public string? DeviantArtClientId { get; set; }
     public string? ProtectedDeviantArtClientSecret { get; set; }
     public string? ProtectedDeviantArtRefreshToken { get; set; }
@@ -26,4 +27,15 @@ public class StudioSettings
     public string GoogleDriveOutputFolder { get; set; } = DefaultGoogleDriveOutputFolder;
 
     public const string DefaultGoogleDriveOutputFolder = "ComfyUI/output";
+
+    public bool IsPaused(JobKind kind) => kind == JobKind.Video ? VideoQueuePaused : ImageQueuePaused;
+
+    /// <summary>Pauses or resumes one kind of job, or both when no kind is given.</summary>
+    public void SetPaused(JobKind? kind, bool paused)
+    {
+        if (kind is null or JobKind.Image)
+            ImageQueuePaused = paused;
+        if (kind is null or JobKind.Video)
+            VideoQueuePaused = paused;
+    }
 }

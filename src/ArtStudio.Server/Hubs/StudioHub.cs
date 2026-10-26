@@ -15,8 +15,8 @@ public sealed class StudioNotifier(IHubContext<StudioHub> hub)
     public Task JobCompleted(int jobId, int setId, string prompt) =>
         hub.Clients.All.SendAsync("JobCompleted", new { jobId, setId, prompt });
 
-    public Task QueueStateChanged(bool paused) =>
-        hub.Clients.All.SendAsync("QueueStateChanged", new { paused });
+    public Task QueueStateChanged(bool imagesPaused, bool videosPaused) =>
+        hub.Clients.All.SendAsync("QueueStateChanged", new { imagesPaused, videosPaused });
 
     public Task SetUpdated(int setId) =>
         hub.Clients.All.SendAsync("SetUpdated", new { setId });

@@ -11,10 +11,13 @@ export interface PagedItems<T> {
   setPage: (page: number) => void
 }
 
-/** Splits items into pages of PAGE_SIZE; the page number is kept in the URL so Back returns to it. */
-export function usePagedItems<T>(items: T[] | undefined): PagedItems<T> {
+/**
+ * Splits items into pages of PAGE_SIZE; the page number is kept in the URL so Back returns to it. Lists sharing a page
+ * each need their own parameter name.
+ */
+export function usePagedItems<T>(items: T[] | undefined, pageParam = PAGE_PARAM): PagedItems<T> {
   const [searchParams, setSearchParams] = useSearchParams()
-  const requestedPage = Number(searchParams.get(PAGE_PARAM)) || 1
+  const requestedPage = Number(searchParams.get(pageParam)) || 1
   const pageCount = Math.max(1, Math.ceil((items?.length ?? 0) / PAGE_SIZE))
   const page = items ? Math.min(Math.max(1, requestedPage), pageCount) : requestedPage
 
@@ -22,13 +25,13 @@ export function usePagedItems<T>(items: T[] | undefined): PagedItems<T> {
     (next: number, replace = false) =>
       setSearchParams(
         (params) => {
-          if (next === 1) params.delete(PAGE_PARAM)
-          else params.set(PAGE_PARAM, String(next))
+          if (next === 1) params.delete(pageParam)
+          else params.set(pageParam, String(next))
           return params
         },
         { replace },
       ),
-    [setSearchParams],
+    [setSearchParams, pageParam],
   )
 
   useEffect(() => {

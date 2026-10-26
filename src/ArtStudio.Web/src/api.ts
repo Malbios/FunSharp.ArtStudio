@@ -85,7 +85,10 @@ export interface VideoJobSettings {
 export type QueueMove = 'Top' | 'Up' | 'Down' | 'Bottom'
 
 export interface QueueState {
-  paused: boolean
+  imagesPaused: boolean
+  videosPaused: boolean
+  /** The kind ComfyUI ran last, whose model is still loaded; null after a restart. */
+  loadedKind: JobKind | null
   active: Job[]
 }
 
@@ -410,8 +413,9 @@ export const api = {
   deleteSet: (setId: number) => request<void>('DELETE', `/api/sets/${setId}`),
 
   queue: () => request<QueueState>('GET', '/api/queue'),
-  pauseQueue: () => request<void>('POST', '/api/queue/pause'),
-  resumeQueue: () => request<void>('POST', '/api/queue/resume'),
+  /** Without a kind, pauses both the image and the video jobs. */
+  pauseQueue: (kind?: JobKind) => request<void>('POST', `/api/queue/pause${kind ? `?kind=${kind}` : ''}`),
+  resumeQueue: (kind?: JobKind) => request<void>('POST', `/api/queue/resume${kind ? `?kind=${kind}` : ''}`),
   cancelJob: (jobId: number) => request<void>('POST', `/api/jobs/${jobId}/cancel`),
   retryJob: (jobId: number) => request<void>('POST', `/api/jobs/${jobId}/retry`),
   moveJob: (jobId: number, move: QueueMove) => request<void>('POST', `/api/jobs/${jobId}/move`, { move }),

@@ -44,6 +44,14 @@ public sealed class VideoTests : IDisposable
 
     private static JsonNode Inputs(JsonObject workflow, string nodeId) => workflow[nodeId]!["inputs"]!;
 
+    private async Task<(bool Images, bool Videos)> PausedAsync()
+    {
+        var queue = await GetQueueAsync(_client);
+        return (queue.ImagesPaused, queue.VideosPaused);
+    }
+
+    private async Task<JobStatus> SingleJobStatusAsync(int setId) => (await GetSetAsync(_client, setId)).Jobs.Single().Status;
+
     private async Task<GenerationJob> VideoJobAsync(StudioAppFactory app)
     {
         using var scope = app.Services.CreateScope();
@@ -156,7 +164,7 @@ public sealed class VideoTests : IDisposable
 
         (await MakeVideoAsync(set.Id, set.Images[0].Id)).EnsureSuccessStatusCode();
         await WaitForVideoJobAsync(set.Id, JobStatus.Failed);
-        Assert.True((await GetQueueAsync(_client)).Paused);
+        Assert.Equal((false, true), await PausedAsync());
 
         _factory.Google.DriveFailure = null;
         var jobId = (await GetSetAsync(_client, set.Id)).Jobs.Single(j => j.Kind == JobKind.Video).Id;
@@ -241,6 +249,54 @@ public sealed class VideoTests : IDisposable
         _factory.Comfy.HoldRuns = false;
         await WaitForVideoJobAsync(set.Id, JobStatus.Completed);
         Assert.Equal(["a fox", "running image", "later image", VideoPrompt], _factory.Comfy.SubmittedPrompts);
+    }
+
+    [Fact]
+    public async Task PausedImages_LetVideosRunWithoutSwitchingModels()
+    {
+        await _factory.ConnectGoogleAsync();
+        var set = await SetWithImagesAsync(images: 1);
+        (await _client.PostAsync("/api/queue/pause?kind=Image", null)).EnsureSuccessStatusCode();
+
+        var waitingImage = await _factory.CreateSetAsync(_client, "waiting image", count: 1);
+        (await MakeVideoAsync(set.Id, set.Images[0].Id)).EnsureSuccessStatusCode();
+        await WaitForVideoJobAsync(set.Id, JobStatus.Completed);
+
+        Assert.Equal(JobStatus.Queued, await SingleJobStatusAsync(waitingImage));
+        Assert.Equal((true, false), await PausedAsync());
+        Assert.DoesNotContain("waiting image", _factory.Comfy.SubmittedPrompts);
+
+        (await _client.PostAsync("/api/queue/resume?kind=Image", null)).EnsureSuccessStatusCode();
+        await WaitUntilAsync(async () => await SingleJobStatusAsync(waitingImage) == JobStatus.Completed, "image ran after resuming");
+    }
+
+    [Fact]
+    public async Task PausedVideos_LetImagesRun()
+    {
+        await _factory.ConnectGoogleAsync();
+        var set = await SetWithImagesAsync(images: 1);
+        (await _client.PostAsync("/api/queue/pause?kind=Video", null)).EnsureSuccessStatusCode();
+
+        (await MakeVideoAsync(set.Id, set.Images[0].Id)).EnsureSuccessStatusCode();
+        var image = await _factory.CreateSetAsync(_client, "image", count: 1);
+        await WaitUntilAsync(async () => await SingleJobStatusAsync(image) == JobStatus.Completed, "image ran");
+
+        Assert.Equal(JobStatus.Queued, (await GetSetAsync(_client, set.Id)).Jobs.Single(j => j.Kind == JobKind.Video).Status);
+        Assert.Empty(_factory.Comfy.SubmittedVideoWorkflows);
+        Assert.Equal((false, true), await PausedAsync());
+    }
+
+    [Fact]
+    public async Task PauseAndResumeWithoutKind_ActOnBoth()
+    {
+        (await _client.PostAsync("/api/queue/pause", null)).EnsureSuccessStatusCode();
+        Assert.Equal((true, true), await PausedAsync());
+
+        (await _client.PostAsync("/api/queue/resume?kind=Video", null)).EnsureSuccessStatusCode();
+        Assert.Equal((true, false), await PausedAsync());
+
+        (await _client.PostAsync("/api/queue/resume", null)).EnsureSuccessStatusCode();
+        Assert.Equal((false, false), await PausedAsync());
     }
 
     [Fact]

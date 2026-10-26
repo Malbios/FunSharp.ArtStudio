@@ -85,7 +85,8 @@ public sealed record VideoDto(
         video.CreatedAt);
 }
 
-public sealed record QueueDto(bool Paused, IReadOnlyList<JobDto> Active);
+/// <summary>LoadedKind is the kind ComfyUI ran last, whose model is still loaded; null after a restart.</summary>
+public sealed record QueueDto(bool ImagesPaused, bool VideosPaused, JobKind? LoadedKind, IReadOnlyList<JobDto> Active);
 
 public sealed record SetSummaryDto(
     int Id,

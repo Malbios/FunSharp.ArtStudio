@@ -61,13 +61,13 @@ public sealed class QueueWorker(
             using var scope = scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<StudioDbContext>();
             var settings = await SettingsStore.LoadAsync(db, scope.ServiceProvider.GetRequiredService<AppPaths>(), stoppingToken);
-            if (settings.QueuePaused)
-                return;
-
-            var waiting = await db.Jobs
-                .Where(j => j.Status == JobStatus.Queued)
-                .Select(j => new { j.Id, j.Kind, j.QueuePosition })
-                .ToListAsync(stoppingToken);
+            // Pausing one kind leaves the other running, without ever switching ComfyUI to the paused kind's model.
+            var waiting = (await db.Jobs
+                    .Where(j => j.Status == JobStatus.Queued)
+                    .Select(j => new { j.Id, j.Kind, j.QueuePosition })
+                    .ToListAsync(stoppingToken))
+                .Where(j => !settings.IsPaused(j.Kind))
+                .ToList();
             var nextJobId = queue.InRunOrder(waiting, j => j.Kind, j => j.QueuePosition).Select(j => (int?)j.Id).FirstOrDefault();
 
             if (nextJobId is null)
@@ -122,9 +122,9 @@ public sealed class QueueWorker(
             {
                 logger.LogError(ex, "Job {JobId} failed", job.Id);
                 await FinishAsync(db, job, JobStatus.Failed, ex.Message);
-                settings.QueuePaused = true;
+                settings.SetPaused(job.Kind, paused: true);
                 await db.SaveChangesAsync(CancellationToken.None);
-                await notifier.QueueStateChanged(paused: true);
+                await notifier.QueueStateChanged(settings.ImageQueuePaused, settings.VideoQueuePaused);
             }
         }
         finally

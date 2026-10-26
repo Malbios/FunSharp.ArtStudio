@@ -306,6 +306,22 @@ main {
   gap: 0.75rem;
 }
 
+/* Queue sections */
+
+.queue-section {
+  margin-bottom: 2rem;
+}
+
+.queue-section-toolbar h3 {
+  flex: 1;
+  margin: 0;
+}
+
+.queue-section-toolbar h3 .hint {
+  font-weight: normal;
+  margin-left: 0.5rem;
+}
+
 /* Videos */
 
 .new-set-heading {

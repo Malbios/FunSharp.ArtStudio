@@ -12,8 +12,8 @@ public static class QueueEndpoints
     public static void MapQueueEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/api/queue", GetQueueAsync);
-        app.MapPost("/api/queue/pause", (QueueService queue, CancellationToken ct) => queue.SetPausedAsync(true, ct));
-        app.MapPost("/api/queue/resume", (QueueService queue, CancellationToken ct) => queue.SetPausedAsync(false, ct));
+        app.MapPost("/api/queue/pause", (JobKind? kind, QueueService queue, CancellationToken ct) => queue.SetPausedAsync(kind, true, ct));
+        app.MapPost("/api/queue/resume", (JobKind? kind, QueueService queue, CancellationToken ct) => queue.SetPausedAsync(kind, false, ct));
         app.MapPost("/api/jobs/{id:int}/cancel", (int id, QueueService queue, CancellationToken ct) => queue.CancelAsync(id, ct));
         app.MapPost("/api/jobs/{id:int}/retry", (int id, QueueService queue, CancellationToken ct) => queue.RetryAsync(id, ct));
         app.MapPost("/api/jobs/{id:int}/move", (int id, MoveJobRequest request, QueueService queue, CancellationToken ct) =>
@@ -35,6 +35,7 @@ public static class QueueEndpoints
             .ThenBy(j => j.QueuePosition);
         var waiting = queue.InRunOrder(active.Where(j => j.Status == JobStatus.Queued), j => j.Kind, j => j.QueuePosition);
 
-        return new QueueDto(settings.QueuePaused, started.Concat(waiting).Select(JobDto.From).ToList());
+        return new QueueDto(
+            settings.ImageQueuePaused, settings.VideoQueuePaused, queue.LoadedKind, started.Concat(waiting).Select(JobDto.From).ToList());
     }
 }

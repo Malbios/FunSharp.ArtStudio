@@ -425,6 +425,9 @@ namespace ArtStudio.Server.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("ImageQueuePaused")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("LastGalleryId")
                         .HasColumnType("TEXT");
 
@@ -456,7 +459,7 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<string>("ProtectedVisionApiKey")
                         .HasColumnType("TEXT");
 
-                    b.Property<bool>("QueuePaused")
+                    b.Property<bool>("VideoQueuePaused")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");

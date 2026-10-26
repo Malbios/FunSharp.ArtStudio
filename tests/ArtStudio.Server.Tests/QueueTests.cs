@@ -156,7 +156,7 @@ public sealed class QueueTests : IDisposable
         await Task.Delay(200);
 
         var queue = await GetQueueAsync(_client);
-        Assert.True(queue.Paused);
+        Assert.Equal((true, false), (queue.ImagesPaused, queue.VideosPaused));
         Assert.Equal(JobStatus.Queued, (await GetSetAsync(_client, waitingSet)).Jobs.Single().Status);
         Assert.NotNull((await GetSetAsync(_client, failingSet)).Jobs.Single().Error);
 
@@ -166,7 +166,7 @@ public sealed class QueueTests : IDisposable
 
         await WaitForJobStatusAsync(waitingSet, JobStatus.Completed);
         Assert.Equal(JobStatus.Completed, (await GetSetAsync(_client, failingSet)).Jobs.Single().Status);
-        Assert.False((await GetQueueAsync(_client)).Paused);
+        Assert.False((await GetQueueAsync(_client)).ImagesPaused);
         Assert.Equal(["fails", "fails"], _factory.Comfy.SubmittedPrompts.Take(2));
         Assert.Equal("waits", _factory.Comfy.SubmittedPrompts.Last());
     }
@@ -299,7 +299,7 @@ public sealed class QueueTests : IDisposable
         await WaitForJobStatusAsync(setId, JobStatus.Cancelled);
         Assert.Equal(["prompt-1"], _factory.Comfy.DeletedPromptIds);
         Assert.Equal(1, _factory.Comfy.InterruptCount);
-        Assert.False((await GetQueueAsync(_client)).Paused);
+        Assert.False((await GetQueueAsync(_client)).ImagesPaused);
     }
 
     [Fact]
@@ -385,7 +385,7 @@ public sealed class QueueTests : IDisposable
         Assert.Equal(["prompt-1"], _factory.Comfy.DeletedPromptIds);
         Assert.Equal(1, _factory.Comfy.InterruptCount);
         var queue = await GetQueueAsync(_client);
-        Assert.False(queue.Paused);
+        Assert.False(queue.ImagesPaused);
         Assert.Empty(queue.Active);
     }
 

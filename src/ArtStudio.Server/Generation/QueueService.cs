@@ -145,7 +145,7 @@ public sealed class QueueService(
         await db.SaveChangesAsync(ct);
 
         await notifier.JobUpdated(job.Id, job.PromptSetId);
-        await SetPausedAsync(false, ct);
+        await SetPausedAsync(job.Kind, false, ct);
     }
 
     /// <summary>Moves a waiting job among the waiting jobs of its kind; the others keep their relative order.</summary>
@@ -184,13 +184,14 @@ public sealed class QueueService(
             await notifier.JobUpdated(changed.Id, changed.PromptSetId);
     }
 
-    public async Task SetPausedAsync(bool paused, CancellationToken ct)
+    /// <summary>Pauses or resumes the image or the video jobs, or both when no kind is given.</summary>
+    public async Task SetPausedAsync(JobKind? kind, bool paused, CancellationToken ct)
     {
         var settings = await SettingsStore.LoadAsync(db, paths, ct);
-        settings.QueuePaused = paused;
+        settings.SetPaused(kind, paused);
         await db.SaveChangesAsync(ct);
 
-        await notifier.QueueStateChanged(paused);
+        await notifier.QueueStateChanged(settings.ImageQueuePaused, settings.VideoQueuePaused);
         if (!paused)
             queue.Wake();
     }
