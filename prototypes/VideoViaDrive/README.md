@@ -8,7 +8,10 @@ the "FirstOnly" export.
 
 ## One-time setup
 
-### 1. Google Cloud (OAuth client for your own login)
+ComfyUI's output folder already lives on Drive (*My Drive > ComfyUI > output*), so the videos land in
+*My Drive > ComfyUI > output > video* without any change to the Colab notebook. Only the Google login needs setting up.
+
+### Google Cloud (OAuth client for your own login)
 1. In the [Google Cloud Console](https://console.cloud.google.com/), create a project (any name).
 2. *APIs & Services > Library*: enable **Google Drive API**.
 3. *APIs & Services > OAuth consent screen*: user type **External**, fill in the required fields, and add your own Google
@@ -18,16 +21,6 @@ the "FirstOnly" export.
 
 The first run opens the browser to sign in; the login is then cached in `%LOCALAPPDATA%\ArtStudio-prototype\tokens`.
 Neither file is inside the repo.
-
-### 2. Colab: let ComfyUI save videos into Drive
-In the notebook, after Drive is mounted and before ComfyUI starts (adjust `/content/ComfyUI` to where your notebook installs it):
-
-```
-!mkdir -p /content/drive/MyDrive/ArtStudio/video
-!rm -rf /content/ComfyUI/output/video && ln -s /content/drive/MyDrive/ArtStudio/video /content/ComfyUI/output/video
-```
-
-Only videos go to Drive; Art Studio's images stay in ComfyUI's normal output folder.
 
 ## Run
 
@@ -39,7 +32,7 @@ dotnet run VideoViaDrive.cs -- --comfy https://<your-ngrok-url> --start C:\path\
 ```
 
 Other options: `--seconds 8`, `--full-quality` (no Lightning LoRA, 20 steps instead of 8), `--drive-folder <path>` (default
-`ArtStudio/video`), `--dry-run` (only writes the filled workflow to `output\`). `--help` lists them all.
+`ComfyUI/output/video`), `--dry-run` (only writes the filled workflow to `output\`). `--help` lists them all.
 
 ComfyUI saves the video under the workflow's own prefix, `video/MiniMax_H3` (so `MiniMax_H3_00001_.mp4` and counting up).
 The run looks for the file name ComfyUI reports in `/history` in the Drive folder; if `/history` names no file, it takes the

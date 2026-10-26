@@ -321,7 +321,7 @@ static void PrintHelp() => Console.WriteLine("""
       --prompt "<text>"       Replaces ??? in the workflow's prompt template
       --seconds <n>           Video length in seconds (default 5)
       --full-quality          Turn the Lightning LoRA off: 20 steps instead of 8
-      --drive-folder <path>   Drive folder ComfyUI saves videos into (default ArtStudio/video)
+      --drive-folder <path>   Drive folder ComfyUI saves videos into (default ComfyUI/output/video)
       --dry-run               Only write the filled workflow to output/; sends nothing
     """);
 
@@ -361,7 +361,7 @@ sealed record Options(
             Required("--prompt"),
             seconds,
             flags.Contains("--full-quality"),
-            values.GetValueOrDefault("--drive-folder", "ArtStudio/video"),
+            values.GetValueOrDefault("--drive-folder", "ComfyUI/output/video"),
             dryRun);
     }
 }
