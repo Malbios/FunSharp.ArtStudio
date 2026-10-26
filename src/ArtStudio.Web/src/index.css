@@ -396,6 +396,20 @@ main {
   color: var(--muted);
 }
 
+.frame-chooser {
+  margin-bottom: 1rem;
+}
+
+.frame-chooser summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.frame-chooser[open] summary {
+  margin-bottom: 0.5rem;
+}
+
 .video-frame-open {
   padding: 0;
   border: none;

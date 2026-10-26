@@ -164,10 +164,11 @@ interface FrameChooserProps {
   onChoose: (imageId: number | null) => void
 }
 
+/** Collapsed at first: the chosen frame already shows in the previews above. */
 function FrameChooser({ label, images, chosenId, allowNone = false, onChoose }: FrameChooserProps) {
   return (
-    <div className="field">
-      <span>{label}</span>
+    <details className="frame-chooser">
+      <summary>Choose the {label.toLowerCase()}</summary>
       <div className="video-frame-choices" role="radiogroup" aria-label={label}>
         {allowNone && (
           <button
@@ -194,6 +195,6 @@ function FrameChooser({ label, images, chosenId, allowNone = false, onChoose }: 
           </button>
         ))}
       </div>
-    </div>
+    </details>
   )
 }
