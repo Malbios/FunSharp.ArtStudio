@@ -10,7 +10,9 @@ import { Lightbox } from './Lightbox'
 import { PickedStrip } from './PickedStrip'
 import { RequeueWithPreset } from './RequeueWithPreset'
 import { returnToFrom, type ReturnState } from './returnTo'
+import { SetVideos } from './SetVideos'
 import { movedItem, useDragReorder } from './useDragReorder'
+import { VideoDialog } from './VideoDialog'
 
 const DEFAULT_MORE_COUNT = 2
 
@@ -18,6 +20,7 @@ export function SetDetailPage() {
   const setId = Number(useParams().id)
   const set = useLoad(() => api.set(setId), setId)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [videoStart, setVideoStart] = useState<ImageInfo>()
   const [moreCount, setMoreCount] = useState(DEFAULT_MORE_COUNT)
   const [error, setError] = useState<string>()
   const [deleting, setDeleting] = useState(false)
@@ -318,6 +321,8 @@ export function SetDetailPage() {
         )}
       </div>
 
+      {data.videos.length > 0 && <SetVideos videos={data.videos} />}
+
       {activeJobs.length > 0 && (
         <div className="job-list">
           {activeJobs.map((job) => (
@@ -351,7 +356,17 @@ export function SetDetailPage() {
           onError={setError}
           onIndexChange={setLightboxIndex}
           onTogglePick={togglePick}
+          onMakeVideo={isArchived ? undefined : setVideoStart}
           onClose={closeLightbox}
+        />
+      )}
+      {videoStart && (
+        <VideoDialog
+          setId={data.id}
+          images={data.images}
+          start={videoStart}
+          onQueued={set.reload}
+          onClose={() => setVideoStart(undefined)}
         />
       )}
     </div>

@@ -19,11 +19,16 @@ export interface ImageInfo {
   createdAt: string
 }
 
+export type JobKind = 'Image' | 'Video'
+
 export interface Job {
   id: number
   setId: number
+  kind: JobKind
   prompt: string
+  /** A video job's size label, e.g. "896 x 512" or "0.55 MP". */
   resolution: string
+  /** For a video job, the image it starts from. */
   sourceImageUrl: string | null
   requestedCount: number
   completedCount: number
@@ -32,6 +37,49 @@ export interface Job {
   createdAt: string
   startedAt: string | null
   finishedAt: string | null
+  videoSeconds: number | null
+  videoTurbo: boolean
+  hasEndFrame: boolean
+}
+
+export interface VideoInfo {
+  id: number
+  setId: number
+  jobId: number
+  url: string
+  seed: string
+  prompt: string
+  resolution: string
+  seconds: number
+  turbo: boolean
+  startImageUrl: string
+  endImageUrl: string | null
+  createdAt: string
+}
+
+export interface VideoResolutionPreset {
+  name: string
+  megapixels: number
+}
+
+export interface VideoOptions {
+  promptTemplate: string
+  durationPresets: number[]
+  resolutionPresets: VideoResolutionPreset[]
+  defaultSeconds: number
+  defaultResolution: string
+  maxSeconds: number
+  maxMegapixels: number
+  maxCount: number
+}
+
+export interface VideoJobSettings {
+  prompt: string
+  seconds: number
+  megapixels: number
+  turbo: boolean
+  count: number
+  queueFirst: boolean
 }
 
 export type QueueMove = 'Top' | 'Up' | 'Down' | 'Bottom'
@@ -108,6 +156,7 @@ export interface SetDetail {
   archivedAt: string | null
   promptGeneration: PromptGeneration
   images: ImageInfo[]
+  videos: VideoInfo[]
   jobs: Job[]
   post: PostDetails
 }
@@ -318,6 +367,9 @@ export const api = {
   createSet: (form: FormData) => request<{ id: number }>('POST', '/api/sets', form),
   moreImages: (setId: number, count: number, prompt?: string, resolution?: string, queueFirst?: boolean) =>
     request<{ id: number }>('POST', `/api/sets/${setId}/more`, { count, prompt, resolution, queueFirst }),
+  videoOptions: () => request<VideoOptions>('GET', '/api/videos/options'),
+  makeVideo: (setId: number, startImageId: number, endImageId: number | null, settings: VideoJobSettings) =>
+    request<{ id: number }>('POST', `/api/sets/${setId}/videos`, { startImageId, endImageId, ...settings }),
   saveDraftSettings: (setId: number, resolution: string, imageCount: number) =>
     request<void>('PUT', `/api/sets/${setId}/draft-settings`, { resolution, imageCount }),
   queueDraft: (setId: number, prompt: string, resolution: string, count: number, queueFirst?: boolean) =>

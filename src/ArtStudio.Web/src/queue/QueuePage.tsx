@@ -1,4 +1,4 @@
-import { api } from '../api'
+import { api, type Job } from '../api'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { Pager } from '../paging/Pager'
@@ -17,7 +17,9 @@ export function QueuePage() {
 
   const data = queue.data
   const pendingCount = data?.active.filter((job) => job.status !== 'Failed').length ?? 0
-  const waitingIds = data?.active.filter((job) => job.status === 'Queued').map((job) => job.id) ?? []
+  // Jobs only move among the waiting jobs of their own kind, the way they run.
+  const waitingIdsOf = (job: Job) =>
+    data?.active.filter((other) => other.status === 'Queued' && other.kind === job.kind).map((other) => other.id) ?? []
   const paged = usePagedItems(data?.active)
   const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
 
@@ -51,14 +53,17 @@ export function QueuePage() {
       {data && data.active.length === 0 && <p className="hint">Nothing queued.</p>}
       {pager}
       <div className="job-grid">
-        {paged.pageItems.map((job) => (
-          <JobTile
-            key={job.id}
-            job={job}
-            canMoveUp={waitingIds.indexOf(job.id) > 0}
-            canMoveDown={waitingIds.includes(job.id) && waitingIds.indexOf(job.id) < waitingIds.length - 1}
-          />
-        ))}
+        {paged.pageItems.map((job) => {
+          const waitingIds = waitingIdsOf(job)
+          return (
+            <JobTile
+              key={job.id}
+              job={job}
+              canMoveUp={waitingIds.indexOf(job.id) > 0}
+              canMoveDown={waitingIds.includes(job.id) && waitingIds.indexOf(job.id) < waitingIds.length - 1}
+            />
+          )
+        })}
       </div>
       {pager}
     </div>

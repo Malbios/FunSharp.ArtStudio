@@ -1,13 +1,14 @@
 import { Link } from 'react-router-dom'
 import type { Job, QueueMove } from '../api'
 import { useReturnState } from '../sets/returnTo'
+import { jobProgressLabel, jobSettingsLabel } from './jobLabels'
 import { useJobActions } from './useJobActions'
 
 const MOVES: { move: QueueMove; label: string; title: string; earlier: boolean }[] = [
-  { move: 'Top', label: '⤒ Top', title: 'Run next, before all other waiting jobs', earlier: true },
-  { move: 'Up', label: '↑ Up', title: 'Move one place earlier in the queue', earlier: true },
-  { move: 'Down', label: '↓ Down', title: 'Move one place later in the queue', earlier: false },
-  { move: 'Bottom', label: '⤓ Bottom', title: 'Move after all other waiting jobs', earlier: false },
+  { move: 'Top', label: '⤒ Top', title: 'Run next among the waiting jobs of its kind', earlier: true },
+  { move: 'Up', label: '↑ Up', title: 'Move one place earlier among the jobs of its kind', earlier: true },
+  { move: 'Down', label: '↓ Down', title: 'Move one place later among the jobs of its kind', earlier: false },
+  { move: 'Bottom', label: '⤓ Bottom', title: 'Move after all waiting jobs of its kind', earlier: false },
 ]
 
 interface Props {
@@ -38,15 +39,14 @@ export function JobTile({ job, canMoveUp = false, canMoveDown = false }: Props) 
       <div className="job-tile-details">
         <div className="job-meta">
           <span className={`badge status-${job.status}`}>{job.status}</span>
-          <span>
-            {job.completedCount}/{job.requestedCount} images
-          </span>
+          {job.kind === 'Video' && <span className="badge video-badge">Video</span>}
+          <span>{jobProgressLabel(job)}</span>
         </div>
         <div className="progress wide" aria-hidden>
           <div style={{ width: `${actions.percent}%` }} />
         </div>
         <div className="job-meta">
-          <span>{job.resolution}</span>
+          <span>{jobSettingsLabel(job)}</span>
           <span>set #{job.setId}</span>
         </div>
         {job.error && <div className="job-error">{job.error}</div>}

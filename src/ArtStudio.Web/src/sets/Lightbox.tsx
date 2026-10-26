@@ -16,6 +16,8 @@ interface Props {
   onError: (message: string) => void
   onIndexChange: (index: number) => void
   onTogglePick: (image: ImageInfo) => void
+  /** Offers "Make video" starting from the shown image when given. */
+  onMakeVideo?: (image: ImageInfo) => void
   onClose: () => void
 }
 
@@ -31,6 +33,7 @@ export function Lightbox({
   onError,
   onIndexChange,
   onTogglePick,
+  onMakeVideo,
   onClose,
 }: Props) {
   const image = images[index]
@@ -120,6 +123,11 @@ export function Lightbox({
                 onQueued={onRequeued}
                 onError={onError}
               />
+            )}
+            {onMakeVideo && (
+              <button type="button" className="link-button" onClick={() => onMakeVideo(image)}>
+                Make video
+              </button>
             )}
           </div>
           <p>{image.prompt}</p>

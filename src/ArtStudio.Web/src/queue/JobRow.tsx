@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { Job } from '../api'
 import { useReturnState } from '../sets/returnTo'
+import { jobProgressLabel, jobSettingsLabel } from './jobLabels'
 import { useJobActions } from './useJobActions'
 
 interface Props {
@@ -25,13 +26,12 @@ export function JobRow({ job, showPrompt = true }: Props) {
         )}
         <div className="job-meta">
           <span className={`badge status-${job.status}`}>{job.status}</span>
-          <span>
-            {job.completedCount}/{job.requestedCount} images
-          </span>
+          {job.kind === 'Video' && <span className="badge video-badge">Video</span>}
+          <span>{jobProgressLabel(job)}</span>
           <div className="progress" aria-hidden>
             <div style={{ width: `${actions.percent}%` }} />
           </div>
-          <span>{job.resolution}</span>
+          <span>{jobSettingsLabel(job)}</span>
           <span>set #{job.setId}</span>
         </div>
         {job.error && <div className="job-error">{job.error}</div>}
