@@ -41,6 +41,10 @@ dotnet run VideoViaDrive.cs -- --comfy https://<your-ngrok-url> --start C:\path\
 Other options: `--seconds 8`, `--full-quality` (no Lightning LoRA, 20 steps instead of 8), `--drive-folder <path>` (default
 `ArtStudio/video`), `--dry-run` (only writes the filled workflow to `output\`). `--help` lists them all.
 
+ComfyUI saves the video under the workflow's own prefix, `video/MiniMax_H3` (so `MiniMax_H3_00001_.mp4` and counting up).
+The run looks for the file name ComfyUI reports in `/history` in the Drive folder; if `/history` names no file, it takes the
+newest `MiniMax_H3…` file created after the job was queued.
+
 The video lands in `output\` here (git-ignored). The run prints what ComfyUI's `/history` reports for the video, the render
 time, how long the file took to show up on Drive, its size, and the download time.
 

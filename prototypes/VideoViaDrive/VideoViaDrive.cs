@@ -90,17 +90,23 @@ try
     var endName = options.EndImage is null ? null : await UploadImageAsync(comfy, options.EndImage, $"{runName}-end");
     var workflow = BuildWorkflow(startName, endName);
 
+    var queuedAt = DateTimeOffset.UtcNow;
     var renderClock = Stopwatch.StartNew();
     var promptId = await QueueAsync(comfy, workflow);
     Console.WriteLine($"Queued as {promptId}. Waiting for ComfyUI…");
     var outputs = await WaitForCompletionAsync(comfy, promptId);
     renderClock.Stop();
     Console.WriteLine($"Rendered in {renderClock.Elapsed:mm\\:ss} (including any time waiting in ComfyUI's queue).");
+    var saveVideoOutput = outputs?[SaveVideoNodeId];
     Console.WriteLine($"/history output of node {SaveVideoNodeId}:");
-    Console.WriteLine(outputs?[SaveVideoNodeId]?.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) ?? "(none)");
+    Console.WriteLine(saveVideoOutput?.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) ?? "(none)");
 
+    var reportedFileName = ReportedFileName(saveVideoOutput);
+    Console.WriteLine(reportedFileName is null
+        ? $"/history names no file; looking for the newest '{FileNameStem(workflow)}…' file created after the job was queued."
+        : $"Looking for {reportedFileName} on Drive.");
     var driveClock = Stopwatch.StartNew();
-    var file = await WaitForDriveFileAsync(drive, folderId, runName);
+    var file = await WaitForDriveFileAsync(drive, folderId, reportedFileName, FileNameStem(workflow), queuedAt);
     driveClock.Stop();
     Console.WriteLine($"On Drive {driveClock.Elapsed:mm\\:ss} after ComfyUI finished: {file.Name} ({FormatSize(file.Size)}).");
 
@@ -150,9 +156,19 @@ JsonObject BuildWorkflow(string startImageName, string? endImageName)
     SetInput(workflow, SecondsNodeId, "value", options.Seconds);
     SetInput(workflow, SeedNodeId, "seed", Random.Shared.NextInt64(long.MaxValue));
     SetInput(workflow, LightningLoraNodeId, "value", !options.FullQuality);
-    SetInput(workflow, SaveVideoNodeId, "filename_prefix", $"video/{runName}");
     return workflow;
 }
+
+// "video/MiniMax_H3" saves as video/MiniMax_H3_00001_.mp4, MiniMax_H3_00002_.mp4, ...
+static string FileNameStem(JsonObject workflow) =>
+    Input(workflow, SaveVideoNodeId, "filename_prefix").GetValue<string>().Split('/').Last();
+
+static string? ReportedFileName(JsonNode? saveVideoOutput) =>
+    (saveVideoOutput as JsonObject ?? [])
+        .SelectMany(entry => entry.Value as JsonArray ?? [])
+        .OfType<JsonObject>()
+        .Select(item => item["filename"]?.GetValue<string>())
+        .FirstOrDefault(name => !string.IsNullOrEmpty(name));
 
 static JsonObject Inputs(JsonObject workflow, string nodeId) =>
     workflow[nodeId]?["inputs"] as JsonObject ?? throw new PrototypeException($"Node '{nodeId}' is missing from the workflow.");
@@ -267,21 +283,27 @@ async Task<string> FindFolderAsync(DriveService drive, string folderPath)
     return parentId;
 }
 
-// Drive only reports a checksum once the whole file has arrived.
-async Task<Google.Apis.Drive.v3.Data.File> WaitForDriveFileAsync(DriveService drive, string folderId, string namePrefix)
+// Drive only reports a checksum once the whole file has arrived. The default prefix reuses names across runs (after
+// deletions), so only files created after the job was queued count; a minute of slack covers clock differences.
+async Task<Google.Apis.Drive.v3.Data.File> WaitForDriveFileAsync(
+    DriveService drive, string folderId, string? fileName, string nameStem, DateTimeOffset queuedAt)
 {
+    var nameCondition = fileName is null ? $"name contains '{EscapeQuery(nameStem)}'" : $"name = '{EscapeQuery(fileName)}'";
+    var createdAfter = (queuedAt - TimeSpan.FromMinutes(1)).ToString("yyyy-MM-ddTHH:mm:ssZ");
     var deadline = DateTime.UtcNow + driveTimeout;
     while (DateTime.UtcNow < deadline)
     {
         var request = drive.Files.List();
-        request.Q = $"'{folderId}' in parents and name contains '{EscapeQuery(namePrefix)}' and trashed = false";
+        request.Q = $"'{folderId}' in parents and {nameCondition} and createdTime > '{createdAfter}' and trashed = false";
         request.Fields = "files(id, name, size, md5Checksum)";
+        request.OrderBy = "createdTime desc";
         var file = (await request.ExecuteAsync(ct)).Files.FirstOrDefault(f => f.Size is not null && f.Md5Checksum is not null);
         if (file is not null)
             return file;
         await Task.Delay(pollInterval, ct);
     }
-    throw new PrototypeException($"No complete '{namePrefix}…' file appeared in the Drive folder within {driveTimeout.TotalMinutes} minutes.");
+    throw new PrototypeException(
+        $"No complete {fileName ?? nameStem + "…"} file appeared in the Drive folder within {driveTimeout.TotalMinutes} minutes.");
 }
 
 static string EscapeQuery(string value) => value.Replace("\\", "\\\\").Replace("'", "\\'");
