@@ -139,6 +139,7 @@ public static class SetEndpoints
         var jobsById = set.Jobs.ToDictionary(j => j.Id);
         var videos = await db.Videos.Where(v => v.PromptSetId == id).OrderBy(v => v.Id).ToListAsync(ct);
         var secondsPerVideoUnit = await estimator.SecondsPerUnitAsync(ct);
+        var frames = new VideoFrames(set, set.Images, set.Jobs);
 
         return Results.Ok(new SetDetailDto(
             set.Id,
@@ -156,7 +157,7 @@ public static class SetEndpoints
             set.ArchivedAt,
             PromptGenerationDto.From(set),
             set.Images.Select(image => ImageDto.From(image, jobsById[image.GenerationJobId])).ToList(),
-            videos.Select(video => VideoDto.From(video, jobsById[video.GenerationJobId])).ToList(),
+            videos.Select(video => VideoDto.From(video, jobsById[video.GenerationJobId], frames)).ToList(),
             set.Jobs.Select(job => JobDto.From(job, secondsPerVideoUnit)).ToList(),
             PostDto.From(set, postSuggestions.IsSuggesting(set.Id))));
     }

@@ -320,7 +320,9 @@ export function SetDetailPage() {
         )}
       </div>
 
-      {data.videos.length > 0 && <SetVideos videos={data.videos} />}
+      {data.videos.length > 0 && (
+        <SetVideos videos={data.videos} canMakeAgain={!isArchived} setPageState={locationState} />
+      )}
 
       {activeJobs.length > 0 && (
         <div className="job-list">
@@ -358,7 +360,7 @@ export function SetDetailPage() {
           onMakeVideo={
             isArchived
               ? undefined
-              : (image) => navigate(`/sets/${data.id}/video?start=${image.id}`, { state: locationState })
+              : (image) => navigate(`/sets/${data.id}/video?start=image:${image.id}`, { state: locationState })
           }
           onClose={closeLightbox}
         />

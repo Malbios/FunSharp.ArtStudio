@@ -21,7 +21,20 @@ public static class VideoEndpoints
         app.MapGet("/api/videos/{id:int}", async (int id, StudioDbContext db, CancellationToken ct) =>
             SetEndpoints.FileResult(await db.Videos.Where(v => v.Id == id).Select(v => v.FilePath).SingleOrDefaultAsync(ct)));
         app.MapGet("/api/jobs/{id:int}/frames/{frame}", GetFrameAsync);
+        app.MapGet("/api/sets/{id:int}/video-frames", async (int id, StudioDbContext db, CancellationToken ct) =>
+            (await FramesOfAsync(id, db, ct)).All.Select(f => new VideoFrameDto(f.Key, f.Url, f.Label)).ToList());
         app.MapPost("/api/sets/{id:int}/videos", MakeVideoAsync);
+    }
+
+    internal static async Task<VideoFrames> FramesOfAsync(int setId, StudioDbContext db, CancellationToken ct)
+    {
+        var set = await db.PromptSets
+            .Include(s => s.Images)
+            .Include(s => s.Jobs)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(s => s.Id == setId, ct)
+            ?? throw new UserFacingException("Set not found.");
+        return new VideoFrames(set, set.Images, set.Jobs);
     }
 
     private static async Task<IResult> GetFrameAsync(int id, string frame, StudioDbContext db, CancellationToken ct)
@@ -41,16 +54,10 @@ public static class VideoEndpoints
     private static async Task<IResult> MakeVideoAsync(
         int id, MakeVideoRequest request, StudioDbContext db, QueueService queueService, CancellationToken ct)
     {
-        var frameIds = new[] { request.StartImageId, request.EndImageId }.OfType<int>().ToList();
-        var paths = await db.Images
-            .Where(i => i.PromptSetId == id && frameIds.Contains(i.Id))
-            .ToDictionaryAsync(i => i.Id, i => i.FilePath, ct);
-        if (frameIds.Any(frameId => !paths.ContainsKey(frameId)))
-            throw new UserFacingException("The start and end frames must be images of this set.");
-
+        var frames = await FramesOfAsync(id, db, ct);
         var job = await queueService.EnqueueVideoAsync(id, new VideoJobRequest(
-            paths[request.StartImageId],
-            request.EndImageId is int endId ? paths[endId] : null,
+            frames.PathOf(request.StartFrame),
+            request.EndFrame is { } endFrame ? frames.PathOf(endFrame) : null,
             request.Prompt,
             request.Seconds,
             request.Megapixels,

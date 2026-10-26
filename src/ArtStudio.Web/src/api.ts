@@ -55,10 +55,21 @@ export interface VideoInfo {
   prompt: string
   resolution: string
   seconds: number
+  megapixels: number
   turbo: boolean
   startImageUrl: string
   endImageUrl: string | null
+  /** Keys from api.videoFrames, for making the video again; null when the frame is no longer in the set. */
+  startFrameKey: string | null
+  endFrameKey: string | null
   createdAt: string
+}
+
+/** A frame a video of the set can start or end on: a generated image, the uploaded image or an earlier end frame. */
+export interface VideoFrame {
+  key: string
+  url: string
+  label: string
 }
 
 export interface VideoResolutionPreset {
@@ -383,8 +394,9 @@ export const api = {
   moreImages: (setId: number, count: number, prompt?: string, resolution?: string, queueFirst?: boolean) =>
     request<{ id: number }>('POST', `/api/sets/${setId}/more`, { count, prompt, resolution, queueFirst }),
   videoOptions: () => request<VideoOptions>('GET', '/api/videos/options'),
-  makeVideo: (setId: number, startImageId: number, endImageId: number | null, settings: VideoJobSettings) =>
-    request<{ id: number }>('POST', `/api/sets/${setId}/videos`, { startImageId, endImageId, ...settings }),
+  videoFrames: (setId: number) => request<VideoFrame[]>('GET', `/api/sets/${setId}/video-frames`),
+  makeVideo: (setId: number, startFrame: string, endFrame: string | null, settings: VideoJobSettings) =>
+    request<{ id: number }>('POST', `/api/sets/${setId}/videos`, { startFrame, endFrame, ...settings }),
   saveDraftSettings: (setId: number, resolution: string, imageCount: number) =>
     request<void>('PUT', `/api/sets/${setId}/draft-settings`, { resolution, imageCount }),
   queueDraft: (setId: number, prompt: string, resolution: string, count: number, queueFirst?: boolean) =>

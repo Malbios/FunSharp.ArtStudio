@@ -71,12 +71,16 @@ public sealed record VideoDto(
     string Prompt,
     string Resolution,
     double Seconds,
+    double Megapixels,
     bool Turbo,
     string StartImageUrl,
     string? EndImageUrl,
+    string? StartFrameKey,
+    string? EndFrameKey,
     DateTimeOffset CreatedAt)
 {
-    public static VideoDto From(GeneratedVideo video, GenerationJob job) => new(
+    /// <param name="frames">The set's frames, to name the video's start and end frame for making it again.</param>
+    public static VideoDto From(GeneratedVideo video, GenerationJob job, VideoFrames frames) => new(
         video.Id,
         video.PromptSetId,
         video.GenerationJobId,
@@ -85,9 +89,12 @@ public sealed record VideoDto(
         job.Prompt,
         job.Resolution,
         job.VideoSeconds ?? 0,
+        job.VideoMegapixels ?? 0,
         job.VideoTurbo,
         ApiUrls.VideoFrame(job.Id, "start"),
         job.VideoEndImagePath is null ? null : ApiUrls.VideoFrame(job.Id, "end"),
+        frames.KeyOf(job.VideoStartImagePath),
+        frames.KeyOf(job.VideoEndImagePath),
         video.CreatedAt);
 }
 
@@ -158,9 +165,12 @@ public sealed record QueueDraftRequest(string Prompt, string Resolution, int Cou
 
 public sealed record DraftSettingsRequest(string Resolution, int ImageCount);
 
+/// <summary>The frames are keys from GET /api/sets/{id}/video-frames, e.g. "image:12" or "source".</summary>
 public sealed record MakeVideoRequest(
-    int StartImageId, int? EndImageId, string Prompt, double Seconds, double Megapixels, bool Turbo, int Count,
+    string StartFrame, string? EndFrame, string Prompt, double Seconds, double Megapixels, bool Turbo, int Count,
     bool QueueFirst = false);
+
+public sealed record VideoFrameDto(string Key, string Url, string Label);
 
 public sealed record VideoOptionsDto(
     string PromptTemplate,

@@ -35,8 +35,17 @@ public sealed class VideoTests : IDisposable
     private Task<HttpResponseMessage> MakeVideoAsync(
         int setId, int startImageId, int? endImageId = null, double seconds = 5, double megapixels = 0.46,
         bool turbo = true, int count = 1, bool queueFirst = false) =>
+        MakeVideoFromFramesAsync(setId, $"image:{startImageId}", endImageId is int end ? $"image:{end}" : null,
+            seconds, megapixels, turbo, count, queueFirst);
+
+    private Task<HttpResponseMessage> MakeVideoFromFramesAsync(
+        int setId, string startFrame, string? endFrame, double seconds = 5, double megapixels = 0.46,
+        bool turbo = true, int count = 1, bool queueFirst = false) =>
         _client.PostAsJsonAsync($"/api/sets/{setId}/videos",
-            new { startImageId, endImageId, prompt = VideoPrompt, seconds, megapixels, turbo, count, queueFirst });
+            new { startFrame, endFrame, prompt = VideoPrompt, seconds, megapixels, turbo, count, queueFirst });
+
+    private async Task<List<VideoFrameDto>> FramesAsync(int setId) =>
+        (await _client.GetFromJsonAsync<List<VideoFrameDto>>($"/api/sets/{setId}/video-frames", Json))!;
 
     private Task WaitForVideoJobAsync(int setId, JobStatus status) =>
         WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Jobs.Any(j => j.Kind == JobKind.Video && j.Status == status),
@@ -187,7 +196,7 @@ public sealed class VideoTests : IDisposable
         var imageId = (await GetSetAsync(client, setId)).Images[0].Id;
 
         (await client.PostAsJsonAsync($"/api/sets/{setId}/videos",
-            new { startImageId = imageId, prompt = VideoPrompt, seconds = 5, megapixels = 0.46, turbo = true, count = 1 }))
+            new { startFrame = $"image:{imageId}", prompt = VideoPrompt, seconds = 5, megapixels = 0.46, turbo = true, count = 1 }))
             .EnsureSuccessStatusCode();
         await WaitUntilAsync(async () => (await GetSetAsync(client, setId)).Jobs.Any(j => j.Status == JobStatus.Failed), "job failed");
 
@@ -213,7 +222,7 @@ public sealed class VideoTests : IDisposable
             await WaitUntilAsync(async () => (await GetSetAsync(client, setId)).Images.Count == 1, "image rendered");
             var imageId = (await GetSetAsync(client, setId)).Images[0].Id;
             (await client.PostAsJsonAsync($"/api/sets/{setId}/videos",
-                new { startImageId = imageId, prompt = VideoPrompt, seconds = 5, megapixels = 0.46, turbo = true, count = 1 }))
+                new { startFrame = $"image:{imageId}", prompt = VideoPrompt, seconds = 5, megapixels = 0.46, turbo = true, count = 1 }))
                 .EnsureSuccessStatusCode();
             await WaitUntilAsync(async () => (await VideoJobAsync(before)).CurrentOutputFileName is not null, "video rendered");
             fileName = Path.GetFileName((await VideoJobAsync(before)).CurrentOutputFileName!);
@@ -364,6 +373,74 @@ public sealed class VideoTests : IDisposable
         Assert.Equal([1, 2, 3], await _client.GetByteArrayAsync(video.StartImageUrl));
         Assert.Equal([4, 5, 6], await _client.GetByteArrayAsync(video.EndImageUrl));
         Assert.True(Assert.Single(_factory.Comfy.SubmittedVideoWorkflows).ContainsKey("128"));
+    }
+
+    [Fact]
+    public async Task NewVideoSet_OffersItsUploadedFrames_ForMakingItAgain()
+    {
+        await _factory.ConnectGoogleAsync();
+        var response = await _client.PostAsync("/api/sets", VideoForm(withEndImage: true));
+        var setId = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        await WaitForVideoJobAsync(setId, JobStatus.Completed);
+        var firstJob = (await GetSetAsync(_client, setId)).Jobs.Single();
+
+        var frames = await FramesAsync(setId);
+        var video = (await GetSetAsync(_client, setId)).Videos.Single();
+
+        Assert.Equal(["source", $"job:{firstJob.Id}:end"], frames.Select(f => f.Key));
+        Assert.Equal("Uploaded image", frames[0].Label);
+        Assert.Equal(("source", $"job:{firstJob.Id}:end"), (video.StartFrameKey, video.EndFrameKey));
+        Assert.Equal(0.46, video.Megapixels);
+
+        (await MakeVideoFromFramesAsync(setId, "source", $"job:{firstJob.Id}:end")).EnsureSuccessStatusCode();
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Videos.Count == 2, "second video");
+        var again = (await GetSetAsync(_client, setId)).Videos[1];
+        Assert.Equal(("source", $"job:{firstJob.Id}:end"), (again.StartFrameKey, again.EndFrameKey));
+        Assert.Equal([1, 2, 3], await _client.GetByteArrayAsync(again.StartImageUrl));
+        Assert.Equal([4, 5, 6], await _client.GetByteArrayAsync(again.EndImageUrl));
+    }
+
+    [Fact]
+    public async Task FramesOfGeneratedImages_AreKeyedByImage()
+    {
+        await _factory.ConnectGoogleAsync();
+        var set = await SetWithImagesAsync();
+
+        (await MakeVideoAsync(set.Id, set.Images[1].Id, set.Images[0].Id)).EnsureSuccessStatusCode();
+        await WaitForVideoJobAsync(set.Id, JobStatus.Completed);
+
+        var video = (await GetSetAsync(_client, set.Id)).Videos.Single();
+        Assert.Equal(($"image:{set.Images[1].Id}", $"image:{set.Images[0].Id}"), (video.StartFrameKey, video.EndFrameKey));
+        Assert.Equal([$"image:{set.Images[0].Id}", $"image:{set.Images[1].Id}"], (await FramesAsync(set.Id)).Select(f => f.Key));
+    }
+
+    [Fact]
+    public async Task DeviantArtInspiration_IsNotOfferedAsAFrame()
+    {
+        var setId = await _factory.CreateSetAsync(_client, "a fox", count: 1, addSource: form =>
+        {
+            form.Add(new StringContent("DeviantArt"), "sourceKind");
+            form.Add(new StringContent("https://www.deviantart.com/someartist/art/Misty-Forest-123456"), "deviantArtUrl");
+        });
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Images.Count == 1, "image rendered");
+
+        var frames = await FramesAsync(setId);
+
+        Assert.DoesNotContain(frames, f => f.Key == "source");
+        Assert.Single(frames);
+    }
+
+    [Fact]
+    public async Task FrameOfAnotherSet_IsRefused()
+    {
+        await _factory.ConnectGoogleAsync();
+        var set = await SetWithImagesAsync(images: 1);
+        var other = await SetWithImagesAsync(images: 1);
+
+        var response = await MakeVideoFromFramesAsync(set.Id, $"image:{other.Images[0].Id}", null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.DoesNotContain((await GetSetAsync(_client, set.Id)).Jobs, j => j.Kind == JobKind.Video);
     }
 
     [Fact]

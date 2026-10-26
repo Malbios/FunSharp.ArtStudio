@@ -104,7 +104,7 @@ public sealed class VideoTimeEstimatorTests : IDisposable
         await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Images.Count == 1, "image rendered");
         var imageId = (await GetSetAsync(_client, setId)).Images[0].Id;
         (await _client.PostAsJsonAsync($"/api/sets/{setId}/videos",
-            new { startImageId = imageId, prompt = "a fox walks", seconds = 5, megapixels = 0.46, turbo = true, count = 1 }))
+            new { startFrame = $"image:{imageId}", prompt = "a fox walks", seconds = 5, megapixels = 0.46, turbo = true, count = 1 }))
             .EnsureSuccessStatusCode();
         await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Videos.Count == 1, "video downloaded");
 

@@ -1,4 +1,4 @@
-import type { VideoJobSettings, VideoOptions } from '../api'
+import type { VideoInfo, VideoJobSettings, VideoOptions } from '../api'
 
 export const CUSTOM = 'custom'
 const FRAMES_PER_SECOND = 24
@@ -25,6 +25,25 @@ export function initialVideoForm(options: VideoOptions): VideoForm {
     resolution: options.defaultResolution,
     customMegapixels: '',
     turbo: true,
+    count: 1,
+    queueFirst: false,
+  }
+}
+
+/** The settings an earlier video was made with, as presets where one matches, for making it again. */
+export function formFromVideo(
+  video: Pick<VideoInfo, 'prompt' | 'seconds' | 'megapixels' | 'turbo'>,
+  options: VideoOptions,
+): VideoForm {
+  const durationPreset = options.durationPresets.find((seconds) => seconds === video.seconds)
+  const resolutionPreset = options.resolutionPresets.find((preset) => preset.megapixels === video.megapixels)
+  return {
+    prompt: video.prompt,
+    duration: durationPreset === undefined ? CUSTOM : String(durationPreset),
+    customSeconds: durationPreset === undefined ? String(video.seconds) : '',
+    resolution: resolutionPreset?.name ?? CUSTOM,
+    customMegapixels: resolutionPreset ? '' : String(video.megapixels),
+    turbo: video.turbo,
     count: 1,
     queueFirst: false,
   }

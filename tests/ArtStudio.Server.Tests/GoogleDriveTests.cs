@@ -252,7 +252,7 @@ public sealed class GoogleDriveTests : IDisposable
         _factory.Google.DriveFailure = HttpStatusCode.ServiceUnavailable;
         (await _client.PostAsJsonAsync($"/api/sets/{setId}/videos", new
         {
-            startImageId = (await GetSetAsync(_client, setId)).Images[0].Id,
+            startFrame = $"image:{(await GetSetAsync(_client, setId)).Images[0].Id}",
             prompt = "a fox walks",
             seconds = 5,
             megapixels = 0.46,

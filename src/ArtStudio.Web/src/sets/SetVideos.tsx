@@ -1,20 +1,34 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { VideoInfo } from '../api'
 
-export function SetVideos({ videos }: { videos: VideoInfo[] }) {
+interface SetVideosProps {
+  videos: VideoInfo[]
+  canMakeAgain: boolean
+  /** The set page's own state, handed on so the Make video page can return to it. */
+  setPageState: unknown
+}
+
+export function SetVideos({ videos, canMakeAgain, setPageState }: SetVideosProps) {
   return (
     <section className="panel set-videos">
       <h3>Videos</h3>
       <div className="video-grid">
         {videos.map((video) => (
-          <VideoTile key={video.id} video={video} />
+          <VideoTile key={video.id} video={video} canMakeAgain={canMakeAgain} setPageState={setPageState} />
         ))}
       </div>
     </section>
   )
 }
 
-function VideoTile({ video }: { video: VideoInfo }) {
+interface VideoTileProps {
+  video: VideoInfo
+  canMakeAgain: boolean
+  setPageState: unknown
+}
+
+function VideoTile({ video, canMakeAgain, setPageState }: VideoTileProps) {
   const [copied, setCopied] = useState(false)
 
   async function copyPrompt() {
@@ -48,6 +62,16 @@ function VideoTile({ video }: { video: VideoInfo }) {
           <a href={video.url} target="_blank" rel="noreferrer" className="link-button">
             Open original
           </a>
+          {canMakeAgain && (
+            <Link
+              to={`/sets/${video.setId}/video?from=${video.id}`}
+              state={setPageState}
+              className="link-button"
+              title="Open Make video with this video's settings, to adjust before queueing"
+            >
+              Make again
+            </Link>
+          )}
         </div>
       </figcaption>
     </figure>

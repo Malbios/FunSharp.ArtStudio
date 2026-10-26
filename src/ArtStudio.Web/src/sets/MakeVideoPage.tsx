@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { api, type ImageInfo } from '../api'
+import { api, type VideoFrame } from '../api'
 import { useLoad } from '../live/useLoad'
-import { initialVideoForm, resolveVideoForm, type VideoForm } from '../video/videoForm'
+import { formFromVideo, initialVideoForm, resolveVideoForm, type Size, type VideoForm } from '../video/videoForm'
 import { VideoOptionsFields, VideoPromptField } from '../video/VideoOptionsFields'
 import { ImageViewer } from './ImageViewer'
 
@@ -11,7 +11,21 @@ interface ViewedFrame {
   caption: string
 }
 
-/** Queues videos of a set that start from one of its images, and optionally end on another. */
+interface LoadedSize {
+  url: string
+  size: Size
+}
+
+/** Accepts the older `?start=<imageId>` links as well as frame keys. */
+function startKeyOf(param: string | null): string | undefined {
+  if (!param) return undefined
+  return /^\d+$/.test(param) ? `image:${param}` : param
+}
+
+/**
+ * Queues videos of a set that start from one of its frames, and optionally end on another.
+ * `?start=<frame key>` preselects the start frame; `?from=<videoId>` fills everything in from an earlier video.
+ */
 export function MakeVideoPage() {
   const setId = Number(useParams().id)
   const [searchParams] = useSearchParams()
@@ -19,24 +33,35 @@ export function MakeVideoPage() {
   // The set page's own state, so going back to it still knows where the set was opened from.
   const setPageState: unknown = useLocation().state
   const set = useLoad(() => api.set(setId), setId)
+  const frames = useLoad(() => api.videoFrames(setId), setId)
   const options = useLoad(api.videoOptions)
   const [editedForm, setForm] = useState<VideoForm>()
-  const form = editedForm ?? (options.data && initialVideoForm(options.data))
-  const [chosenStartId, setStartId] = useState<number>()
-  const [endImageId, setEndImageId] = useState<number | null>(null)
+  const [chosenStartKey, setStartKey] = useState<string>()
+  const [chosenEndKey, setEndKey] = useState<string | null>()
   const [queueing, setQueueing] = useState(false)
   const [error, setError] = useState<string>()
-  const resolutions = useLoad(api.resolutions)
+  const [startSize, setStartSize] = useState<LoadedSize>()
   const [viewed, setViewed] = useState<ViewedFrame>()
 
   // Opened from the set page's viewer, which may have been scrolled far down.
   useEffect(() => window.scrollTo(0, 0), [])
 
-  const images = set.data?.images ?? []
-  const startId = chosenStartId ?? (Number(searchParams.get('start')) || images[0]?.id)
-  const start = images.find((image) => image.id === startId)
-  const end = images.find((image) => image.id === endImageId)
-  const startSize = resolutions.data?.find((preset) => preset.name === start?.resolution)
+  const fromVideoId = Number(searchParams.get('from'))
+  const fromVideo = fromVideoId ? set.data?.videos.find((video) => video.id === fromVideoId) : undefined
+  const form =
+    editedForm ??
+    (options.data && (fromVideo ? formFromVideo(fromVideo, options.data) : initialVideoForm(options.data)))
+
+  const allFrames = frames.data ?? []
+  const frameOf = (key: string | null | undefined) => allFrames.find((frame) => frame.key === key)
+  const start =
+    frameOf(chosenStartKey) ??
+    frameOf(fromVideo ? fromVideo.startFrameKey : startKeyOf(searchParams.get('start'))) ??
+    allFrames[0]
+  const end = frameOf(chosenEndKey === undefined ? fromVideo?.endFrameKey : chosenEndKey)
+  const lostFrames =
+    fromVideo !== undefined &&
+    (fromVideo.startFrameKey === null || (fromVideo.endImageUrl !== null && fromVideo.endFrameKey === null))
   const closeViewer = useCallback(() => setViewed(undefined), [])
   const backToSet = () => navigate(`/sets/${setId}`, { state: setPageState })
 
@@ -49,7 +74,7 @@ export function MakeVideoPage() {
     setError(undefined)
     setQueueing(true)
     try {
-      await api.makeVideo(setId, start.id, end?.id ?? null, resolved.settings)
+      await api.makeVideo(setId, start.key, end?.key ?? null, resolved.settings)
       backToSet()
     } catch (failure) {
       setError((failure as Error).message)
@@ -57,8 +82,9 @@ export function MakeVideoPage() {
     }
   }
 
-  if (set.error) return <p className="error">{set.error}</p>
-  if (!set.data) return <p className="hint">Loading…</p>
+  const loadError = set.error ?? frames.error
+  if (loadError) return <p className="error">{loadError}</p>
+  if (!set.data || !frames.data) return <p className="hint">Loading…</p>
   if (set.data.archivedAt)
     return (
       <p className="hint">
@@ -69,7 +95,7 @@ export function MakeVideoPage() {
   return (
     <form className="panel make-video" onSubmit={(e) => void submit(e)}>
       <div className="toolbar">
-        <h2>Make video from set #{setId}</h2>
+        <h2>{fromVideo ? `Make video #${fromVideo.id} again` : `Make video from set #${setId}`}</h2>
         <Link to={`/sets/${setId}`} state={setPageState}>
           Back to the set
         </Link>
@@ -81,20 +107,27 @@ export function MakeVideoPage() {
       )}
 
       <div className="video-frames">
-        <FramePreview image={start} caption="Start" emptyText="None" onOpen={setViewed} />
+        <FramePreview
+          frame={start}
+          caption="Start"
+          emptyText="None"
+          onOpen={setViewed}
+          onSize={(size) => start && setStartSize({ url: start.url, size })}
+        />
         <span className="video-frames-arrow" aria-hidden>
           →
         </span>
-        <FramePreview image={end} caption="End" emptyText="Free" onOpen={setViewed} />
+        <FramePreview frame={end} caption="End" emptyText="Free" onOpen={setViewed} />
       </div>
+      {lostFrames && <p className="hint">A frame of the earlier video is no longer in this set; choose another.</p>}
 
-      <FrameChooser label="Start frame" images={images} chosenId={startId ?? null} onChoose={(id) => setStartId(id!)} />
+      <FrameChooser label="Start frame" frames={allFrames} chosenKey={start?.key ?? null} onChoose={(key) => setStartKey(key!)} />
       <FrameChooser
         label="End frame (optional)"
-        images={images.filter((image) => image.id !== startId)}
-        chosenId={endImageId}
+        frames={allFrames.filter((frame) => frame.key !== start?.key)}
+        chosenKey={end?.key ?? null}
         allowNone
-        onChoose={setEndImageId}
+        onChoose={setEndKey}
       />
 
       {form && options.data && (
@@ -102,7 +135,7 @@ export function MakeVideoPage() {
           form={form}
           options={options.data}
           disabled={queueing}
-          startSize={startSize}
+          startSize={startSize?.url === start?.url ? startSize?.size : undefined}
           onChange={setForm}
         />
       )}
@@ -130,42 +163,47 @@ export function MakeVideoPage() {
 }
 
 interface FramePreviewProps {
-  image: ImageInfo | undefined
+  frame: VideoFrame | undefined
   caption: string
   emptyText: string
   onOpen: (viewed: ViewedFrame) => void
+  onSize?: (size: Size) => void
 }
 
-function FramePreview({ image, caption, emptyText, onOpen }: FramePreviewProps) {
+function FramePreview({ frame, caption, emptyText, onOpen, onSize }: FramePreviewProps) {
   return (
     <figure>
-      {image ? (
+      {frame ? (
         <button
           type="button"
           className="video-frame-open"
           title="Show at full resolution"
-          onClick={() => onOpen({ url: image.url, caption: `${caption} frame` })}
+          onClick={() => onOpen({ url: frame.url, caption: `${caption} frame: ${frame.label}` })}
         >
-          <img src={image.url} alt={`${caption} frame`} />
+          <img
+            src={frame.url}
+            alt={`${caption} frame`}
+            onLoad={(e) => onSize?.({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })}
+          />
         </button>
       ) : (
         <div className="video-frame-empty">{emptyText}</div>
       )}
-      <figcaption>{caption}</figcaption>
+      <figcaption>{frame ? `${caption}: ${frame.label}` : caption}</figcaption>
     </figure>
   )
 }
 
 interface FrameChooserProps {
   label: string
-  images: ImageInfo[]
-  chosenId: number | null
+  frames: VideoFrame[]
+  chosenKey: string | null
   allowNone?: boolean
-  onChoose: (imageId: number | null) => void
+  onChoose: (key: string | null) => void
 }
 
 /** Collapsed at first: the chosen frame already shows in the previews above. */
-function FrameChooser({ label, images, chosenId, allowNone = false, onChoose }: FrameChooserProps) {
+function FrameChooser({ label, frames, chosenKey, allowNone = false, onChoose }: FrameChooserProps) {
   return (
     <details className="frame-chooser">
       <summary>Choose the {label.toLowerCase()}</summary>
@@ -174,24 +212,25 @@ function FrameChooser({ label, images, chosenId, allowNone = false, onChoose }: 
           <button
             type="button"
             role="radio"
-            aria-checked={chosenId === null}
-            className={chosenId === null ? 'chosen' : undefined}
+            aria-checked={chosenKey === null}
+            className={chosenKey === null ? 'chosen' : undefined}
             onClick={() => onChoose(null)}
           >
             None
           </button>
         )}
-        {images.map((image, index) => (
+        {frames.map((frame) => (
           <button
-            key={image.id}
+            key={frame.key}
             type="button"
             role="radio"
-            aria-checked={chosenId === image.id}
-            aria-label={`Image ${index + 1}, seed ${image.seed}`}
-            className={chosenId === image.id ? 'chosen' : undefined}
-            onClick={() => onChoose(image.id)}
+            aria-checked={chosenKey === frame.key}
+            aria-label={frame.label}
+            title={frame.label}
+            className={chosenKey === frame.key ? 'chosen' : undefined}
+            onClick={() => onChoose(frame.key)}
           >
-            <img src={image.url} alt="" loading="lazy" />
+            <img src={frame.url} alt="" loading="lazy" />
           </button>
         ))}
       </div>

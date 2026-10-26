@@ -3,6 +3,7 @@ import type { VideoOptions } from '../api'
 import {
   approximateVideoSize,
   CUSTOM,
+  formFromVideo,
   initialVideoForm,
   renderedSeconds,
   resolveVideoForm,
@@ -43,6 +44,28 @@ describe('approximateVideoSize', () => {
     expect(approximateVideoSize({ width: 1920, height: 1080 }, 0.46)).toEqual({ width: 928, height: 512 })
     expect(approximateVideoSize({ width: 768, height: 1344 }, 0.46)).toEqual({ width: 512, height: 928 })
     expect(approximateVideoSize({ width: 1152, height: 896 }, 0.46)).toEqual({ width: 800, height: 608 })
+  })
+})
+
+describe('formFromVideo', () => {
+  it('picks the matching presets and asks for one video', () => {
+    const form = formFromVideo({ prompt: 'A fox walks.', seconds: 8, megapixels: 0.98, turbo: false }, options)
+
+    expect(form).toEqual({
+      ...initialVideoForm(options),
+      prompt: 'A fox walks.',
+      duration: '8',
+      resolution: '1344 x 768',
+      turbo: false,
+    })
+  })
+
+  it('falls back to custom values that resolve to the same settings', () => {
+    const video = { prompt: 'A fox walks.', seconds: 7.5, megapixels: 0.55, turbo: true }
+    const form = formFromVideo(video, options)
+
+    expect(form).toMatchObject({ duration: CUSTOM, customSeconds: '7.5', resolution: CUSTOM, customMegapixels: '0.55' })
+    expect(resolveVideoForm(form, options)).toMatchObject({ settings: { seconds: 7.5, megapixels: 0.55, count: 1 } })
   })
 })
 
