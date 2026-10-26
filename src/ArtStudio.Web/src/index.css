@@ -765,6 +765,17 @@ main {
   white-space: nowrap;
 }
 
+.bulk-result-dismiss {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.bulk-results-dismiss-all {
+  margin-top: 0.5rem;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
 .pager {
   display: flex;
   justify-content: center;

@@ -103,6 +103,12 @@ export function BulkDeviantArtDrafts() {
     setResults((previous) => previous.filter((result) => result.url !== url))
   }
 
+  function removeFailedResults() {
+    setResults((previous) => previous.filter((result) => result.status !== 'failed'))
+  }
+
+  const failedCount = results.filter((result) => result.status === 'failed').length
+
   async function addOne(url: string): Promise<BulkResult> {
     try {
       const { id } = await api.addDeviantArtDraft(url)
@@ -148,16 +154,32 @@ export function BulkDeviantArtDrafts() {
                 <AddedNote setId={result.setId} onExpire={() => removeResult(result.url)} />
               )}
               {result.status === 'failed' && (
-                <span className="error">
-                  {result.error}{' '}
-                  {result.existingSetId !== null && (
-                    <Link to={`/sets/${result.existingSetId}`}>Open set #{result.existingSetId}</Link>
-                  )}
-                </span>
+                <>
+                  <span className="error">
+                    {result.error}{' '}
+                    {result.existingSetId !== null && (
+                      <Link to={`/sets/${result.existingSetId}`}>Open set #{result.existingSetId}</Link>
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    className="link-button bulk-result-dismiss"
+                    aria-label={`Dismiss the error for ${result.url}`}
+                    title="Dismiss"
+                    onClick={() => removeResult(result.url)}
+                  >
+                    ✕
+                  </button>
+                </>
               )}
             </li>
           ))}
         </ul>
+      )}
+      {failedCount > 1 && (
+        <button type="button" className="link-button bulk-results-dismiss-all" onClick={removeFailedResults}>
+          Dismiss all {failedCount} errors
+        </button>
       )}
     </section>
   )
