@@ -14,6 +14,7 @@ import { PublishedPage } from './post/PublishedPage'
 import { StashedPage } from './post/StashedPage'
 import { QueuePage } from './queue/QueuePage'
 import { pausedLabel } from './queue/queueSections'
+import { MakeVideoPage } from './sets/MakeVideoPage'
 import { SetDetailPage } from './sets/SetDetailPage'
 import { SetsPage } from './sets/SetsPage'
 import { StatsPage } from './stats/StatsPage'
@@ -176,6 +177,7 @@ export default function App() {
           <Route path="/queue" element={<QueuePage />} />
           <Route path="/sets" element={<SetsPage />} />
           <Route path="/sets/:id" element={<SetDetailPage />} />
+          <Route path="/sets/:id/video" element={<MakeVideoPage />} />
           <Route path="/post" element={<PostPage />} />
           <Route path="/stashed" element={<StashedPage />} />
           <Route path="/published" element={<PublishedPage />} />

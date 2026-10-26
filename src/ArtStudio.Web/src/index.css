@@ -361,8 +361,8 @@ main {
   gap: 1rem;
 }
 
-.video-dialog {
-  width: min(56rem, calc(100vw - 2rem));
+.make-video {
+  max-width: 64rem;
 }
 
 .video-frames {
@@ -400,13 +400,13 @@ main {
   font-size: 1.5rem;
 }
 
-.video-end-choices {
+.video-frame-choices {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.video-end-choices button {
+.video-frame-choices button {
   padding: 0;
   min-width: 64px;
   height: 64px;
@@ -414,11 +414,11 @@ main {
   overflow: hidden;
 }
 
-.video-end-choices button.chosen {
+.video-frame-choices button.chosen {
   border-color: var(--accent);
 }
 
-.video-end-choices img {
+.video-frame-choices img {
   display: block;
   width: 64px;
   height: 60px;
