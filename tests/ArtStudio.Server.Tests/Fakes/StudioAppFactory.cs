@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using ArtStudio.Server.Api;
 using ArtStudio.Server.Comfy;
 using ArtStudio.Server.DeviantArt;
+using ArtStudio.Server.Google;
 using ArtStudio.Server.Vision;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -33,6 +34,8 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
 
     public FakeVisionServer Vision { get; } = new();
 
+    public FakeGoogle Google { get; } = new();
+
     public FakeFolderOpener FolderOpener { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -47,6 +50,7 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
             services.AddHttpClient(ComfyClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Comfy);
             services.AddHttpClient(DeviantArtService.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => DeviantArt);
             services.AddHttpClient(VisionClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Vision);
+            services.AddHttpClient(GoogleAuth.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Google);
             services.RemoveAll<IFolderOpener>();
             services.AddSingleton<IFolderOpener>(FolderOpener);
         });
@@ -77,6 +81,18 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
         var callback = await client.GetAsync($"/api/deviantart/callback?code=the-code&state={state}");
         if (!callback.Headers.Location!.ToString().Contains("deviantart=connected"))
             throw new InvalidOperationException($"DeviantArt login failed: {callback.Headers.Location}");
+    }
+
+    public async Task ConnectGoogleAsync()
+    {
+        using var client = CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        (await client.PutAsJsonAsync("/api/google/app", new { clientId = "google-client", clientSecret = "secret", outputFolder = "ComfyUI/output" }))
+            .EnsureSuccessStatusCode();
+        var authorize = (await client.GetAsync("/api/google/login")).Headers.Location!;
+        var state = System.Web.HttpUtility.ParseQueryString(authorize.Query)["state"];
+        var callback = await client.GetAsync($"/api/google/callback?code=the-code&state={state}");
+        if (!callback.Headers.Location!.ToString().Contains("google=connected"))
+            throw new InvalidOperationException($"Google login failed: {callback.Headers.Location}");
     }
 
     public static async Task SetVisionApiKeyAsync(HttpClient client, string apiKey = "test-key") =>

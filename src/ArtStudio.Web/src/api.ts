@@ -156,6 +156,16 @@ export interface DeviantArtApp {
   redirectUri: string
 }
 
+export interface GoogleApp {
+  clientId: string | null
+  hasClientSecret: boolean
+  connected: boolean
+  account: string | null
+  connectedAt: string | null
+  outputFolder: string
+  redirectUri: string
+}
+
 export interface Gallery {
   folderId: string
   name: string
@@ -358,6 +368,11 @@ export const api = {
     request<DeviantArtApp>('PUT', '/api/deviantart/app', { clientId, clientSecret }),
   disconnectDeviantArt: () => request<void>('POST', '/api/deviantart/disconnect'),
   deviantArtLoginUrl: '/api/deviantart/login',
+  googleApp: () => request<GoogleApp>('GET', '/api/google/app'),
+  saveGoogleApp: (clientId: string, clientSecret: string, outputFolder: string) =>
+    request<GoogleApp>('PUT', '/api/google/app', { clientId, clientSecret, outputFolder }),
+  disconnectGoogle: () => request<void>('POST', '/api/google/disconnect'),
+  googleLoginUrl: '/api/google/login',
   galleries: () => request<Gallery[]>('GET', '/api/deviantart/galleries'),
   saveMatureGalleries: (folderIds: string[]) =>
     request<Gallery[]>('PUT', '/api/deviantart/mature-galleries', { folderIds }),

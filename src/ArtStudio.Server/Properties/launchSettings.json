@@ -11,7 +11,8 @@
         "ArtStudio__DataDirectory": "%LOCALAPPDATA%\\ArtStudio-dev",
         "ArtStudio__FakeComfyUi": "true",
         "ArtStudio__FakeVision": "true",
-        "ArtStudio__FakeDeviantArtPublish": "true"
+        "ArtStudio__FakeDeviantArtPublish": "true",
+        "ArtStudio__FakeGoogleDrive": "true"
       }
     },
     "test-real-comfyui": {

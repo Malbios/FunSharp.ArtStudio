@@ -359,6 +359,19 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<long?>("DeviationStatsFetchedAt")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("GoogleAccount")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("GoogleClientId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long?>("GoogleConnectedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("GoogleDriveOutputFolder")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("LastGalleryId")
                         .HasColumnType("TEXT");
 
@@ -379,6 +392,12 @@ namespace ArtStudio.Server.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ProtectedDeviantArtRefreshToken")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProtectedGoogleClientSecret")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProtectedGoogleRefreshToken")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("ProtectedVisionApiKey")

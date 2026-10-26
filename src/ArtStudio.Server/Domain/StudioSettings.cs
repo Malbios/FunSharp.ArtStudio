@@ -18,4 +18,12 @@ public class StudioSettings
     public string? MatureGalleryIds { get; set; }
     public string? LastGalleryId { get; set; }
     public DateTimeOffset? DeviationStatsFetchedAt { get; set; }
+    public string? GoogleClientId { get; set; }
+    public string? ProtectedGoogleClientSecret { get; set; }
+    public string? ProtectedGoogleRefreshToken { get; set; }
+    public string? GoogleAccount { get; set; }
+    public DateTimeOffset? GoogleConnectedAt { get; set; }
+    public string GoogleDriveOutputFolder { get; set; } = DefaultGoogleDriveOutputFolder;
+
+    public const string DefaultGoogleDriveOutputFolder = "ComfyUI/output";
 }

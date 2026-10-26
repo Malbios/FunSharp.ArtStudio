@@ -24,6 +24,7 @@ app.MapSetEndpoints();
 app.MapQueueEndpoints();
 app.MapDeviantArtEndpoints();
 app.MapDeviantArtLoginEndpoints();
+app.MapGoogleEndpoints();
 app.MapSettingsEndpoints();
 app.MapPostEndpoints();
 app.MapStatsEndpoints();

@@ -4,6 +4,7 @@ using ArtStudio.Server.Comfy;
 using ArtStudio.Server.Data;
 using ArtStudio.Server.DeviantArt;
 using ArtStudio.Server.Generation;
+using ArtStudio.Server.Google;
 using ArtStudio.Server.Hubs;
 using ArtStudio.Server.Stats;
 using ArtStudio.Server.Vision;
@@ -60,6 +61,14 @@ public static class ServiceRegistration
         services.AddSingleton<IFolderOpener, ExplorerFolderOpener>();
         services.AddDataProtection().SetApplicationName("ArtStudio");
         services.AddSingleton<DeviantArtAuth>();
+        services.AddSingleton<FakeGoogleDriveHandler>();
+        services.AddHttpClient(GoogleAuth.HttpClientName, http => http.Timeout = TimeSpan.FromMinutes(5))
+            .ConfigurePrimaryHttpMessageHandler(sp =>
+                sp.GetRequiredService<IConfiguration>().GetValue<bool>(GoogleAuth.FakeConfigurationKey)
+                    ? sp.GetRequiredService<FakeGoogleDriveHandler>()
+                    : new SocketsHttpHandler());
+        services.AddSingleton<GoogleAuth>();
+        services.AddSingleton<GoogleDrive>();
         services.AddHostedService<QueueWorker>();
 
         services.AddHttpClient(VisionClient.HttpClientName, http => http.Timeout = VisionClient.Timeout)

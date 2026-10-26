@@ -7,6 +7,7 @@ import { BuildingBlocksEditor } from './BuildingBlocksEditor'
 import { BundlesEditor } from './BundlesEditor'
 import { DeviantArtConnection } from './DeviantArtConnection'
 import { GeneralSettings } from './GeneralSettings'
+import { GoogleDriveConnection } from './GoogleDriveConnection'
 import { PresetsEditor } from './PresetsEditor'
 import { VisionSettings } from './VisionSettings'
 
@@ -23,6 +24,7 @@ export function SettingsPage() {
       <h2>Settings</h2>
       <GeneralSettings />
       <DeviantArtConnection />
+      <GoogleDriveConnection />
       <VisionSettings />
       <PresetsEditor blocks={blocks} />
       <BundlesEditor blocks={blocks} />
