@@ -205,6 +205,12 @@ export interface DeviantArtApp {
   redirectUri: string
 }
 
+export interface OutputFolderContents {
+  folder: string
+  fileCount: number
+  totalBytes: number
+}
+
 export interface GoogleApp {
   clientId: string | null
   hasClientSecret: boolean
@@ -425,6 +431,8 @@ export const api = {
     request<GoogleApp>('PUT', '/api/google/app', { clientId, clientSecret, outputFolder }),
   disconnectGoogle: () => request<void>('POST', '/api/google/disconnect'),
   googleLoginUrl: '/api/google/login',
+  comfyOutputFolder: () => request<OutputFolderContents>('GET', '/api/google/output-folder'),
+  clearComfyOutputFolder: () => request<OutputFolderContents>('POST', '/api/google/output-folder/clear'),
   galleries: () => request<Gallery[]>('GET', '/api/deviantart/galleries'),
   saveMatureGalleries: (folderIds: string[]) =>
     request<Gallery[]>('PUT', '/api/deviantart/mature-galleries', { folderIds }),

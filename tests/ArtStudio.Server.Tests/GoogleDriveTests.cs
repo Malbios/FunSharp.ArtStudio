@@ -189,6 +189,86 @@ public sealed class GoogleDriveTests : IDisposable
         Assert.Null(missingFile);
     }
 
+    private void AddOutputFiles()
+    {
+        _factory.Google.AddFile("ComfyUI/output", "ComfyUI_00001_.png", [1, 2]);
+        _factory.Google.AddFile("ComfyUI/output/video", "clip_00001_.mp4", [1, 2, 3]);
+        _factory.Google.AddFile("ComfyUI/output/video/deeper", "old.mp4", [1]);
+        _factory.Google.AddFile("ComfyUI/input", "start.png", [7, 7, 7, 7]);
+        _factory.Google.AddFile("Holidays", "beach.jpg", [8, 8, 8, 8, 8]);
+        _factory.Google.AddFile("ComfyUI/output", "already-trashed.png", [9]).Trashed = true;
+    }
+
+    [Fact]
+    public async Task OutputFolder_CountsFilesInItAndItsSubfolders()
+    {
+        await ConnectAsync();
+        AddOutputFiles();
+
+        var contents = await _client.GetFromJsonAsync<OutputFolderContents>("/api/google/output-folder", Json);
+
+        Assert.Equal(new OutputFolderContents("ComfyUI/output", 3, 6), contents);
+    }
+
+    [Fact]
+    public async Task ClearOutputFolder_TrashesOnlyFilesInsideIt()
+    {
+        await ConnectAsync();
+        AddOutputFiles();
+
+        var response = await _client.PostAsync("/api/google/output-folder/clear", null);
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal(new OutputFolderContents("ComfyUI/output", 3, 6), await response.Content.ReadFromJsonAsync<OutputFolderContents>(Json));
+        var items = _factory.Google.Items;
+        Assert.Equal(["already-trashed.png", "clip_00001_.mp4", "ComfyUI_00001_.png", "old.mp4"],
+            items.Where(i => i.Trashed).Select(i => i.Name).Order());
+        Assert.DoesNotContain(items, i => i.IsFolder && i.Trashed);
+        Assert.Equal(0, (await _client.GetFromJsonAsync<OutputFolderContents>("/api/google/output-folder", Json))!.FileCount);
+    }
+
+    [Fact]
+    public async Task ClearOutputFolder_WhileAJobRuns_IsRefused()
+    {
+        await ConnectAsync();
+        AddOutputFiles();
+        _factory.Comfy.HoldRuns = true;
+        var setId = await _factory.CreateSetAsync(_client, "a fox", count: 1);
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Jobs.Single().Status == Domain.JobStatus.Running, "job running");
+
+        var response = await _client.PostAsync("/api/google/output-folder/clear", null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.DoesNotContain(_factory.Google.Items, i => i.Trashed && i.Name != "already-trashed.png");
+        _factory.Comfy.HoldRuns = false;
+    }
+
+    [Fact]
+    public async Task ClearOutputFolder_WithAVideoStillToDownload_IsRefused()
+    {
+        await ConnectAsync();
+        var setId = await _factory.CreateSetAsync(_client, "a fox", count: 1);
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Images.Count == 1, "image rendered");
+        _factory.Google.DriveFailure = HttpStatusCode.ServiceUnavailable;
+        (await _client.PostAsJsonAsync($"/api/sets/{setId}/videos", new
+        {
+            startImageId = (await GetSetAsync(_client, setId)).Images[0].Id,
+            prompt = "a fox walks",
+            seconds = 5,
+            megapixels = 0.46,
+            turbo = true,
+            count = 1,
+        })).EnsureSuccessStatusCode();
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Jobs.Any(j => j.Status == Domain.JobStatus.Failed), "video job failed");
+        _factory.Google.DriveFailure = null;
+
+        var response = await _client.PostAsync("/api/google/output-folder/clear", null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("still has to be downloaded", (await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("error").GetString());
+        Assert.DoesNotContain(_factory.Google.Items, i => i.Trashed);
+    }
+
     [Fact]
     public async Task Drive_WithoutConnection_AsksToConnect()
     {

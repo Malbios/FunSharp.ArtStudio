@@ -50,6 +50,7 @@ public sealed partial class FakeGoogleDriveHandler : HttpMessageHandler
             ("GET", _, "/drive/v3/about") => Json(new JsonObject { ["user"] = new JsonObject { ["emailAddress"] = "test@example.com" } }),
             ("GET", _, "/drive/v3/files") => List(System.Web.HttpUtility.ParseQueryString(uri.Query)["q"] ?? ""),
             ("GET", _, var p) when p.StartsWith("/drive/v3/files/") => Download(p["/drive/v3/files/".Length..]),
+            ("PATCH", _, var p) when p.StartsWith("/drive/v3/files/") => Trash(p["/drive/v3/files/".Length..]),
             _ => new HttpResponseMessage(HttpStatusCode.NotFound),
         };
         return Task.FromResult(response);
@@ -63,16 +64,39 @@ public sealed partial class FakeGoogleDriveHandler : HttpMessageHandler
         if (query.Contains(GoogleDrive.FolderMimeType))
             return Json(new JsonObject { ["files"] = new JsonArray(new JsonObject { ["id"] = $"{parent}/{name}" }) });
 
-        var files = _files.Values
-            .Where(f => !f.Trashed && f.FolderId == parent && (name is null || f.Name == name))
+        var live = _files.Values.Where(f => !f.Trashed).ToList();
+        var files = live
+            .Where(f => f.FolderId == parent && (name is null || f.Name == name))
             .Select(f => (JsonNode)new JsonObject
             {
                 ["id"] = f.Id,
                 ["name"] = f.Name,
+                ["mimeType"] = "video/mp4",
                 ["size"] = f.Content.Length.ToString(),
                 ["md5Checksum"] = Convert.ToHexStringLower(System.Security.Cryptography.MD5.HashData(f.Content)),
             });
-        return Json(new JsonObject { ["files"] = new JsonArray(files.ToArray()) });
+        // Folders exist implicitly here: listing a folder shows the subfolders its files live in.
+        var subfolders = name is not null
+            ? []
+            : live
+                .Where(f => f.FolderId.StartsWith(parent + "/"))
+                .Select(f => f.FolderId[(parent.Length + 1)..].Split('/')[0])
+                .Distinct()
+                .Select(folder => (JsonNode)new JsonObject
+                {
+                    ["id"] = $"{parent}/{folder}",
+                    ["name"] = folder,
+                    ["mimeType"] = GoogleDrive.FolderMimeType,
+                });
+        return Json(new JsonObject { ["files"] = new JsonArray([.. files, .. subfolders]) });
+    }
+
+    private HttpResponseMessage Trash(string id)
+    {
+        if (!_files.TryGetValue(id, out var file))
+            return new HttpResponseMessage(HttpStatusCode.NotFound);
+        file.Trashed = true;
+        return Json(new JsonObject { ["id"] = id });
     }
 
     private HttpResponseMessage Download(string id)

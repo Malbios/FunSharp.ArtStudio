@@ -43,9 +43,53 @@ public sealed class GoogleDrive(GoogleAuth auth, IHttpClientFactory httpClientFa
             : new DriveFile(file["id"]!.GetValue<string>(), file["name"]!.GetValue<string>(), long.Parse(file["size"]!.GetValue<string>()));
     }
 
+    /// <summary>Every file in the folder and its subfolders, at any depth; folders themselves are not listed.</summary>
+    public async Task<IReadOnlyList<DriveFile>> ListFilesRecursivelyAsync(string folderId, CancellationToken ct)
+    {
+        var files = new List<DriveFile>();
+        var folders = new Queue<string>([folderId]);
+        while (folders.TryDequeue(out var current))
+        {
+            foreach (var item in await ListAllPagesAsync($"'{current}' in parents and trashed = false", ct))
+            {
+                var id = item["id"]!.GetValue<string>();
+                if (item["mimeType"]?.GetValue<string>() == FolderMimeType)
+                    folders.Enqueue(id);
+                else
+                    files.Add(new DriveFile(id, item["name"]!.GetValue<string>(), long.TryParse(item["size"]?.GetValue<string>(), out var size) ? size : 0));
+            }
+        }
+        return files;
+    }
+
+    /// <summary>Moves a file to Drive's trash, where it stays restorable for 30 days.</summary>
+    public async Task TrashAsync(DriveFile file, CancellationToken ct)
+    {
+        using var response = await SendAsync(
+            HttpMethod.Patch, $"{ApiBase}/files/{Uri.EscapeDataString(file.Id)}", """{ "trashed": true }""", ct);
+        await EnsureSuccessAsync(response, $"moving {file.Name} to the trash", ct);
+    }
+
+    private async Task<List<JsonNode>> ListAllPagesAsync(string query, CancellationToken ct)
+    {
+        var items = new List<JsonNode>();
+        string? pageToken = null;
+        do
+        {
+            var url = $"{ApiBase}/files?q={Uri.EscapeDataString(query)}&fields={Uri.EscapeDataString("nextPageToken, files(id, name, mimeType, size)")}&pageSize=1000"
+                + (pageToken is null ? "" : $"&pageToken={Uri.EscapeDataString(pageToken)}");
+            using var response = await SendAsync(HttpMethod.Get, url, jsonBody: null, ct);
+            await EnsureSuccessAsync(response, "listing Google Drive", ct);
+            var body = GoogleAuth.ParseJsonOrNull(await response.Content.ReadAsStringAsync(ct));
+            items.AddRange((body?["files"] as JsonArray ?? []).OfType<JsonNode>());
+            pageToken = body?["nextPageToken"]?.GetValue<string>();
+        } while (pageToken is not null);
+        return items;
+    }
+
     public async Task DownloadAsync(DriveFile file, Stream destination, CancellationToken ct)
     {
-        using var response = await SendAsync(HttpMethod.Get, $"{ApiBase}/files/{Uri.EscapeDataString(file.Id)}?alt=media", ct);
+        using var response = await SendAsync(HttpMethod.Get, $"{ApiBase}/files/{Uri.EscapeDataString(file.Id)}?alt=media", jsonBody: null, ct);
         await EnsureSuccessAsync(response, $"downloading {file.Name}", ct);
         await response.Content.CopyToAsync(destination, ct);
     }
@@ -53,28 +97,30 @@ public sealed class GoogleDrive(GoogleAuth auth, IHttpClientFactory httpClientFa
     private async Task<List<JsonNode>> ListAsync(string query, string fields, CancellationToken ct)
     {
         var url = $"{ApiBase}/files?q={Uri.EscapeDataString(query)}&fields={Uri.EscapeDataString(fields)}&pageSize=100";
-        using var response = await SendAsync(HttpMethod.Get, url, ct);
+        using var response = await SendAsync(HttpMethod.Get, url, jsonBody: null, ct);
         await EnsureSuccessAsync(response, "searching Google Drive", ct);
         var body = GoogleAuth.ParseJsonOrNull(await response.Content.ReadAsStringAsync(ct));
         return (body?["files"] as JsonArray ?? []).OfType<JsonNode>().ToList();
     }
 
-    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, CancellationToken ct)
+    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string url, string? jsonBody, CancellationToken ct)
     {
-        var response = await SendOnceAsync(method, url, ct);
+        var response = await SendOnceAsync(method, url, jsonBody, ct);
         if (response.StatusCode != HttpStatusCode.Unauthorized)
             return response;
 
         // A cached access token can be revoked before it expires; one fresh token is worth a retry.
         response.Dispose();
         auth.ForgetAccessToken();
-        return await SendOnceAsync(method, url, ct);
+        return await SendOnceAsync(method, url, jsonBody, ct);
     }
 
-    private async Task<HttpResponseMessage> SendOnceAsync(HttpMethod method, string url, CancellationToken ct)
+    private async Task<HttpResponseMessage> SendOnceAsync(HttpMethod method, string url, string? jsonBody, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(method, url);
         request.Headers.Authorization = new("Bearer", await auth.GetAccessTokenAsync(ct));
+        if (jsonBody is not null)
+            request.Content = new StringContent(jsonBody, System.Text.Encoding.UTF8, "application/json");
         return await Http().SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
     }
 

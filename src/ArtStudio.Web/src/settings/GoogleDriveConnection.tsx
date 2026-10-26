@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, type GoogleApp } from '../api'
+import { ComfyOutputFolderCleaner } from './ComfyOutputFolderCleaner'
 
 const CLOUD_CONSOLE_URL = 'https://console.cloud.google.com/'
 const TESTING_LOGIN_DAYS = 7
@@ -127,6 +128,8 @@ export function GoogleDriveConnection() {
           {saved && <span className="success"> Saved.</span>}
         </form>
       </details>
+
+      {app.connected && <ComfyOutputFolderCleaner />}
 
       {error && <p className="error">{error}</p>}
 

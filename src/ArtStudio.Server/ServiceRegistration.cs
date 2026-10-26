@@ -73,6 +73,7 @@ public static class ServiceRegistration
                     : new SocketsHttpHandler());
         services.AddSingleton<GoogleAuth>();
         services.AddSingleton<GoogleDrive>();
+        services.AddScoped<ComfyOutputFolder>();
         services.AddHostedService<QueueWorker>();
 
         services.AddHttpClient(VisionClient.HttpClientName, http => http.Timeout = VisionClient.Timeout)

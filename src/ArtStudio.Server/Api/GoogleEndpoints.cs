@@ -29,6 +29,8 @@ public static class GoogleEndpoints
         app.MapPost("/api/google/disconnect", (GoogleAuth auth, CancellationToken ct) => auth.DisconnectAsync(ct));
         app.MapGet("/api/google/login", LoginAsync);
         app.MapGet(CallbackPath, CallbackAsync);
+        app.MapGet("/api/google/output-folder", (ComfyOutputFolder folder, CancellationToken ct) => folder.MeasureAsync(ct));
+        app.MapPost("/api/google/output-folder/clear", (ComfyOutputFolder folder, CancellationToken ct) => folder.ClearAsync(ct));
 
         if (app.ServiceProvider.GetRequiredService<IConfiguration>().GetValue<bool>(GoogleAuth.FakeConfigurationKey))
             app.MapGet(GoogleAuth.FakeAuthorizePath, (string redirect_uri, string state) =>
