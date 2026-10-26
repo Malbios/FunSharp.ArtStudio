@@ -483,14 +483,25 @@ main {
 }
 
 .video-tile {
+  position: relative;
   margin: 0;
 }
 
 .video-tile video {
   display: block;
   width: 100%;
+  border: 2px solid transparent;
   border-radius: var(--radius);
   background: #000;
+}
+
+.video-tile.selected video {
+  border-color: var(--success);
+}
+
+.video-tile.selected .image-tile-pick {
+  background: var(--success);
+  color: #000;
 }
 
 .video-tile figcaption {

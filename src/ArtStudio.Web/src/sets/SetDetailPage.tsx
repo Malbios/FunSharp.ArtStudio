@@ -321,7 +321,13 @@ export function SetDetailPage() {
       </div>
 
       {data.videos.length > 0 && (
-        <SetVideos videos={data.videos} canMakeAgain={!isArchived} setPageState={locationState} />
+        <SetVideos
+          videos={data.videos}
+          canMakeAgain={!isArchived}
+          setPageState={locationState}
+          onChanged={set.reload}
+          onError={setError}
+        />
       )}
 
       {activeJobs.length > 0 && (

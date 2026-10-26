@@ -162,6 +162,9 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<int>("GenerationJobId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("Picked")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("PromptSetId")
                         .HasColumnType("INTEGER");
 

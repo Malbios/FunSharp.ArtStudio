@@ -77,6 +77,7 @@ public sealed record VideoDto(
     string? EndImageUrl,
     string? StartFrameKey,
     string? EndFrameKey,
+    bool Picked,
     DateTimeOffset CreatedAt)
 {
     /// <param name="frames">The set's frames, to name the video's start and end frame for making it again.</param>
@@ -95,6 +96,7 @@ public sealed record VideoDto(
         job.VideoEndImagePath is null ? null : ApiUrls.VideoFrame(job.Id, "end"),
         frames.KeyOf(job.VideoStartImagePath),
         frames.KeyOf(job.VideoEndImagePath),
+        video.Picked,
         video.CreatedAt);
 }
 
@@ -219,6 +221,8 @@ public sealed record ModifyPromptRequest(
     string? Prompt, string? Instructions, int? ParagraphIndex, string? Section, int? ImageCount, string? Resolution);
 
 public sealed record PickImageRequest(int ImageId);
+
+public sealed record PickVideoRequest(bool Picked);
 
 public sealed record ReorderPicksRequest(IReadOnlyList<int> ImageIds);
 

@@ -414,6 +414,60 @@ public sealed class VideoTests : IDisposable
         Assert.Equal([$"image:{set.Images[0].Id}", $"image:{set.Images[1].Id}"], (await FramesAsync(set.Id)).Select(f => f.Key));
     }
 
+    private async Task<SetDetailDto> SetWithVideoAsync()
+    {
+        await _factory.ConnectGoogleAsync();
+        var set = await SetWithImagesAsync(images: 1);
+        (await MakeVideoAsync(set.Id, set.Images[0].Id)).EnsureSuccessStatusCode();
+        await WaitUntilAsync(async () => (await GetSetAsync(_client, set.Id)).Videos.Count == 1, "video downloaded");
+        return await GetSetAsync(_client, set.Id);
+    }
+
+    private Task<HttpResponseMessage> PickVideoAsync(int videoId, bool picked) =>
+        _client.PutAsJsonAsync($"/api/videos/{videoId}/pick", new { picked });
+
+    private async Task<bool> IsPickedAsync(int setId) => (await GetSetAsync(_client, setId)).Videos.Single().Picked;
+
+    [Fact]
+    public async Task Videos_CanBePickedAndUnpicked()
+    {
+        var set = await SetWithVideoAsync();
+        Assert.False(set.Videos.Single().Picked);
+
+        (await PickVideoAsync(set.Videos.Single().Id, true)).EnsureSuccessStatusCode();
+        Assert.True(await IsPickedAsync(set.Id));
+
+        (await PickVideoAsync(set.Videos.Single().Id, false)).EnsureSuccessStatusCode();
+        Assert.False(await IsPickedAsync(set.Id));
+    }
+
+    [Fact]
+    public async Task VideosOfPublishedAndArchivedSets_CanStillBePicked()
+    {
+        var set = await SetWithVideoAsync();
+        var videoId = set.Videos.Single().Id;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<StudioDbContext>();
+            var stored = await db.PromptSets.SingleAsync(s => s.Id == set.Id);
+            stored.ReadyToPostAt = stored.PublishedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync();
+        }
+
+        (await PickVideoAsync(videoId, true)).EnsureSuccessStatusCode();
+        Assert.True(await IsPickedAsync(set.Id));
+
+        (await _client.PostAsync($"/api/sets/{set.Id}/archive", null)).EnsureSuccessStatusCode();
+        (await PickVideoAsync(videoId, false)).EnsureSuccessStatusCode();
+        Assert.False(await IsPickedAsync(set.Id));
+    }
+
+    [Fact]
+    public async Task PickingAnUnknownVideo_IsNotFound()
+    {
+        Assert.Equal(HttpStatusCode.NotFound, (await PickVideoAsync(999, true)).StatusCode);
+    }
+
     [Fact]
     public async Task DeviantArtInspiration_IsNotOfferedAsAFrame()
     {

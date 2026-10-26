@@ -1,6 +1,7 @@
 using ArtStudio.Server.Comfy;
 using ArtStudio.Server.Data;
 using ArtStudio.Server.Generation;
+using ArtStudio.Server.Hubs;
 using Microsoft.EntityFrameworkCore;
 
 namespace ArtStudio.Server.Api;
@@ -20,6 +21,7 @@ public static class VideoEndpoints
             VideoOptions.MaxVideosPerJob));
         app.MapGet("/api/videos/{id:int}", async (int id, StudioDbContext db, CancellationToken ct) =>
             SetEndpoints.FileResult(await db.Videos.Where(v => v.Id == id).Select(v => v.FilePath).SingleOrDefaultAsync(ct)));
+        app.MapPut("/api/videos/{id:int}/pick", PickVideoAsync);
         app.MapGet("/api/jobs/{id:int}/frames/{frame}", GetFrameAsync);
         app.MapGet("/api/sets/{id:int}/video-frames", async (int id, StudioDbContext db, CancellationToken ct) =>
             (await FramesOfAsync(id, db, ct)).All.Select(f => new VideoFrameDto(f.Key, f.Url, f.Label)).ToList());
@@ -35,6 +37,20 @@ public static class VideoEndpoints
             .SingleOrDefaultAsync(s => s.Id == setId, ct)
             ?? throw new UserFacingException("Set not found.");
         return new VideoFrames(set, set.Images, set.Jobs);
+    }
+
+    /// <summary>Unlike image picks, allowed in every stage: videos are not part of the post.</summary>
+    private static async Task<IResult> PickVideoAsync(
+        int id, PickVideoRequest request, StudioDbContext db, StudioNotifier notifier, CancellationToken ct)
+    {
+        var video = await db.Videos.SingleOrDefaultAsync(v => v.Id == id, ct);
+        if (video is null)
+            return Results.NotFound();
+
+        video.Picked = request.Picked;
+        await db.SaveChangesAsync(ct);
+        await notifier.SetUpdated(video.PromptSetId);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> GetFrameAsync(int id, string frame, StudioDbContext db, CancellationToken ct)

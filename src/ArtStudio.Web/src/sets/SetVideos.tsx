@@ -1,34 +1,32 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import type { VideoInfo } from '../api'
+import { api, type VideoInfo } from '../api'
 
 interface SetVideosProps {
   videos: VideoInfo[]
   canMakeAgain: boolean
   /** The set page's own state, handed on so the Make video page can return to it. */
   setPageState: unknown
+  onChanged: () => void
+  onError: (message: string) => void
 }
 
-export function SetVideos({ videos, canMakeAgain, setPageState }: SetVideosProps) {
+export function SetVideos({ videos, ...tileProps }: SetVideosProps) {
   return (
     <section className="panel set-videos">
       <h3>Videos</h3>
       <div className="video-grid">
         {videos.map((video) => (
-          <VideoTile key={video.id} video={video} canMakeAgain={canMakeAgain} setPageState={setPageState} />
+          <VideoTile key={video.id} video={video} {...tileProps} />
         ))}
       </div>
     </section>
   )
 }
 
-interface VideoTileProps {
-  video: VideoInfo
-  canMakeAgain: boolean
-  setPageState: unknown
-}
+type VideoTileProps = Omit<SetVideosProps, 'videos'> & { video: VideoInfo }
 
-function VideoTile({ video, canMakeAgain, setPageState }: VideoTileProps) {
+function VideoTile({ video, canMakeAgain, setPageState, onChanged, onError }: VideoTileProps) {
   const [copied, setCopied] = useState(false)
 
   async function copyPrompt() {
@@ -36,9 +34,27 @@ function VideoTile({ video, canMakeAgain, setPageState }: VideoTileProps) {
     setCopied(true)
   }
 
+  async function togglePick() {
+    try {
+      await api.pickVideo(video.id, !video.picked)
+      onChanged()
+    } catch (failure) {
+      onError((failure as Error).message)
+    }
+  }
+
   return (
-    <figure className="video-tile">
+    <figure className={video.picked ? 'video-tile selected' : 'video-tile'}>
       <video controls preload="metadata" poster={video.startImageUrl} src={video.url} />
+      <button
+        type="button"
+        className="image-tile-pick"
+        title={video.picked ? 'Remove from picks' : 'Pick this video'}
+        aria-pressed={video.picked}
+        onClick={() => void togglePick()}
+      >
+        {video.picked ? '★' : '☆'}
+      </button>
       <figcaption>
         <div className="video-tile-frames">
           <img src={video.startImageUrl} alt="Start frame" title="Start frame" />

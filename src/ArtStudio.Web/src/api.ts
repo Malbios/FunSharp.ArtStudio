@@ -62,6 +62,7 @@ export interface VideoInfo {
   /** Keys from api.videoFrames, for making the video again; null when the frame is no longer in the set. */
   startFrameKey: string | null
   endFrameKey: string | null
+  picked: boolean
   createdAt: string
 }
 
@@ -422,6 +423,7 @@ export const api = {
     }),
   pickImage: (setId: number, imageId: number) => request<void>('POST', `/api/sets/${setId}/picks`, { imageId }),
   unpickImage: (setId: number, imageId: number) => request<void>('DELETE', `/api/sets/${setId}/picks/${imageId}`),
+  pickVideo: (videoId: number, picked: boolean) => request<void>('PUT', `/api/videos/${videoId}/pick`, { picked }),
   reorderPicks: (setId: number, imageIds: number[]) =>
     request<void>('PUT', `/api/sets/${setId}/picks`, { imageIds }),
   markReadyToPost: (setId: number) => request<void>('POST', `/api/sets/${setId}/ready`),
