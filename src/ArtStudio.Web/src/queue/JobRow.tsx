@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 import type { Job } from '../api'
 import { useReturnState } from '../sets/returnTo'
-import { jobProgressLabel, jobSettingsLabel } from './jobLabels'
+import { useNow } from '../live/useNow'
+import { jobProgressLabel, jobSettingsLabel, jobTimeLabel } from './jobLabels'
 import { useJobActions } from './useJobActions'
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 export function JobRow({ job, showPrompt = true }: Props) {
   const actions = useJobActions(job)
   const returnState = useReturnState()
+  const timeLabel = jobTimeLabel(job, useNow())
 
   return (
     <div className="panel job">
@@ -32,6 +34,7 @@ export function JobRow({ job, showPrompt = true }: Props) {
             <div style={{ width: `${actions.percent}%` }} />
           </div>
           <span>{jobSettingsLabel(job)}</span>
+          {timeLabel && <span className="hint">{timeLabel}</span>}
           <span>set #{job.setId}</span>
         </div>
         {job.error && <div className="job-error">{job.error}</div>}

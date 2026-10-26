@@ -33,6 +33,17 @@ public static class VideoOptions
         new("1344 x 768", 0.98, "official 768p, the largest"),
     ];
 
+    private const int FramesPerSecond = 24;
+    private const int FrameBlock = 17;
+    private const int FrameOffset = 5;
+
+    /// <summary>The workflow's own snapping: frames at 24 fps, rounded up to the model's 17k+5 frame grid.</summary>
+    public static int FrameCount(double seconds)
+    {
+        var frames = Math.Max(FrameOffset, (int)Math.Round(seconds * FramesPerSecond));
+        return frames + ((FrameOffset - frames % FrameBlock) % FrameBlock + FrameBlock) % FrameBlock;
+    }
+
     public static string ResolutionLabel(double megapixels) =>
         ResolutionPresets.FirstOrDefault(p => Math.Abs(p.Megapixels - megapixels) < 0.0001)?.Name
         ?? $"{megapixels.ToString("0.###", CultureInfo.InvariantCulture)} MP";

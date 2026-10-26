@@ -20,8 +20,10 @@ public static class QueueEndpoints
             queue.MoveAsync(id, request.Move, ct));
     }
 
-    private static async Task<QueueDto> GetQueueAsync(StudioDbContext db, AppPaths paths, GenerationQueue queue, CancellationToken ct)
+    private static async Task<QueueDto> GetQueueAsync(
+        StudioDbContext db, AppPaths paths, GenerationQueue queue, VideoTimeEstimator estimator, CancellationToken ct)
     {
+        var secondsPerVideoUnit = await estimator.SecondsPerUnitAsync(ct);
         var settings = await SettingsStore.LoadAsync(db, paths, ct);
         var activeStatuses = new[] { JobStatus.Running, JobStatus.Queued, JobStatus.Failed };
 
@@ -36,6 +38,6 @@ public static class QueueEndpoints
         var waiting = queue.InRunOrder(active.Where(j => j.Status == JobStatus.Queued), j => j.Kind, j => j.QueuePosition);
 
         return new QueueDto(
-            settings.ImageQueuePaused, settings.VideoQueuePaused, queue.LoadedKind, started.Concat(waiting).Select(JobDto.From).ToList());
+            settings.ImageQueuePaused, settings.VideoQueuePaused, queue.LoadedKind, started.Concat(waiting).Select(job => JobDto.From(job, secondsPerVideoUnit)).ToList());
     }
 }

@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
 import type { Job, QueueMove } from '../api'
 import { useReturnState } from '../sets/returnTo'
-import { jobProgressLabel, jobSettingsLabel } from './jobLabels'
+import { useNow } from '../live/useNow'
+import { jobProgressLabel, jobSettingsLabel, jobTimeLabel } from './jobLabels'
 import { useJobActions } from './useJobActions'
 
 const MOVES: { move: QueueMove; label: string; title: string; earlier: boolean }[] = [
@@ -19,6 +20,7 @@ interface Props {
 
 export function JobTile({ job, canMoveUp = false, canMoveDown = false }: Props) {
   const actions = useJobActions(job)
+  const timeLabel = jobTimeLabel(job, useNow())
   const setUrl = `/sets/${job.setId}`
   const returnState = useReturnState()
 
@@ -45,6 +47,7 @@ export function JobTile({ job, canMoveUp = false, canMoveDown = false }: Props) 
         <div className="progress wide" aria-hidden>
           <div style={{ width: `${actions.percent}%` }} />
         </div>
+        {timeLabel && <div className="hint job-time">{timeLabel}</div>}
         <div className="job-meta">
           <span>{jobSettingsLabel(job)}</span>
           <span>set #{job.setId}</span>

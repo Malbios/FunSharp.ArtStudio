@@ -165,6 +165,9 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<int>("PromptSetId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<double?>("RenderSeconds")
+                        .HasColumnType("REAL");
+
                     b.Property<long>("Seed")
                         .HasColumnType("INTEGER");
 
@@ -194,6 +197,9 @@ namespace ArtStudio.Server.Data.Migrations
 
                     b.Property<string>("CurrentOutputFileName")
                         .HasColumnType("TEXT");
+
+                    b.Property<long?>("CurrentRunStartedAt")
+                        .HasColumnType("INTEGER");
 
                     b.Property<long?>("CurrentSeed")
                         .HasColumnType("INTEGER");

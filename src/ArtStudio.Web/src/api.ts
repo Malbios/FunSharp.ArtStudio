@@ -40,6 +40,10 @@ export interface Job {
   videoSeconds: number | null
   videoTurbo: boolean
   hasEndFrame: boolean
+  /** How long one video of this job is expected to take, from earlier videos; null for image jobs. */
+  estimatedSecondsPerVideo: number | null
+  /** When ComfyUI was handed the video it renders now. */
+  currentRunStartedAt: string | null
 }
 
 export interface VideoInfo {

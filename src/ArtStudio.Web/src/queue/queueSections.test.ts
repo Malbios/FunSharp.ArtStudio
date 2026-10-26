@@ -21,6 +21,8 @@ function job(kind: JobKind, status: JobStatus = 'Queued'): Job {
     videoSeconds: null,
     videoTurbo: true,
     hasEndFrame: false,
+    estimatedSecondsPerVideo: null,
+    currentRunStartedAt: null,
   }
 }
 

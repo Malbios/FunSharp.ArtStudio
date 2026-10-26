@@ -1,5 +1,6 @@
 using System.Globalization;
 using ArtStudio.Server.Domain;
+using ArtStudio.Server.Generation;
 
 namespace ArtStudio.Server.Api;
 
@@ -34,9 +35,12 @@ public sealed record JobDto(
     DateTimeOffset? FinishedAt,
     double? VideoSeconds,
     bool VideoTurbo,
-    bool HasEndFrame)
+    bool HasEndFrame,
+    double? EstimatedSecondsPerVideo,
+    DateTimeOffset? CurrentRunStartedAt)
 {
-    public static JobDto From(GenerationJob job) => new(
+    /// <param name="secondsPerVideoUnit">From <see cref="VideoTimeEstimator.SecondsPerUnitAsync"/>, for video estimates.</param>
+    public static JobDto From(GenerationJob job, double secondsPerVideoUnit) => new(
         job.Id,
         job.PromptSetId,
         job.Kind,
@@ -53,7 +57,9 @@ public sealed record JobDto(
         job.FinishedAt,
         job.VideoSeconds,
         job.VideoTurbo,
-        job.VideoEndImagePath is not null);
+        job.VideoEndImagePath is not null,
+        VideoTimeEstimator.SecondsPerVideo(job, secondsPerVideoUnit),
+        job.CurrentRunStartedAt);
 }
 
 public sealed record VideoDto(

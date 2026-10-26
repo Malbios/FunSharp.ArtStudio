@@ -41,6 +41,7 @@ public static class ServiceRegistration
         services.AddSingleton(VideoTiming.Default);
         services.AddSingleton<GenerationRunner>();
         services.AddSingleton<VideoJobRunner>();
+        services.AddScoped<VideoTimeEstimator>();
         services.AddSingleton<GenerationQueue>();
         services.AddSingleton<StudioNotifier>();
         services.AddScoped<QueueService>();

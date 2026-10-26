@@ -459,6 +459,10 @@ main {
   min-height: 12rem;
 }
 
+.job-time {
+  font-size: 0.8rem;
+}
+
 .video-badge {
   color: var(--accent);
   border-color: var(--accent);

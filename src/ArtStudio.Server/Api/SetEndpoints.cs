@@ -126,7 +126,7 @@ public static class SetEndpoints
     }
 
     private static async Task<IResult> GetSetAsync(
-        int id, StudioDbContext db, PostSuggestionQueue postSuggestions, CancellationToken ct)
+        int id, StudioDbContext db, PostSuggestionQueue postSuggestions, VideoTimeEstimator estimator, CancellationToken ct)
     {
         var set = await db.PromptSets
             .Include(s => s.Images.OrderBy(i => i.Id))
@@ -138,6 +138,7 @@ public static class SetEndpoints
             return Results.NotFound();
         var jobsById = set.Jobs.ToDictionary(j => j.Id);
         var videos = await db.Videos.Where(v => v.PromptSetId == id).OrderBy(v => v.Id).ToListAsync(ct);
+        var secondsPerVideoUnit = await estimator.SecondsPerUnitAsync(ct);
 
         return Results.Ok(new SetDetailDto(
             set.Id,
@@ -156,7 +157,7 @@ public static class SetEndpoints
             PromptGenerationDto.From(set),
             set.Images.Select(image => ImageDto.From(image, jobsById[image.GenerationJobId])).ToList(),
             videos.Select(video => VideoDto.From(video, jobsById[video.GenerationJobId])).ToList(),
-            set.Jobs.Select(JobDto.From).ToList(),
+            set.Jobs.Select(job => JobDto.From(job, secondsPerVideoUnit)).ToList(),
             PostDto.From(set, postSuggestions.IsSuggesting(set.Id))));
     }
 

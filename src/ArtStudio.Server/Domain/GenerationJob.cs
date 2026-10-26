@@ -41,6 +41,8 @@ public class GenerationJob
     public string? VideoEndImagePath { get; set; }
     /// <summary>The finished video's path in ComfyUI's output folder ("video/name.mp4") until it is downloaded from Drive.</summary>
     public string? CurrentOutputFileName { get; set; }
+    /// <summary>When the video ComfyUI is rendering now was handed to it.</summary>
+    public DateTimeOffset? CurrentRunStartedAt { get; set; }
 
     public int RemainingCount => RequestedCount - CompletedCount;
 }

@@ -49,11 +49,14 @@ public sealed class VideoJobRunner(
             {
                 job.CurrentComfyPromptId = promptId;
                 job.CurrentSeed = seed;
+                job.CurrentRunStartedAt = clock.GetUtcNow();
                 await db.SaveChangesAsync(ct);
+                await notifier.JobUpdated(job.Id, job.PromptSetId);
             }, videoTiming.RenderTimeout, ct);
+            var renderSeconds = (clock.GetUtcNow() - job.CurrentRunStartedAt!.Value).TotalSeconds;
 
             await RememberOutputAsync(db, job, outputs, ct);
-            await DownloadFromDriveAsync(db, settings, job, ct);
+            await DownloadFromDriveAsync(db, settings, job, renderSeconds, ct);
         }
     }
 
@@ -75,8 +78,9 @@ public sealed class VideoJobRunner(
             await RememberOutputAsync(db, job, outputs, ct);
         }
 
+        // The render spanned a restart or a failure, so how long it took is unknown.
         if (job.CurrentOutputFileName is not null && job.CurrentSeed is not null)
-            await DownloadFromDriveAsync(db, settings, job, ct);
+            await DownloadFromDriveAsync(db, settings, job, renderSeconds: null, ct);
     }
 
     private static async Task RememberOutputAsync(
@@ -86,10 +90,12 @@ public sealed class VideoJobRunner(
             ?? throw new ComfyException("The video workflow completed but saved no file. Ensure it includes its SaveVideo node.");
         job.CurrentOutputFileName = string.IsNullOrEmpty(video.Subfolder) ? video.Filename : $"{video.Subfolder}/{video.Filename}";
         job.CurrentComfyPromptId = null;
+        job.CurrentRunStartedAt = null;
         await db.SaveChangesAsync(ct);
     }
 
-    private async Task DownloadFromDriveAsync(StudioDbContext db, StudioSettings settings, GenerationJob job, CancellationToken ct)
+    private async Task DownloadFromDriveAsync(
+        StudioDbContext db, StudioSettings settings, GenerationJob job, double? renderSeconds, CancellationToken ct)
     {
         var outputPath = job.CurrentOutputFileName!;
         var fileName = Path.GetFileName(outputPath);
@@ -109,6 +115,7 @@ public sealed class VideoJobRunner(
             FilePath = path,
             Seed = seed,
             CreatedAt = clock.GetUtcNow(),
+            RenderSeconds = renderSeconds,
         });
         job.CompletedCount++;
         job.CurrentOutputFileName = null;

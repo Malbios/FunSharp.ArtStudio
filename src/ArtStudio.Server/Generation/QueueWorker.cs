@@ -209,6 +209,7 @@ public sealed class QueueWorker(
         job.Status = status;
         job.Error = error;
         job.CurrentComfyPromptId = null;
+        job.CurrentRunStartedAt = null;
         // A rendered video that could not be fetched from Drive (e.g. an expired Google login) is fetched on retry
         // instead of being rendered again.
         if (status != JobStatus.Failed || job.CurrentOutputFileName is null)
