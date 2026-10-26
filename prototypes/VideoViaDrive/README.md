@@ -31,7 +31,9 @@ dotnet run VideoViaDrive.cs -- --comfy https://<your-ngrok-url> --start C:\path\
 dotnet run VideoViaDrive.cs -- --comfy https://<your-ngrok-url> --start C:\path\start.png --prompt "She turns to the camera and smiles."
 ```
 
-Other options: `--seconds 8`, `--full-quality` (no Lightning LoRA, 20 steps instead of 8), `--drive-folder <path>` (default
+Other options: `--seconds 8` (any value; snapped up to the model's frame grid), `--resolution "960 x 544"` (the workflow's
+presets from `608 x 352` to `1344 x 768`, default `896 x 512`; the sizes are for a 16:9 start image, other shapes get the
+same pixel count), `--megapixels 0.55` (custom size instead of a preset), `--full-quality` (no Lightning LoRA, 20 steps instead of 8), `--drive-folder <path>` (default
 `ComfyUI/output/video`), `--dry-run` (only writes the filled workflow to `output\`). `--help` lists them all.
 
 ComfyUI saves the video under the workflow's own prefix, `video/MiniMax_H3` (so `MiniMax_H3_00001_.mp4` and counting up).

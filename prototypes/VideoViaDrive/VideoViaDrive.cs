@@ -19,6 +19,7 @@ const string VideoNodeId = "135:105:104";
 const string SecondsNodeId = "135:279";
 const string SeedNodeId = "135:223:139";
 const string LightningLoraNodeId = "135:105:218:126";
+const string MegapixelsNodeId = "135:290";
 const string PromptPlaceholder = "???";
 const string FolderMimeType = "application/vnd.google-apps.folder";
 
@@ -156,6 +157,7 @@ JsonObject BuildWorkflow(string startImageName, string? endImageName)
     SetInput(workflow, SecondsNodeId, "value", options.Seconds);
     SetInput(workflow, SeedNodeId, "seed", Random.Shared.NextInt64(long.MaxValue));
     SetInput(workflow, LightningLoraNodeId, "value", !options.FullQuality);
+    SetInput(workflow, MegapixelsNodeId, "value", options.Megapixels);
     return workflow;
 }
 
@@ -319,16 +321,50 @@ static void PrintHelp() => Console.WriteLine("""
       --start <image>         Start frame (png, jpg or webp)
       --end <image>           End frame; without it the end frame is left out of the workflow
       --prompt "<text>"       Replaces ??? in the workflow's prompt template
-      --seconds <n>           Video length in seconds (default 5)
+      --seconds <n>           Video length in seconds (default 5); any value, snapped up to the model's frame grid
+      --resolution "<preset>" 608 x 352, 736 x 416, 864 x 480, 896 x 512 (default), 960 x 544, 1056 x 608,
+                              1152 x 640, 1216 x 672, 1280 x 736 or 1344 x 768; sizes are for a 16:9 start image,
+                              other shapes keep the same pixel count
+      --megapixels <n>        Custom size instead of a preset, e.g. 0.55
       --full-quality          Turn the Lightning LoRA off: 20 steps instead of 8
       --drive-folder <path>   Drive folder ComfyUI saves videos into (default ComfyUI/output/video)
       --dry-run               Only write the filled workflow to output/; sends nothing
     """);
 
 sealed record Options(
-    string ComfyUrl, string StartImage, string? EndImage, string Prompt, double Seconds, bool FullQuality,
+    string ComfyUrl, string StartImage, string? EndImage, string Prompt, double Seconds, double Megapixels, bool FullQuality,
     string DriveFolder, bool DryRun)
 {
+    private const string DefaultResolution = "896 x 512";
+
+    // The workflow's "Resolution Selector" presets and the megapixel value each one sets.
+    private static readonly Dictionary<string, double> ResolutionPresets = new()
+    {
+        ["608 x 352"] = 0.2,
+        ["736 x 416"] = 0.3,
+        ["864 x 480"] = 0.4,
+        ["896 x 512"] = 0.46,
+        ["960 x 544"] = 0.5,
+        ["1056 x 608"] = 0.6,
+        ["1152 x 640"] = 0.7,
+        ["1216 x 672"] = 0.8,
+        ["1280 x 736"] = 0.9,
+        ["1344 x 768"] = 0.98,
+    };
+
+    private static double PresetMegapixels(string preset)
+    {
+        static string Normalized(string label) => label.Replace(" ", "").ToLowerInvariant();
+        return ResolutionPresets.FirstOrDefault(p => Normalized(p.Key) == Normalized(preset)) is { Key: not null } match
+            ? match.Value
+            : throw new ArgumentException($"--resolution must be one of: {string.Join(", ", ResolutionPresets.Keys)}.");
+    }
+
+    private static double PositiveNumber(string name, string text) =>
+        double.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, out var parsed) && parsed > 0
+            ? parsed
+            : throw new ArgumentException($"{name} must be a positive number.");
+
     public static Options Parse(string[] args)
     {
         var values = new Dictionary<string, string>();
@@ -349,17 +385,19 @@ sealed record Options(
             File.Exists(path) ? Path.GetFullPath(path) : throw new ArgumentException($"{name}: file '{path}' does not exist.");
 
         var dryRun = flags.Contains("--dry-run");
-        var seconds = values.TryGetValue("--seconds", out var text)
-            ? double.TryParse(text, System.Globalization.CultureInfo.InvariantCulture, out var parsed) && parsed > 0
-                ? parsed
-                : throw new ArgumentException("--seconds must be a positive number.")
-            : 5;
+        var seconds = values.TryGetValue("--seconds", out var secondsText) ? PositiveNumber("--seconds", secondsText) : 5;
+        if (values.ContainsKey("--resolution") && values.ContainsKey("--megapixels"))
+            throw new ArgumentException("Use either --resolution or --megapixels, not both.");
+        var megapixels = values.TryGetValue("--megapixels", out var megapixelsText)
+            ? PositiveNumber("--megapixels", megapixelsText)
+            : PresetMegapixels(values.GetValueOrDefault("--resolution", DefaultResolution));
         return new Options(
             dryRun ? values.GetValueOrDefault("--comfy", "") : Required("--comfy"),
             ExistingFile("--start", Required("--start")),
             values.TryGetValue("--end", out var end) ? ExistingFile("--end", end) : null,
             Required("--prompt"),
             seconds,
+            megapixels,
             flags.Contains("--full-quality"),
             values.GetValueOrDefault("--drive-folder", "ComfyUI/output/video"),
             dryRun);
