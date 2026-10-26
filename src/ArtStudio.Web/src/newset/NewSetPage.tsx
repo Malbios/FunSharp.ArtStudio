@@ -14,6 +14,7 @@ import { returnToFrom } from '../sets/returnTo'
 import { BuildingBlockChips } from './BuildingBlockChips'
 import { imageFileFrom, loadImageFile, NO_SOURCE, sourceDimensions, type ImageSource } from './imageSource'
 import { ImageSourcePicker, type SourceTab } from './ImageSourcePicker'
+import { NewModeTabs } from './NewModeTabs'
 import { PromptParagraphs } from './PromptParagraphs'
 import { useDraftSettingsAutosave } from './useDraftSettingsAutosave'
 
@@ -297,7 +298,10 @@ export function NewSetPage() {
   return (
     <div className="new-set-layout">
       <form className="panel new-set" onSubmit={(e) => void submit(e)}>
-        <h2>{heading}</h2>
+        <div className="new-set-heading">
+          <h2>{heading}</h2>
+          {baseSetId === null && <NewModeTabs video={false} />}
+        </div>
 
         <div className="field-row submit-row">
           <label className="field">

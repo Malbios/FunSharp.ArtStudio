@@ -6,7 +6,12 @@ import { imageFileFrom, loadImageFile, sourceDimensions, sourceImageUrl, type Im
 
 export type SourceTab = 'None' | 'Upload' | 'Paste' | 'DeviantArt'
 
-const TABS: { tab: SourceTab; label: string }[] = [
+export interface SourceTabOption {
+  tab: SourceTab
+  label: string
+}
+
+const TABS: SourceTabOption[] = [
   { tab: 'DeviantArt', label: 'DeviantArt' },
   { tab: 'Paste', label: 'Clipboard' },
   { tab: 'Upload', label: 'Upload' },
@@ -16,6 +21,8 @@ const TABS: { tab: SourceTab; label: string }[] = [
 interface Props {
   source: ImageSource
   initialTab?: SourceTab
+  /** The tabs offered, in order; all of them by default. */
+  tabs?: SourceTabOption[]
   onChange: (source: ImageSource) => void
 }
 
@@ -24,7 +31,7 @@ interface DeviationError {
   existingSetId: number | null
 }
 
-export function ImageSourcePicker({ source, initialTab = 'None', onChange }: Props) {
+export function ImageSourcePicker({ source, initialTab = 'None', tabs = TABS, onChange }: Props) {
   const [tab, setTab] = useState<SourceTab>(source.kind === 'BasedOn' || source.kind === 'None' ? initialTab : source.kind)
   const [deviationUrl, setDeviationUrl] = useState('')
   const [deviationError, setDeviationError] = useState<DeviationError>()
@@ -86,7 +93,7 @@ export function ImageSourcePicker({ source, initialTab = 'None', onChange }: Pro
   return (
     <div className="source-picker">
       <div className="tabs" role="tablist">
-        {TABS.map(({ tab: t, label }) => (
+        {tabs.map(({ tab: t, label }) => (
           <button
             key={t}
             type="button"

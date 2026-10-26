@@ -7,6 +7,7 @@ import { SettingsPage } from './settings/SettingsPage'
 import { useStudioEvents } from './live/studioHub'
 import { useLoad } from './live/useLoad'
 import { NewSetPage } from './newset/NewSetPage'
+import { NewVideoPage } from './newset/NewVideoPage'
 import { isDraftReady } from './paging/listFilters'
 import { PostPage } from './post/PostPage'
 import { PublishedPage } from './post/PublishedPage'
@@ -18,6 +19,7 @@ import { StatsPage } from './stats/StatsPage'
 
 function NewSetRoute() {
   const location = useLocation()
+  if (new URLSearchParams(location.search).get('mode') === 'video') return <NewVideoPage />
   return <NewSetPage key={location.search} />
 }
 
