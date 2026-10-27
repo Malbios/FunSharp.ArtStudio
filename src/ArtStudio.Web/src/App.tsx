@@ -13,7 +13,7 @@ import { PostPage } from './post/PostPage'
 import { PublishedPage } from './post/PublishedPage'
 import { StashedPage } from './post/StashedPage'
 import { QueuePage } from './queue/QueuePage'
-import { pausedLabel } from './queue/queueSections'
+import { pausedLabel, pendingCounts } from './queue/queueSections'
 import { MakeVideoPage } from './sets/MakeVideoPage'
 import { SetDetailPage } from './sets/SetDetailPage'
 import { SetsPage } from './sets/SetsPage'
@@ -135,14 +135,23 @@ function StashedNavLink() {
 function QueueNavLink() {
   const queue = useLoad(api.queue)
   useStudioEvents(['JobUpdated', 'QueueStateChanged', 'SetDeleted'], queue.reload)
-  const pending = queue.data?.active.filter((job) => job.status !== 'Failed').length ?? 0
+  const pending = queue.data ? pendingCounts(queue.data) : { Image: 0, Video: 0 }
   const failed = queue.data?.active.some((job) => job.status === 'Failed') ?? false
   const paused = queue.data ? pausedLabel(queue.data) : null
 
   return (
     <NavLink to="/queue">
       Queue
-      {pending > 0 && <span className="nav-count">{pending}</span>}
+      {pending.Image > 0 && (
+        <span className="nav-count" title={`${pending.Image} ${pending.Image === 1 ? 'image' : 'images'} queued or rendering`}>
+          {pending.Image} img
+        </span>
+      )}
+      {pending.Video > 0 && (
+        <span className="nav-count" title={`${pending.Video} ${pending.Video === 1 ? 'video' : 'videos'} queued or rendering`}>
+          {pending.Video} vid
+        </span>
+      )}
       {failed && <span className="nav-count failed">!</span>}
       {paused && !failed && <span className="nav-count paused">{paused}</span>}
     </NavLink>
