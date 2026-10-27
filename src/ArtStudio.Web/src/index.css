@@ -1863,6 +1863,10 @@ code {
   gap: 0.5rem;
 }
 
+.post-original-title {
+  margin: 0;
+}
+
 .post-title-row input {
   flex: 1;
 }

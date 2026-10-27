@@ -135,7 +135,20 @@ public sealed class SetService(
         set.DeviantArtUrl = deviation.Preview.Url;
         set.DeviationId = deviation.Preview.DeviationId;
         set.DeviantArtAuthor = deviation.Preview.Author;
+        set.DeviantArtTitle = deviation.Preview.Title;
         await AttachSourceImageAsync(set, SourceKind.DeviantArt, new MemoryStream(deviation.Content), deviation.Extension, ct);
+    }
+
+    /// <summary>Sets made before titles were stored get theirs from DeviantArt once, on first request.</summary>
+    public async Task<string?> DeviantArtTitleAsync(int setId, CancellationToken ct)
+    {
+        var set = await FindSetAsync(setId, ct);
+        if (set.DeviantArtTitle is not null || set.DeviantArtUrl is null)
+            return set.DeviantArtTitle;
+
+        set.DeviantArtTitle = await deviantArtService.FetchTitleAsync(set.DeviantArtUrl, ct);
+        await db.SaveChangesAsync(ct);
+        return set.DeviantArtTitle;
     }
 
     public async Task QueueDraftAsync(

@@ -73,6 +73,27 @@ public sealed class DeviantArtService(
         return new DownloadedDeviation(preview, await response.Content.ReadAsByteArrayAsync(ct), extension);
     }
 
+    /// <summary>
+    /// Only the title, from the public oEmbed; mature deviations keep their title there. Null when DeviantArt has
+    /// none or cannot be reached, since the title is only shown for reference.
+    /// </summary>
+    public async Task<string?> FetchTitleAsync(string deviationUrl, CancellationToken ct)
+    {
+        try
+        {
+            using var response = await Http().GetAsync($"{OEmbedEndpoint}?url={Uri.EscapeDataString(deviationUrl)}", ct);
+            if (!response.IsSuccessStatusCode)
+                return null;
+            var title = JsonNode.Parse(await response.Content.ReadAsStringAsync(ct))?["title"]?.GetValue<string>();
+            return string.IsNullOrWhiteSpace(title) ? null : title;
+        }
+        catch (Exception failure) when (failure is HttpRequestException or JsonException or InvalidOperationException)
+        {
+            logger.LogWarning(failure, "Could not read the title of {Url}", deviationUrl);
+            return null;
+        }
+    }
+
     private async Task EnsureNotBlockedAsync(string username, CancellationToken ct)
     {
         if (await db.BlockedArtists.AnyAsync(a => a.Username == username, ct))

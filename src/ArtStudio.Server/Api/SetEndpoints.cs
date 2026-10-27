@@ -28,6 +28,8 @@ public static class SetEndpoints
         sets.MapPut("{id:int}/picks", async (int id, ReorderPicksRequest request, SetService setService, CancellationToken ct) =>
             await setService.ReorderPicksAsync(id, request.ImageIds, ct));
         sets.MapGet("{id:int}/source", GetSourceImageAsync);
+        sets.MapPost("{id:int}/deviantart-title", async (int id, SetService setService, CancellationToken ct) =>
+            Results.Ok(new { Title = await setService.DeviantArtTitleAsync(id, ct) }));
         sets.MapPost("{id:int}/ready", async (int id, SetService setService, CancellationToken ct) =>
             await setService.MarkReadyToPostAsync(id, ct));
         sets.MapDelete("{id:int}/ready", async (int id, SetService setService, CancellationToken ct) =>
@@ -149,6 +151,7 @@ public static class SetEndpoints
             ApiUrls.SourceImage(set),
             set.DeviantArtUrl,
             set.DeviantArtAuthor,
+            set.DeviantArtTitle,
             set.Picks.Select(p => p.GeneratedImageId).ToList(),
             set.CreatedAt,
             set.IsDraft,

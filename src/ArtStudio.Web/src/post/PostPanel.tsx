@@ -90,6 +90,7 @@ function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>
       </p>
       {backgroundSuggesting && <p className="hint">Suggesting a title and tags…</p>}
       <div className="field">
+        <OriginalTitle set={set} />
         <span>
           Title ({fields.title.length}/{MAX_TITLE_LENGTH})
         </span>
@@ -124,6 +125,35 @@ function StashForm({ set, onChanged }: Pick<PostPanelProps, 'set' | 'onChanged'>
         {uploading ? 'Uploading…' : 'Upload #1 to Stash'}
       </button>
     </form>
+  )
+}
+
+/** The inspiration's own title, for reference while writing this one. */
+function OriginalTitle({ set }: { set: SetDetail }) {
+  const [fetchedTitle, setFetchedTitle] = useState<string | null>(null)
+  const needsFetch = set.deviantArtUrl !== null && set.deviantArtTitle === null
+
+  useEffect(() => {
+    if (!needsFetch) return
+    let current = true
+    api.deviantArtTitle(set.id).then(
+      ({ title }) => current && setFetchedTitle(title),
+      () => {},
+    )
+    return () => {
+      current = false
+    }
+  }, [needsFetch, set.id])
+
+  const title = set.deviantArtTitle ?? fetchedTitle
+  if (!set.deviantArtUrl || !title) return null
+  return (
+    <p className="hint post-original-title">
+      Original title on DeviantArt:{' '}
+      <a href={set.deviantArtUrl} target="_blank" rel="noreferrer">
+        „{title}“
+      </a>
+    </p>
   )
 }
 

@@ -133,6 +133,7 @@ public sealed record SetDetailDto(
     string? SourceImageUrl,
     string? DeviantArtUrl,
     string? DeviantArtAuthor,
+    string? DeviantArtTitle,
     IReadOnlyList<int> PickedImageIds,
     DateTimeOffset CreatedAt,
     bool IsDraft,

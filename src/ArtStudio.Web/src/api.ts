@@ -169,6 +169,8 @@ export interface SetDetail {
   sourceImageUrl: string | null
   deviantArtUrl: string | null
   deviantArtAuthor: string | null
+  /** Null for sets made before titles were kept; api.deviantArtTitle fetches those once. */
+  deviantArtTitle: string | null
   pickedImageIds: number[]
   createdAt: string
   isDraft: boolean
@@ -460,6 +462,8 @@ export const api = {
   galleries: () => request<Gallery[]>('GET', '/api/deviantart/galleries'),
   saveMatureGalleries: (folderIds: string[]) =>
     request<Gallery[]>('PUT', '/api/deviantart/mature-galleries', { folderIds }),
+  deviantArtTitle: (setId: number) =>
+    request<{ title: string | null }>('POST', `/api/sets/${setId}/deviantart-title`),
   suggestTitle: (setId: number) => request<{ title: string }>('POST', `/api/sets/${setId}/post/suggest-title`),
   suggestTags: (setId: number) => request<{ tags: string[] }>('POST', `/api/sets/${setId}/post/suggest-tags`),
   stash: (setId: number, title: string, description: string, tags: string) =>

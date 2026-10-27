@@ -305,6 +305,9 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<string>("DeviantArtAuthor")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DeviantArtTitle")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("DeviantArtUrl")
                         .HasColumnType("TEXT");
 

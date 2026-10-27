@@ -2,8 +2,11 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ArtStudio.Server.Data;
 using ArtStudio.Server.Domain;
 using ArtStudio.Server.Tests.Fakes;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using static ArtStudio.Server.Tests.Fakes.StudioAppFactory;
 
 namespace ArtStudio.Server.Tests;
@@ -215,6 +218,62 @@ public sealed class DraftTests : IDisposable
         Assert.Equal(2, set.DraftImageCount);
         Assert.Equal(FakeDeviantArt.JpegBytes, await _client.GetByteArrayAsync(set.SourceImageUrl));
         Assert.Equal([setId], await SetIdsAsync("draft"));
+    }
+
+    private async Task<int> DeviantArtDraftIdAsync()
+    {
+        var response = await PostDeviantArtDraftAsync(DeviationLink);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+    }
+
+    private async Task<string?> DeviantArtTitleAsync(int setId)
+    {
+        var response = await _client.PostAsync($"/api/sets/{setId}/deviantart-title", null);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("title").GetString();
+    }
+
+    [Fact]
+    public async Task DeviantArtDraft_KeepsTheDeviationTitle()
+    {
+        var setId = await DeviantArtDraftIdAsync();
+
+        var set = await GetSetAsync(_client, setId);
+
+        // The fake oEmbed answers with the deviation's URL as its title.
+        Assert.Equal(set.DeviantArtUrl, set.DeviantArtTitle);
+    }
+
+    [Fact]
+    public async Task OlderSetWithoutTitle_FetchesItFromDeviantArtOnce()
+    {
+        var setId = await DeviantArtDraftIdAsync();
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<StudioDbContext>();
+            await db.PromptSets.Where(s => s.Id == setId).ExecuteUpdateAsync(s => s.SetProperty(p => p.DeviantArtTitle, (string?)null));
+        }
+        var callsBefore = _factory.DeviantArt.OEmbedCalls;
+
+        var first = await DeviantArtTitleAsync(setId);
+        var second = await DeviantArtTitleAsync(setId);
+
+        var set = await GetSetAsync(_client, setId);
+        Assert.Equal(set.DeviantArtUrl, first);
+        Assert.Equal(first, second);
+        Assert.Equal(first, set.DeviantArtTitle);
+        Assert.Equal(callsBefore + 1, _factory.DeviantArt.OEmbedCalls);
+    }
+
+    [Fact]
+    public async Task SetWithoutDeviantArtInspiration_HasNoTitleToFetch()
+    {
+        var response = await PostDraftAsync(AddUpload);
+        var setId = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+
+        Assert.Null(await DeviantArtTitleAsync(setId));
+        Assert.Equal(0, _factory.DeviantArt.OEmbedCalls);
     }
 
     [Fact]

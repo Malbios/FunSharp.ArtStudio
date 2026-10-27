@@ -33,6 +33,7 @@ public class PromptSet
     public string? DeviantArtUrl { get; set; }
     public string? DeviationId { get; set; }
     public string? DeviantArtAuthor { get; set; }
+    public string? DeviantArtTitle { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public bool IsDraft { get; set; }
     public int DraftImageCount { get; set; } = Generation.SetService.DefaultImageCount;
