@@ -88,6 +88,7 @@ public static class SetEndpoints
                 LatestImageId = s.Images.OrderByDescending(i => i.Id).Select(i => (int?)i.Id).FirstOrDefault(),
                 FirstPickedImageId = s.Picks.OrderBy(p => p.Position).Select(p => (int?)p.GeneratedImageId).FirstOrDefault(),
                 PickedCount = s.Picks.Count,
+                VideoCount = db.Videos.Count(v => v.PromptSetId == s.Id),
                 HasActiveJob = s.Jobs.Any(j => activeStatuses.Contains(j.Status)),
                 HasFailedJob = s.Jobs.Any(j => j.Status == JobStatus.Failed),
             })
@@ -113,7 +114,8 @@ public static class SetEndpoints
                 s.Set.StashItemId != null,
                 s.Set.PublishedUrl,
                 s.Set.PublishedAt,
-                !PostSuggestionQueue.NeedsSuggestions(s.Set)))
+                !PostSuggestionQueue.NeedsSuggestions(s.Set),
+                s.VideoCount))
             .ToList();
     }
 

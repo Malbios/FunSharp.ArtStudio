@@ -123,7 +123,8 @@ public sealed record SetSummaryDto(
     bool Stashed,
     string? PublishedUrl,
     DateTimeOffset? PublishedAt,
-    bool HasTitleAndTags);
+    bool HasTitleAndTags,
+    int VideoCount);
 
 public sealed record SetDetailDto(
     int Id,

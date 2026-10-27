@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { PromptGenerationKind, PromptGenerationState, SetSummary } from '../api'
-import { DRAFT_FILTERS, POST_FILTERS, SET_FILTERS } from './listFilters'
+import {
+  ARCHIVED_FILTERS,
+  DRAFT_FILTERS,
+  POST_FILTERS,
+  PUBLISHED_FILTERS,
+  SET_FILTERS,
+  STASHED_FILTERS,
+} from './listFilters'
 
 const summary = (
   overrides: Partial<SetSummary> & { state?: PromptGenerationState; kind?: PromptGenerationKind },
@@ -61,6 +68,23 @@ describe('post filters', () => {
     expect(matches(POST_FILTERS, 'described', summary({ hasTitleAndTags: false }))).toBe(false)
     expect(matches(POST_FILTERS, 'undescribed', summary({ hasTitleAndTags: false }))).toBe(true)
     expect(matches(POST_FILTERS, 'undescribed', summary({ hasTitleAndTags: true }))).toBe(false)
+  })
+})
+
+describe('has videos filter', () => {
+  const listsWithVideos = [SET_FILTERS, POST_FILTERS, STASHED_FILTERS, PUBLISHED_FILTERS, ARCHIVED_FILTERS]
+
+  it('is offered on every list of sets except drafts, which cannot have videos', () => {
+    for (const filters of listsWithVideos) expect(filters.map((filter) => filter.key)).toContain('videos')
+    expect(DRAFT_FILTERS.map((filter) => filter.key)).not.toContain('videos')
+  })
+
+  it('shows only sets with at least one video and combines with the other filters', () => {
+    for (const filters of listsWithVideos) {
+      expect(matches(filters, 'videos', summary({ videoCount: 2 }))).toBe(true)
+      expect(matches(filters, 'videos', summary({ videoCount: 0 }))).toBe(false)
+      expect(filters.find((filter) => filter.key === 'videos')!.excludes).toBeUndefined()
+    }
   })
 })
 

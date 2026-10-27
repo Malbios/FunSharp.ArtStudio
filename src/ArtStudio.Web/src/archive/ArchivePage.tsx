@@ -3,13 +3,16 @@ import { api } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
+import { ARCHIVED_FILTERS } from '../paging/listFilters'
 import { Pager } from '../paging/Pager'
+import { useListFilter } from '../paging/useListFilter'
 import { usePagedItems } from '../paging/usePagedItems'
 
 export function ArchivePage() {
   const sets = useLoad(() => api.sets('archived'))
   useStudioEvents(['SetUpdated', 'SetDeleted'], sets.reload)
-  const paged = usePagedItems(sets.data)
+  const filter = useListFilter('archived', sets.data, ARCHIVED_FILTERS)
+  const paged = usePagedItems(filter.items)
   const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
 
   return (
@@ -23,7 +26,12 @@ export function ArchivePage() {
           Nothing archived. Archived sets keep their DeviantArt link, so the same deviation is still reported as used.
         </p>
       )}
-      {pager}
+      {sets.data && sets.data.length > 0 && (
+        <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} filter={filter} />
+      )}
+      {sets.data && sets.data.length > 0 && filter.items?.length === 0 && (
+        <p className="hint">No sets match this filter.</p>
+      )}
       <div className="set-grid">
         {paged.pageItems.map((set) => {
           const thumbnail = set.previewImageUrl ?? set.sourceImageUrl

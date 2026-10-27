@@ -3,14 +3,17 @@ import { api } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
+import { STASHED_FILTERS } from '../paging/listFilters'
 import { Pager } from '../paging/Pager'
+import { useListFilter } from '../paging/useListFilter'
 import { usePagedItems } from '../paging/usePagedItems'
 
 export function StashedPage() {
   const sets = useLoad(() => api.sets('ready'))
   useStudioEvents(['SetUpdated', 'SetDeleted'], sets.reload)
   const stashed = sets.data?.filter((set) => set.stashed)
-  const paged = usePagedItems(stashed)
+  const filter = useListFilter('stashed', stashed, STASHED_FILTERS)
+  const paged = usePagedItems(filter.items)
   const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
 
   return (
@@ -20,7 +23,10 @@ export function StashedPage() {
       </div>
       {sets.error && <p className="error">{sets.error}</p>}
       {stashed?.length === 0 && <p className="hint">Nothing in the Stash. Upload a set from its page on Post.</p>}
-      {pager}
+      {stashed && stashed.length > 0 && (
+        <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} filter={filter} />
+      )}
+      {stashed && stashed.length > 0 && filter.items?.length === 0 && <p className="hint">No sets match this filter.</p>}
       <div className="set-grid">
         {paged.pageItems.map((set) => (
           <div key={set.id} className="panel set-card">

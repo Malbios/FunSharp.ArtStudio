@@ -121,6 +121,7 @@ export interface SetSummary {
   hasActiveJob: boolean
   hasFailedJob: boolean
   pickedCount: number
+  videoCount: number
   deviantArtAuthor: string | null
   createdAt: string
   isDraft: boolean

@@ -463,6 +463,18 @@ public sealed class VideoTests : IDisposable
     }
 
     [Fact]
+    public async Task SetList_CountsEachSetsVideos()
+    {
+        var withVideo = await SetWithVideoAsync();
+        var withoutVideo = await SetWithImagesAsync(images: 1);
+
+        var listed = (await _client.GetFromJsonAsync<List<SetSummaryDto>>("/api/sets?stage=working", Json))!;
+
+        Assert.Equal(1, listed.Single(s => s.Id == withVideo.Id).VideoCount);
+        Assert.Equal(0, listed.Single(s => s.Id == withoutVideo.Id).VideoCount);
+    }
+
+    [Fact]
     public async Task PickingAnUnknownVideo_IsNotFound()
     {
         Assert.Equal(HttpStatusCode.NotFound, (await PickVideoAsync(999, true)).StatusCode);
