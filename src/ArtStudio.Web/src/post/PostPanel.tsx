@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api, type Gallery, type MatureLevel, type SetDetail } from '../api'
 import { hasOnlyDefaultTags, initialPostFields, MAX_TITLE_LENGTH, stashDescription, stashEditorUrl, withSuggestedTags } from './postDefaults'
 
@@ -159,6 +160,7 @@ function OriginalTitle({ set }: { set: SetDetail }) {
 
 function ExtraPicksButton({ set, onError }: { set: SetDetail; onError: (message: string | undefined) => void }) {
   const [folder, setFolder] = useState<string>()
+  const navigate = useNavigate()
   const extraPicks = set.pickedImageIds.length - 1
 
   async function openExtraPicks() {
@@ -174,7 +176,7 @@ function ExtraPicksButton({ set, onError }: { set: SetDetail; onError: (message:
     onError(undefined)
     try {
       await api.closeExtraPicks(set.id)
-      setFolder(undefined)
+      navigate('/post')
     } catch (failure) {
       onError((failure as Error).message)
     }
