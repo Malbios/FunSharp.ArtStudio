@@ -170,12 +170,30 @@ function ExtraPicksButton({ set, onError }: { set: SetDetail; onError: (message:
     }
   }
 
+  async function closeExtraPicks() {
+    onError(undefined)
+    try {
+      await api.closeExtraPicks(set.id)
+      setFolder(undefined)
+    } catch (failure) {
+      onError((failure as Error).message)
+    }
+  }
+
   return (
     <>
       <button type="button" onClick={() => void openExtraPicks()}>
         Open picks #2{extraPicks > 1 ? `–#${extraPicks + 1}` : ''} folder
       </button>
-      {folder && <span className="hint"> Opened {folder}</span>}
+      {folder && (
+        <span className="hint">
+          {' '}
+          Opened {folder}.{' '}
+          <button type="button" className="link-button" onClick={() => void closeExtraPicks()}>
+            Close folder
+          </button>
+        </span>
+      )}
     </>
   )
 }

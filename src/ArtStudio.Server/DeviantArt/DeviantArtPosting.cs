@@ -19,6 +19,7 @@ public sealed record PublishRequest(string GalleryId, bool IsMature, string? Mat
 public sealed partial class DeviantArtPosting(
     StudioDbContext db,
     AppPaths paths,
+    IFolderOpener folderOpener,
     DeviantArtApi api,
     StudioNotifier notifier,
     TimeProvider clock)
@@ -124,7 +125,7 @@ public sealed partial class DeviantArtPosting(
         set.PublishedAt = clock.GetUtcNow();
         (await SettingsStore.LoadAsync(db, paths, ct)).LastGalleryId = request.GalleryId.Trim();
         await db.SaveChangesAsync(ct);
-        ExtraPicksFolder.Delete(paths, setId);
+        ExtraPicksFolder.Delete(paths, folderOpener, setId);
         await notifier.SetUpdated(setId);
     }
 
@@ -136,6 +137,7 @@ public sealed partial class DeviantArtPosting(
         set.StashItemId = null;
         set.StashedAt = null;
         await db.SaveChangesAsync(ct);
+        ExtraPicksFolder.Delete(paths, folderOpener, setId);
         await notifier.SetUpdated(setId);
     }
 

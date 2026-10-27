@@ -8,11 +8,59 @@ namespace ArtStudio.Server.DeviantArt;
 public interface IFolderOpener
 {
     void Open(string folder);
+
+    /// <summary>Closes the Explorer windows showing the folder, if any; never throws.</summary>
+    void Close(string folder);
 }
 
-public sealed class ExplorerFolderOpener : IFolderOpener
+public sealed class ExplorerFolderOpener(ILogger<ExplorerFolderOpener> logger) : IFolderOpener
 {
+    private static readonly TimeSpan CloseTimeout = TimeSpan.FromSeconds(5);
+
     public void Open(string folder) => Process.Start(new ProcessStartInfo("explorer.exe", $"\"{folder}\"") { UseShellExecute = true });
+
+    public void Close(string folder)
+    {
+        if (!OperatingSystem.IsWindows())
+            return;
+        // Shell COM objects expect a single-threaded apartment, which request threads are not.
+        var thread = new Thread(() => CloseWindowsShowing(Normalized(folder))) { IsBackground = true };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        if (!thread.Join(CloseTimeout))
+            logger.LogWarning("Closing the Explorer window of {Folder} timed out", folder);
+    }
+
+    private void CloseWindowsShowing(string folder)
+    {
+        try
+        {
+            if (!OperatingSystem.IsWindows() || Type.GetTypeFromProgID("Shell.Application") is not { } shellType)
+                return;
+            dynamic shell = Activator.CreateInstance(shellType)!;
+            foreach (var window in shell.Windows())
+            {
+                string? shown = null;
+                try
+                {
+                    shown = window.Document.Folder.Self.Path;
+                }
+                catch (Exception)
+                {
+                    // Windows that show no folder, such as Internet Explorer remnants, have no path.
+                }
+                if (shown is not null && string.Equals(Normalized(shown), folder, StringComparison.OrdinalIgnoreCase))
+                    window.Quit();
+            }
+        }
+        catch (Exception failure)
+        {
+            logger.LogWarning(failure, "Could not close the Explorer window of {Folder}", folder);
+        }
+    }
+
+    private static string Normalized(string folder) =>
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder));
 }
 
 /// <summary>
@@ -32,7 +80,7 @@ public sealed class ExtraPicksFolder(StudioDbContext db, AppPaths paths, IFolder
         if (files.Count == 0)
             throw new UserFacingException("This set has no picks besides #1.");
 
-        Delete(paths, setId);
+        Delete(paths, opener, setId);
         var folder = Directory.CreateDirectory(FolderFor(paths, setId)).FullName;
         foreach (var file in files)
         {
@@ -45,11 +93,16 @@ public sealed class ExtraPicksFolder(StudioDbContext db, AppPaths paths, IFolder
         return folder;
     }
 
-    public static void Delete(AppPaths paths, int setId)
+    public void Close(int setId) => Delete(paths, opener, setId);
+
+    /// <summary>Closes the folder's Explorer window too, so it is not left open on a folder that is gone.</summary>
+    public static void Delete(AppPaths paths, IFolderOpener opener, int setId)
     {
         var folder = FolderFor(paths, setId);
-        if (Directory.Exists(folder))
-            Directory.Delete(folder, recursive: true);
+        if (!Directory.Exists(folder))
+            return;
+        opener.Close(folder);
+        Directory.Delete(folder, recursive: true);
     }
 
     private static string FolderFor(AppPaths paths, int setId) => Path.Combine(paths.ExtraPicksDirectory, $"set-{setId}");

@@ -187,6 +187,7 @@ public sealed class PostingTests : IDisposable
             Assert.Equal(FakeDeviantArt.PublishedDeviationId, stored.PublishedDeviationId);
         }
         Assert.False(Directory.Exists(_factory.FolderOpener.Opened.Single()));
+        Assert.Equal(_factory.FolderOpener.Opened, _factory.FolderOpener.Closed);
         var published = Assert.Single(await SetsInStageAsync("published"));
         Assert.Equal((setId, FakeDeviantArt.PublishedUrl), (published.GetProperty("id").GetInt32(), published.GetProperty("publishedUrl").GetString()));
         Assert.Equal(set.Post.PublishedAt, published.GetProperty("publishedAt").GetDateTimeOffset());
@@ -205,6 +206,47 @@ public sealed class PostingTests : IDisposable
         (await _client.PostAsync($"/api/sets/{setId}/archive", null)).EnsureSuccessStatusCode();
 
         Assert.False(Directory.Exists(_factory.FolderOpener.Opened.Single()));
+        Assert.Equal(_factory.FolderOpener.Opened, _factory.FolderOpener.Closed);
+    }
+
+    [Fact]
+    public async Task ForgettingTheStashItem_ClosesAndDeletesItsExtraPicksFolder()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, _) = await CreateReadySetAsync(2);
+        (await StashAsync(setId)).EnsureSuccessStatusCode();
+        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null)).EnsureSuccessStatusCode();
+
+        (await _client.PostAsync($"/api/sets/{setId}/post/forget-stash", null)).EnsureSuccessStatusCode();
+
+        Assert.False(Directory.Exists(_factory.FolderOpener.Opened.Single()));
+        Assert.Equal(_factory.FolderOpener.Opened, _factory.FolderOpener.Closed);
+    }
+
+    [Fact]
+    public async Task ClosingTheExtraPicksFolder_ClosesItsWindowAndDeletesIt()
+    {
+        var (setId, _) = await CreateReadySetAsync(2);
+        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null)).EnsureSuccessStatusCode();
+
+        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks/close", null)).EnsureSuccessStatusCode();
+        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks/close", null)).EnsureSuccessStatusCode();
+
+        Assert.False(Directory.Exists(_factory.FolderOpener.Opened.Single()));
+        Assert.Equal(_factory.FolderOpener.Opened, _factory.FolderOpener.Closed);
+    }
+
+    [Fact]
+    public async Task ReopeningTheExtraPicksFolder_ClosesTheEarlierWindowFirst()
+    {
+        var (setId, _) = await CreateReadySetAsync(2);
+
+        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null)).EnsureSuccessStatusCode();
+        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null)).EnsureSuccessStatusCode();
+
+        Assert.Equal(2, _factory.FolderOpener.Opened.Count);
+        Assert.Equal([_factory.FolderOpener.Opened[0]], _factory.FolderOpener.Closed);
+        Assert.True(Directory.Exists(_factory.FolderOpener.Opened[1]));
     }
 
     [Fact]

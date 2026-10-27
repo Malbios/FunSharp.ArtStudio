@@ -39,5 +39,6 @@ public static class PostEndpoints
             await posting.ForgetStashAsync(id, ct));
         post.MapPost("extra-picks", async (int id, ExtraPicksFolder folder, CancellationToken ct) =>
             new { Folder = await folder.OpenAsync(id, ct) });
+        post.MapPost("extra-picks/close", (int id, ExtraPicksFolder folder) => folder.Close(id));
     }
 }
