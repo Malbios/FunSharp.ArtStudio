@@ -165,7 +165,7 @@ public static class SetEndpoints
             PromptGenerationDto.From(set),
             set.Images.Select(image => ImageDto.From(image, jobsById[image.GenerationJobId])).ToList(),
             videos.Select(video => VideoDto.From(video, jobsById[video.GenerationJobId], frames)).ToList(),
-            set.Jobs.Select(job => JobDto.From(job, secondsPerVideoUnit)).ToList(),
+            set.Jobs.Select(job => JobDto.From(job, secondsPerVideoUnit, set.Picks.FirstOrDefault()?.GeneratedImageId)).ToList(),
             PostDto.From(set, postSuggestions.IsSuggesting(set.Id))));
     }
 

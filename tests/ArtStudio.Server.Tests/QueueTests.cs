@@ -172,6 +172,24 @@ public sealed class QueueTests : IDisposable
     }
 
     [Fact]
+    public async Task QueuedJob_OfASetWithPicks_ShowsItsFirstPick()
+    {
+        var setId = await _factory.CreateSetAsync(_client, "fox", count: 2);
+        await WaitForJobStatusAsync(setId, JobStatus.Completed);
+        var images = (await GetSetAsync(_client, setId)).Images.Select(i => i.Id).ToList();
+        foreach (var imageId in new[] { images[1], images[0] })
+            (await _client.PostAsJsonAsync($"/api/sets/{setId}/picks", new { imageId })).EnsureSuccessStatusCode();
+        (await _client.PostAsync("/api/queue/pause", null)).EnsureSuccessStatusCode();
+
+        (await _client.PostAsJsonAsync($"/api/sets/{setId}/more", new { count = 1 })).EnsureSuccessStatusCode();
+        var unpicked = await _factory.CreateSetAsync(_client, "owl", count: 1);
+
+        var queued = (await GetQueueAsync(_client)).Active;
+        Assert.Equal($"/api/images/{images[1]}", queued.Single(j => j.SetId == setId).FirstPickUrl);
+        Assert.Null(queued.Single(j => j.SetId == unpicked).FirstPickUrl);
+    }
+
+    [Fact]
     public async Task CancelQueuedJob_IsNeverRun()
     {
         _factory.Comfy.HoldRuns = true;

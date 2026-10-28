@@ -36,9 +36,15 @@ public static class QueueEndpoints
             .OrderBy(j => j.Status == JobStatus.Running ? 0 : 1)
             .ThenBy(j => j.QueuePosition);
         var waiting = queue.InRunOrder(active.Where(j => j.Status == JobStatus.Queued), j => j.Kind, j => j.QueuePosition);
+        var setIds = active.Select(j => j.PromptSetId).Distinct().ToList();
+        var firstPicks = (await db.Picks.Where(p => setIds.Contains(p.PromptSetId)).ToListAsync(ct))
+            .GroupBy(p => p.PromptSetId)
+            .ToDictionary(picks => picks.Key, picks => picks.MinBy(p => p.Position)!.GeneratedImageId);
 
         return new QueueDto(
             settings.ImageQueuePaused, settings.VideoQueuePaused, queue.LoadedKind,
-            settings.ServerUrlFor(JobKind.Image) == settings.ServerUrlFor(JobKind.Video), started.Concat(waiting).Select(job => JobDto.From(job, secondsPerVideoUnit)).ToList());
+            settings.ServerUrlFor(JobKind.Image) == settings.ServerUrlFor(JobKind.Video), started.Concat(waiting)
+                .Select(job => JobDto.From(job, secondsPerVideoUnit, firstPicks.TryGetValue(job.PromptSetId, out var pick) ? pick : null))
+                .ToList());
     }
 }

@@ -29,6 +29,7 @@ public sealed record JobDto(
     string Resolution,
     string? ParagraphOrder,
     string? SourceImageUrl,
+    string? FirstPickUrl,
     int RequestedCount,
     int CompletedCount,
     JobStatus Status,
@@ -43,7 +44,8 @@ public sealed record JobDto(
     DateTimeOffset? CurrentRunStartedAt)
 {
     /// <param name="secondsPerVideoUnit">From <see cref="VideoTimeEstimator.SecondsPerUnitAsync"/>, for video estimates.</param>
-    public static JobDto From(GenerationJob job, double secondsPerVideoUnit) => new(
+    /// <param name="firstPickedImageId">The #1 pick of the job's set, if it has one.</param>
+    public static JobDto From(GenerationJob job, double secondsPerVideoUnit, int? firstPickedImageId) => new(
         job.Id,
         job.PromptSetId,
         job.Kind,
@@ -52,6 +54,7 @@ public sealed record JobDto(
         job.ParagraphOrder,
         // A video job shows the image it starts from.
         job.Kind == JobKind.Video ? ApiUrls.VideoFrame(job.Id, "start") : ApiUrls.SourceImage(job.PromptSet),
+        firstPickedImageId is int imageId ? ApiUrls.Image(imageId) : null,
         job.RequestedCount,
         job.CompletedCount,
         job.Status,

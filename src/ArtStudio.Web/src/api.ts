@@ -33,6 +33,8 @@ export interface Job {
   paragraphOrder: string | null
   /** For a video job, the image it starts from. */
   sourceImageUrl: string | null
+  /** The #1 pick of the job's set, if it has one. */
+  firstPickUrl: string | null
   requestedCount: number
   completedCount: number
   status: JobStatus

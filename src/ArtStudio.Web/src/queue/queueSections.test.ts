@@ -12,6 +12,7 @@ function job(kind: JobKind, status: JobStatus = 'Queued'): Job {
     resolution: '',
     paragraphOrder: null,
     sourceImageUrl: null,
+    firstPickUrl: null,
     requestedCount: 1,
     completedCount: 0,
     status,

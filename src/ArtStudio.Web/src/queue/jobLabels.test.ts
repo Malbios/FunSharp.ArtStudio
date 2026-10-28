@@ -13,6 +13,7 @@ function videoJob(changes: Partial<Job>): Job {
     resolution: '896 x 512',
     paragraphOrder: null,
     sourceImageUrl: null,
+    firstPickUrl: null,
     requestedCount: 1,
     completedCount: 0,
     status: 'Queued',

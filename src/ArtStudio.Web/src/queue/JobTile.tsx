@@ -24,12 +24,18 @@ export function JobTile({ job, canMoveUp = false, canMoveDown = false }: Props) 
   const timeLabel = jobTimeLabel(job, useNow())
   const setUrl = `/sets/${job.setId}`
   const returnState = useReturnState()
+  const pickUrl = job.kind === 'Image' ? job.firstPickUrl : null
+  const imageUrl = pickUrl ?? job.sourceImageUrl
 
   return (
     <div className="panel job-tile">
       <Link to={setUrl} state={returnState} className="job-tile-image">
-        {job.sourceImageUrl ? (
-          <img src={job.sourceImageUrl} alt={`Base image of set #${job.setId}`} loading="lazy" />
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={pickUrl ? `#1 pick of set #${job.setId}` : `Base image of set #${job.setId}`}
+            loading="lazy"
+          />
         ) : (
           <div className="job-tile-placeholder">
             <span>No base image</span>
