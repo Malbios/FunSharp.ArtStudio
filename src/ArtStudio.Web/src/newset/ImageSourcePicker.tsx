@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, ApiError } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
+import { OtherSetsByArtist } from '../deviantart/OtherSetsByArtist'
 import { imageFileFrom, loadImageFile, sourceDimensions, sourceImageUrl, type ImageSource } from './imageSource'
 
 export type SourceTab = 'None' | 'Upload' | 'Paste' | 'DeviantArt'
@@ -80,7 +81,8 @@ export function ImageSourcePicker({ source, initialTab = 'None', tabs = TABS, on
         {source.imageUrl && <img className="source-preview" src={source.imageUrl} alt="Inspiration image" />}
         {source.deviantArtAuthor && (
           <p className="hint">
-            by <DeviantArtUserLink username={source.deviantArtAuthor} />
+            by <DeviantArtUserLink username={source.deviantArtAuthor} />{' '}
+            <OtherSetsByArtist count={source.otherSetsByArtist} />
           </p>
         )}
       </div>

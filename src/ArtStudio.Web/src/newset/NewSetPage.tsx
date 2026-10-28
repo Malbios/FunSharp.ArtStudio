@@ -80,7 +80,12 @@ export function NewSetPage() {
       setOrder(parseOrder(fromImage ? fromImage.paragraphOrder : set.paragraphOrder))
       setResolutionIsAuto(false)
       if (set.isDraft) setCount(set.draftImageCount)
-      setSource({ kind: 'BasedOn', imageUrl: set.sourceImageUrl, deviantArtAuthor: set.deviantArtAuthor })
+      setSource({
+        kind: 'BasedOn',
+        imageUrl: set.sourceImageUrl,
+        deviantArtAuthor: set.deviantArtAuthor,
+        otherSetsByArtist: set.otherSetsByArtist,
+      })
     }, (failure: Error) => setError(failure.message))
   }, [baseSetId, fromImageId])
 

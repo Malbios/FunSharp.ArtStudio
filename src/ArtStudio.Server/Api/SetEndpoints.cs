@@ -147,6 +147,10 @@ public static class SetEndpoints
         var videos = await db.Videos.Where(v => v.PromptSetId == id).OrderBy(v => v.Id).ToListAsync(ct);
         var secondsPerVideoUnit = await estimator.SecondsPerUnitAsync(ct);
         var frames = new VideoFrames(set, set.Images, set.Jobs);
+        var otherSetsByArtist = set.DeviantArtAuthor is null
+            ? 0
+            : await db.PromptSets.CountAsync(
+                s => s.Id != id && EF.Functions.Collate(s.DeviantArtAuthor, "NOCASE") == set.DeviantArtAuthor, ct);
 
         return Results.Ok(new SetDetailDto(
             set.Id,
@@ -158,6 +162,7 @@ public static class SetEndpoints
             set.DeviantArtUrl,
             set.DeviantArtAuthor,
             set.DeviantArtTitle,
+            otherSetsByArtist,
             set.Picks.Select(p => p.GeneratedImageId).ToList(),
             set.CreatedAt,
             set.IsDraft,

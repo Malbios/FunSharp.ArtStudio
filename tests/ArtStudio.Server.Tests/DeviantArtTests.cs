@@ -294,6 +294,20 @@ public sealed class DeviantArtTests : IDisposable
     }
 
     [Fact]
+    public async Task SetDetail_CountsOtherSetsByTheSameArtist_InAnyStage()
+    {
+        var set = await SeedSetAsync("SomeArtist");
+        await SeedSetAsync("someartist", s => s.IsDraft = true);
+        await SeedSetAsync("SOMEARTIST", s => s.ArchivedAt = DateTimeOffset.UtcNow);
+        await SeedSetAsync("SomeArtist", s => s.ReadyToPostAt = DateTimeOffset.UtcNow);
+        await SeedSetAsync("otherartist");
+        var ownImage = await SeedSetAsync(author: null);
+
+        Assert.Equal(3, (await GetSetAsync(_client, set)).OtherSetsByArtist);
+        Assert.Equal(0, (await GetSetAsync(_client, ownImage)).OtherSetsByArtist);
+    }
+
+    [Fact]
     public async Task BlockingAnArtist_CancelsTheQueuedJobsOfTheirSets()
     {
         (await _client.PostAsync("/api/queue/pause", null)).EnsureSuccessStatusCode();

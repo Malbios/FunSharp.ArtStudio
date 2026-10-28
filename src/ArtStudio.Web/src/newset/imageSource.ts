@@ -4,7 +4,7 @@ export type ImageSource =
   | { kind: 'None' }
   | { kind: 'Upload' | 'Paste'; file: File; previewUrl: string; width: number; height: number }
   | { kind: 'DeviantArt'; preview: DeviationPreview; imageIndex: number }
-  | { kind: 'BasedOn'; imageUrl: string | null; deviantArtAuthor: string | null }
+  | { kind: 'BasedOn'; imageUrl: string | null; deviantArtAuthor: string | null; otherSetsByArtist: number }
 
 export const NO_SOURCE: ImageSource = { kind: 'None' }
 

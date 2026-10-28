@@ -4,6 +4,7 @@ import { api, type ImageInfo } from '../api'
 import { useStudioEvents, type JobEventPayload } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
+import { OtherSetsByArtist } from '../deviantart/OtherSetsByArtist'
 import { PostPanel } from '../post/PostPanel'
 import { OrderLabel } from '../prompt/OrderLabel'
 import { JobRow } from '../queue/JobRow'
@@ -314,7 +315,8 @@ export function SetDetailPage() {
                 {data.deviantArtAuthor && (
                   <>
                     {' '}
-                    (<DeviantArtUserLink username={data.deviantArtAuthor} />)
+                    (<DeviantArtUserLink username={data.deviantArtAuthor} />{' '}
+                    <OtherSetsByArtist count={data.otherSetsByArtist} />)
                   </>
                 )}
               </p>

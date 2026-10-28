@@ -184,6 +184,7 @@ export interface SetDetail {
   deviantArtAuthor: string | null
   /** Null for sets made before titles were kept; api.deviantArtTitle fetches those once. */
   deviantArtTitle: string | null
+  otherSetsByArtist: number
   pickedImageIds: number[]
   createdAt: string
   isDraft: boolean
