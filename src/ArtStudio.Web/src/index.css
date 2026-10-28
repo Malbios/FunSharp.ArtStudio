@@ -1245,7 +1245,7 @@ button.image-tile-pick {
   font-size: 1.3rem;
 }
 
-.image-tile button.image-tile-pick {
+.image-tile:not(.selected) button.image-tile-pick {
   min-width: 5.5rem;
   min-height: 5.5rem;
   padding: 0.3rem 1.2rem;
