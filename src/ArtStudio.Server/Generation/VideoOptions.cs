@@ -8,7 +8,7 @@ public sealed record VideoResolutionPreset(string Name, double Megapixels, strin
 public static class VideoOptions
 {
     public const double DefaultSeconds = 5;
-    public const string DefaultResolution = "896 x 512";
+    public const string DefaultResolution = "864 x 480";
     public const double MaxSeconds = 30;
     // The workflow's notes: H3's canvas is capped at 768x1344, which is its 0.98 megapixel preset.
     public const double MaxMegapixels = 0.98;
