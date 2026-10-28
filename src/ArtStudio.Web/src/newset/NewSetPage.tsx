@@ -129,6 +129,7 @@ export function NewSetPage() {
 
   function applyPreset(preset: BuildingBlock) {
     setParagraphs((current) => withArtStyle(current, preset.artStyle))
+    if (preset.paragraphOrder) setOrder(parseOrder(preset.paragraphOrder))
     const nextResolution = preset.resolution ?? resolution
     const nextCount = preset.imageCount ?? count
     if (preset.resolution) {

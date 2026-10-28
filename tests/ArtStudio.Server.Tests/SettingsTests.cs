@@ -121,6 +121,22 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PresetParagraphOrder_IsStored_KeepsTheNormalOrderExplicit_AndIsChecked()
+    {
+        async Task<HttpResponseMessage> AddAsync(string paragraphOrder) =>
+            await _client.PostAsJsonAsync("/api/building-blocks", new { label = "Order", kind = "Preset", paragraphOrder });
+
+        var styleFirst = await (await AddAsync("Style,Characters,Setting,Composition")).Content.ReadFromJsonAsync<JsonElement>();
+        var normal = await (await AddAsync("Characters,Setting,Composition,Style")).Content.ReadFromJsonAsync<JsonElement>();
+        var invalid = await AddAsync("Style,Setting");
+
+        Assert.Equal("Style,Characters,Setting,Composition", styleFirst.GetProperty("paragraphOrder").GetString());
+        Assert.Equal("Characters,Setting,Composition,Style", normal.GetProperty("paragraphOrder").GetString());
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        Assert.Equal(JsonValueKind.Null, (await AddPresetAsync()).GetProperty("paragraphOrder").ValueKind);
+    }
+
     private async Task<JsonElement> AddPresetAsync()
     {
         var response = await _client.PostAsJsonAsync("/api/building-blocks", new { label = "Oil", kind = "Preset", imageCount = 2 });

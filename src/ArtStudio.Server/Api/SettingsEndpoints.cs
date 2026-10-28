@@ -19,7 +19,8 @@ public sealed record BuildingBlockRequest(
     string? ArtStyle = null,
     string? Resolution = null,
     int? ImageCount = null,
-    IReadOnlyList<int>? PresetIds = null);
+    IReadOnlyList<int>? PresetIds = null,
+    string? ParagraphOrder = null);
 
 public sealed record ReorderRequest(IReadOnlyList<int> Ids);
 
@@ -220,6 +221,7 @@ public static class SettingsEndpoints
         block.ArtStyle = null;
         block.Resolution = null;
         block.ImageCount = null;
+        block.ParagraphOrder = null;
         block.SetBundledPresetIds(ids);
     }
 
@@ -233,6 +235,7 @@ public static class SettingsEndpoints
         block.ArtStyle = null;
         block.Resolution = null;
         block.ImageCount = null;
+        block.ParagraphOrder = null;
     }
 
     private static void ApplyPreset(BuildingBlock block, BuildingBlockRequest request)
@@ -246,8 +249,9 @@ public static class SettingsEndpoints
                 ?? throw new UserFacingException($"Unknown resolution '{request.Resolution}'.");
         if (request.ImageCount is < 1 or > QueueService.MaxImagesPerJob)
             throw new UserFacingException($"Image count must be between 1 and {QueueService.MaxImagesPerJob}.");
-        if (artStyle is null && resolution is null && request.ImageCount is null)
-            throw new UserFacingException("A preset needs an art style, a resolution or an image count.");
+        var paragraphOrder = ParagraphOrder.Validated(request.ParagraphOrder);
+        if (artStyle is null && resolution is null && request.ImageCount is null && paragraphOrder is null)
+            throw new UserFacingException("A preset needs an art style, a resolution, an image count or a paragraph order.");
 
         block.Kind = BuildingBlockKind.Preset;
         block.Label = request.Label.Trim();
@@ -255,5 +259,6 @@ public static class SettingsEndpoints
         block.ArtStyle = artStyle;
         block.Resolution = resolution;
         block.ImageCount = request.ImageCount;
+        block.ParagraphOrder = paragraphOrder;
     }
 }

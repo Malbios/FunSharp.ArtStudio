@@ -21,6 +21,8 @@ public class BuildingBlock
     public string? ArtStyle { get; set; }
     public string? Resolution { get; set; }
     public int? ImageCount { get; set; }
+    /// <summary>A preset's paragraph order; null leaves the order of the run alone.</summary>
+    public string? ParagraphOrder { get; set; }
     public string? ImagePath { get; set; }
 
     /// <summary>The bundle's preset ids in order, comma-separated.</summary>

@@ -26,6 +26,9 @@ public static class ParagraphOrder
         return sections.SequenceEqual(NormalOrder) ? null : string.Join(',', sections);
     }
 
+    /// <summary>A checked order that keeps the normal order explicit, as presets need; null when none is given.</summary>
+    public static string? Validated(string? order) => string.IsNullOrWhiteSpace(order) ? null : Normalize(order) ?? Normal;
+
     /// <summary>The prompt with its sections in the given order; prompts without all fixed sections stay as they are.</summary>
     public static string Apply(string prompt, string? order)
     {

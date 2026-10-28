@@ -270,6 +270,7 @@ export interface BuildingBlock {
   artStyle: string | null
   resolution: string | null
   imageCount: number | null
+  paragraphOrder: string | null
   sortOrder: number
   imageUrl: string | null
   /** A bundle's presets in order. */
@@ -282,6 +283,7 @@ export interface PresetFields {
   artStyle: string | null
   resolution: string | null
   imageCount: number | null
+  paragraphOrder: string | null
 }
 
 export interface BlockedArtist {

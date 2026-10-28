@@ -212,12 +212,13 @@ public sealed record BuildingBlockDto(
     string? ArtStyle,
     string? Resolution,
     int? ImageCount,
+    string? ParagraphOrder,
     int SortOrder,
     string? ImageUrl,
     IReadOnlyList<int> PresetIds)
 {
     public static BuildingBlockDto From(BuildingBlock block) => new(
-        block.Id, block.Kind, block.Label, block.Text, block.ArtStyle, block.Resolution, block.ImageCount,
+        block.Id, block.Kind, block.Label, block.Text, block.ArtStyle, block.Resolution, block.ImageCount, block.ParagraphOrder,
         block.SortOrder, ApiUrls.PresetImage(block), block.BundledPresetIds());
 }
 

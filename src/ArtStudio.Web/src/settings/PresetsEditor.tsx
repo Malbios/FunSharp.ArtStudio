@@ -2,11 +2,13 @@ import { useState, type ClipboardEvent, type FormEvent } from 'react'
 import { api, type BuildingBlock, type PresetFields, type ResolutionPreset } from '../api'
 import { useLoad, type Loaded } from '../live/useLoad'
 import { imageFileFrom } from '../newset/imageSource'
+import { ParagraphOrderChips } from '../newset/ParagraphOrderChips'
 import { cleanPrompt } from '../prompt/cleanPrompt'
 import { insertAtSelection } from '../prompt/insertAtSelection'
+import { NORMAL_ORDER, parseOrder, serializeOrder } from '../prompt/paragraphOrder'
 import { PresetImage, readClipboardImage } from './PresetImage'
 
-const EMPTY_PRESET: PresetFields = { label: '', artStyle: null, resolution: null, imageCount: null }
+const EMPTY_PRESET: PresetFields = { label: '', artStyle: null, resolution: null, imageCount: null, paragraphOrder: null }
 
 /** `blocks` is shared with the bundles editor, so bundles see preset changes right away. */
 export function PresetsEditor({ blocks }: { blocks: Loaded<BuildingBlock[]> }) {
@@ -88,7 +90,7 @@ export function PresetsEditor({ blocks }: { blocks: Loaded<BuildingBlock[]> }) {
         {insertPoint(0)}
         {list.map((preset, index) => [
           <PresetRow
-            key={`${preset.id}-${preset.label}-${preset.artStyle}-${preset.resolution}-${preset.imageCount}`}
+            key={`${preset.id}-${preset.label}-${preset.artStyle}-${preset.resolution}-${preset.imageCount}-${preset.paragraphOrder}`}
             preset={preset}
             resolutions={resolutions.data ?? []}
             canMoveUp={index > 0}
@@ -129,6 +131,7 @@ function PresetRow(props: RowProps) {
     artStyle: preset.artStyle,
     resolution: preset.resolution,
     imageCount: preset.imageCount,
+    paragraphOrder: preset.paragraphOrder,
   }
   const [fields, setFields] = useState(saved)
   const changed = JSON.stringify(fields) !== JSON.stringify(saved)
@@ -222,6 +225,22 @@ function PresetInputs({ fields, resolutions, onChange }: InputsProps) {
         value={fields.imageCount ?? ''}
         onChange={(e) => change({ imageCount: e.target.value ? Number(e.target.value) : null })}
       />
+      <div className="preset-order">
+        <label className="inline-check">
+          <input
+            type="checkbox"
+            checked={fields.paragraphOrder !== null}
+            onChange={(e) => change({ paragraphOrder: e.target.checked ? serializeOrder(NORMAL_ORDER) : null })}
+          />
+          Set the paragraph order
+        </label>
+        {fields.paragraphOrder !== null && (
+          <ParagraphOrderChips
+            order={parseOrder(fields.paragraphOrder)}
+            onChange={(order) => change({ paragraphOrder: serializeOrder(order) })}
+          />
+        )}
+      </div>
     </>
   )
 }

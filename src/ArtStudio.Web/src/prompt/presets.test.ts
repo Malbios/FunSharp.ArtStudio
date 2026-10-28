@@ -17,9 +17,15 @@ describe('withArtStyle', () => {
 
 describe('describePreset', () => {
   it('lists only what the preset changes', () => {
-    expect(describePreset({ artStyle: 'Oil paint.', resolution: null, imageCount: 4 })).toBe(
+    expect(describePreset({ artStyle: 'Oil paint.', resolution: null, imageCount: 4, paragraphOrder: null })).toBe(
       'Art style: Oil paint.\nImages: 4',
     )
+  })
+
+  it('names the paragraph order, also when it is the normal one', () => {
+    const order = (paragraphOrder: string) => describePreset({ artStyle: null, resolution: null, imageCount: null, paragraphOrder })
+    expect(order('Style,Characters,Setting,Composition')).toBe('Order: Art style → Characters → Setting → Composition')
+    expect(order('Characters,Setting,Composition,Style')).toBe('Order: normal')
   })
 })
 
@@ -27,7 +33,7 @@ describe('presetRequeue', () => {
   it('replaces the art style and uses the preset resolution and count', () => {
     expect(
       presetRequeue(
-        { artStyle: 'Oil.', resolution: 'Wide', imageCount: 4 },
+        { artStyle: 'Oil.', resolution: 'Wide', imageCount: 4, paragraphOrder: null },
         'A fox.\n\nA forest.\n\nEye level.\n\nWatercolour.',
         'Native',
         2,
@@ -43,13 +49,26 @@ describe('presetRequeue', () => {
 
   it('keeps what the preset does not set', () => {
     expect(
-      presetRequeue({ artStyle: null, resolution: null, imageCount: null }, 'A fox.\n\nWatercolour.', 'Native', 3, null),
+      presetRequeue(
+        { artStyle: null, resolution: null, imageCount: null, paragraphOrder: null },
+        'A fox.\n\nWatercolour.',
+        'Native',
+        3,
+        null,
+      ),
     ).toEqual({
       prompt: 'A fox.\n\nWatercolour.',
       resolution: 'Native',
       count: 3,
       paragraphOrder: 'Characters,Setting,Composition,Style',
     })
+  })
+
+  it("uses the preset's paragraph order over the given one", () => {
+    const preset = { artStyle: null, resolution: null, imageCount: null, paragraphOrder: 'Characters,Setting,Composition,Style' }
+    expect(presetRequeue(preset, 'A fox.', 'Native', 1, 'Style,Characters,Setting,Composition').paragraphOrder).toBe(
+      'Characters,Setting,Composition,Style',
+    )
   })
 })
 

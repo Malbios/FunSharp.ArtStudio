@@ -1487,7 +1487,8 @@ span.image-tile-pick {
   grid-template-columns: 220px 200px 130px minmax(0, 1fr) auto;
   grid-template-areas:
     'label resolution count . actions'
-    'image style style style style';
+    'image style style style style'
+    'image order order order order';
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--border);
 }
@@ -1495,7 +1496,8 @@ span.image-tile-pick {
 .editable-row.preset-row.new-preset {
   grid-template-areas:
     'label resolution count . actions'
-    'style style style style style';
+    'style style style style style'
+    'order order order order order';
 }
 
 .editable-row.new-entry {
@@ -1561,6 +1563,14 @@ span.image-tile-pick {
   grid-area: style;
   min-height: 7.5rem;
   resize: vertical;
+}
+
+.preset-row .preset-order {
+  grid-area: order;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .preset-row .row-actions {

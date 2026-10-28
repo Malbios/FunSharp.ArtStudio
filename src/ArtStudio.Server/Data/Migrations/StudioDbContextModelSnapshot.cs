@@ -62,6 +62,9 @@ namespace ArtStudio.Server.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ParagraphOrder")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("PresetIds")
                         .HasColumnType("TEXT");
 
