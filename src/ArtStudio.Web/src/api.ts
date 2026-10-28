@@ -300,6 +300,14 @@ export interface BlockedArtist {
   createdAt: string
 }
 
+/** postedUrls are the archived sets already on DeviantArt, whose API cannot unpublish them. */
+export interface BlockArtistResult {
+  artist: BlockedArtist
+  archivedSets: number
+  deletedDrafts: number
+  postedUrls: string[]
+}
+
 export interface DeviantArtTotals {
   published: number
   tracked: number
@@ -478,7 +486,7 @@ export const api = {
 
   previewDeviation: (url: string) => request<DeviationPreview>('POST', '/api/deviantart/preview', { url }),
   blockedArtists: () => request<BlockedArtist[]>('GET', '/api/blocked-artists'),
-  blockArtist: (username: string) => request<BlockedArtist>('POST', '/api/blocked-artists', { username }),
+  blockArtist: (username: string) => request<BlockArtistResult>('POST', '/api/blocked-artists', { username }),
   unblockArtist: (id: number) => request<void>('DELETE', `/api/blocked-artists/${id}`),
 
   deviantArtApp: () => request<DeviantArtApp>('GET', '/api/deviantart/app'),

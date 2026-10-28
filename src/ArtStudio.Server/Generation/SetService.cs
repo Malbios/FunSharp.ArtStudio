@@ -17,6 +17,8 @@ public abstract record SetSource
     public sealed record DeviantArtUrl(string Url, int ImageIndex) : SetSource;
 }
 
+public sealed record ArtistSetsArchived(int ArchivedCount, int DeletedDraftCount, IReadOnlyList<string> PostedUrls);
+
 /// <summary>A new set that starts with videos of its source image instead of images.</summary>
 public sealed record NewSetVideo(SetSource.ImageFile? EndImage, double Seconds, double Megapixels, bool Turbo);
 
@@ -442,6 +444,27 @@ public sealed class SetService(
         await db.SaveChangesAsync(ct);
         ExtraPicksFolder.Delete(paths, folderOpener, setId);
         await notifier.SetUpdated(setId);
+    }
+
+    public async Task<ArtistSetsArchived> ArchiveSetsOfArtistAsync(string username, CancellationToken ct)
+    {
+        var sets = await db.PromptSets
+            .Where(s => EF.Functions.Collate(s.DeviantArtAuthor, "NOCASE") == username && s.ArchivedAt == null)
+            .Select(s => new { s.Id, s.IsDraft, s.PublishedUrl })
+            .ToListAsync(ct);
+
+        foreach (var set in sets)
+        {
+            if (set.IsDraft)
+                await DeleteAsync(set.Id, ct);
+            else
+                await ArchiveAsync(set.Id, ct);
+        }
+
+        return new ArtistSetsArchived(
+            sets.Count(s => !s.IsDraft),
+            sets.Count(s => s.IsDraft),
+            sets.Where(s => !s.IsDraft).Select(s => s.PublishedUrl).OfType<string>().ToList());
     }
 
     public async Task RestoreAsync(int setId, CancellationToken ct)

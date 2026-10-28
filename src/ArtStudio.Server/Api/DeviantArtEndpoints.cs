@@ -12,6 +12,9 @@ public sealed record BlockArtistRequest(string Username);
 
 public sealed record BlockedArtistDto(int Id, string Username, DateTimeOffset CreatedAt);
 
+/// <summary>PostedUrls are the archived sets already on DeviantArt, whose API cannot unpublish them.</summary>
+public sealed record BlockArtistResultDto(BlockedArtistDto Artist, int ArchivedSets, int DeletedDrafts, IReadOnlyList<string> PostedUrls);
+
 public static class DeviantArtEndpoints
 {
     public static void MapDeviantArtEndpoints(this IEndpointRouteBuilder app)
@@ -34,8 +37,8 @@ public static class DeviantArtEndpoints
         });
     }
 
-    private static async Task<BlockedArtistDto> BlockArtistAsync(
-        BlockArtistRequest request, StudioDbContext db, TimeProvider clock, CancellationToken ct)
+    private static async Task<BlockArtistResultDto> BlockArtistAsync(
+        BlockArtistRequest request, StudioDbContext db, SetService setService, TimeProvider clock, CancellationToken ct)
     {
         var username = (DeviationUrl.UsernameFromProfileOrArtUrl(request.Username) ?? request.Username).Trim().TrimStart('@');
         if (username.Length == 0)
@@ -46,6 +49,9 @@ public static class DeviantArtEndpoints
         var artist = new BlockedArtist { Username = username, CreatedAt = clock.GetUtcNow() };
         db.BlockedArtists.Add(artist);
         await db.SaveChangesAsync(ct);
-        return new BlockedArtistDto(artist.Id, artist.Username, artist.CreatedAt);
+        var archived = await setService.ArchiveSetsOfArtistAsync(artist.Username, ct);
+        return new BlockArtistResultDto(
+            new BlockedArtistDto(artist.Id, artist.Username, artist.CreatedAt),
+            archived.ArchivedCount, archived.DeletedDraftCount, archived.PostedUrls);
     }
 }

@@ -1,8 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ArtStudio.Server.Data;
 using ArtStudio.Server.Domain;
 using ArtStudio.Server.Tests.Fakes;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using static ArtStudio.Server.Tests.Fakes.StudioAppFactory;
 
 namespace ArtStudio.Server.Tests;
@@ -246,12 +249,70 @@ public sealed class DeviantArtTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    private async Task<int> SeedSetAsync(string? author, Action<PromptSet>? stage = null)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<StudioDbContext>();
+        var set = new PromptSet { Prompt = "forest", Resolution = "Wide", DeviantArtAuthor = author, CreatedAt = DateTimeOffset.UtcNow };
+        stage?.Invoke(set);
+        db.PromptSets.Add(set);
+        await db.SaveChangesAsync();
+        return set.Id;
+    }
+
+    private async Task<PromptSet?> StoredSetAsync(int id)
+    {
+        using var scope = _factory.Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<StudioDbContext>().PromptSets.AsNoTracking().SingleOrDefaultAsync(s => s.Id == id);
+    }
+
+    [Fact]
+    public async Task BlockingAnArtist_ArchivesTheirSets_AndDeletesTheirDrafts()
+    {
+        const string postedUrl = "https://www.deviantart.com/me/art/Posted-1";
+        var working = await SeedSetAsync("SomeArtist");
+        var ready = await SeedSetAsync("someartist", s => s.ReadyToPostAt = DateTimeOffset.UtcNow);
+        var published = await SeedSetAsync("SOMEARTIST", s =>
+        {
+            s.ReadyToPostAt = s.PublishedAt = DateTimeOffset.UtcNow;
+            s.PublishedUrl = postedUrl;
+        });
+        var draft = await SeedSetAsync("someartist", s => s.IsDraft = true);
+        var otherArtist = await SeedSetAsync("otherartist");
+        var ownImage = await SeedSetAsync(author: null);
+
+        var result = await ReadJsonAsync(await _client.PostAsJsonAsync("/api/blocked-artists", new { username = "someartist" }));
+
+        Assert.Equal(3, result.GetProperty("archivedSets").GetInt32());
+        Assert.Equal(1, result.GetProperty("deletedDrafts").GetInt32());
+        Assert.Equal([postedUrl], result.GetProperty("postedUrls").EnumerateArray().Select(u => u.GetString()));
+        foreach (var id in new[] { working, ready, published })
+            Assert.NotNull((await StoredSetAsync(id))!.ArchivedAt);
+        Assert.Null(await StoredSetAsync(draft));
+        Assert.Null((await StoredSetAsync(otherArtist))!.ArchivedAt);
+        Assert.Null((await StoredSetAsync(ownImage))!.ArchivedAt);
+    }
+
+    [Fact]
+    public async Task BlockingAnArtist_CancelsTheQueuedJobsOfTheirSets()
+    {
+        (await _client.PostAsync("/api/queue/pause", null)).EnsureSuccessStatusCode();
+        var set = await ReadJsonAsync(await PostSetFromDeviationAsync(DeviationLink));
+        var setId = set.GetProperty("id").GetInt32();
+
+        (await _client.PostAsJsonAsync("/api/blocked-artists", new { username = _factory.DeviantArt.Author })).EnsureSuccessStatusCode();
+
+        var detail = await GetSetAsync(_client, setId);
+        Assert.NotNull(detail.ArchivedAt);
+        Assert.Equal(JobStatus.Cancelled, detail.Jobs.Single().Status);
+    }
+
     [Fact]
     public async Task BlockArtist_AcceptsProfileUrl_AndRejectsDuplicates()
     {
         var added = await _client.PostAsJsonAsync("/api/blocked-artists", new { username = "https://www.deviantart.com/someartist" });
         added.EnsureSuccessStatusCode();
-        var artist = await ReadJsonAsync(added);
+        var artist = (await ReadJsonAsync(added)).GetProperty("artist");
         Assert.Equal("someartist", artist.GetProperty("username").GetString());
 
         var duplicate = await _client.PostAsJsonAsync("/api/blocked-artists", new { username = "SOMEARTIST" });
