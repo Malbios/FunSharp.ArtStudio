@@ -68,6 +68,7 @@ export interface VideoInfo {
   startFrameKey: string | null
   endFrameKey: string | null
   picked: boolean
+  viewed: boolean
   createdAt: string
 }
 
@@ -129,6 +130,7 @@ export interface SetSummary {
   hasFailedJob: boolean
   pickedCount: number
   videoCount: number
+  unviewedVideoCount: number
   deviantArtAuthor: string | null
   createdAt: string
   isDraft: boolean
@@ -456,6 +458,7 @@ export const api = {
   pickImage: (setId: number, imageId: number) => request<void>('POST', `/api/sets/${setId}/picks`, { imageId }),
   unpickImage: (setId: number, imageId: number) => request<void>('DELETE', `/api/sets/${setId}/picks/${imageId}`),
   pickVideo: (videoId: number, picked: boolean) => request<void>('PUT', `/api/videos/${videoId}/pick`, { picked }),
+  markVideoViewed: (videoId: number) => request<void>('POST', `/api/videos/${videoId}/viewed`),
   reorderPicks: (setId: number, imageIds: number[]) =>
     request<void>('PUT', `/api/sets/${setId}/picks`, { imageIds }),
   markReadyToPost: (setId: number) => request<void>('POST', `/api/sets/${setId}/ready`),

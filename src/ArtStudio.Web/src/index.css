@@ -244,6 +244,12 @@ main {
   border-color: var(--warning);
 }
 
+.badge.new-videos {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
 /* New set */
 
 .new-set-layout {
@@ -1146,6 +1152,11 @@ main {
 
 .set-card:hover {
   border-color: var(--accent);
+}
+
+.set-card:has(.new-videos) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .set-card-image {

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
+import { NewVideosBadge } from '../sets/NewVideosBadge'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { ARCHIVED_FILTERS } from '../paging/listFilters'
@@ -54,6 +55,7 @@ export function ArchivePage() {
                   ) : (
                     set.readyToPostAt && <span className="badge status-Completed">was ready to post</span>
                   )}
+                  <NewVideosBadge set={set} />
                   {set.deviantArtAuthor && (
                     <span>
                       inspired by <DeviantArtUserLink username={set.deviantArtAuthor} />

@@ -4,6 +4,11 @@ import type { ListFilter } from './useListFilter'
 
 /** Drafts cannot have videos, so every list of sets but Drafts offers this one. */
 const HAS_VIDEOS: ListFilter<SetSummary> = { key: 'videos', label: 'Has videos', matches: (set) => set.videoCount > 0 }
+const NEW_VIDEOS: ListFilter<SetSummary> = {
+  key: 'new-videos',
+  label: 'Unviewed videos',
+  matches: (set) => set.unviewedVideoCount > 0,
+}
 
 export const SET_FILTERS: ListFilter<SetSummary>[] = [
   { key: 'idle', label: 'Not generating', matches: (set) => !set.hasActiveJob },
@@ -22,19 +27,21 @@ export const SET_FILTERS: ListFilter<SetSummary>[] = [
     excludes: ['modifying'],
   },
   HAS_VIDEOS,
+  NEW_VIDEOS,
 ]
 
 export const POST_FILTERS: ListFilter<SetSummary>[] = [
   { key: 'described', label: 'Title and tags', matches: (set) => set.hasTitleAndTags, excludes: ['undescribed'] },
   { key: 'undescribed', label: 'Missing title or tags', matches: (set) => !set.hasTitleAndTags, excludes: ['described'] },
   HAS_VIDEOS,
+  NEW_VIDEOS,
 ]
 
-export const STASHED_FILTERS: ListFilter<SetSummary>[] = [HAS_VIDEOS]
+export const STASHED_FILTERS: ListFilter<SetSummary>[] = [HAS_VIDEOS, NEW_VIDEOS]
 
-export const PUBLISHED_FILTERS: ListFilter<SetSummary>[] = [HAS_VIDEOS]
+export const PUBLISHED_FILTERS: ListFilter<SetSummary>[] = [HAS_VIDEOS, NEW_VIDEOS]
 
-export const ARCHIVED_FILTERS: ListFilter<SetSummary>[] = [HAS_VIDEOS]
+export const ARCHIVED_FILTERS: ListFilter<SetSummary>[] = [HAS_VIDEOS, NEW_VIDEOS]
 
 export const isDraftReady = (draft: SetSummary) => draft.prompt.trim() !== '' && !isPromptPending(draft.promptGeneration)
 

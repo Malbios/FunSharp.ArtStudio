@@ -11,4 +11,5 @@ public class GeneratedVideo
     /// <summary>From handing the video to ComfyUI until it was done; unknown when that spanned a restart.</summary>
     public double? RenderSeconds { get; set; }
     public bool Picked { get; set; }
+    public DateTimeOffset? ViewedAt { get; set; }
 }

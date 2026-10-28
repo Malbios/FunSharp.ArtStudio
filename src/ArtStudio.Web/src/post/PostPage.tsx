@@ -7,6 +7,7 @@ import { Pager } from '../paging/Pager'
 import { useListFilter } from '../paging/useListFilter'
 import { PAGE_PARAM, usePagedItems } from '../paging/usePagedItems'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
+import { NewVideosBadge } from '../sets/NewVideosBadge'
 
 const PRESET_PARAM = 'preset'
 
@@ -84,6 +85,7 @@ export function PostPage() {
                 <span>
                   {set.pickedCount} {set.pickedCount === 1 ? 'pick' : 'picks'}
                 </span>
+                <NewVideosBadge set={set} />
                 {set.deviantArtAuthor && (
                   <span>
                     inspired by <DeviantArtUserLink username={set.deviantArtAuthor} />

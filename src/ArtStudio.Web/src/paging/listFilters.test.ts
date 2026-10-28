@@ -86,6 +86,14 @@ describe('has videos filter', () => {
       expect(filters.find((filter) => filter.key === 'videos')!.excludes).toBeUndefined()
     }
   })
+
+  it('comes with an unviewed videos filter that shows only sets with videos not played yet', () => {
+    for (const filters of listsWithVideos) {
+      expect(matches(filters, 'new-videos', summary({ videoCount: 2, unviewedVideoCount: 1 }))).toBe(true)
+      expect(matches(filters, 'new-videos', summary({ videoCount: 2, unviewedVideoCount: 0 }))).toBe(false)
+    }
+    expect(DRAFT_FILTERS.map((filter) => filter.key)).not.toContain('new-videos')
+  })
 })
 
 describe('draft filters', () => {

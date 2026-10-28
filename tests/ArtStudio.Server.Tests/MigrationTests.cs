@@ -3,6 +3,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace ArtStudio.Server.Tests;
 
@@ -30,6 +31,37 @@ public sealed class MigrationTests
 
             Assert.True(settings.ImageQueuePaused);
             Assert.True(settings.VideoQueuePaused);
+        }
+        finally
+        {
+            using (var connection = new SqliteConnection($"Data Source={databasePath}"))
+                SqliteConnection.ClearPool(connection);
+            File.Delete(databasePath);
+        }
+    }
+
+    [Fact]
+    public async Task VideoViewed_CountsExistingVideosAsViewed()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), "ArtStudioTests", $"{Guid.NewGuid():N}.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+        var options = new DbContextOptionsBuilder<StudioDbContext>().UseSqlite($"Data Source={databasePath}").Options;
+        var createdAt = new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
+        var storedCreatedAt = (long)new DateTimeOffsetToBinaryConverter().ConvertToProvider(createdAt)!;
+        try
+        {
+            await using (var before = new StudioDbContext(options))
+            {
+                await before.GetService<IMigrator>().MigrateAsync("20261028122333_VideoComfyServer");
+                await before.Database.ExecuteSqlAsync(
+                    $"PRAGMA foreign_keys = OFF; INSERT INTO Videos (Id, PromptSetId, GenerationJobId, FilePath, Seed, CreatedAt, Picked) VALUES (1, 1, 1, 'C:/videos/1.mp4', 7, {storedCreatedAt}, 0)");
+            }
+
+            await using var after = new StudioDbContext(options);
+            await after.Database.MigrateAsync();
+            var video = await after.Videos.AsNoTracking().SingleAsync();
+
+            Assert.Equal(createdAt, video.ViewedAt);
         }
         finally
         {

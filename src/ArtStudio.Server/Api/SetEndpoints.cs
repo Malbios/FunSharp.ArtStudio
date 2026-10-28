@@ -90,6 +90,7 @@ public static class SetEndpoints
                 FirstPickedImageId = s.Picks.OrderBy(p => p.Position).Select(p => (int?)p.GeneratedImageId).FirstOrDefault(),
                 PickedCount = s.Picks.Count,
                 VideoCount = db.Videos.Count(v => v.PromptSetId == s.Id),
+                UnviewedVideoCount = db.Videos.Count(v => v.PromptSetId == s.Id && v.ViewedAt == null),
                 HasActiveJob = s.Jobs.Any(j => activeStatuses.Contains(j.Status)),
                 HasFailedJob = s.Jobs.Any(j => j.Status == JobStatus.Failed),
             })
@@ -116,7 +117,8 @@ public static class SetEndpoints
                 s.Set.PublishedUrl,
                 s.Set.PublishedAt,
                 !PostSuggestionQueue.NeedsSuggestions(s.Set),
-                s.VideoCount))
+                s.VideoCount,
+                s.UnviewedVideoCount))
             .ToList();
     }
 

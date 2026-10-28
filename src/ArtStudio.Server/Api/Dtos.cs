@@ -85,6 +85,7 @@ public sealed record VideoDto(
     string? StartFrameKey,
     string? EndFrameKey,
     bool Picked,
+    bool Viewed,
     DateTimeOffset CreatedAt)
 {
     /// <param name="frames">The set's frames, to name the video's start and end frame for making it again.</param>
@@ -104,6 +105,7 @@ public sealed record VideoDto(
         frames.KeyOf(job.VideoStartImagePath),
         frames.KeyOf(job.VideoEndImagePath),
         video.Picked,
+        video.ViewedAt is not null,
         video.CreatedAt);
 }
 
@@ -135,7 +137,8 @@ public sealed record SetSummaryDto(
     string? PublishedUrl,
     DateTimeOffset? PublishedAt,
     bool HasTitleAndTags,
-    int VideoCount);
+    int VideoCount,
+    int UnviewedVideoCount);
 
 public sealed record SetDetailDto(
     int Id,

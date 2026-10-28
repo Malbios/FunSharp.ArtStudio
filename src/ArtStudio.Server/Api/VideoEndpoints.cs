@@ -22,6 +22,7 @@ public static class VideoEndpoints
         app.MapGet("/api/videos/{id:int}", async (int id, StudioDbContext db, CancellationToken ct) =>
             SetEndpoints.FileResult(await db.Videos.Where(v => v.Id == id).Select(v => v.FilePath).SingleOrDefaultAsync(ct)));
         app.MapPut("/api/videos/{id:int}/pick", PickVideoAsync);
+        app.MapPost("/api/videos/{id:int}/viewed", MarkVideoViewedAsync);
         app.MapGet("/api/jobs/{id:int}/frames/{frame}", GetFrameAsync);
         app.MapGet("/api/sets/{id:int}/video-frames", async (int id, StudioDbContext db, CancellationToken ct) =>
             (await FramesOfAsync(id, db, ct)).All.Select(f => new VideoFrameDto(f.Key, f.Url, f.Label)).ToList());
@@ -48,6 +49,21 @@ public static class VideoEndpoints
             return Results.NotFound();
 
         video.Picked = request.Picked;
+        await db.SaveChangesAsync(ct);
+        await notifier.SetUpdated(video.PromptSetId);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> MarkVideoViewedAsync(
+        int id, StudioDbContext db, StudioNotifier notifier, TimeProvider clock, CancellationToken ct)
+    {
+        var video = await db.Videos.SingleOrDefaultAsync(v => v.Id == id, ct);
+        if (video is null)
+            return Results.NotFound();
+        if (video.ViewedAt is not null)
+            return Results.NoContent();
+
+        video.ViewedAt = clock.GetUtcNow();
         await db.SaveChangesAsync(ct);
         await notifier.SetUpdated(video.PromptSetId);
         return Results.NoContent();

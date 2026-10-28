@@ -8,6 +8,7 @@ import { useListFilter } from '../paging/useListFilter'
 import { usePagedItems } from '../paging/usePagedItems'
 import { isPromptBeingModified } from '../prompt/generateAction'
 import { PROMPT_BADGES } from '../prompt/promptBadges'
+import { NewVideosBadge } from './NewVideosBadge'
 import { useReturnState } from './returnTo'
 
 export function SetsPage() {
@@ -53,6 +54,7 @@ export function SetsPage() {
                   {promptBadge && <span className={`badge status-${promptBadge.status}`}>{promptBadge.label}</span>}
                   {set.hasFailedJob && <span className="badge status-Failed">failed</span>}
                   {set.pickedCount > 0 && <span className="badge status-Completed">{set.pickedCount} picked</span>}
+                  <NewVideosBadge set={set} />
                 </div>
               </div>
             </Link>

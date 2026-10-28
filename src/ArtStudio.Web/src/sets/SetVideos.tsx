@@ -43,9 +43,25 @@ function VideoTile({ video, canMakeAgain, setPageState, onChanged, onError }: Vi
     }
   }
 
+  async function markViewed() {
+    if (video.viewed) return
+    try {
+      await api.markVideoViewed(video.id)
+      onChanged()
+    } catch (failure) {
+      onError((failure as Error).message)
+    }
+  }
+
   return (
     <figure className={video.picked ? 'video-tile selected' : 'video-tile'}>
-      <video controls preload="metadata" poster={video.startImageUrl} src={video.url} />
+      <video
+        controls
+        preload="metadata"
+        poster={video.startImageUrl}
+        src={video.url}
+        onPlay={() => void markViewed()}
+      />
       <button
         type="button"
         className="image-tile-pick"
@@ -66,6 +82,7 @@ function VideoTile({ video, canMakeAgain, setPageState, onChanged, onError }: Vi
           )}
         </div>
         <div className="job-meta">
+          {!video.viewed && <span className="badge new-videos">new</span>}
           <span>{video.seconds} s</span>
           <span>{video.resolution}</span>
           <span>{video.turbo ? 'turbo' : 'full quality'}</span>
@@ -75,7 +92,13 @@ function VideoTile({ video, canMakeAgain, setPageState, onChanged, onError }: Vi
           <button type="button" className="link-button" onClick={() => void copyPrompt()}>
             {copied ? 'Copied!' : 'Copy prompt'}
           </button>
-          <a href={video.url} target="_blank" rel="noreferrer" className="link-button">
+          <a
+            href={video.url}
+            target="_blank"
+            rel="noreferrer"
+            className="link-button"
+            onClick={() => void markViewed()}
+          >
             Open original
           </a>
           {canMakeAgain && (

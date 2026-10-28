@@ -536,6 +536,52 @@ public sealed class VideoTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, (await PickVideoAsync(999, true)).StatusCode);
     }
 
+    private Task<HttpResponseMessage> MarkViewedAsync(int videoId) => _client.PostAsync($"/api/videos/{videoId}/viewed", null);
+
+    private async Task<int> UnviewedVideoCountAsync(int setId) =>
+        (await _client.GetFromJsonAsync<List<SetSummaryDto>>("/api/sets?stage=working", Json))!.Single(s => s.Id == setId).UnviewedVideoCount;
+
+    private async Task<DateTimeOffset?> ViewedAtAsync(int videoId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<StudioDbContext>();
+        return (await db.Videos.SingleAsync(v => v.Id == videoId)).ViewedAt;
+    }
+
+    [Fact]
+    public async Task NewVideo_IsUnviewed_UntilMarkedViewed()
+    {
+        var set = await SetWithVideoAsync();
+        var videoId = set.Videos.Single().Id;
+        Assert.False(set.Videos.Single().Viewed);
+        Assert.Equal(1, await UnviewedVideoCountAsync(set.Id));
+
+        (await MarkViewedAsync(videoId)).EnsureSuccessStatusCode();
+
+        Assert.True((await GetSetAsync(_client, set.Id)).Videos.Single().Viewed);
+        Assert.Equal(0, await UnviewedVideoCountAsync(set.Id));
+    }
+
+    [Fact]
+    public async Task MarkingAVideoViewedAgain_KeepsWhenItWasFirstViewed()
+    {
+        var set = await SetWithVideoAsync();
+        var videoId = set.Videos.Single().Id;
+        (await MarkViewedAsync(videoId)).EnsureSuccessStatusCode();
+        var firstViewedAt = await ViewedAtAsync(videoId);
+
+        (await MarkViewedAsync(videoId)).EnsureSuccessStatusCode();
+
+        Assert.NotNull(firstViewedAt);
+        Assert.Equal(firstViewedAt, await ViewedAtAsync(videoId));
+    }
+
+    [Fact]
+    public async Task MarkingAnUnknownVideoViewed_IsNotFound()
+    {
+        Assert.Equal(HttpStatusCode.NotFound, (await MarkViewedAsync(999)).StatusCode);
+    }
+
     [Fact]
     public async Task DeviantArtInspiration_IsNotOfferedAsAFrame()
     {

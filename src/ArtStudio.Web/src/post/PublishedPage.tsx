@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
+import { NewVideosBadge } from '../sets/NewVideosBadge'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { PUBLISHED_FILTERS } from '../paging/listFilters'
@@ -48,6 +49,7 @@ export function PublishedPage() {
                   Posted
                 </a>
                 {set.publishedAt && <span>{new Date(set.publishedAt).toLocaleString()}</span>}
+                <NewVideosBadge set={set} />
                 {set.deviantArtAuthor && (
                   <span>
                     inspired by <DeviantArtUserLink username={set.deviantArtAuthor} />

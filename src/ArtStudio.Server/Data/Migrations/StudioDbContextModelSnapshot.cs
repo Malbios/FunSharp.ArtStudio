@@ -177,6 +177,9 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<long>("Seed")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long?>("ViewedAt")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("GenerationJobId");
