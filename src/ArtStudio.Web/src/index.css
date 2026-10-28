@@ -1252,6 +1252,12 @@ button.image-tile-pick {
   font-size: 2.6rem;
 }
 
+@media (hover: hover) {
+  .image-tile:not(.selected, :hover, :has(:focus-visible)) button.image-tile-pick {
+    opacity: 0;
+  }
+}
+
 span.image-tile-pick {
   border: 1px solid transparent;
   border-radius: var(--radius);
