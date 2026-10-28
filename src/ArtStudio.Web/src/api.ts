@@ -459,6 +459,7 @@ export const api = {
   unpickImage: (setId: number, imageId: number) => request<void>('DELETE', `/api/sets/${setId}/picks/${imageId}`),
   pickVideo: (videoId: number, picked: boolean) => request<void>('PUT', `/api/videos/${videoId}/pick`, { picked }),
   markVideoViewed: (videoId: number) => request<void>('POST', `/api/videos/${videoId}/viewed`),
+  deleteVideo: (videoId: number) => request<void>('DELETE', `/api/videos/${videoId}`),
   reorderPicks: (setId: number, imageIds: number[]) =>
     request<void>('PUT', `/api/sets/${setId}/picks`, { imageIds }),
   markReadyToPost: (setId: number) => request<void>('POST', `/api/sets/${setId}/ready`),

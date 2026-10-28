@@ -53,6 +53,16 @@ function VideoTile({ video, canMakeAgain, setPageState, onChanged, onError }: Vi
     }
   }
 
+  async function deleteVideo() {
+    if (!window.confirm('Delete this video? Its file stays in the output folder.')) return
+    try {
+      await api.deleteVideo(video.id)
+      onChanged()
+    } catch (failure) {
+      onError((failure as Error).message)
+    }
+  }
+
   return (
     <figure className={video.picked ? 'video-tile selected' : 'video-tile'}>
       <video
@@ -111,6 +121,9 @@ function VideoTile({ video, canMakeAgain, setPageState, onChanged, onError }: Vi
               Make again
             </Link>
           )}
+          <button type="button" className="link-button danger" onClick={() => void deleteVideo()}>
+            Delete
+          </button>
         </div>
       </figcaption>
     </figure>

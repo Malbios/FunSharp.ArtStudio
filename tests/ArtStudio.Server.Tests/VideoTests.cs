@@ -583,6 +583,30 @@ public sealed class VideoTests : IDisposable
     }
 
     [Fact]
+    public async Task DeletedVideo_LeavesTheSet_ButKeepsItsFile()
+    {
+        var set = await SetWithVideoAsync();
+        var video = set.Videos.Single();
+        string filePath;
+        using (var scope = _factory.Services.CreateScope())
+            filePath = (await scope.ServiceProvider.GetRequiredService<StudioDbContext>().Videos.SingleAsync(v => v.Id == video.Id)).FilePath;
+
+        (await _client.DeleteAsync($"/api/videos/{video.Id}")).EnsureSuccessStatusCode();
+
+        Assert.Empty((await GetSetAsync(_client, set.Id)).Videos);
+        var listed = (await _client.GetFromJsonAsync<List<SetSummaryDto>>("/api/sets?stage=working", Json))!.Single(s => s.Id == set.Id);
+        Assert.Equal(0, listed.VideoCount);
+        Assert.Equal(0, listed.UnviewedVideoCount);
+        Assert.True(File.Exists(filePath));
+    }
+
+    [Fact]
+    public async Task DeletingAnUnknownVideo_IsNotFound()
+    {
+        Assert.Equal(HttpStatusCode.NotFound, (await _client.DeleteAsync("/api/videos/999")).StatusCode);
+    }
+
+    [Fact]
     public async Task DeviantArtInspiration_IsNotOfferedAsAFrame()
     {
         var setId = await _factory.CreateSetAsync(_client, "a fox", count: 1, addSource: form =>
