@@ -144,12 +144,12 @@ function QueueNavLink() {
       Queue
       {pending.Image > 0 && (
         <span className="nav-count" title={`${pending.Image} ${pending.Image === 1 ? 'image' : 'images'} queued or rendering`}>
-          {pending.Image} img
+          {pending.Image} i
         </span>
       )}
       {pending.Video > 0 && (
         <span className="nav-count" title={`${pending.Video} ${pending.Video === 1 ? 'video' : 'videos'} queued or rendering`}>
-          {pending.Video} vid
+          {pending.Video} v
         </span>
       )}
       {failed && <span className="nav-count failed">!</span>}
