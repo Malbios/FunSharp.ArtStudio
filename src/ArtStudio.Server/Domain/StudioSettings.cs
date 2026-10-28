@@ -6,6 +6,8 @@ public class StudioSettings
 
     public int Id { get; set; } = SingletonId;
     public required string ComfyServerUrl { get; set; }
+    /// <summary>The ComfyUI server videos render on; null when they share the image server.</summary>
+    public string? VideoComfyServerUrl { get; set; }
     public required string OutputDirectory { get; set; }
     public bool NotifyOnJobDone { get; set; }
     public bool NotifyOnQueueEmpty { get; set; }
@@ -27,6 +29,9 @@ public class StudioSettings
     public string GoogleDriveOutputFolder { get; set; } = DefaultGoogleDriveOutputFolder;
 
     public const string DefaultGoogleDriveOutputFolder = "ComfyUI/output";
+
+    public string ServerUrlFor(JobKind kind) =>
+        kind == JobKind.Video ? VideoComfyServerUrl ?? ComfyServerUrl : ComfyServerUrl;
 
     public bool IsPaused(JobKind kind) => kind == JobKind.Video ? VideoQueuePaused : ImageQueuePaused;
 

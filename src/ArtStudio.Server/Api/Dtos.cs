@@ -104,8 +104,12 @@ public sealed record VideoDto(
         video.CreatedAt);
 }
 
-/// <summary>LoadedKind is the kind ComfyUI ran last, whose model is still loaded; null after a restart.</summary>
-public sealed record QueueDto(bool ImagesPaused, bool VideosPaused, JobKind? LoadedKind, IReadOnlyList<JobDto> Active);
+/// <summary>
+/// LoadedKind is the kind ComfyUI ran last, whose model is still loaded; null after a restart. SharedServer tells
+/// whether images and videos render on the same ComfyUI server, so one kind waits for the other.
+/// </summary>
+public sealed record QueueDto(
+    bool ImagesPaused, bool VideosPaused, JobKind? LoadedKind, bool SharedServer, IReadOnlyList<JobDto> Active);
 
 public sealed record SetSummaryDto(
     int Id,

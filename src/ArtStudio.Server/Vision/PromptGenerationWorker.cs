@@ -113,7 +113,7 @@ public sealed class PromptGenerationWorker(
         }
         finally
         {
-            queue.EndRun();
+            queue.EndRun(setId);
         }
     }
 

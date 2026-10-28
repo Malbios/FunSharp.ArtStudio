@@ -471,13 +471,14 @@ public sealed class SetService(
 
     private async Task StopRunningJobAsync(int setId, CancellationToken ct)
     {
-        var runningJobId = await RunningJobIdAsync(setId, ct);
-        if (runningJobId is null)
+        var runningJobIds = await RunningJobIdsAsync(setId, ct);
+        if (runningJobIds.Count == 0)
             return;
 
-        queue.CancelRunning(runningJobId.Value);
+        foreach (var jobId in runningJobIds)
+            queue.CancelRunning(jobId);
         var deadline = clock.GetUtcNow() + RunningJobStopTimeout;
-        while (await RunningJobIdAsync(setId, ct) is not null)
+        while ((await RunningJobIdsAsync(setId, ct)).Count > 0)
         {
             if (clock.GetUtcNow() > deadline)
                 throw new UserFacingException("ComfyUI did not stop the running job in time. Please try again.");
@@ -485,11 +486,11 @@ public sealed class SetService(
         }
     }
 
-    private Task<int?> RunningJobIdAsync(int setId, CancellationToken ct) =>
+    private Task<List<int>> RunningJobIdsAsync(int setId, CancellationToken ct) =>
         db.Jobs
             .Where(j => j.PromptSetId == setId && j.Status == JobStatus.Running)
-            .Select(j => (int?)j.Id)
-            .FirstOrDefaultAsync(ct);
+            .Select(j => j.Id)
+            .ToListAsync(ct);
 
     private async Task AttachSourceImageAsync(
         PromptSet set, SourceKind kind, Stream content, string extension, CancellationToken ct)

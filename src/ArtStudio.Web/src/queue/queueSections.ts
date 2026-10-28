@@ -26,11 +26,12 @@ function currentKind(state: QueueState): JobKind {
 }
 
 /**
- * The queue split into images and videos. The kind ComfyUI is busy with comes first; the other one waits until it is
- * done (or paused), so ComfyUI doesn't switch models back and forth.
+ * The queue split into images and videos. On a shared ComfyUI server, the kind it is busy with comes first; the other
+ * one waits until it is done (or paused), so ComfyUI doesn't switch models back and forth. With a server per kind,
+ * both run at once.
  */
 export function queueSections(state: QueueState): QueueSection[] {
-  const busyKind = currentKind(state)
+  const busyKind = state.sharedServer ? currentKind(state) : null
   const ordered = [...KINDS].sort((a, b) => Number(b.kind === busyKind) - Number(a.kind === busyKind))
 
   return ordered.map(({ kind, title }) => {
@@ -39,7 +40,7 @@ export function queueSections(state: QueueState): QueueSection[] {
     const ahead = state.active.filter(
       (job) => job.kind === other.kind && (job.status === 'Running' || (job.status === 'Queued' && !isPaused(state, other.kind))),
     ).length
-    const waits = kind !== busyKind && !isPaused(state, kind) && jobs.some((job) => job.status === 'Queued') && ahead > 0
+    const waits = busyKind !== null && kind !== busyKind && !isPaused(state, kind) && jobs.some((job) => job.status === 'Queued') && ahead > 0
     return {
       kind,
       title,

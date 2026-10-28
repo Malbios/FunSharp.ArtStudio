@@ -15,6 +15,7 @@ public sealed class FakeComfyServer : HttpMessageHandler
     public volatile string? CurrentPromptId;
 
     public List<string> SubmittedPrompts { get; } = [];
+    public List<string> SubmittedHosts { get; } = [];
     public List<long> SubmittedSeeds { get; } = [];
     public List<JsonObject> SubmittedVideoWorkflows { get; } = [];
     public List<string> UploadedFileNames { get; } = [];
@@ -39,7 +40,7 @@ public sealed class FakeComfyServer : HttpMessageHandler
         {
             response = (request.Method.Method, path) switch
             {
-                ("POST", "/prompt") => QueuePrompt(body!),
+                ("POST", "/prompt") => QueuePrompt(request.RequestUri.Authority, body!),
                 ("POST", "/upload/image") => Upload(request.Content as MultipartFormDataContent),
                 ("GET", var p) when p.StartsWith("/history/") => History(p["/history/".Length..], out rendered),
                 ("GET", "/view") => View(request.RequestUri),
@@ -56,8 +57,9 @@ public sealed class FakeComfyServer : HttpMessageHandler
         return response;
     }
 
-    private HttpResponseMessage QueuePrompt(string body)
+    private HttpResponseMessage QueuePrompt(string host, string body)
     {
+        SubmittedHosts.Add(host);
         var workflow = JsonNode.Parse(body)!["prompt"]!.AsObject();
         CurrentPromptId = $"prompt-{++_promptCounter}";
         _knownPromptIds.Add(CurrentPromptId);

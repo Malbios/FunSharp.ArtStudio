@@ -51,6 +51,29 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("http://video-vm:8188/", "http://video-vm:8188")]
+    [InlineData("  ", null)]
+    [InlineData("http://localhost:8188", null)]
+    public async Task VideoServerUrl_IsStored_AndEmptyOrTheImageServerMeansShared(string videoUrl, string? stored)
+    {
+        var current = await _client.GetFromJsonAsync<SettingsDto>("/api/settings", Json);
+        var request = current! with { ComfyServerUrl = "http://localhost:8188", VideoComfyServerUrl = videoUrl };
+        (await _client.PutAsJsonAsync("/api/settings", request)).EnsureSuccessStatusCode();
+
+        var saved = await _client.GetFromJsonAsync<SettingsDto>("/api/settings", Json);
+        Assert.Equal(stored, saved!.VideoComfyServerUrl);
+    }
+
+    [Fact]
+    public async Task InvalidVideoServerUrl_IsRejected()
+    {
+        var current = await _client.GetFromJsonAsync<SettingsDto>("/api/settings", Json);
+        var response = await _client.PutAsJsonAsync("/api/settings", current! with { VideoComfyServerUrl = "not a url" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task BuildingBlocks_CanBeAddedEditedReorderedAndDeleted()
     {

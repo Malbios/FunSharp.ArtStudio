@@ -31,6 +31,7 @@ const state = (active: Job[], changes: Partial<QueueState> = {}): QueueState => 
   imagesPaused: false,
   videosPaused: false,
   loadedKind: null,
+  sharedServer: true,
   active,
   ...changes,
 })
@@ -58,6 +59,13 @@ describe('queueSections', () => {
     expect(sections.map((s) => s.kind)).toEqual(['Image', 'Video'])
     expect(sections.every((s) => s.waitingNote === null)).toBe(true)
     expect(sections[1].paused).toBe(true)
+  })
+
+  it('lets both kinds run without waiting notes when each has its own server', () => {
+    const sections = queueSections(state([job('Video', 'Running'), job('Image')], { loadedKind: 'Video', sharedServer: false }))
+
+    expect(sections.map((s) => s.kind)).toEqual(['Image', 'Video'])
+    expect(sections.every((s) => s.waitingNote === null)).toBe(true)
   })
 })
 

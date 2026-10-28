@@ -483,6 +483,9 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<string>("ProtectedVisionApiKey")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("VideoComfyServerUrl")
+                        .HasColumnType("TEXT");
+
                     b.Property<bool>("VideoQueuePaused")
                         .HasColumnType("INTEGER");
 

@@ -110,6 +110,8 @@ export interface QueueState {
   videosPaused: boolean
   /** The kind ComfyUI ran last, whose model is still loaded; null after a restart. */
   loadedKind: JobKind | null
+  /** Whether images and videos render on the same ComfyUI server, so one kind waits for the other. */
+  sharedServer: boolean
   active: Job[]
 }
 
@@ -222,6 +224,8 @@ export interface DeviationPreview {
 
 export interface Settings {
   comfyServerUrl: string
+  /** Null when videos render on the image server. */
+  videoComfyServerUrl: string | null
   outputDirectory: string
   notifyOnJobDone: boolean
   notifyOnQueueEmpty: boolean

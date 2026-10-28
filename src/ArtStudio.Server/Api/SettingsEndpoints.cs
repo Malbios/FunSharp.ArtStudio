@@ -6,10 +6,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ArtStudio.Server.Api;
 
-public sealed record SettingsDto(string ComfyServerUrl, string OutputDirectory, bool NotifyOnJobDone, bool NotifyOnQueueEmpty)
+public sealed record SettingsDto(
+    string ComfyServerUrl, string OutputDirectory, bool NotifyOnJobDone, bool NotifyOnQueueEmpty, string? VideoComfyServerUrl = null)
 {
     public static SettingsDto From(StudioSettings settings) => new(
-        settings.ComfyServerUrl, settings.OutputDirectory, settings.NotifyOnJobDone, settings.NotifyOnQueueEmpty);
+        settings.ComfyServerUrl, settings.OutputDirectory, settings.NotifyOnJobDone, settings.NotifyOnQueueEmpty,
+        settings.VideoComfyServerUrl);
 }
 
 public sealed record BuildingBlockRequest(
@@ -61,9 +63,10 @@ public static class SettingsEndpoints
     private static async Task<SettingsDto> UpdateSettingsAsync(
         SettingsDto request, StudioDbContext db, AppPaths paths, CancellationToken ct)
     {
-        if (!Uri.TryCreate(request.ComfyServerUrl.Trim(), UriKind.Absolute, out var comfyUrl) ||
-            comfyUrl.Scheme is not ("http" or "https"))
-            throw new UserFacingException("The ComfyUI server URL must be an absolute http(s) URL.");
+        var comfyUrl = ComfyUrl(request.ComfyServerUrl, "The ComfyUI server URL");
+        var videoComfyUrl = string.IsNullOrWhiteSpace(request.VideoComfyServerUrl)
+            ? null
+            : ComfyUrl(request.VideoComfyServerUrl, "The ComfyUI server URL for videos");
 
         var outputDirectory = request.OutputDirectory.Trim();
         if (!Path.IsPathFullyQualified(outputDirectory))
@@ -78,12 +81,20 @@ public static class SettingsEndpoints
         }
 
         var settings = await SettingsStore.LoadAsync(db, paths, ct);
-        settings.ComfyServerUrl = comfyUrl.ToString().TrimEnd('/');
+        settings.ComfyServerUrl = comfyUrl;
+        settings.VideoComfyServerUrl = videoComfyUrl == comfyUrl ? null : videoComfyUrl;
         settings.OutputDirectory = outputDirectory;
         settings.NotifyOnJobDone = request.NotifyOnJobDone;
         settings.NotifyOnQueueEmpty = request.NotifyOnQueueEmpty;
         await db.SaveChangesAsync(ct);
         return SettingsDto.From(settings);
+    }
+
+    private static string ComfyUrl(string url, string name)
+    {
+        if (!Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https"))
+            throw new UserFacingException($"{name} must be an absolute http(s) URL.");
+        return uri.ToString().TrimEnd('/');
     }
 
     private static async Task<BuildingBlockDto> AddBuildingBlockAsync(

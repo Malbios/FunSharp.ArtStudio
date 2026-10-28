@@ -42,9 +42,26 @@ export function GeneralSettings() {
     <form className="panel" onSubmit={(e) => void save(e)}>
       <h3>General</h3>
       <label className="field">
-        <span>ComfyUI server URL</span>
+        <span>ComfyUI server URL for images</span>
         <input value={settings.comfyServerUrl} onChange={(e) => update({ comfyServerUrl: e.target.value })} />
       </label>
+      <label className="checkbox">
+        <input
+          type="checkbox"
+          checked={settings.videoComfyServerUrl !== null}
+          onChange={(e) => update({ videoComfyServerUrl: e.target.checked ? '' : null })}
+        />
+        Videos use a different ComfyUI server (then images and videos render at the same time)
+      </label>
+      {settings.videoComfyServerUrl !== null && (
+        <label className="field">
+          <span>ComfyUI server URL for videos</span>
+          <input
+            value={settings.videoComfyServerUrl}
+            onChange={(e) => update({ videoComfyServerUrl: e.target.value })}
+          />
+        </label>
+      )}
       <label className="field">
         <span>Image folder (new images are saved here; existing ones stay where they are)</span>
         <input value={settings.outputDirectory} onChange={(e) => update({ outputDirectory: e.target.value })} />

@@ -11,7 +11,8 @@ namespace ArtStudio.Server.Comfy;
 /// <summary>
 /// Stands in for a ComfyUI server so the app can be exercised without a GPU: every image prompt "renders" after a short
 /// delay into a solid-color PNG at the requested resolution, and every video prompt into a stock clip that appears in
-/// the fake Google Drive's ComfyUI output folder, as a real ComfyUI writing to Drive would.
+/// the fake Google Drive's ComfyUI output folder, as a real ComfyUI writing to Drive would. Each host it is called by
+/// acts as a server of its own, so images and videos can be given different fake servers.
 /// </summary>
 public sealed partial class FakeComfyUiHandler(TimeSpan renderTime, TimeProvider clock, FakeGoogleDriveHandler drive)
     : HttpMessageHandler
@@ -25,7 +26,8 @@ public sealed partial class FakeComfyUiHandler(TimeSpan renderTime, TimeProvider
 
     private readonly ConcurrentDictionary<string, FakeRun> _runs = new();
 
-    private sealed record FakeRun(DateTimeOffset ReadyAt, int Width, int Height, long Seed, string? VideoFileName = null)
+    private sealed record FakeRun(
+        string Host, DateTimeOffset ReadyAt, int Width, int Height, long Seed, string? VideoFileName = null)
     {
         public bool Interrupted { get; set; }
         public bool VideoOnDrive { get; set; }
@@ -37,21 +39,22 @@ public sealed partial class FakeComfyUiHandler(TimeSpan renderTime, TimeProvider
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
         var path = request.RequestUri!.AbsolutePath;
+        var host = request.RequestUri.Authority;
         var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
 
         return (request.Method.Method, path) switch
         {
-            ("POST", "/prompt") => QueuePrompt(body!),
+            ("POST", "/prompt") => QueuePrompt(host, body!),
             ("POST", "/upload/image") => Upload(request.Content as MultipartFormDataContent),
             ("GET", var p) when p.StartsWith("/history/") => History(p["/history/".Length..]),
             ("GET", "/view") => View(request.RequestUri),
             ("GET", "/queue") => Json(new JsonObject
             {
-                ["queue_running"] = new JsonArray(RunningPromptIds().Select(id => (JsonNode)new JsonArray(0, id)).ToArray()),
+                ["queue_running"] = new JsonArray(RunningPromptIds(host).Select(id => (JsonNode)new JsonArray(0, id)).ToArray()),
                 ["queue_pending"] = new JsonArray(),
             }),
             ("POST", "/queue") => Json(new JsonObject()),
-            ("POST", "/interrupt") => Interrupt(),
+            ("POST", "/interrupt") => Interrupt(host),
             _ => new HttpResponseMessage(HttpStatusCode.NotFound),
         };
     }
@@ -64,11 +67,11 @@ public sealed partial class FakeComfyUiHandler(TimeSpan renderTime, TimeProvider
             : Json(new JsonObject { ["name"] = fileName, ["subfolder"] = "", ["type"] = "input" });
     }
 
-    private HttpResponseMessage QueuePrompt(string body)
+    private HttpResponseMessage QueuePrompt(string host, string body)
     {
         var workflow = JsonNode.Parse(body)!["prompt"]!;
         if (workflow[VideoWorkflowBuilder.SaveVideoNodeId]?["inputs"]?["filename_prefix"]?.GetValue<string>() is { } prefix)
-            return QueueVideo(prefix, workflow[VideoWorkflowBuilder.SeedNodeId]?["inputs"]?["seed"]?.GetValue<long>() ?? 0);
+            return QueueVideo(host, prefix, workflow[VideoWorkflowBuilder.SeedNodeId]?["inputs"]?["seed"]?.GetValue<long>() ?? 0);
 
         var label = workflow[ResolutionNodeId]?["inputs"]?["resolution"]?.GetValue<string>() ?? "";
         var match = ResolutionLabel().Match(label);
@@ -78,15 +81,15 @@ public sealed partial class FakeComfyUiHandler(TimeSpan renderTime, TimeProvider
         var seed = workflow[SeedNodeId]?["inputs"]?["seed"]?.GetValue<long>() ?? 0;
 
         var promptId = Guid.NewGuid().ToString();
-        _runs[promptId] = new FakeRun(clock.GetUtcNow() + renderTime, width, height, seed);
+        _runs[promptId] = new FakeRun(host, clock.GetUtcNow() + renderTime, width, height, seed);
         return Json(new JsonObject { ["prompt_id"] = promptId, ["number"] = _runs.Count, ["node_errors"] = new JsonObject() });
     }
 
-    private HttpResponseMessage QueueVideo(string prefix, long seed)
+    private HttpResponseMessage QueueVideo(string host, string prefix, long seed)
     {
         var promptId = Guid.NewGuid().ToString();
         // Videos take noticeably longer than images on a real GPU.
-        _runs[promptId] = new FakeRun(clock.GetUtcNow() + renderTime * 3, 0, 0, seed, $"{prefix.Split('/').Last()}_00001_.mp4");
+        _runs[promptId] = new FakeRun(host, clock.GetUtcNow() + renderTime * 3, 0, 0, seed, $"{prefix.Split('/').Last()}_00001_.mp4");
         return Json(new JsonObject { ["prompt_id"] = promptId, ["number"] = _runs.Count, ["node_errors"] = new JsonObject() });
     }
 
@@ -185,15 +188,17 @@ public sealed partial class FakeComfyUiHandler(TimeSpan renderTime, TimeProvider
         return response;
     }
 
-    private HttpResponseMessage Interrupt()
+    private HttpResponseMessage Interrupt(string host)
     {
-        foreach (var promptId in RunningPromptIds())
+        foreach (var promptId in RunningPromptIds(host))
             _runs[promptId].Interrupted = true;
         return Json(new JsonObject());
     }
 
-    private IEnumerable<string> RunningPromptIds() =>
-        _runs.Where(run => !run.Value.Interrupted && clock.GetUtcNow() < run.Value.ReadyAt).Select(run => run.Key).ToList();
+    private IEnumerable<string> RunningPromptIds(string host) =>
+        _runs.Where(run => run.Value.Host == host && !run.Value.Interrupted && clock.GetUtcNow() < run.Value.ReadyAt)
+            .Select(run => run.Key)
+            .ToList();
 
     private static HttpResponseMessage Json(JsonNode body) =>
         new(HttpStatusCode.OK) { Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json") };

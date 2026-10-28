@@ -20,26 +20,42 @@ public sealed class QueueWorker(
 {
     private static readonly TimeSpan ComfyCleanupTimeout = TimeSpan.FromSeconds(10);
 
+    private sealed record ServerRun(int JobId, Task Run);
+
+    private readonly Lock _lock = new();
+    private readonly Dictionary<string, ServerRun> _runsByServerUrl = [];
+    private bool _finishedAnyJob;
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await RequeueInterruptedJobsAsync(stoppingToken);
         queue.Wake();
 
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            try
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await queue.WaitForWakeAsync(stoppingToken);
-                await DrainQueueAsync(stoppingToken);
+                try
+                {
+                    await queue.WaitForWakeAsync(stoppingToken);
+                    await StartWaitingJobsAsync(stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Queue worker loop failed");
+                }
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Queue worker loop failed");
-            }
+        }
+        finally
+        {
+            Task[] runs;
+            lock (_lock)
+                runs = [.. _runsByServerUrl.Values.Select(run => run.Run)];
+            await Task.WhenAll(runs);
         }
     }
 
@@ -53,36 +69,82 @@ public sealed class QueueWorker(
             .ExecuteUpdateAsync(s => s.SetProperty(j => j.Status, JobStatus.Queued), ct);
     }
 
-    private async Task DrainQueueAsync(CancellationToken stoppingToken)
+    /// <summary>
+    /// Starts the next waiting job on every idle ComfyUI server. Images and videos run side by side on servers of their
+    /// own; a server that renders both runs one job at a time.
+    /// </summary>
+    private async Task StartWaitingJobsAsync(CancellationToken stoppingToken)
     {
-        var finishedAnyJob = false;
-        while (true)
+        using var scope = scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<StudioDbContext>();
+        var settings = await SettingsStore.LoadAsync(db, scope.ServiceProvider.GetRequiredService<AppPaths>(), stoppingToken);
+        // Pausing one kind leaves the other running, without ever switching ComfyUI to the paused kind's model.
+        var waiting = (await db.Jobs
+                .Where(j => j.Status == JobStatus.Queued)
+                .Select(j => new { j.Id, j.Kind, j.QueuePosition })
+                .ToListAsync(stoppingToken))
+            .Where(j => !settings.IsPaused(j.Kind))
+            .ToList();
+
+        bool queueEmpty;
+        lock (_lock)
+        {
+            foreach (var server in Enum.GetValues<JobKind>().GroupBy(settings.ServerUrlFor))
+            {
+                if (_runsByServerUrl.ContainsKey(server.Key))
+                    continue;
+                var startedJobIds = _runsByServerUrl.Values.Select(run => run.JobId).ToHashSet();
+                var next = queue.InRunOrder(
+                        waiting.Where(j => server.Contains(j.Kind) && !startedJobIds.Contains(j.Id)), j => j.Kind, j => j.QueuePosition)
+                    .FirstOrDefault();
+                if (next is null)
+                    continue;
+                var serverUrl = server.Key;
+                _runsByServerUrl[serverUrl] = new ServerRun(next.Id, Task.Run(() => RunOnServerAsync(serverUrl, next.Id, stoppingToken)));
+            }
+
+            queueEmpty = _runsByServerUrl.Count == 0 && _finishedAnyJob;
+            if (queueEmpty)
+                _finishedAnyJob = false;
+        }
+
+        if (queueEmpty)
+            await notifier.QueueEmpty();
+    }
+
+    private async Task RunOnServerAsync(string serverUrl, int jobId, CancellationToken stoppingToken)
+    {
+        var finished = false;
+        try
         {
             using var scope = scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<StudioDbContext>();
             var settings = await SettingsStore.LoadAsync(db, scope.ServiceProvider.GetRequiredService<AppPaths>(), stoppingToken);
-            // Pausing one kind leaves the other running, without ever switching ComfyUI to the paused kind's model.
-            var waiting = (await db.Jobs
-                    .Where(j => j.Status == JobStatus.Queued)
-                    .Select(j => new { j.Id, j.Kind, j.QueuePosition })
-                    .ToListAsync(stoppingToken))
-                .Where(j => !settings.IsPaused(j.Kind))
-                .ToList();
-            var nextJobId = queue.InRunOrder(waiting, j => j.Kind, j => j.QueuePosition).Select(j => (int?)j.Id).FirstOrDefault();
-
-            if (nextJobId is null)
-            {
-                if (finishedAnyJob)
-                    await notifier.QueueEmpty();
-                return;
-            }
-
-            await RunJobAsync(db, settings, nextJobId.Value, stoppingToken);
-            finishedAnyJob = true;
+            await RunJobAsync(db, settings, jobId, serverUrl, stoppingToken);
+            finished = true;
         }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Queue worker failed to run job {JobId}", jobId);
+        }
+        finally
+        {
+            lock (_lock)
+            {
+                _runsByServerUrl.Remove(serverUrl);
+                _finishedAnyJob |= finished;
+            }
+        }
+
+        if (finished)
+            queue.Wake();
     }
 
-    private async Task RunJobAsync(StudioDbContext db, StudioSettings settings, int jobId, CancellationToken stoppingToken)
+    private async Task RunJobAsync(
+        StudioDbContext db, StudioSettings settings, int jobId, string serverUrl, CancellationToken stoppingToken)
     {
         var jobToken = queue.BeginRun(jobId, stoppingToken);
         try
@@ -99,7 +161,7 @@ public sealed class QueueWorker(
             queue.LoadedKind = job.Kind;
             await notifier.JobUpdated(job.Id, job.PromptSetId);
 
-            var client = clientFactory.Create(settings.ComfyServerUrl);
+            var client = clientFactory.Create(serverUrl);
             try
             {
                 if (job.Kind == JobKind.Video)
@@ -121,15 +183,16 @@ public sealed class QueueWorker(
             catch (Exception ex)
             {
                 logger.LogError(ex, "Job {JobId} failed", job.Id);
-                await FinishAsync(db, job, JobStatus.Failed, ex.Message);
+                // The settings may have changed while the job ran, e.g. the other kind was paused.
+                await db.Entry(settings).ReloadAsync(CancellationToken.None);
                 settings.SetPaused(job.Kind, paused: true);
-                await db.SaveChangesAsync(CancellationToken.None);
+                await FinishAsync(db, job, JobStatus.Failed, ex.Message);
                 await notifier.QueueStateChanged(settings.ImageQueuePaused, settings.VideoQueuePaused);
             }
         }
         finally
         {
-            queue.EndRun();
+            queue.EndRun(jobId);
         }
     }
 

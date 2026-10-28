@@ -258,6 +258,62 @@ public sealed class VideoTests : IDisposable
         _factory.Comfy.HoldRuns = false;
         await WaitForVideoJobAsync(set.Id, JobStatus.Completed);
         Assert.Equal(["a fox", "running image", "later image", VideoPrompt], _factory.Comfy.SubmittedPrompts);
+        Assert.True((await GetQueueAsync(_client)).SharedServer);
+    }
+
+    private const string VideoServerHost = "video-vm:8188";
+
+    private async Task UseVideoServerAsync()
+    {
+        var current = await _client.GetFromJsonAsync<SettingsDto>("/api/settings", Json);
+        (await _client.PutAsJsonAsync("/api/settings", current! with { VideoComfyServerUrl = $"http://{VideoServerHost}" }))
+            .EnsureSuccessStatusCode();
+    }
+
+    private async Task<(int ImageSetId, int VideoSetId)> RunImageAndVideoTogetherAsync()
+    {
+        await _factory.ConnectGoogleAsync();
+        var set = await SetWithImagesAsync(images: 1);
+        await UseVideoServerAsync();
+        _factory.Comfy.HoldRuns = true;
+
+        var image = await _factory.CreateSetAsync(_client, "running image", count: 1);
+        (await MakeVideoAsync(set.Id, set.Images[0].Id)).EnsureSuccessStatusCode();
+        await WaitUntilAsync(
+            async () => (await GetQueueAsync(_client)).Active.Count(j => j.Status == JobStatus.Running) == 2,
+            "image and video running at the same time");
+        return (image, set.Id);
+    }
+
+    [Fact]
+    public async Task SeparateVideoServer_RendersVideosWhileImagesRender()
+    {
+        var (image, videoSet) = await RunImageAndVideoTogetherAsync();
+        Assert.False((await GetQueueAsync(_client)).SharedServer);
+
+        _factory.Comfy.HoldRuns = false;
+        await WaitForVideoJobAsync(videoSet, JobStatus.Completed);
+        await WaitUntilAsync(async () => await SingleJobStatusAsync(image) == JobStatus.Completed, "image done");
+
+        var imageHost = new Uri(SettingsStore.DefaultComfyServerUrl).Authority;
+        var hostByPrompt = _factory.Comfy.SubmittedPrompts.Zip(_factory.Comfy.SubmittedHosts).ToDictionary();
+        Assert.Equal(VideoServerHost, hostByPrompt[VideoPrompt]);
+        Assert.Equal(imageHost, hostByPrompt["running image"]);
+        Assert.Equal(imageHost, hostByPrompt["a fox"]);
+    }
+
+    [Fact]
+    public async Task SeparateVideoServer_CancellingTheVideo_LeavesTheImageRunning()
+    {
+        var (image, videoSet) = await RunImageAndVideoTogetherAsync();
+        var videoJob = (await GetSetAsync(_client, videoSet)).Jobs.Single(j => j.Kind == JobKind.Video);
+
+        (await _client.PostAsync($"/api/jobs/{videoJob.Id}/cancel", null)).EnsureSuccessStatusCode();
+        await WaitForVideoJobAsync(videoSet, JobStatus.Cancelled);
+        Assert.Equal(JobStatus.Running, await SingleJobStatusAsync(image));
+
+        _factory.Comfy.HoldRuns = false;
+        await WaitUntilAsync(async () => await SingleJobStatusAsync(image) == JobStatus.Completed, "image done");
     }
 
     [Fact]

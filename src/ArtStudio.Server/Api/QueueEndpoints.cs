@@ -38,6 +38,7 @@ public static class QueueEndpoints
         var waiting = queue.InRunOrder(active.Where(j => j.Status == JobStatus.Queued), j => j.Kind, j => j.QueuePosition);
 
         return new QueueDto(
-            settings.ImageQueuePaused, settings.VideoQueuePaused, queue.LoadedKind, started.Concat(waiting).Select(job => JobDto.From(job, secondsPerVideoUnit)).ToList());
+            settings.ImageQueuePaused, settings.VideoQueuePaused, queue.LoadedKind,
+            settings.ServerUrlFor(JobKind.Image) == settings.ServerUrlFor(JobKind.Video), started.Concat(waiting).Select(job => JobDto.From(job, secondsPerVideoUnit)).ToList());
     }
 }
