@@ -1245,6 +1245,13 @@ button.image-tile-pick {
   font-size: 1.3rem;
 }
 
+.image-tile button.image-tile-pick {
+  min-width: 5.5rem;
+  min-height: 5.5rem;
+  padding: 0.3rem 1.2rem;
+  font-size: 2.6rem;
+}
+
 span.image-tile-pick {
   border: 1px solid transparent;
   border-radius: var(--radius);
