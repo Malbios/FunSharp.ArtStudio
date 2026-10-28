@@ -28,6 +28,8 @@ public class PromptSet
     public int Id { get; set; }
     public required string Prompt { get; set; }
     public required string Resolution { get; set; }
+    /// <summary>The paragraph order of the latest run; null for the normal order.</summary>
+    public string? ParagraphOrder { get; set; }
     public SourceKind SourceKind { get; set; }
     public string? SourceImagePath { get; set; }
     public string? DeviantArtUrl { get; set; }
@@ -52,6 +54,7 @@ public class PromptSet
     public string? ModifySection { get; set; }
     public int? ImagesAfterPromptCount { get; set; }
     public string? ImagesAfterPromptResolution { get; set; }
+    public string? ImagesAfterPromptOrder { get; set; }
     public string? PostTitle { get; set; }
     public string? PostDescription { get; set; }
     public string? PostTags { get; set; }

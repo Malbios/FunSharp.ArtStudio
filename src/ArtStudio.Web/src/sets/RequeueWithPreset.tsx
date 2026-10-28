@@ -10,6 +10,8 @@ interface Props {
   setId: number
   prompt: string
   resolution: string
+  /** The order to queue with: the set's latest order, or the image's own when requeueing an image's prompt. */
+  paragraphOrder: string | null
   /** Used when the chosen preset has no image count. */
   fallbackCount: number
   className?: string
@@ -18,7 +20,16 @@ interface Props {
 }
 
 /** Queues more images of the set right away, one job per chosen preset applied to the given prompt. */
-export function RequeueWithPreset({ setId, prompt, resolution, fallbackCount, className, onQueued, onError }: Props) {
+export function RequeueWithPreset({
+  setId,
+  prompt,
+  resolution,
+  paragraphOrder,
+  fallbackCount,
+  className,
+  onQueued,
+  onError,
+}: Props) {
   const [picking, setPicking] = useState(false)
   const [queued, setQueued] = useState(false)
   const blocks = useLoad(api.buildingBlocks)
@@ -30,8 +41,8 @@ export function RequeueWithPreset({ setId, prompt, resolution, fallbackCount, cl
     let queuedCount = 0
     try {
       for (const preset of chosen) {
-        const request = presetRequeue(preset, prompt, resolution, fallbackCount)
-        await api.moreImages(setId, request.count, request.prompt, request.resolution)
+        const request = presetRequeue(preset, prompt, resolution, fallbackCount, paragraphOrder)
+        await api.moreImages(setId, request.count, request.prompt, request.resolution, false, request.paragraphOrder)
         queuedCount++
       }
       setQueued(true)

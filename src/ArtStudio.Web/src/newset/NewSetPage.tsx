@@ -8,6 +8,7 @@ import { cleanPrompt } from '../prompt/cleanPrompt'
 import { closestResolution } from '../prompt/closestResolution'
 import { generateActionLabel, isPromptPending } from '../prompt/generateAction'
 import { ModifyPromptDialog } from '../prompt/ModifyPromptDialog'
+import { canReorder, NORMAL_ORDER, parseOrder, serializeOrder, type Section } from '../prompt/paragraphOrder'
 import { joinedIndex, joinParagraphs, paragraphLabels, splitParagraphs } from '../prompt/paragraphs'
 import { withArtStyle } from '../prompt/presets'
 import { returnToFrom } from '../sets/returnTo'
@@ -15,6 +16,7 @@ import { BuildingBlockChips } from './BuildingBlockChips'
 import { imageFileFrom, loadImageFile, NO_SOURCE, sourceDimensions, type ImageSource } from './imageSource'
 import { ImageSourcePicker, type SourceTab } from './ImageSourcePicker'
 import { NewModeTabs } from './NewModeTabs'
+import { ParagraphOrderChips } from './ParagraphOrderChips'
 import { PromptParagraphs } from './PromptParagraphs'
 import { useDraftSettingsAutosave } from './useDraftSettingsAutosave'
 
@@ -48,6 +50,8 @@ export function NewSetPage() {
   const [resolutionIsAuto, setResolutionIsAuto] = useState(false)
   const [count, setCount] = useState(DEFAULT_COUNT)
   const [queueFirst, setQueueFirst] = useState(false)
+  const [order, setOrder] = useState<Section[]>(NORMAL_ORDER)
+  const paragraphOrder = serializeOrder(order)
   const [pickerVersion, setPickerVersion] = useState(0)
   const [pickerTab, setPickerTab] = useState<SourceTab>('DeviantArt')
   const [baseSet, setBaseSet] = useState<SetDetail>()
@@ -73,6 +77,7 @@ export function NewSetPage() {
       setBaseSet(set)
       setPrompt(fromImage?.prompt ?? (set.isDraft ? cleanPrompt(set.prompt) : set.prompt))
       setResolution(fromImage?.resolution ?? set.resolution)
+      setOrder(parseOrder(fromImage ? fromImage.paragraphOrder : set.paragraphOrder))
       setResolutionIsAuto(false)
       if (set.isDraft) setCount(set.draftImageCount)
       setSource({ kind: 'BasedOn', imageUrl: set.sourceImageUrl, deviantArtAuthor: set.deviantArtAuthor })
@@ -106,7 +111,7 @@ export function NewSetPage() {
     }
   }
 
-  const imagesAfterPrompt = isDraft ? undefined : { count, resolution }
+  const imagesAfterPrompt = isDraft ? undefined : { count, resolution, paragraphOrder }
   const imagesAfterPromptHint = imagesAfterPrompt &&
     `When it's done, ${count} ${count === 1 ? 'image is' : 'images are'} queued with the new prompt (${resolution}).`
 
@@ -168,6 +173,7 @@ export function NewSetPage() {
     setResolutionIsAuto(false)
     setCount(DEFAULT_COUNT)
     setQueueFirst(false)
+    setOrder(NORMAL_ORDER)
   }
 
   async function submit(event: FormEvent) {
@@ -176,10 +182,10 @@ export function NewSetPage() {
     await send(async () => {
       if (baseSet && isDraft) {
         draftSettings.cancel()
-        await api.queueDraft(baseSet.id, prompt, resolution, count, queueFirst)
+        await api.queueDraft(baseSet.id, prompt, resolution, count, queueFirst, paragraphOrder)
         navigate('/drafts')
       } else if (baseSet) {
-        await api.moreImages(baseSet.id, count, prompt, resolution, queueFirst)
+        await api.moreImages(baseSet.id, count, prompt, resolution, queueFirst, paragraphOrder)
         navigate(locationState ? returnToFrom(locationState) : `/sets/${baseSet.id}`)
       } else {
         const form = buildForm()
@@ -221,6 +227,7 @@ export function NewSetPage() {
     form.append('prompt', prompt)
     form.append('resolution', resolution)
     form.append('count', String(count))
+    form.append('paragraphOrder', paragraphOrder)
     switch (source.kind) {
       case 'Upload':
       case 'Paste':
@@ -359,6 +366,19 @@ export function NewSetPage() {
           <button type="submit" className="primary submit-in-row" disabled={submitting}>
             {submitting ? 'Sending…' : 'Add to queue'}
           </button>
+        </div>
+
+        <div className="field">
+          <span>Paragraph order</span>
+          <ParagraphOrderChips
+            order={order}
+            onChange={setOrder}
+            disabledReason={
+              prompt.trim() === '' || canReorder(prompt)
+                ? undefined
+                : 'This prompt has fewer than three paragraphs, so it is sent as written.'
+            }
+          />
         </div>
 
         {error && <p className="error">{error}</p>}

@@ -11,6 +11,7 @@ function videoJob(changes: Partial<Job>): Job {
     kind: 'Video',
     prompt: '',
     resolution: '896 x 512',
+    paragraphOrder: null,
     sourceImageUrl: null,
     requestedCount: 1,
     completedCount: 0,

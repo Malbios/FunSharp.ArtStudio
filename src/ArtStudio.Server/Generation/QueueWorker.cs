@@ -144,7 +144,7 @@ public sealed class QueueWorker(
         while (job.RemainingCount > 0)
         {
             var seed = seeds.Next();
-            var workflow = workflowBuilder.Build(job.Prompt, resolution, seed);
+            var workflow = workflowBuilder.Build(ParagraphOrder.Apply(job.Prompt, job.ParagraphOrder), resolution, seed);
 
             var downloaded = await runner.RunAsync(client, workflow, async promptId =>
             {

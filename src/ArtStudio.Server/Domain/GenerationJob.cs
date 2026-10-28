@@ -23,6 +23,8 @@ public class GenerationJob
     public JobKind Kind { get; set; }
     public required string Prompt { get; set; }
     public required string Resolution { get; set; }
+    /// <summary>The order <see cref="Prompt"/>'s sections are sent in; null for the normal order.</summary>
+    public string? ParagraphOrder { get; set; }
     public int RequestedCount { get; set; }
     public int CompletedCount { get; set; }
     public JobStatus Status { get; set; }

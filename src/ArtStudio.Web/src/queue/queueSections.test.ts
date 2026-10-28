@@ -10,6 +10,7 @@ function job(kind: JobKind, status: JobStatus = 'Queued'): Job {
     kind,
     prompt: '',
     resolution: '',
+    paragraphOrder: null,
     sourceImageUrl: null,
     requestedCount: 1,
     completedCount: 0,

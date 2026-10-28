@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { Job, QueueMove } from '../api'
+import { OrderLabel } from '../prompt/OrderLabel'
 import { useReturnState } from '../sets/returnTo'
 import { useNow } from '../live/useNow'
 import { jobProgressLabel, jobSettingsLabel, jobTimeLabel } from './jobLabels'
@@ -50,6 +51,7 @@ export function JobTile({ job, canMoveUp = false, canMoveDown = false }: Props) 
         {timeLabel && <div className="hint job-time">{timeLabel}</div>}
         <div className="job-meta">
           <span>{jobSettingsLabel(job)}</span>
+          <OrderLabel order={job.paragraphOrder} />
           <span>set #{job.setId}</span>
         </div>
         {job.error && <div className="job-error">{job.error}</div>}

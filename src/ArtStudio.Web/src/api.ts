@@ -16,6 +16,8 @@ export interface ImageInfo {
   seed: string
   prompt: string
   resolution: string
+  /** The order the prompt's sections were sent in, e.g. "Style,Characters,Setting,Composition"; null for the normal order. */
+  paragraphOrder: string | null
   createdAt: string
 }
 
@@ -28,6 +30,7 @@ export interface Job {
   prompt: string
   /** A video job's size label, e.g. "896 x 512" or "0.55 MP". */
   resolution: string
+  paragraphOrder: string | null
   /** For a video job, the image it starts from. */
   sourceImageUrl: string | null
   requestedCount: number
@@ -156,6 +159,7 @@ export interface ModifiedParagraph {
 export interface ImagesToQueue {
   count: number
   resolution: string
+  paragraphOrder: string
 }
 
 export interface VisionSettings {
@@ -166,6 +170,8 @@ export interface SetDetail {
   id: number
   prompt: string
   resolution: string
+  /** The order of the latest run, which "More images" reuses. */
+  paragraphOrder: string | null
   sourceKind: SourceKind
   sourceImageUrl: string | null
   deviantArtUrl: string | null
@@ -395,22 +401,36 @@ export const api = {
     request<SetSummary[]>('GET', `/api/sets?stage=${stage}${presetId ? `&preset=${presetId}` : ''}`),
   set: (id: number) => request<SetDetail>('GET', `/api/sets/${id}`),
   createSet: (form: FormData) => request<{ id: number }>('POST', '/api/sets', form),
-  moreImages: (setId: number, count: number, prompt?: string, resolution?: string, queueFirst?: boolean) =>
-    request<{ id: number }>('POST', `/api/sets/${setId}/more`, { count, prompt, resolution, queueFirst }),
+  /** Without a paragraph order, the set's latest one is used. */
+  moreImages: (
+    setId: number,
+    count: number,
+    prompt?: string,
+    resolution?: string,
+    queueFirst?: boolean,
+    paragraphOrder?: string,
+  ) => request<{ id: number }>('POST', `/api/sets/${setId}/more`, { count, prompt, resolution, queueFirst, paragraphOrder }),
   videoOptions: () => request<VideoOptions>('GET', '/api/videos/options'),
   videoFrames: (setId: number) => request<VideoFrame[]>('GET', `/api/sets/${setId}/video-frames`),
   makeVideo: (setId: number, startFrame: string, endFrame: string | null, settings: VideoJobSettings) =>
     request<{ id: number }>('POST', `/api/sets/${setId}/videos`, { startFrame, endFrame, ...settings }),
   saveDraftSettings: (setId: number, resolution: string, imageCount: number) =>
     request<void>('PUT', `/api/sets/${setId}/draft-settings`, { resolution, imageCount }),
-  queueDraft: (setId: number, prompt: string, resolution: string, count: number, queueFirst?: boolean) =>
-    request<void>('POST', `/api/sets/${setId}/queue`, { prompt, resolution, count, queueFirst }),
+  queueDraft: (
+    setId: number,
+    prompt: string,
+    resolution: string,
+    count: number,
+    queueFirst: boolean,
+    paragraphOrder: string,
+  ) => request<void>('POST', `/api/sets/${setId}/queue`, { prompt, resolution, count, queueFirst, paragraphOrder }),
   addDeviantArtDraft: (url: string) => request<{ id: number }>('POST', '/api/drafts/deviantart', { url }),
   retryFailedDraftPrompts: () => request<{ retried: number }>('POST', '/api/drafts/retry-failed-prompts'),
   generatePrompt: (setId: number, images?: ImagesToQueue) =>
     request<void>('POST', `/api/sets/${setId}/generate-prompt`, {
       imageCount: images?.count,
       resolution: images?.resolution,
+      paragraphOrder: images?.paragraphOrder,
     }),
   visionSettings: () => request<VisionSettings>('GET', '/api/vision'),
   saveVisionApiKey: (apiKey: string) => request<VisionSettings>('PUT', '/api/vision', { apiKey }),
@@ -423,6 +443,7 @@ export const api = {
       section: paragraph?.section,
       imageCount: images?.count,
       resolution: images?.resolution,
+      paragraphOrder: images?.paragraphOrder,
     }),
   pickImage: (setId: number, imageId: number) => request<void>('POST', `/api/sets/${setId}/picks`, { imageId }),
   unpickImage: (setId: number, imageId: number) => request<void>('DELETE', `/api/sets/${setId}/picks/${imageId}`),

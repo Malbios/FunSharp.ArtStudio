@@ -26,15 +26,29 @@ describe('describePreset', () => {
 describe('presetRequeue', () => {
   it('replaces the art style and uses the preset resolution and count', () => {
     expect(
-      presetRequeue({ artStyle: 'Oil.', resolution: 'Wide', imageCount: 4 }, 'A fox.\n\nA forest.\n\nEye level.\n\nWatercolour.', 'Native', 2),
-    ).toEqual({ prompt: 'A fox.\n\nA forest.\n\nEye level.\n\nOil.', resolution: 'Wide', count: 4 })
+      presetRequeue(
+        { artStyle: 'Oil.', resolution: 'Wide', imageCount: 4 },
+        'A fox.\n\nA forest.\n\nEye level.\n\nWatercolour.',
+        'Native',
+        2,
+        'Style,Characters,Setting,Composition',
+      ),
+    ).toEqual({
+      prompt: 'A fox.\n\nA forest.\n\nEye level.\n\nOil.',
+      resolution: 'Wide',
+      count: 4,
+      paragraphOrder: 'Style,Characters,Setting,Composition',
+    })
   })
 
   it('keeps what the preset does not set', () => {
-    expect(presetRequeue({ artStyle: null, resolution: null, imageCount: null }, 'A fox.\n\nWatercolour.', 'Native', 3)).toEqual({
+    expect(
+      presetRequeue({ artStyle: null, resolution: null, imageCount: null }, 'A fox.\n\nWatercolour.', 'Native', 3, null),
+    ).toEqual({
       prompt: 'A fox.\n\nWatercolour.',
       resolution: 'Native',
       count: 3,
+      paragraphOrder: 'Characters,Setting,Composition,Style',
     })
   })
 })

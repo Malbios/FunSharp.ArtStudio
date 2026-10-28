@@ -5,7 +5,8 @@ using ArtStudio.Server.Generation;
 namespace ArtStudio.Server.Api;
 
 public sealed record ImageDto(
-    int Id, int SetId, int JobId, string Url, string Seed, string Prompt, string Resolution, DateTimeOffset CreatedAt)
+    int Id, int SetId, int JobId, string Url, string Seed, string Prompt, string Resolution, string? ParagraphOrder,
+    DateTimeOffset CreatedAt)
 {
     public static ImageDto From(GeneratedImage image, GenerationJob job) => new(
         image.Id,
@@ -16,6 +17,7 @@ public sealed record ImageDto(
         image.Seed.ToString(CultureInfo.InvariantCulture),
         job.Prompt,
         job.Resolution,
+        job.ParagraphOrder,
         image.CreatedAt);
 }
 
@@ -25,6 +27,7 @@ public sealed record JobDto(
     JobKind Kind,
     string Prompt,
     string Resolution,
+    string? ParagraphOrder,
     string? SourceImageUrl,
     int RequestedCount,
     int CompletedCount,
@@ -46,6 +49,7 @@ public sealed record JobDto(
         job.Kind,
         job.Prompt,
         job.Resolution,
+        job.ParagraphOrder,
         // A video job shows the image it starts from.
         job.Kind == JobKind.Video ? ApiUrls.VideoFrame(job.Id, "start") : ApiUrls.SourceImage(job.PromptSet),
         job.RequestedCount,
@@ -130,6 +134,7 @@ public sealed record SetDetailDto(
     int Id,
     string Prompt,
     string Resolution,
+    string? ParagraphOrder,
     SourceKind SourceKind,
     string? SourceImageUrl,
     string? DeviantArtUrl,
@@ -163,9 +168,12 @@ public sealed record PostDto(
         suggesting);
 }
 
-public sealed record MoreImagesRequest(int Count, string? Prompt, string? Resolution, bool QueueFirst = false);
+/// <summary>A paragraph order such as "Style,Characters,Setting,Composition"; without one, the set's latest order is used.</summary>
+public sealed record MoreImagesRequest(
+    int Count, string? Prompt, string? Resolution, bool QueueFirst = false, string? ParagraphOrder = null);
 
-public sealed record QueueDraftRequest(string Prompt, string Resolution, int Count, bool QueueFirst = false);
+public sealed record QueueDraftRequest(
+    string Prompt, string Resolution, int Count, bool QueueFirst = false, string? ParagraphOrder = null);
 
 public sealed record DraftSettingsRequest(string Resolution, int ImageCount);
 
@@ -217,10 +225,11 @@ public sealed record VisionSettingsDto(bool HasApiKey);
 
 public sealed record VisionApiKeyRequest(string ApiKey);
 
-public sealed record GeneratePromptRequest(int? ImageCount, string? Resolution);
+public sealed record GeneratePromptRequest(int? ImageCount, string? Resolution, string? ParagraphOrder = null);
 
 public sealed record ModifyPromptRequest(
-    string? Prompt, string? Instructions, int? ParagraphIndex, string? Section, int? ImageCount, string? Resolution);
+    string? Prompt, string? Instructions, int? ParagraphIndex, string? Section, int? ImageCount, string? Resolution,
+    string? ParagraphOrder = null);
 
 public sealed record PickImageRequest(int ImageId);
 

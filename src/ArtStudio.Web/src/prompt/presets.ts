@@ -1,4 +1,5 @@
 import type { BuildingBlock } from '../api'
+import { parseOrder, serializeOrder } from './paragraphOrder'
 import { joinParagraphs, splitParagraphs } from './paragraphs'
 
 /** Replaces the last box (Art style) with the preset's art style; without one the boxes stay as they are. */
@@ -21,6 +22,8 @@ export interface PresetRequeue {
   prompt: string
   resolution: string
   count: number
+  /** Always explicit, so a bundle's presets don't pick up the order of the one queued before them. */
+  paragraphOrder: string
 }
 
 /** What a requeue with this preset sends: its art style in the prompt, its resolution and count where it has them. */
@@ -29,11 +32,13 @@ export function presetRequeue(
   prompt: string,
   resolution: string,
   fallbackCount: number,
+  paragraphOrder: string | null,
 ): PresetRequeue {
   return {
     prompt: joinParagraphs(withArtStyle(splitParagraphs(prompt), preset.artStyle)),
     resolution: preset.resolution ?? resolution,
     count: preset.imageCount ?? fallbackCount,
+    paragraphOrder: serializeOrder(parseOrder(paragraphOrder)),
   }
 }
 

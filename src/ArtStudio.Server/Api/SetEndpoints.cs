@@ -18,7 +18,8 @@ public static class SetEndpoints
         sets.MapPost("", CreateSetAsync).DisableAntiforgery();
         sets.MapPost("{id:int}/more", RequestMoreImagesAsync);
         sets.MapPost("{id:int}/queue", async (int id, QueueDraftRequest request, SetService setService, CancellationToken ct) =>
-            await setService.QueueDraftAsync(id, request.Prompt, request.Resolution, request.Count, request.QueueFirst, ct));
+            await setService.QueueDraftAsync(
+                id, request.Prompt, request.Resolution, request.Count, request.ParagraphOrder, request.QueueFirst, ct));
         sets.MapPut("{id:int}/draft-settings", async (int id, DraftSettingsRequest request, SetService setService, CancellationToken ct) =>
             await setService.SaveDraftSettingsAsync(id, request.Resolution ?? "", request.ImageCount, ct));
         sets.MapPost("{id:int}/picks", async (int id, PickImageRequest request, SetService setService, CancellationToken ct) =>
@@ -35,11 +36,11 @@ public static class SetEndpoints
         sets.MapDelete("{id:int}/ready", async (int id, SetService setService, CancellationToken ct) =>
             await setService.MoveBackToSetsAsync(id, ct));
         sets.MapPost("{id:int}/generate-prompt", async (int id, GeneratePromptRequest? request, SetService setService, CancellationToken ct) =>
-            await setService.QueuePromptGenerationAsync(id, request?.ImageCount, request?.Resolution, ct));
+            await setService.QueuePromptGenerationAsync(id, request?.ImageCount, request?.Resolution, request?.ParagraphOrder, ct));
         sets.MapPost("{id:int}/modify-prompt", async (int id, ModifyPromptRequest request, SetService setService, CancellationToken ct) =>
             await setService.QueuePromptModificationAsync(
                 id, request.Prompt ?? "", request.Instructions ?? "", request.ParagraphIndex, request.Section,
-                request.ImageCount, request.Resolution, ct));
+                request.ImageCount, request.Resolution, request.ParagraphOrder, ct));
         sets.MapPost("{id:int}/archive", async (int id, SetService setService, CancellationToken ct) =>
             await setService.ArchiveAsync(id, ct));
         sets.MapDelete("{id:int}/archive", async (int id, SetService setService, CancellationToken ct) =>
@@ -149,6 +150,7 @@ public static class SetEndpoints
             set.Id,
             set.Prompt,
             set.Resolution,
+            set.ParagraphOrder,
             set.SourceKind,
             ApiUrls.SourceImage(set),
             set.DeviantArtUrl,
@@ -180,12 +182,13 @@ public static class SetEndpoints
 
         var asDraft = bool.TryParse(form["draft"], out var draft) && draft;
         var queueFirst = bool.TryParse(form["queueFirst"], out var first) && first;
+        var paragraphOrder = form["paragraphOrder"].ToString() is { Length: > 0 } order ? order : null;
 
         await using var endImageStream = form.Files.GetFile("endImage")?.OpenReadStream();
         var video = form["mode"] == "video" ? ReadVideo(form, endImageStream) : null;
 
         var set = await setService.CreateAsync(
-            new NewSetRequest(prompt, resolution, count, source, asDraft, queueFirst, video), ct);
+            new NewSetRequest(prompt, resolution, count, source, asDraft, queueFirst, video, paragraphOrder), ct);
         return Results.Created($"/api/sets/{set.Id}", new { set.Id });
     }
 
@@ -236,7 +239,8 @@ public static class SetEndpoints
     {
         if (!await db.PromptSets.AnyAsync(s => s.Id == id, ct))
             return Results.NotFound();
-        var job = await queueService.EnqueueAsync(id, request.Count, request.Prompt, request.Resolution, request.QueueFirst, ct);
+        var job = await queueService.EnqueueAsync(
+            id, request.Count, request.Prompt, request.Resolution, request.ParagraphOrder, request.QueueFirst, ct);
         return Results.Ok(new { job.Id });
     }
 

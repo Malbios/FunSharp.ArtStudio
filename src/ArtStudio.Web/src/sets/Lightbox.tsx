@@ -1,6 +1,7 @@
 import { useEffect, useState, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import type { ImageInfo } from '../api'
+import { OrderLabel } from '../prompt/OrderLabel'
 import { RequeueWithPreset } from './RequeueWithPreset'
 
 interface Props {
@@ -118,6 +119,7 @@ export function Lightbox({
                 setId={image.setId}
                 prompt={image.prompt}
                 resolution={image.resolution}
+                paragraphOrder={image.paragraphOrder}
                 fallbackCount={requeueCount}
                 className="link-button"
                 onQueued={onRequeued}
@@ -134,6 +136,7 @@ export function Lightbox({
           <div className="job-meta">
             {copyPromptButton}
             <span>{image.resolution}</span>
+            <OrderLabel order={image.paragraphOrder} />
             <span>seed {image.seed}</span>
           </div>
         </div>

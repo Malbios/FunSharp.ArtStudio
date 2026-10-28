@@ -217,6 +217,9 @@ namespace ArtStudio.Server.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ParagraphOrder")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Prompt")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -323,6 +326,9 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<int?>("ImagesAfterPromptCount")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("ImagesAfterPromptOrder")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("ImagesAfterPromptResolution")
                         .HasColumnType("TEXT");
 
@@ -339,6 +345,9 @@ namespace ArtStudio.Server.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("ModifySection")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ParagraphOrder")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("PostDescription")

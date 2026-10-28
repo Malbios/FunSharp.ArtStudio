@@ -5,6 +5,7 @@ import { useStudioEvents, type JobEventPayload } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { PostPanel } from '../post/PostPanel'
+import { OrderLabel } from '../prompt/OrderLabel'
 import { JobRow } from '../queue/JobRow'
 import { Lightbox } from './Lightbox'
 import { PickedStrip } from './PickedStrip'
@@ -169,6 +170,7 @@ export function SetDetailPage() {
               onChange={(e) => setMoreCount(Math.max(1, Number(e.target.value) || 1))}
             />
             <button type="submit">More images</button>
+            <OrderLabel order={data.paragraphOrder} />
           </form>
           <Link to={`/?basedOn=${data.id}`} state={returnState} className="button-link inline">
             Edit &amp; requeue
@@ -177,6 +179,7 @@ export function SetDetailPage() {
             setId={data.id}
             prompt={data.prompt}
             resolution={data.resolution}
+            paragraphOrder={data.paragraphOrder}
             fallbackCount={moreCount}
             onQueued={goBack}
             onError={setError}

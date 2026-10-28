@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { Job } from '../api'
+import { OrderLabel } from '../prompt/OrderLabel'
 import { useReturnState } from '../sets/returnTo'
 import { useNow } from '../live/useNow'
 import { jobProgressLabel, jobSettingsLabel, jobTimeLabel } from './jobLabels'
@@ -34,6 +35,7 @@ export function JobRow({ job, showPrompt = true }: Props) {
             <div style={{ width: `${actions.percent}%` }} />
           </div>
           <span>{jobSettingsLabel(job)}</span>
+          <OrderLabel order={job.paragraphOrder} />
           {timeLabel && <span className="hint">{timeLabel}</span>}
           <span>set #{job.setId}</span>
         </div>

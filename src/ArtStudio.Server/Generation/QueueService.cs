@@ -27,10 +27,10 @@ public sealed class QueueService(
 
     /// <summary>
     /// Queues a batch for the set, after the waiting jobs or, with <paramref name="queueFirst"/>, ahead of them;
-    /// a missing prompt or resolution falls back to the set's most recent one.
+    /// a missing prompt, resolution or paragraph order falls back to the set's most recent one.
     /// </summary>
     public async Task<GenerationJob> EnqueueAsync(
-        int setId, int count, string? prompt, string? resolution, bool queueFirst, CancellationToken ct)
+        int setId, int count, string? prompt, string? resolution, string? paragraphOrder, bool queueFirst, CancellationToken ct)
     {
         if (count is < 1 or > MaxImagesPerJob)
             throw new UserFacingException($"Image count must be between 1 and {MaxImagesPerJob}.");
@@ -50,6 +50,8 @@ public sealed class QueueService(
 
         set.Prompt = jobPrompt.Trim();
         set.Resolution = preset.Name;
+        if (paragraphOrder is not null)
+            set.ParagraphOrder = ParagraphOrder.Normalize(paragraphOrder);
 
         return await AddJobAsync(new GenerationJob
         {
@@ -57,6 +59,7 @@ public sealed class QueueService(
             Kind = JobKind.Image,
             Prompt = set.Prompt,
             Resolution = set.Resolution,
+            ParagraphOrder = set.ParagraphOrder,
             RequestedCount = count,
         }, queueFirst, ct);
     }

@@ -22,7 +22,7 @@ public sealed record NewSetVideo(SetSource.ImageFile? EndImage, double Seconds, 
 
 public sealed record NewSetRequest(
     string Prompt, string Resolution, int Count, SetSource Source, bool AsDraft = false, bool QueueFirst = false,
-    NewSetVideo? Video = null);
+    NewSetVideo? Video = null, string? ParagraphOrder = null);
 
 public sealed class SetService(
     StudioDbContext db,
@@ -50,6 +50,7 @@ public sealed class SetService(
             throw new UserFacingException("The prompt must not be empty.");
         var resolution = Resolutions.Find(request.Resolution)
             ?? throw new UserFacingException($"Unknown resolution '{request.Resolution}'.");
+        ParagraphOrder.Normalize(request.ParagraphOrder);
         if (request.Video is { } video)
         {
             // Videos animate the start image directly, so only the user's own images qualify, not other artists' work.
@@ -100,7 +101,8 @@ public sealed class SetService(
                 request.Count,
                 request.QueueFirst), ct);
         else
-            await queueService.EnqueueAsync(set.Id, request.Count, prompt: null, resolution: null, request.QueueFirst, ct);
+            await queueService.EnqueueAsync(
+                set.Id, request.Count, prompt: null, resolution: null, request.ParagraphOrder, request.QueueFirst, ct);
         return set;
     }
 
@@ -153,7 +155,7 @@ public sealed class SetService(
     }
 
     public async Task QueueDraftAsync(
-        int setId, string prompt, string resolution, int count, bool queueFirst, CancellationToken ct)
+        int setId, string prompt, string resolution, int count, string? paragraphOrder, bool queueFirst, CancellationToken ct)
     {
         var set = await FindSetAsync(setId, ct);
         if (!set.IsDraft)
@@ -162,7 +164,7 @@ public sealed class SetService(
         set.IsDraft = false;
         if (set.PromptGeneration is PromptGenerationState.Queued or PromptGenerationState.Running)
             set.PromptGeneration = PromptGenerationState.None;
-        await queueService.EnqueueAsync(setId, count, prompt, resolution, queueFirst, ct);
+        await queueService.EnqueueAsync(setId, count, prompt, resolution, paragraphOrder, queueFirst, ct);
         promptQueue.CancelRunning(setId);
         await notifier.SetUpdated(setId);
     }
@@ -179,12 +181,13 @@ public sealed class SetService(
         await notifier.SetUpdated(setId);
     }
 
-    public async Task QueuePromptGenerationAsync(int setId, int? imageCount, string? resolution, CancellationToken ct)
+    public async Task QueuePromptGenerationAsync(
+        int setId, int? imageCount, string? resolution, string? paragraphOrder, CancellationToken ct)
     {
         var set = await FindSetAsync(setId, ct);
         if (set.SourceImagePath is null)
             throw new UserFacingException("This set has no inspiration image to describe.");
-        var images = ImagesAfterPrompt(set, imageCount, resolution);
+        var images = ImagesAfterPrompt(set, imageCount, resolution, paragraphOrder);
         await EnsureVisionCanStartAsync(set, ct);
 
         SetModification(set, null);
@@ -193,7 +196,7 @@ public sealed class SetService(
 
     public async Task QueuePromptModificationAsync(
         int setId, string prompt, string instructions, int? paragraphIndex, string? section,
-        int? imageCount, string? resolution, CancellationToken ct)
+        int? imageCount, string? resolution, string? paragraphOrder, CancellationToken ct)
     {
         var set = await FindSetAsync(setId, ct);
         if (string.IsNullOrWhiteSpace(prompt))
@@ -202,7 +205,7 @@ public sealed class SetService(
             throw new UserFacingException("Describe how the prompt should change.");
         if (paragraphIndex is { } index && (index < 0 || index >= PromptModifier.Paragraphs(prompt).Count))
             throw new UserFacingException("That paragraph is not part of the prompt.");
-        var images = ImagesAfterPrompt(set, imageCount, resolution);
+        var images = ImagesAfterPrompt(set, imageCount, resolution, paragraphOrder);
         await EnsureVisionCanStartAsync(set, ct);
 
         SetModification(set, new(instructions.Trim(), prompt.Trim(), paragraphIndex, section?.Trim()));
@@ -240,7 +243,8 @@ public sealed class SetService(
         if (set is not { IsDraft: false, ImagesAfterPromptCount: { } count, ImagesAfterPromptResolution: { } resolution })
             return;
 
-        await queueService.EnqueueAsync(setId, count, set.Prompt, resolution, queueFirst: false, ct);
+        await queueService.EnqueueAsync(
+            setId, count, set.Prompt, resolution, set.ImagesAfterPromptOrder ?? ParagraphOrder.Normal, queueFirst: false, ct);
         await notifier.SetUpdated(setId);
     }
 
@@ -252,17 +256,18 @@ public sealed class SetService(
             throw new UserFacingException("Set the vision API key in Settings first.");
     }
 
-    private sealed record ImagesToQueue(int Count, string Resolution);
+    private sealed record ImagesToQueue(int Count, string Resolution, string? ParagraphOrder);
 
     /// <summary>The images to queue once the prompt is done; drafts never queue images.</summary>
-    private static ImagesToQueue? ImagesAfterPrompt(PromptSet set, int? imageCount, string? resolution)
+    private static ImagesToQueue? ImagesAfterPrompt(PromptSet set, int? imageCount, string? resolution, string? paragraphOrder)
     {
         if (set.IsDraft)
             return null;
         var count = ValidatedImageCount(imageCount ?? DefaultImageCount);
         var preset = Resolutions.Find(resolution ?? set.Resolution)
             ?? throw new UserFacingException("Choose a resolution.");
-        return new(count, preset.Name);
+        var order = paragraphOrder is null ? set.ParagraphOrder : ParagraphOrder.Normalize(paragraphOrder);
+        return new(count, preset.Name, order);
     }
 
     private static int ValidatedImageCount(int count) =>
@@ -298,6 +303,7 @@ public sealed class SetService(
         set.PromptGenerationTruncated = false;
         set.ImagesAfterPromptCount = images?.Count;
         set.ImagesAfterPromptResolution = images?.Resolution;
+        set.ImagesAfterPromptOrder = images?.ParagraphOrder;
         await db.SaveChangesAsync(ct);
         promptQueue.Wake();
         await notifier.SetUpdated(set.Id);
