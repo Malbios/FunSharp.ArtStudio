@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Art Studio for DeviantArt</title>
+    <style>
+      body { font: 14px/1.4 system-ui, sans-serif; margin: 1.5rem; color: #1c1d22; }
+      label { display: block; margin-bottom: 0.5rem; }
+      input { width: 20rem; padding: 0.35rem 0.5rem; font: inherit; }
+      button { margin-left: 0.5rem; padding: 0.35rem 0.9rem; font: inherit; }
+      .hint { color: #66676f; }
+    </style>
+  </head>
+  <body>
+    <label for="address">Art Studio address</label>
+    <input id="address" type="url" placeholder="http://localhost:5180" />
+    <button id="save" type="button">Save</button>
+    <p class="hint" id="status">The menu entries only show while Art Studio answers at this address.</p>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>
