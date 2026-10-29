@@ -44,20 +44,16 @@ public static class PostEndpoints
             await posting.PublishAsync(id, request, ct));
         post.MapPost("forget-stash", async (int id, DeviantArtPosting posting, CancellationToken ct) =>
             await posting.ForgetStashAsync(id, ct));
-        post.MapPost("extra-picks", async (int id, ExtraPicksFolder folder, CancellationToken ct) =>
-            new { Folder = await folder.OpenAsync(id, ct) });
-        post.MapPost("extra-picks/close", (int id, ExtraPicksFolder folder) => folder.Close(id));
-
         app.MapGet("/api/stash/{stashItemId:long}/extra-picks", GetStashExtraPicksAsync);
     }
 
     private static async Task<IResult> GetStashExtraPicksAsync(
-        long stashItemId, StudioDbContext db, ExtraPicksFolder folder, CancellationToken ct)
+        long stashItemId, StudioDbContext db, ExtraPicks extraPicks, CancellationToken ct)
     {
         var setId = await db.PromptSets.Where(s => s.StashItemId == stashItemId).Select(s => (int?)s.Id).FirstOrDefaultAsync(ct);
         if (setId is not { } id)
             return Results.NotFound();
-        var picks = await folder.ListAsync(id, ct);
+        var picks = await extraPicks.ListAsync(id, ct);
         return Results.Ok(new StashExtraPicksDto(
             id, picks.Select(p => new ExtraPickDto(p.Position, p.FileName, ApiUrls.Image(p.ImageId))).ToList()));
     }

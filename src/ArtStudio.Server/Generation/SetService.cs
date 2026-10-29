@@ -29,7 +29,6 @@ public sealed record NewSetRequest(
 public sealed class SetService(
     StudioDbContext db,
     AppPaths paths,
-    IFolderOpener folderOpener,
     QueueService queueService,
     DeviantArtService deviantArtService,
     GenerationQueue queue,
@@ -453,7 +452,6 @@ public sealed class SetService(
 
         set.ArchivedAt = clock.GetUtcNow();
         await db.SaveChangesAsync(ct);
-        ExtraPicksFolder.Delete(paths, folderOpener, setId);
         await notifier.SetUpdated(setId);
     }
 

@@ -63,8 +63,7 @@ public static class ServiceRegistration
         services.AddScoped<DeviantArtPosting>();
         services.AddScoped<DeviationStatsCollector>();
         services.AddScoped<StatsService>();
-        services.AddScoped<ExtraPicksFolder>();
-        services.AddSingleton<IFolderOpener, ExplorerFolderOpener>();
+        services.AddScoped<ExtraPicks>();
         services.AddDataProtection().SetApplicationName("ArtStudio");
         services.AddSingleton<DeviantArtAuth>();
         services.AddSingleton<FakeGoogleDriveHandler>();

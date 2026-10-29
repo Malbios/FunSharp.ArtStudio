@@ -37,8 +37,6 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
 
     public FakeGoogle Google { get; } = new();
 
-    public FakeFolderOpener FolderOpener { get; } = new();
-
     public static readonly byte[] VideoBytes = [0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70];
 
     public TimeSpan DriveTimeout { get; init; } = TimeSpan.FromSeconds(10);
@@ -67,8 +65,6 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
             services.AddHttpClient(DeviantArtService.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => DeviantArt);
             services.AddHttpClient(VisionClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Vision);
             services.AddHttpClient(GoogleAuth.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Google);
-            services.RemoveAll<IFolderOpener>();
-            services.AddSingleton<IFolderOpener>(FolderOpener);
         });
     }
 

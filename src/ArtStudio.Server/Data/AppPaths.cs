@@ -12,7 +12,6 @@ public class AppPaths
     public string DatabasePath => Path.Combine(DataDirectory, "artstudio.db");
     public string DefaultOutputDirectory => Path.Combine(DataDirectory, "images");
     public string PresetImagesDirectory => Path.Combine(DataDirectory, "presets");
-    public string ExtraPicksDirectory => Path.Combine(DataDirectory, "extra-picks");
 
     public static AppPaths FromConfiguration(IConfiguration configuration)
     {

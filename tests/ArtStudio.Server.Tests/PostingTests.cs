@@ -160,12 +160,11 @@ public sealed class PostingTests : IDisposable
         _client.PostAsJsonAsync($"/api/sets/{setId}/post/publish", new { galleryId, isMature, matureLevel });
 
     [Fact]
-    public async Task Publish_SendsTheOldAppsFields_MovesTheSetToPublished_AndDeletesItsExtraPicksFolder()
+    public async Task Publish_SendsTheOldAppsFields_AndMovesTheSetToPublished()
     {
         await _factory.ConnectDeviantArtAsync();
         var (setId, _) = await CreateReadySetAsync(2);
         (await StashAsync(setId, tags: "digital_art made_with_ai fox")).EnsureSuccessStatusCode();
-        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null)).EnsureSuccessStatusCode();
 
         (await PublishAsync(setId, "F-RANDOM")).EnsureSuccessStatusCode();
 
@@ -186,8 +185,6 @@ public sealed class PostingTests : IDisposable
             var stored = await scope.ServiceProvider.GetRequiredService<StudioDbContext>().PromptSets.SingleAsync(s => s.Id == setId);
             Assert.Equal(FakeDeviantArt.PublishedDeviationId, stored.PublishedDeviationId);
         }
-        Assert.False(Directory.Exists(_factory.FolderOpener.Opened.Single()));
-        Assert.Equal(_factory.FolderOpener.Opened, _factory.FolderOpener.Closed);
         var published = Assert.Single(await SetsInStageAsync("published"));
         Assert.Equal((setId, FakeDeviantArt.PublishedUrl), (published.GetProperty("id").GetInt32(), published.GetProperty("publishedUrl").GetString()));
         Assert.Equal(set.Post.PublishedAt, published.GetProperty("publishedAt").GetDateTimeOffset());
@@ -195,58 +192,6 @@ public sealed class PostingTests : IDisposable
         Assert.Empty(await SetsInStageAsync("archived"));
         var lastUsed = (await GalleriesAsync()).Where(g => g.GetProperty("lastUsed").GetBoolean()).Select(g => g.GetProperty("folderId").GetString());
         Assert.Equal(["F-RANDOM"], lastUsed);
-    }
-
-    [Fact]
-    public async Task ArchivingAReadySet_DeletesItsExtraPicksFolder()
-    {
-        var (setId, _) = await CreateReadySetAsync(2);
-        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null)).EnsureSuccessStatusCode();
-
-        (await _client.PostAsync($"/api/sets/{setId}/archive", null)).EnsureSuccessStatusCode();
-
-        Assert.False(Directory.Exists(_factory.FolderOpener.Opened.Single()));
-        Assert.Equal(_factory.FolderOpener.Opened, _factory.FolderOpener.Closed);
-    }
-
-    [Fact]
-    public async Task ForgettingTheStashItem_ClosesAndDeletesItsExtraPicksFolder()
-    {
-        await _factory.ConnectDeviantArtAsync();
-        var (setId, _) = await CreateReadySetAsync(2);
-        (await StashAsync(setId)).EnsureSuccessStatusCode();
-        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null)).EnsureSuccessStatusCode();
-
-        (await _client.PostAsync($"/api/sets/{setId}/post/forget-stash", null)).EnsureSuccessStatusCode();
-
-        Assert.False(Directory.Exists(_factory.FolderOpener.Opened.Single()));
-        Assert.Equal(_factory.FolderOpener.Opened, _factory.FolderOpener.Closed);
-    }
-
-    [Fact]
-    public async Task ClosingTheExtraPicksFolder_ClosesItsWindowAndDeletesIt()
-    {
-        var (setId, _) = await CreateReadySetAsync(2);
-        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null)).EnsureSuccessStatusCode();
-
-        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks/close", null)).EnsureSuccessStatusCode();
-        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks/close", null)).EnsureSuccessStatusCode();
-
-        Assert.False(Directory.Exists(_factory.FolderOpener.Opened.Single()));
-        Assert.Equal(_factory.FolderOpener.Opened, _factory.FolderOpener.Closed);
-    }
-
-    [Fact]
-    public async Task ReopeningTheExtraPicksFolder_ClosesTheEarlierWindowFirst()
-    {
-        var (setId, _) = await CreateReadySetAsync(2);
-
-        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null)).EnsureSuccessStatusCode();
-        (await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null)).EnsureSuccessStatusCode();
-
-        Assert.Equal(2, _factory.FolderOpener.Opened.Count);
-        Assert.Equal([_factory.FolderOpener.Opened[0]], _factory.FolderOpener.Closed);
-        Assert.True(Directory.Exists(_factory.FolderOpener.Opened[1]));
     }
 
     [Fact]
@@ -314,20 +259,6 @@ public sealed class PostingTests : IDisposable
     }
 
     [Fact]
-    public async Task ExtraPicks_AreCopiedInPickOrderAndTheFolderOpened()
-    {
-        var (setId, picked) = await CreateReadySetAsync(3);
-
-        var response = await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null);
-
-        response.EnsureSuccessStatusCode();
-        var folder = Assert.Single(_factory.FolderOpener.Opened);
-        Assert.Equal(["02.png", "03.png"], Directory.GetFiles(folder).Select(Path.GetFileName).Order());
-        Assert.Equal(await _client.GetByteArrayAsync($"/api/images/{picked[1]}"), await File.ReadAllBytesAsync(Path.Combine(folder, "02.png")));
-        Assert.Equal(await _client.GetByteArrayAsync($"/api/images/{picked[2]}"), await File.ReadAllBytesAsync(Path.Combine(folder, "03.png")));
-    }
-
-    [Fact]
     public async Task StashExtraPicks_ListPicksTwoAndUpInPickOrder_ByTheStashItem()
     {
         await _factory.ConnectDeviantArtAsync();
@@ -356,15 +287,6 @@ public sealed class PostingTests : IDisposable
 
         Assert.Empty(extra!.Picks);
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
-    }
-
-    [Fact]
-    public async Task ExtraPicks_WithOnlyOnePick_IsRejected()
-    {
-        var (setId, _) = await CreateReadySetAsync(1);
-
-        Assert.Contains("no picks besides #1", await ErrorOf(await _client.PostAsync($"/api/sets/{setId}/post/extra-picks", null)));
-        Assert.Empty(_factory.FolderOpener.Opened);
     }
 
     [Fact]

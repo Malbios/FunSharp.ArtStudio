@@ -1,5 +1,4 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { api, type Gallery, type MatureLevel, type SetDetail } from '../api'
 import { hasOnlyDefaultTags, initialPostFields, MAX_TITLE_LENGTH, stashDescription, stashEditorUrl, withSuggestedTags } from './postDefaults'
 
@@ -158,48 +157,6 @@ function OriginalTitle({ set }: { set: SetDetail }) {
   )
 }
 
-function ExtraPicksButton({ set, onError }: { set: SetDetail; onError: (message: string | undefined) => void }) {
-  const [folder, setFolder] = useState<string>()
-  const navigate = useNavigate()
-  const extraPicks = set.pickedImageIds.length - 1
-
-  async function openExtraPicks() {
-    onError(undefined)
-    try {
-      setFolder((await api.openExtraPicks(set.id)).folder)
-    } catch (failure) {
-      onError((failure as Error).message)
-    }
-  }
-
-  async function closeExtraPicks() {
-    onError(undefined)
-    try {
-      await api.closeExtraPicks(set.id)
-      navigate('/post')
-    } catch (failure) {
-      onError((failure as Error).message)
-    }
-  }
-
-  return (
-    <>
-      <button type="button" onClick={() => void openExtraPicks()}>
-        Open picks #2{extraPicks > 1 ? `–#${extraPicks + 1}` : ''} folder
-      </button>
-      {folder && (
-        <span className="hint">
-          {' '}
-          Opened {folder}.{' '}
-          <button type="button" className="link-button" onClick={() => void closeExtraPicks()}>
-            Close folder
-          </button>
-        </span>
-      )}
-    </>
-  )
-}
-
 function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & { stashItemId: string }) {
   const [error, setError] = useState<string>()
   const [linkCopied, setLinkCopied] = useState(false)
@@ -236,16 +193,13 @@ function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & 
         {set.post.stashedAt && ` since ${new Date(set.post.stashedAt).toLocaleString()}`}.
       </p>
       <ol className="post-steps">
-        {extraPicks > 0 && (
-          <li>
-            <ExtraPicksButton set={set} onError={setError} />
-          </li>
-        )}
         <li>
           <a href={stashEditorUrl(stashItemId)} target="_blank" rel="noreferrer" onClick={() => void copyInspirationLink()}>
             Open in DeviantArt's editor
           </a>
-          {extraPicks > 0 ? ', add the other picks in order' : ''}
+          {extraPicks > 0
+            ? `, add ${extraPicks === 1 ? 'pick #2' : `picks #2–#${extraPicks + 1}`} with the Art Studio box there (browser extension)`
+            : ''}
           {set.deviantArtUrl ? ', paste the copied inspiration link after "Inspired by"' : ''}
           {extraPicks > 0 || set.deviantArtUrl ? ' and save.' : ' to check it.'}
           {linkCopied && <span className="hint"> Copied the inspiration link to the clipboard.</span>}

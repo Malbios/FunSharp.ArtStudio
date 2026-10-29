@@ -530,8 +530,6 @@ export const api = {
   publish: (setId: number, galleryId: string, isMature: boolean, matureLevel: MatureLevel | null) =>
     request<void>('POST', `/api/sets/${setId}/post/publish`, { galleryId, isMature, matureLevel }),
   forgetStash: (setId: number) => request<void>('POST', `/api/sets/${setId}/post/forget-stash`),
-  openExtraPicks: (setId: number) => request<{ folder: string }>('POST', `/api/sets/${setId}/post/extra-picks`),
-  closeExtraPicks: (setId: number) => request<void>('POST', `/api/sets/${setId}/post/extra-picks/close`),
 
   settings: () => request<Settings>('GET', '/api/settings'),
   saveSettings: (settings: Settings) => request<Settings>('PUT', '/api/settings', settings),
