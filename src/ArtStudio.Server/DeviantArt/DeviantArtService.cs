@@ -37,16 +37,16 @@ public sealed class DeviantArtService(
     public async Task<DeviationPreview> PreviewAsync(string input, CancellationToken ct)
     {
         var deviation = DeviationUrl.Parse(input);
+        var connection = await auth.GetStatusAsync(ct);
         if (deviation.Username is not null)
-            await EnsureNotBlockedAsync(deviation.Username, ct);
+            await EnsureUsableArtistAsync(deviation.Username, connection.Username, ct);
         await EnsureNotUsedAsync(deviation.DeviationId, ct);
 
-        var connected = await auth.IsConnectedAsync(ct);
-        var page = await FetchPageAsync(deviation, required: connected, ct);
-        var main = connected
+        var page = await FetchPageAsync(deviation, required: connection.Connected, ct);
+        var main = connection.Connected
             ? await FetchFromApiAsync(page.Uuid!, ct)
             : await FetchFromOEmbedAsync(deviation, ct);
-        await EnsureNotBlockedAsync(main.Author, ct);
+        await EnsureUsableArtistAsync(main.Author, connection.Username, ct);
 
         var usableExtras = page.AdditionalImages.Where(image => !image.Blurred).ToList();
         var images = usableExtras
@@ -94,8 +94,10 @@ public sealed class DeviantArtService(
         }
     }
 
-    private async Task EnsureNotBlockedAsync(string username, CancellationToken ct)
+    private async Task EnsureUsableArtistAsync(string username, string? ownUsername, CancellationToken ct)
     {
+        if (string.Equals(username, ownUsername, StringComparison.OrdinalIgnoreCase))
+            throw new UserFacingException("This is your own artwork on DeviantArt.");
         if (await db.BlockedArtists.AnyAsync(a => a.Username == username, ct))
             throw new UserFacingException($"DeviantArt user '{username}' is on your block list.");
     }

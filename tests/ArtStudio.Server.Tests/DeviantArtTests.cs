@@ -249,6 +249,31 @@ public sealed class DeviantArtTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task OwnArtworkFromUrl_IsRejectedBeforeFetching()
+    {
+        await _factory.ConnectDeviantArtAsync();
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/drafts/deviantart", new { url = "https://www.deviantart.com/Studio-Owner/art/My-Own-Painting-123456" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("your own artwork", (await ReadJsonAsync(response)).GetProperty("error").GetString());
+        Assert.Empty(_factory.DeviantArt.DeviationApiRequests);
+    }
+
+    [Fact]
+    public async Task OwnArtworkFromApiAuthor_IsRejected()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        _factory.DeviantArt.Author = FakeDeviantArt.Username.ToUpperInvariant();
+
+        var response = await _client.PostAsJsonAsync("/api/deviantart/preview", new { url = DeviationLink });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("your own artwork", (await ReadJsonAsync(response)).GetProperty("error").GetString());
+    }
+
     private async Task<int> SeedSetAsync(string? author, Action<PromptSet>? stage = null)
     {
         using var scope = _factory.Services.CreateScope();
