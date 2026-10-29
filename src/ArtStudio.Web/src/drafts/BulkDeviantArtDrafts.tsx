@@ -41,7 +41,7 @@ export function BulkDeviantArtDrafts() {
   const [addRightAway, setAddRightAway] = useState(rememberedAddRightAway)
   const [asking, setAsking] = useState<BulkRow[]>([])
   const [refusedPaste, setRefusedPaste] = useState(false)
-  const firstUrlRef = useRef<HTMLInputElement>(null)
+  const lastUrlRef = useRef<HTMLInputElement>(null)
   const refocusRef = useRef(false)
   const waitingRef = useRef<WaitingUrl[]>([])
   const workingRef = useRef(false)
@@ -49,10 +49,11 @@ export function BulkDeviantArtDrafts() {
   const filledCount = toAdd.now.length + toAdd.askFirst.length
 
   // Adding replaces the rows, so the box that had focus is gone; focus waits while a dialog is open.
+  // The last row is the empty one for the next link.
   useEffect(() => {
     if (!refocusRef.current || asking.length > 0) return
     refocusRef.current = false
-    firstUrlRef.current?.focus()
+    lastUrlRef.current?.focus()
   })
 
   function enqueue(items: WaitingUrl[]) {
@@ -147,8 +148,14 @@ export function BulkDeviantArtDrafts() {
     setResults((previous) => previous.filter((result) => result.url !== url))
   }
 
-  function removeFailedResults() {
+  function dismissFailure(url: string) {
+    removeResult(url)
+    refocusRef.current = true
+  }
+
+  function dismissAllFailures() {
     setResults((previous) => previous.filter((result) => result.status !== 'failed'))
+    refocusRef.current = true
   }
 
   const failedCount = results.filter((result) => result.status === 'failed').length
@@ -170,7 +177,7 @@ export function BulkDeviantArtDrafts() {
           <BulkLinkRow
             key={row.id}
             row={row}
-            urlRef={index === 0 ? firstUrlRef : undefined}
+            urlRef={index === rows.length - 1 ? lastUrlRef : undefined}
             removable={!addRightAway && index < rows.length - 1}
             onChange={(change) => changeRow(index, change)}
             onPaste={(event) => pasteLink(index, event)}
@@ -226,7 +233,7 @@ export function BulkDeviantArtDrafts() {
                     className="link-button bulk-result-dismiss"
                     aria-label={`Dismiss the error for ${result.url}`}
                     title="Dismiss"
-                    onClick={() => removeResult(result.url)}
+                    onClick={() => dismissFailure(result.url)}
                   >
                     ✕
                   </button>
@@ -237,7 +244,7 @@ export function BulkDeviantArtDrafts() {
         </ul>
       )}
       {failedCount > 1 && (
-        <button type="button" className="link-button bulk-results-dismiss-all" onClick={removeFailedResults}>
+        <button type="button" className="link-button bulk-results-dismiss-all" onClick={dismissAllFailures}>
           Dismiss all {failedCount} errors
         </button>
       )}
