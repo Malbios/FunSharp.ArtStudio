@@ -86,7 +86,7 @@ public sealed class PromptGenerationWorker(
                 ?? throw new UserFacingException("Set the vision API key in Settings.");
             var (answer, prompt) = set is { ModifyInstructions: { } instructions, ModifyBasePrompt: { } basePrompt }
                 ? await ModifyAsync(key, basePrompt, set.ModifyParagraphIndex, set.ModifySection, instructions, runToken)
-                : await DescribeSourceImageAsync(key, set.SourceImagePath, runToken);
+                : await DescribeSourceImageAsync(key, set.SourceImagePath, set.VisionContext, runToken);
             var finished = await FinishRunningAsync(db, setId, s => s
                 .SetProperty(set => set.GeneratedPrompt, prompt)
                 .SetProperty(set => set.Prompt, prompt)
@@ -118,13 +118,14 @@ public sealed class PromptGenerationWorker(
     }
 
     private async Task<(VisionAnswer Answer, string Prompt)> DescribeSourceImageAsync(
-        string key, string? imagePath, CancellationToken ct)
+        string key, string? imagePath, string? context, CancellationToken ct)
     {
         if (imagePath is null || !File.Exists(imagePath))
             throw new UserFacingException("The draft's image file is missing.");
 
         var image = await File.ReadAllBytesAsync(imagePath, ct);
-        var answer = await visionClient.DescribeAsync(key, image, ImageStore.ContentTypeFor(imagePath), instruction.Text, ct);
+        var answer = await visionClient.DescribeAsync(
+            key, image, ImageStore.ContentTypeFor(imagePath), instruction.For(context), ct);
         return (answer, PromptCleaner.Clean(answer.Text));
     }
 

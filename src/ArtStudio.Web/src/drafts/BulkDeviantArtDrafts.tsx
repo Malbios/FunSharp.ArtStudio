@@ -15,7 +15,13 @@ interface Progress {
   total: number
 }
 
+interface WaitingUrl {
+  url: string
+  visionContext?: string
+}
+
 const ADD_RIGHT_AWAY_KEY = 'artstudio.drafts.addRightAway'
+const MAX_VISION_CONTEXT_LENGTH = 1000
 
 function rememberedAddRightAway(): boolean {
   try {
@@ -38,15 +44,19 @@ export function BulkDeviantArtDrafts() {
   const [results, setResults] = useState<BulkResult[]>([])
   const [progress, setProgress] = useState<Progress>()
   const [addRightAway, setAddRightAway] = useState(rememberedAddRightAway)
+  const [visionContext, setVisionContext] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const waitingRef = useRef<string[]>([])
+  const waitingRef = useRef<WaitingUrl[]>([])
   const workingRef = useRef(false)
   const urls = parseDeviantArtUrls(text)
 
+  // The context describes one inspiration image, so only the first link added after typing it gets it.
   function enqueue(newUrls: string[]) {
-    const fresh = newUrls.filter((url) => !waitingRef.current.includes(url))
+    const fresh = newUrls.filter((url) => !waitingRef.current.some((waiting) => waiting.url === url))
     if (fresh.length === 0) return
-    waitingRef.current.push(...fresh)
+    const context = visionContext.trim()
+    waitingRef.current.push(...fresh.map((url, index) => ({ url, visionContext: index === 0 && context ? context : undefined })))
+    if (context) setVisionContext('')
     setResults((previous) => [
       ...previous.filter((existing) => !fresh.includes(existing.url)),
       ...fresh.map((url): BulkResult => ({ url, status: 'pending' })),
@@ -59,8 +69,8 @@ export function BulkDeviantArtDrafts() {
   async function addWaiting() {
     workingRef.current = true
     while (waitingRef.current.length > 0) {
-      const url = waitingRef.current[0]
-      const result = await addOne(url)
+      const { url, visionContext } = waitingRef.current[0]
+      const result = await addOne(url, visionContext)
       waitingRef.current.shift()
       setResults((previous) => previous.map((existing) => (existing.url === url ? result : existing)))
       setProgress((previous) => previous && { ...previous, done: previous.done + 1 })
@@ -109,9 +119,9 @@ export function BulkDeviantArtDrafts() {
 
   const failedCount = results.filter((result) => result.status === 'failed').length
 
-  async function addOne(url: string): Promise<BulkResult> {
+  async function addOne(url: string, visionContext?: string): Promise<BulkResult> {
     try {
-      const { id } = await api.addDeviantArtDraft(url)
+      const { id } = await api.addDeviantArtDraft(url, visionContext)
       return { url, status: 'added', setId: id }
     } catch (failure) {
       const existingSetId = failure instanceof ApiError ? failure.existingSetId : null
@@ -122,6 +132,18 @@ export function BulkDeviantArtDrafts() {
   return (
     <section className="panel bulk-drafts">
       <h3>Bulk add from DeviantArt</h3>
+      <label className="field">
+        <span>
+          Context for the vision model (optional) <em className="hint">Applies only to the next link you add.</em>
+        </span>
+        <input
+          type="text"
+          value={visionContext}
+          maxLength={MAX_VISION_CONTEXT_LENGTH}
+          onChange={(e) => setVisionContext(e.target.value)}
+          placeholder="e.g. make sure she looks like the actress Emma Watson"
+        />
+      </label>
       <textarea
         ref={textareaRef}
         rows={4}

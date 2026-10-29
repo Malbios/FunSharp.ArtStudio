@@ -414,6 +414,9 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<long?>("StashedAt")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("VisionContext")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DeviationId");

@@ -48,6 +48,7 @@ public class PromptSet
     public string? PromptGenerationError { get; set; }
     public bool PromptGenerationTruncated { get; set; }
     public string? GeneratedPrompt { get; set; }
+    public string? VisionContext { get; set; }
     public string? ModifyInstructions { get; set; }
     public string? ModifyBasePrompt { get; set; }
     public int? ModifyParagraphIndex { get; set; }

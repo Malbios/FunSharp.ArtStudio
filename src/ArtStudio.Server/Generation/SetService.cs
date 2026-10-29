@@ -40,6 +40,7 @@ public sealed class SetService(
     TimeProvider clock)
 {
     public const int DefaultImageCount = 2;
+    public const int MaxVisionContextLength = 1000;
 
     private static readonly TimeSpan RunningJobStopTimeout = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan RunningJobPollInterval = TimeSpan.FromMilliseconds(200);
@@ -114,8 +115,12 @@ public sealed class SetService(
         return await ImageStore.SaveSourceAsync(settings.OutputDirectory, $"{setId}-end", endImage.Content, endImage.Extension, ct);
     }
 
-    public async Task<PromptSet> CreateDeviantArtDraftAsync(string url, CancellationToken ct)
+    public async Task<PromptSet> CreateDeviantArtDraftAsync(string url, string? visionContext, CancellationToken ct)
     {
+        visionContext = string.IsNullOrWhiteSpace(visionContext) ? null : visionContext.Trim();
+        if (visionContext?.Length > MaxVisionContextLength)
+            throw new UserFacingException($"The context for the vision model must not exceed {MaxVisionContextLength} characters.");
+
         var deviation = await deviantArtService.DownloadAsync(url, imageIndex: 0, ct);
         var mainImage = deviation.Preview.Images[0];
 
@@ -126,6 +131,7 @@ public sealed class SetService(
             SourceKind = SourceKind.None,
             CreatedAt = clock.GetUtcNow(),
             IsDraft = true,
+            VisionContext = visionContext,
         };
         db.PromptSets.Add(set);
         await db.SaveChangesAsync(ct);

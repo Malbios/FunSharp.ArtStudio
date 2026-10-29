@@ -158,6 +158,7 @@ public sealed record SetDetailDto(
     DateTimeOffset? ReadyToPostAt,
     DateTimeOffset? ArchivedAt,
     PromptGenerationDto PromptGeneration,
+    string? VisionContext,
     IReadOnlyList<ImageDto> Images,
     IReadOnlyList<VideoDto> Videos,
     IReadOnlyList<JobDto> Jobs,
@@ -207,7 +208,7 @@ public sealed record VideoOptionsDto(
 
 public sealed record VideoResolutionPresetDto(string Name, double Megapixels, string? Note);
 
-public sealed record DeviantArtDraftRequest(string Url);
+public sealed record DeviantArtDraftRequest(string Url, string? VisionContext = null);
 
 public sealed record PromptGenerationDto(PromptGenerationState State, PromptGenerationKind Kind, string? Error, bool Truncated, string? Text)
 {

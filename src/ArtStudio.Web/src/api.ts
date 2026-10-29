@@ -192,6 +192,7 @@ export interface SetDetail {
   readyToPostAt: string | null
   archivedAt: string | null
   promptGeneration: PromptGeneration
+  visionContext: string | null
   images: ImageInfo[]
   videos: VideoInfo[]
   jobs: Job[]
@@ -443,7 +444,8 @@ export const api = {
     queueFirst: boolean,
     paragraphOrder: string,
   ) => request<void>('POST', `/api/sets/${setId}/queue`, { prompt, resolution, count, queueFirst, paragraphOrder }),
-  addDeviantArtDraft: (url: string) => request<{ id: number }>('POST', '/api/drafts/deviantart', { url }),
+  addDeviantArtDraft: (url: string, visionContext?: string) =>
+    request<{ id: number }>('POST', '/api/drafts/deviantart', { url, visionContext }),
   retryFailedDraftPrompts: () => request<{ retried: number }>('POST', '/api/drafts/retry-failed-prompts'),
   generatePrompt: (setId: number, images?: ImagesToQueue) =>
     request<void>('POST', `/api/sets/${setId}/generate-prompt`, {

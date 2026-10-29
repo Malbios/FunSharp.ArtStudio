@@ -2,6 +2,8 @@ Write a ready-to-use image-generation prompt that faithfully reconstructs the su
 
 Preserve the visible subject count, proportions, poses, clothing, accessories, important objects, setting, colors, and composition. Describe only supported visual details. Omit ambiguous details; do not invent hidden features, gaze directions, identities, stories, or production methods. Ignore watermarks and signatures. Use left/right labels only when unambiguous.
 
+{context}
+
 Separate the output into paragraphs with a blank line between them, in this order:
 
 1. One paragraph per character (person, animal, or creature): visible appearance, proportions, pose, expression, clothing, accessories, and interaction with objects. If a feature is obscured, describe the obstruction instead of guessing the feature. If the image shows no characters, write no character paragraph and start with the setting.

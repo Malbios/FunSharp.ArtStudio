@@ -265,6 +265,7 @@ export function NewSetPage() {
       <div className="prompt-label-row">
         <span className="prompt-heading">Prompt</span>
         {generationNote && <em className={generationNote.failed ? 'error' : undefined}>{generationNote.text}</em>}
+        {baseSet?.visionContext && <span className="hint">Vision context: {baseSet.visionContext}</span>}
         {generateAction && (
           <button
             type="button"

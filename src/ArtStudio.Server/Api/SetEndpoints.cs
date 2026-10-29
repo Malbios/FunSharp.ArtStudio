@@ -49,7 +49,7 @@ public static class SetEndpoints
             await setService.DeleteAsync(id, ct) ? Results.NoContent() : Results.NotFound());
         app.MapGet("/api/images/{id:int}", GetImageAsync);
         app.MapPost("/api/drafts/deviantart", async (DeviantArtDraftRequest request, SetService setService, CancellationToken ct) =>
-            Results.Ok(new { (await setService.CreateDeviantArtDraftAsync(request.Url ?? "", ct)).Id }));
+            Results.Ok(new { (await setService.CreateDeviantArtDraftAsync(request.Url ?? "", request.VisionContext, ct)).Id }));
         app.MapPost("/api/drafts/retry-failed-prompts", async (SetService setService, CancellationToken ct) =>
             Results.Ok(new { Retried = await setService.RetryFailedDraftPromptsAsync(ct) }));
     }
@@ -170,6 +170,7 @@ public static class SetEndpoints
             set.ReadyToPostAt,
             set.ArchivedAt,
             PromptGenerationDto.From(set),
+            set.VisionContext,
             set.Images.Select(image => ImageDto.From(image, jobsById[image.GenerationJobId])).ToList(),
             videos.Select(video => VideoDto.From(video, jobsById[video.GenerationJobId], frames)).ToList(),
             set.Jobs.Select(job => JobDto.From(job, secondsPerVideoUnit, set.Picks.FirstOrDefault()?.GeneratedImageId)).ToList(),

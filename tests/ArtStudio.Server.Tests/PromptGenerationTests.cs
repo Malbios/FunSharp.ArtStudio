@@ -7,6 +7,7 @@ using ArtStudio.Server.Data;
 using ArtStudio.Server.Domain;
 using ArtStudio.Server.Generation;
 using ArtStudio.Server.Tests.Fakes;
+using ArtStudio.Server.Vision;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using static ArtStudio.Server.Tests.Fakes.StudioAppFactory;
@@ -104,6 +105,49 @@ public sealed class PromptGenerationTests : IDisposable
         var set = await GetSetAsync(_client, setId);
         Assert.True(set.IsDraft);
         Assert.Empty(set.Jobs);
+    }
+
+    [Fact]
+    public async Task BulkDeviantArtDraft_WithContext_DescribesTheImageWithIt_AlsoWhenRegenerated()
+    {
+        await SetVisionApiKeyAsync(_client);
+
+        var response = await _client.PostAsJsonAsync(
+            "/api/drafts/deviantart", new { url = DeviationLink, visionContext = "  She is the actress Emma Watson.  " });
+        var setId = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetInt32();
+        await WaitForStateAsync(setId, PromptGenerationState.Done);
+        (await GeneratePromptAsync(setId)).EnsureSuccessStatusCode();
+        await WaitUntilAsync(async () => _factory.Vision.Requests.Count == 2, "the regenerated prompt");
+
+        Assert.Equal("She is the actress Emma Watson.", (await GetSetAsync(_client, setId)).VisionContext);
+        Assert.All(_factory.Vision.Requests, request =>
+        {
+            var instruction = request.Body["messages"]![0]!["content"]![0]!["text"]!.GetValue<string>();
+            var context = instruction.IndexOf("<context>\nShe is the actress Emma Watson.\n</context>", StringComparison.Ordinal);
+            Assert.InRange(
+                context,
+                instruction.IndexOf("Use left/right labels", StringComparison.Ordinal),
+                instruction.IndexOf("Separate the output into paragraphs", StringComparison.Ordinal));
+            Assert.EndsWith("Return only the prompt paragraphs.", instruction);
+        });
+    }
+
+    [Fact]
+    public async Task BulkDeviantArtDraft_WithTooLongContext_IsRefused()
+    {
+        var response = await _client.PostAsJsonAsync(
+            "/api/drafts/deviantart", new { url = DeviationLink, visionContext = new string('x', SetService.MaxVisionContextLength + 1) });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public void Instruction_WithoutContext_LeavesNoTraceOfTheContextBlock()
+    {
+        var instruction = VisionInstruction.FromEmbeddedText().For(null);
+
+        Assert.Contains("Use left/right labels only when unambiguous.\n\nSeparate the output into paragraphs", instruction);
+        Assert.DoesNotContain("context", instruction, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

@@ -1,0 +1,7 @@
+The user adds this context about the image:
+
+<context>
+{context}
+</context>
+
+Treat it as true and follow it, even where the image alone doesn't show it. Work it into the paragraph it concerns, for example a person's likeness into that character's paragraph.
