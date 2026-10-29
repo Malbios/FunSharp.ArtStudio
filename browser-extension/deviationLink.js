@@ -43,6 +43,16 @@ export function isHomePage(url) {
 /** Posts Art Studio has already, or wouldn't take. */
 export const isKnown = (state) => state.kind !== 'add'
 
+/** Whether the post's user already inspired a set: 'published' when one of those sets is posted, else 'inspiring'. */
+export function inspirationLevel(post, known) {
+  const username = post.username?.toLowerCase()
+  if (!username) return null
+  const listed = (users) => users?.some((user) => user.toLowerCase() === username) ?? false
+  if (listed(known?.publishedUsers)) return 'published'
+  if (listed(known?.inspiringUsers)) return 'inspiring'
+  return null
+}
+
 /** Whether Art Studio would take the post, from what it already has, without asking anyone. */
 export function postState(post, known) {
   const setId = known?.usedDeviations?.[post.id]

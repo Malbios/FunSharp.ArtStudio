@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { isHomePage, isKnown, parsePost, postState, postUrlFrom } from './deviationLink.js'
+import { inspirationLevel, isHomePage, isKnown, parsePost, postState, postUrlFrom } from './deviationLink.js'
 
 const post = 'https://www.deviantart.com/someartist/art/Misty-Forest-123456'
 const otherPost = 'https://www.deviantart.com/otherartist/art/Lake-654321'
@@ -62,6 +62,21 @@ describe('postState', () => {
     assert.equal(isKnown(postState(parsePost('https://www.deviantart.com/studio-owner/art/Mine-1'), known)), true)
     assert.equal(isKnown(postState(parsePost('https://www.deviantart.com/hiddenauthor/art/Theirs-2'), known)), true)
     assert.equal(isKnown(postState(parsePost(otherPost), known)), false)
+  })
+})
+
+describe('inspirationLevel', () => {
+  const known = { inspiringUsers: ['SomeArtist', 'Painter'], publishedUsers: ['Painter'] }
+
+  it('tells users with a published set from those who only inspired one, without regard to case', () => {
+    assert.equal(inspirationLevel(parsePost('https://www.deviantart.com/painter/art/Lake-1'), known), 'published')
+    assert.equal(inspirationLevel(parsePost(post), known), 'inspiring')
+  })
+
+  it('is nothing for other users, links without a user, or before anything is known', () => {
+    assert.equal(inspirationLevel(parsePost(otherPost), known), null)
+    assert.equal(inspirationLevel(parsePost('https://www.deviantart.com/deviation/123456'), known), null)
+    assert.equal(inspirationLevel(parsePost(post), undefined), null)
   })
 })
 

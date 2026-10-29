@@ -1,15 +1,26 @@
-// Content script on DeviantArt: hides the home page's thumbnails of posts Art Studio already knows, when switched on.
+// Content script on DeviantArt: on the home page, borders the thumbnails of users who already inspired a set, and hides
+// those of posts Art Studio already knows when switched on.
 // DeviantArt changes pages without reloading, so every page is watched and the home page is told by its address.
 ;(async () => {
-  const { isHomePage, isKnown, parsePost, postState } = await import(chrome.runtime.getURL('deviationLink.js'))
+  const { inspirationLevel, isHomePage, isKnown, parsePost, postState } = await import(chrome.runtime.getURL('deviationLink.js'))
   const HIDDEN = 'data-art-studio-hidden'
+  const INSPIRED = 'data-art-studio-inspired'
+  const ANCHORED = 'data-art-studio-anchored'
+  const BORDER_WIDTH = '3px'
+  const BORDER_COLORS = { inspiring: '#f2c66d', published: '#ff2b2b' }
   const MAX_TILE_LEVELS = 6
 
   const settings = await chrome.storage.local.get(['artStudioRunning', 'known', 'hideKnownOnHome'])
   let frame = 0
 
+  // The tile's own outline would be covered by DeviantArt's positioned layers inside it, so the border is drawn on top.
   const style = document.createElement('style')
-  style.textContent = `[${HIDDEN}] { display: none !important; }`
+  style.textContent = [
+    `[${HIDDEN}] { display: none !important; }`,
+    `[${ANCHORED}] { position: relative !important; }`,
+    `[${INSPIRED}]::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; border: ${BORDER_WIDTH} solid; }`,
+    ...Object.entries(BORDER_COLORS).map(([level, color]) => `[${INSPIRED}="${level}"]::after { border-color: ${color}; }`),
+  ].join('\n')
   document.documentElement.append(style)
 
   const holdsOtherPost = (element, id) =>
@@ -32,16 +43,33 @@
 
   function apply() {
     frame = 0
-    const active = settings.hideKnownOnHome === true && settings.artStudioRunning === true && isHomePage(location.href)
-    const tiles = new Set()
+    const active = settings.artStudioRunning === true && isHomePage(location.href)
+    const hidden = new Set()
+    const inspired = new Map()
     if (active) {
       for (const link of document.querySelectorAll('a[href]')) {
         const post = parsePost(link.href)
-        if (post && isKnown(postState(post, settings.known))) tiles.add(tileOf(link, post.id))
+        if (!post) continue
+        const hides = settings.hideKnownOnHome === true && isKnown(postState(post, settings.known))
+        const level = inspirationLevel(post, settings.known)
+        if (!hides && !level) continue
+        const tile = tileOf(link, post.id)
+        if (hides) hidden.add(tile)
+        if (level) inspired.set(tile, level)
       }
     }
-    for (const element of document.querySelectorAll(`[${HIDDEN}]`)) if (!tiles.has(element)) element.removeAttribute(HIDDEN)
-    for (const tile of tiles) if (!tile.hasAttribute(HIDDEN)) tile.setAttribute(HIDDEN, '')
+    for (const element of document.querySelectorAll(`[${HIDDEN}]`)) if (!hidden.has(element)) element.removeAttribute(HIDDEN)
+    for (const tile of hidden) if (!tile.hasAttribute(HIDDEN)) tile.setAttribute(HIDDEN, '')
+    for (const element of document.querySelectorAll(`[${INSPIRED}]`)) {
+      if (inspired.has(element)) continue
+      element.removeAttribute(INSPIRED)
+      element.removeAttribute(ANCHORED)
+    }
+    for (const [tile, level] of inspired) {
+      if (tile.getAttribute(INSPIRED) === level) continue
+      if (getComputedStyle(tile).position === 'static') tile.setAttribute(ANCHORED, '')
+      tile.setAttribute(INSPIRED, level)
+    }
   }
 
   function scheduleApply() {

@@ -294,6 +294,21 @@ public sealed class DeviantArtTests : IDisposable
         Assert.Equal(FakeDeviantArt.Username, after!.OwnUsername);
     }
 
+    [Fact]
+    public async Task KnownDeviations_ListInspiringUsersOnce_AndThoseWithAPublishedSet()
+    {
+        await SeedSetAsync("draftonly", s => s.IsDraft = true);
+        await SeedSetAsync("Painter");
+        await SeedSetAsync("painter", s => s.PublishedAt = DateTimeOffset.UtcNow);
+        await SeedSetAsync(null);
+        await SeedSetAsync("");
+
+        var known = await _client.GetFromJsonAsync<KnownDeviationsDto>("/api/deviantart/known", Json);
+
+        Assert.Equal(["draftonly", "painter"], known!.InspiringUsers.Select(u => u.ToLowerInvariant()).Order());
+        Assert.Equal(["painter"], known.PublishedUsers.Select(u => u.ToLowerInvariant()));
+    }
+
     private async Task<int> SeedSetAsync(string? author, Action<PromptSet>? stage = null)
     {
         using var scope = _factory.Services.CreateScope();

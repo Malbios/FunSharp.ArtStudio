@@ -26,6 +26,9 @@ elsewhere (Bulk add, the New set page) turns grey within 30 seconds. DeviantArt 
 Right-clicking the toolbar icon offers **Hide known posts on the home page**: while it's checked and Art Studio runs,
 DeviantArt's home page leaves out the thumbnails that would show "✓AS" or "–AS" (their row keeps a gap instead).
 
+While Art Studio runs, the home page also borders the thumbnails of users who already inspired a set or draft: amber
+when you have at least one of their images, bright red once one of those sets is published.
+
 The result shows in the bottom right corner of the page. "Added as draft #N" fades out after 5 seconds; an error (why
 the post was refused) stays until you close it.
 

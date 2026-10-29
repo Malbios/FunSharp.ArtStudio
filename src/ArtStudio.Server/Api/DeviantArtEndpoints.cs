@@ -15,9 +15,13 @@ public sealed record BlockedArtistDto(int Id, string Username, DateTimeOffset Cr
 /// <summary>PostedUrls are the archived sets already on DeviantArt, whose API cannot unpublish them.</summary>
 public sealed record BlockArtistResultDto(BlockedArtistDto Artist, int ArchivedSets, int DeletedDrafts, IReadOnlyList<string> PostedUrls);
 
-/// <summary>What the browser extension needs to tell from a link alone whether a post would be refused.</summary>
+/// <summary>
+/// What the browser extension needs to tell from a link alone whether a post would be refused, and whether its user
+/// already inspired a set (PublishedUsers: one of those sets is on DeviantArt).
+/// </summary>
 public sealed record KnownDeviationsDto(
-    IReadOnlyDictionary<string, int> UsedDeviations, IReadOnlyList<string> BlockedUsers, string? OwnUsername);
+    IReadOnlyDictionary<string, int> UsedDeviations, IReadOnlyList<string> BlockedUsers, string? OwnUsername,
+    IReadOnlyList<string> InspiringUsers, IReadOnlyList<string> PublishedUsers);
 
 public static class DeviantArtEndpoints
 {
@@ -52,7 +56,15 @@ public static class DeviantArtEndpoints
             .Select(g => new { DeviationId = g.Key, SetId = g.Min(s => s.Id) })
             .ToDictionaryAsync(d => d.DeviationId, d => d.SetId, ct);
         var blocked = await db.BlockedArtists.Select(a => a.Username).ToListAsync(ct);
-        return new KnownDeviationsDto(used, blocked, (await auth.GetStatusAsync(ct)).Username);
+        var authors = await db.PromptSets
+            .Where(s => s.DeviantArtAuthor != null && s.DeviantArtAuthor != "")
+            .GroupBy(s => EF.Functions.Collate(s.DeviantArtAuthor!, "NOCASE"))
+            .Select(g => new { Username = g.Min(s => s.DeviantArtAuthor)!, Published = g.Any(s => s.PublishedAt != null) })
+            .ToListAsync(ct);
+        return new KnownDeviationsDto(
+            used, blocked, (await auth.GetStatusAsync(ct)).Username,
+            authors.Select(a => a.Username).ToList(),
+            authors.Where(a => a.Published).Select(a => a.Username).ToList());
     }
 
     private static async Task<BlockArtistResultDto> BlockArtistAsync(
