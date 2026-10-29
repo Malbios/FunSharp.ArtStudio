@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState, type ClipboardEvent } from 'react'
+import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type Ref } from 'react'
 import { Link } from 'react-router-dom'
 import { api, ApiError } from '../api'
 import { MESSAGE_DURATION_MS } from '../messages'
-import { insertAtSelection } from '../prompt/insertAtSelection'
-import { parseDeviantArtUrls, takeCompleteEntries } from './parseUrls'
+import { emptyRow, spreadPastedLinks, waitingUrls, withTrailingEmptyRow, type BulkRow, type WaitingUrl } from './bulkRows'
+import { parseDeviantArtUrls } from './parseUrls'
 
 type BulkResult =
   | { url: string; status: 'pending' }
@@ -13,11 +13,6 @@ type BulkResult =
 interface Progress {
   done: number
   total: number
-}
-
-interface WaitingUrl {
-  url: string
-  visionContext?: string
 }
 
 const ADD_RIGHT_AWAY_KEY = 'artstudio.drafts.addRightAway'
@@ -40,26 +35,27 @@ function rememberAddRightAway(on: boolean) {
 }
 
 export function BulkDeviantArtDrafts() {
-  const [text, setText] = useState('')
+  const [rows, setRows] = useState<BulkRow[]>(() => [emptyRow()])
   const [results, setResults] = useState<BulkResult[]>([])
   const [progress, setProgress] = useState<Progress>()
   const [addRightAway, setAddRightAway] = useState(rememberedAddRightAway)
-  const [visionContext, setVisionContext] = useState('')
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const firstUrlRef = useRef<HTMLInputElement>(null)
   const waitingRef = useRef<WaitingUrl[]>([])
   const workingRef = useRef(false)
-  const urls = parseDeviantArtUrls(text)
+  const filledCount = waitingUrls(rows).length
 
-  // The context describes one inspiration image, so only the first link added after typing it gets it.
-  function enqueue(newUrls: string[]) {
-    const fresh = newUrls.filter((url) => !waitingRef.current.some((waiting) => waiting.url === url))
+  function enqueue(items: WaitingUrl[]) {
+    const fresh = items.filter(
+      (item, index) =>
+        items.findIndex((other) => other.url === item.url) === index &&
+        !waitingRef.current.some((waiting) => waiting.url === item.url),
+    )
     if (fresh.length === 0) return
-    const context = visionContext.trim()
-    waitingRef.current.push(...fresh.map((url, index) => ({ url, visionContext: index === 0 && context ? context : undefined })))
-    if (context) setVisionContext('')
+    const freshUrls = fresh.map((item) => item.url)
+    waitingRef.current.push(...fresh)
     setResults((previous) => [
-      ...previous.filter((existing) => !fresh.includes(existing.url)),
-      ...fresh.map((url): BulkResult => ({ url, status: 'pending' })),
+      ...previous.filter((existing) => !freshUrls.includes(existing.url)),
+      ...freshUrls.map((url): BulkResult => ({ url, status: 'pending' })),
     ])
     setProgress((previous) => ({ done: previous?.done ?? 0, total: (previous?.total ?? 0) + fresh.length }))
     if (!workingRef.current) void addWaiting()
@@ -79,34 +75,39 @@ export function BulkDeviantArtDrafts() {
     setProgress(undefined)
   }
 
-  function addAll() {
-    enqueue(urls)
-    setText('')
-    textareaRef.current?.focus()
+  function addRows(toAdd: BulkRow[]) {
+    enqueue(waitingUrls(toAdd))
+    setRows([emptyRow()])
+    firstUrlRef.current?.focus()
   }
 
-  function changeText(next: string) {
-    if (!addRightAway) return setText(next)
-    const { complete, rest } = takeCompleteEntries(next)
-    setText(rest)
-    enqueue(complete)
+  function changeRow(index: number, change: Partial<BulkRow>) {
+    const next = rows.map((row, i) => (i === index ? { ...row, ...change } : row))
+    setRows(addRightAway ? next : withTrailingEmptyRow(next))
+  }
+
+  function removeRow(index: number) {
+    setRows(withTrailingEmptyRow(rows.filter((_, i) => i !== index)))
+  }
+
+  function pasteLinks(index: number, event: ClipboardEvent<HTMLInputElement>) {
+    const urls = parseDeviantArtUrls(event.clipboardData.getData('text'))
+    if (urls.length === 0 || (!addRightAway && urls.length === 1)) return
+    event.preventDefault()
+    const spread = spreadPastedLinks(rows, index, urls)
+    if (addRightAway) addRows(spread)
+    else setRows(withTrailingEmptyRow(spread))
+  }
+
+  function addOnEnter(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter' && addRightAway) addRows(rows)
   }
 
   function toggleAddRightAway(on: boolean) {
     setAddRightAway(on)
     rememberAddRightAway(on)
-    if (on) {
-      const { complete, rest } = takeCompleteEntries(text)
-      setText(rest)
-      enqueue(complete)
-    }
-  }
-
-  function pasteWithTrailingSpace(event: ClipboardEvent<HTMLTextAreaElement>) {
-    const pasted = event.clipboardData.getData('text')
-    if (!pasted || /\s$/.test(pasted)) return
-    event.preventDefault()
-    insertAtSelection(event.currentTarget, pasted + ' ')
+    if (on) addRows(rows)
+    else setRows(withTrailingEmptyRow(rows))
   }
 
   function removeResult(url: string) {
@@ -132,33 +133,25 @@ export function BulkDeviantArtDrafts() {
   return (
     <section className="panel bulk-drafts">
       <h3>Bulk add from DeviantArt</h3>
-      <div className="bulk-drafts-inputs">
-        <textarea
-          ref={textareaRef}
-          rows={4}
-          value={text}
-          onChange={(e) => changeText(e.target.value)}
-          onPaste={pasteWithTrailingSpace}
-          placeholder="Paste DeviantArt URLs separated by spaces or line breaks. Each becomes a draft with the post's main image."
-        />
-        <textarea
-          rows={4}
-          value={visionContext}
-          maxLength={MAX_VISION_CONTEXT_LENGTH}
-          onChange={(e) => setVisionContext(e.target.value)}
-          aria-label="Context for the vision model"
-          title="Applies only to the next link you add"
-          placeholder={
-            'Optional context for the vision model, applies only to the next link you add.\n' +
-            'e.g. who a person is, or details the image alone does not show'
-          }
-        />
+      <div className="bulk-drafts-rows">
+        {rows.map((row, index) => (
+          <BulkLinkRow
+            key={row.id}
+            row={row}
+            urlRef={index === 0 ? firstUrlRef : undefined}
+            removable={!addRightAway && index < rows.length - 1}
+            onChange={(change) => changeRow(index, change)}
+            onPaste={(event) => pasteLinks(index, event)}
+            onKeyDown={addOnEnter}
+            onRemove={() => removeRow(index)}
+          />
+        ))}
       </div>
       <div className="bulk-drafts-actions">
-        <button type="button" className="primary" disabled={urls.length === 0} onClick={addAll}>
-          {urls.length > 1 ? `Add ${urls.length} drafts` : 'Add draft'}
+        <button type="button" className="primary" disabled={filledCount === 0} onClick={() => addRows(rows)}>
+          {filledCount > 1 ? `Add ${filledCount} drafts` : 'Add draft'}
         </button>
-        <label className="inline-check" title="Add each URL as a draft as soon as a space or line break follows it">
+        <label className="inline-check" title="Add a link as a draft as soon as it is pasted, or on Enter">
           <input type="checkbox" checked={addRightAway} onChange={(e) => toggleAddRightAway(e.target.checked)} />
           Add each URL right away
         </label>
@@ -206,6 +199,52 @@ export function BulkDeviantArtDrafts() {
         </button>
       )}
     </section>
+  )
+}
+
+interface BulkLinkRowProps {
+  row: BulkRow
+  urlRef?: Ref<HTMLInputElement>
+  removable: boolean
+  onChange: (change: Partial<BulkRow>) => void
+  onPaste: (event: ClipboardEvent<HTMLInputElement>) => void
+  onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void
+  onRemove: () => void
+}
+
+function BulkLinkRow({ row, urlRef, removable, onChange, onPaste, onKeyDown, onRemove }: BulkLinkRowProps) {
+  return (
+    <div className="bulk-drafts-row">
+      <input
+        ref={urlRef}
+        type="text"
+        value={row.url}
+        onChange={(e) => onChange({ url: e.target.value })}
+        onPaste={onPaste}
+        onKeyDown={onKeyDown}
+        aria-label="DeviantArt link"
+        placeholder="DeviantArt link"
+      />
+      <input
+        type="text"
+        value={row.visionContext}
+        maxLength={MAX_VISION_CONTEXT_LENGTH}
+        onChange={(e) => onChange({ visionContext: e.target.value })}
+        aria-label="Context for the vision model"
+        placeholder="Optional context for the vision model, e.g. who a person is"
+        title="Optional context for the vision model, e.g. who a person is, or details the image alone does not show"
+      />
+      <button
+        type="button"
+        className={removable ? 'link-button' : 'link-button bulk-drafts-row-spacer'}
+        aria-label="Remove this link"
+        title="Remove"
+        disabled={!removable}
+        onClick={onRemove}
+      >
+        ✕
+      </button>
+    </div>
   )
 }
 

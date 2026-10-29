@@ -999,15 +999,35 @@ main {
   margin: 0 0 0.75rem;
 }
 
-.bulk-drafts-inputs {
+.bulk-drafts-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.bulk-drafts-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: center;
   gap: 1rem;
 }
 
+.bulk-drafts-row-spacer {
+  visibility: hidden;
+}
+
 @media (max-width: 700px) {
-  .bulk-drafts-inputs {
-    grid-template-columns: minmax(0, 1fr);
+  .bulk-drafts-rows {
+    gap: 1rem;
+  }
+
+  .bulk-drafts-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.5rem;
+  }
+
+  .bulk-drafts-row > input:nth-child(2) {
+    grid-row: 2;
   }
 }
 
