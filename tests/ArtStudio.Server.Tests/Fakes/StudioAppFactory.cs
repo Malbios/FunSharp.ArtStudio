@@ -3,14 +3,17 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using ArtStudio.Server.Api;
 using ArtStudio.Server.Comfy;
+using ArtStudio.Server.Data;
 using ArtStudio.Server.DeviantArt;
 using ArtStudio.Server.Generation;
 using ArtStudio.Server.Google;
 using ArtStudio.Server.Vision;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -65,6 +68,9 @@ public sealed class StudioAppFactory : WebApplicationFactory<Program>
             services.AddHttpClient(DeviantArtService.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => DeviantArt);
             services.AddHttpClient(VisionClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Vision);
             services.AddHttpClient(GoogleAuth.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => Google);
+            services.AddHttpContextAccessor();
+            services.ConfigureDbContext<StudioDbContext>((provider, options) =>
+                options.AddInterceptors(new SqlRecorder(provider.GetRequiredService<IHttpContextAccessor>())));
         });
     }
 
