@@ -999,6 +999,18 @@ main {
   margin: 0 0 0.75rem;
 }
 
+.bulk-drafts-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 700px) {
+  .bulk-drafts-inputs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .bulk-drafts-actions {
   display: flex;
   align-items: center;

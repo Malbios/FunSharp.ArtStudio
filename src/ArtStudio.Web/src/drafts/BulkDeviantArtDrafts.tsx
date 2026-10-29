@@ -132,26 +132,28 @@ export function BulkDeviantArtDrafts() {
   return (
     <section className="panel bulk-drafts">
       <h3>Bulk add from DeviantArt</h3>
-      <label className="field">
-        <span>
-          Context for the vision model (optional) <em className="hint">Applies only to the next link you add.</em>
-        </span>
-        <input
-          type="text"
+      <div className="bulk-drafts-inputs">
+        <textarea
+          ref={textareaRef}
+          rows={4}
+          value={text}
+          onChange={(e) => changeText(e.target.value)}
+          onPaste={pasteWithTrailingSpace}
+          placeholder="Paste DeviantArt URLs separated by spaces or line breaks. Each becomes a draft with the post's main image."
+        />
+        <textarea
+          rows={4}
           value={visionContext}
           maxLength={MAX_VISION_CONTEXT_LENGTH}
           onChange={(e) => setVisionContext(e.target.value)}
-          placeholder="e.g. make sure she looks like the actress Emma Watson"
+          aria-label="Context for the vision model"
+          title="Applies only to the next link you add"
+          placeholder={
+            'Optional context for the vision model, applies only to the next link you add.\n' +
+            'e.g. who a person is, or details the image alone does not show'
+          }
         />
-      </label>
-      <textarea
-        ref={textareaRef}
-        rows={4}
-        value={text}
-        onChange={(e) => changeText(e.target.value)}
-        onPaste={pasteWithTrailingSpace}
-        placeholder="Paste DeviantArt URLs separated by spaces or line breaks. Each becomes a draft with the post's main image."
-      />
+      </div>
       <div className="bulk-drafts-actions">
         <button type="button" className="primary" disabled={urls.length === 0} onClick={addAll}>
           {urls.length > 1 ? `Add ${urls.length} drafts` : 'Add draft'}
