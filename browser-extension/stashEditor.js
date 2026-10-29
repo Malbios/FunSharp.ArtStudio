@@ -7,25 +7,31 @@
   const extra = await chrome.runtime.sendMessage({ type: 'extra-picks', stashItemId })
   if (!extra || extra.picks.length === 0) return
 
+  const EDGE_GAP = 20
+  const CLEARANCE = 12
+  const CONTROLS = 'button, a[href], input, select, textarea, [role=button]'
+
   const host = document.createElement('div')
-  host.style.cssText = 'all: initial; position: fixed; left: 1.25rem; bottom: 1.25rem; z-index: 2147483646;'
+  host.style.cssText = `all: initial; position: fixed; right: ${EDGE_GAP}px; bottom: ${EDGE_GAP}px; z-index: 2147483646;`
   const root = host.attachShadow({ mode: 'closed' })
   root.innerHTML = `
     <style>
-      .box { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.9rem; border-radius: 10px;
-        background: #1c1d22; color: #e8e8ec; border: 1px solid #34353d; border-left: 12px solid #8b7cf6;
-        box-shadow: 0 8px 24px rgb(0 0 0 / 0.45); font: 14px/1.4 system-ui, sans-serif; }
+      .box { box-sizing: border-box; width: 10rem; display: flex; flex-direction: column; gap: 0.5rem;
+        padding: 0.6rem 0.8rem; border-radius: 10px; background: #1c1d22; color: #e8e8ec; border: 1px solid #34353d;
+        border-left: 12px solid #8b7cf6; box-shadow: 0 8px 24px rgb(0 0 0 / 0.45); font: 14px/1.4 system-ui, sans-serif; }
       .box.done { border-left-color: #6fd49a; }
       .box.failed { border-left-color: #f27474; }
       .title { font-weight: 600; }
-      button { all: unset; cursor: pointer; padding: 0.35rem 0.8rem; border-radius: 6px; background: #8b7cf6; color: #fff;
-        font-weight: 600; }
+      .message::first-letter { text-transform: uppercase; }
+      button { all: unset; display: block; text-align: center; cursor: pointer; padding: 0.35rem 0.5rem; border-radius: 6px;
+        background: #8b7cf6; color: #fff; font-weight: 600; }
       button:hover { background: #7565f0; }
       button[disabled] { opacity: 0.6; cursor: default; }
       button[hidden] { display: none; }
     </style>
     <div class="box" role="status">
-      <span><span class="title">Art Studio:</span> <span class="message"></span></span>
+      <div class="title">Art Studio</div>
+      <div class="message"></div>
       <button type="button"></button>
     </div>`
   const box = root.querySelector('.box')
@@ -44,12 +50,63 @@
     return extra.picks.filter((pick) => !present.has(pick.fileName))
   }
 
+  const scrollsItself = (element) => {
+    const { overflowY } = getComputedStyle(element)
+    return (overflowY === 'auto' || overflowY === 'scroll') && element.scrollHeight > element.clientHeight
+  }
+
+  // Content scrolling past underneath is left alone, so the box doesn't jump around while scrolling.
+  function staysOnScreen(control) {
+    for (let element = control; element && element !== document.documentElement; element = element.parentElement) {
+      const { position } = getComputedStyle(element)
+      if (position === 'fixed' || position === 'sticky') return true
+      if (scrollsItself(element)) return false
+    }
+    return document.documentElement.scrollHeight <= innerHeight
+  }
+
+  function place() {
+    const { width, height } = host.getBoundingClientRect()
+    const left = innerWidth - EDGE_GAP - width - CLEARANCE
+    const right = innerWidth - EDGE_GAP + CLEARANCE
+    const controls = [...document.querySelectorAll(CONTROLS)]
+      .map((control) => ({ control, rect: control.getBoundingClientRect() }))
+      .filter(({ rect }) => rect.width > 0 && rect.height > 0 && rect.right > left && rect.left < right)
+    const pinned = new Map()
+    const isPinned = (control) => {
+      if (!pinned.has(control)) pinned.set(control, staysOnScreen(control))
+      return pinned.get(control)
+    }
+
+    let bottom = innerHeight - EDGE_GAP
+    for (;;) {
+      const top = bottom - height
+      const blocking = controls.filter(
+        ({ control, rect }) => rect.bottom > top - CLEARANCE && rect.top < bottom + CLEARANCE && isPinned(control),
+      )
+      if (blocking.length === 0 || top <= EDGE_GAP) break
+      bottom = Math.min(...blocking.map(({ rect }) => rect.top)) - CLEARANCE
+    }
+    host.style.bottom = `${innerHeight - Math.max(bottom, height + EDGE_GAP)}px`
+  }
+
+  let placing = false
+  function schedulePlace() {
+    if (placing) return
+    placing = true
+    requestAnimationFrame(() => {
+      placing = false
+      place()
+    })
+  }
+
   function show(text, state, action) {
     message.textContent = text
     box.classList.toggle('done', state === 'done')
     box.classList.toggle('failed', state === 'failed')
     button.hidden = !action
     if (action) button.textContent = action
+    schedulePlace()
   }
 
   function refresh() {
@@ -86,5 +143,9 @@
 
   document.documentElement.append(host)
   refresh()
-  new MutationObserver(refresh).observe(document.documentElement, { childList: true, subtree: true })
+  new MutationObserver(() => {
+    refresh()
+    schedulePlace()
+  }).observe(document.documentElement, { childList: true, subtree: true })
+  addEventListener('resize', schedulePlace)
 })()
