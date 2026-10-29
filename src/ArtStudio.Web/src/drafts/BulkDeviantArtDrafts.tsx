@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type Ref } from 'react'
 import { Link } from 'react-router-dom'
 import { api, ApiError } from '../api'
 import { MESSAGE_DURATION_MS } from '../messages'
@@ -41,10 +41,19 @@ export function BulkDeviantArtDrafts() {
   const [addRightAway, setAddRightAway] = useState(rememberedAddRightAway)
   const [asking, setAsking] = useState<BulkRow[]>([])
   const [refusedPaste, setRefusedPaste] = useState(false)
+  const firstUrlRef = useRef<HTMLInputElement>(null)
+  const refocusRef = useRef(false)
   const waitingRef = useRef<WaitingUrl[]>([])
   const workingRef = useRef(false)
   const toAdd = rowsToAdd(rows)
   const filledCount = toAdd.now.length + toAdd.askFirst.length
+
+  // Adding replaces the rows, so the box that had focus is gone; focus waits while a dialog is open.
+  useEffect(() => {
+    if (!refocusRef.current || asking.length > 0) return
+    refocusRef.current = false
+    firstUrlRef.current?.focus()
+  })
 
   function enqueue(items: WaitingUrl[]) {
     const fresh = items.filter(
@@ -82,19 +91,25 @@ export function BulkDeviantArtDrafts() {
     enqueue(now)
     setRows((current) => withTrailingEmptyRow(current.filter((row) => askFirst.some((asked) => asked.id === row.id))))
     setAsking((current) => [...current, ...askFirst])
+    refocusRef.current = true
   }
 
   function finishAsking(row: BulkRow, context: string | null) {
     if (context !== null) enqueue([{ url: row.url, visionContext: context || undefined }])
     const keepRow = context === null && !addRightAway
     if (!keepRow) removeRowById(row.id)
-    setAsking((current) => current.slice(1))
+    askNext()
   }
 
   function rejectAsked(row: BulkRow, failure: Error) {
     setResults((previous) => [...previous.filter((existing) => existing.url !== row.url), failedResult(row.url, failure)])
     removeRowById(row.id)
+    askNext()
+  }
+
+  function askNext() {
     setAsking((current) => current.slice(1))
+    refocusRef.current = true
   }
 
   function removeRowById(id: number) {
@@ -155,6 +170,7 @@ export function BulkDeviantArtDrafts() {
           <BulkLinkRow
             key={row.id}
             row={row}
+            urlRef={index === 0 ? firstUrlRef : undefined}
             removable={!addRightAway && index < rows.length - 1}
             onChange={(change) => changeRow(index, change)}
             onPaste={(event) => pasteLink(index, event)}
@@ -236,6 +252,7 @@ function failedResult(url: string, failure: Error): BulkResult {
 
 interface BulkLinkRowProps {
   row: BulkRow
+  urlRef?: Ref<HTMLInputElement>
   removable: boolean
   onChange: (change: Partial<BulkRow>) => void
   onPaste: (event: ClipboardEvent<HTMLInputElement>) => void
@@ -243,10 +260,11 @@ interface BulkLinkRowProps {
   onRemove: () => void
 }
 
-function BulkLinkRow({ row, removable, onChange, onPaste, onKeyDown, onRemove }: BulkLinkRowProps) {
+function BulkLinkRow({ row, urlRef, removable, onChange, onPaste, onKeyDown, onRemove }: BulkLinkRowProps) {
   return (
     <div className="bulk-drafts-row">
       <input
+        ref={urlRef}
         type="text"
         value={row.url}
         onChange={(e) => onChange({ url: e.target.value })}
