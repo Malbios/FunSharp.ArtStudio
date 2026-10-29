@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent, type Ref } from 'react'
+import { useEffect, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api, ApiError } from '../api'
 import { MESSAGE_DURATION_MS } from '../messages'
-import { emptyRow, spreadPastedLinks, waitingUrls, withTrailingEmptyRow, type BulkRow, type WaitingUrl } from './bulkRows'
+import { emptyRow, rowsToAdd, withTrailingEmptyRow, type BulkRow, type WaitingUrl } from './bulkRows'
+import { ContextDialog } from './ContextDialog'
 import { parseDeviantArtUrls } from './parseUrls'
 
 type BulkResult =
@@ -16,7 +17,6 @@ interface Progress {
 }
 
 const ADD_RIGHT_AWAY_KEY = 'artstudio.drafts.addRightAway'
-const MAX_VISION_CONTEXT_LENGTH = 1000
 
 function rememberedAddRightAway(): boolean {
   try {
@@ -39,10 +39,12 @@ export function BulkDeviantArtDrafts() {
   const [results, setResults] = useState<BulkResult[]>([])
   const [progress, setProgress] = useState<Progress>()
   const [addRightAway, setAddRightAway] = useState(rememberedAddRightAway)
-  const firstUrlRef = useRef<HTMLInputElement>(null)
+  const [asking, setAsking] = useState<BulkRow[]>([])
+  const [refusedPaste, setRefusedPaste] = useState(false)
   const waitingRef = useRef<WaitingUrl[]>([])
   const workingRef = useRef(false)
-  const filledCount = waitingUrls(rows).length
+  const toAdd = rowsToAdd(rows)
+  const filledCount = toAdd.now.length + toAdd.askFirst.length
 
   function enqueue(items: WaitingUrl[]) {
     const fresh = items.filter(
@@ -75,13 +77,22 @@ export function BulkDeviantArtDrafts() {
     setProgress(undefined)
   }
 
-  function addRows(toAdd: BulkRow[]) {
-    enqueue(waitingUrls(toAdd))
-    setRows([emptyRow()])
-    firstUrlRef.current?.focus()
+  function addRows(candidates: BulkRow[]) {
+    const { now, askFirst } = rowsToAdd(candidates)
+    enqueue(now)
+    setRows((current) => withTrailingEmptyRow(current.filter((row) => askFirst.some((asked) => asked.id === row.id))))
+    setAsking((current) => [...current, ...askFirst])
+  }
+
+  function finishAsking(row: BulkRow, context: string | null) {
+    if (context !== null) enqueue([{ url: row.url, visionContext: context || undefined }])
+    const keepRow = context === null && !addRightAway
+    if (!keepRow) setRows((current) => withTrailingEmptyRow(current.filter((existing) => existing.id !== row.id)))
+    setAsking((current) => current.slice(1))
   }
 
   function changeRow(index: number, change: Partial<BulkRow>) {
+    setRefusedPaste(false)
     const next = rows.map((row, i) => (i === index ? { ...row, ...change } : row))
     setRows(addRightAway ? next : withTrailingEmptyRow(next))
   }
@@ -90,13 +101,11 @@ export function BulkDeviantArtDrafts() {
     setRows(withTrailingEmptyRow(rows.filter((_, i) => i !== index)))
   }
 
-  function pasteLinks(index: number, event: ClipboardEvent<HTMLInputElement>) {
+  function pasteLink(index: number, event: ClipboardEvent<HTMLInputElement>) {
     const urls = parseDeviantArtUrls(event.clipboardData.getData('text'))
-    if (urls.length === 0 || (!addRightAway && urls.length === 1)) return
-    event.preventDefault()
-    const spread = spreadPastedLinks(rows, index, urls)
-    if (addRightAway) addRows(spread)
-    else setRows(withTrailingEmptyRow(spread))
+    setRefusedPaste(urls.length > 1)
+    if (urls.length > 1 || (addRightAway && urls.length === 1)) event.preventDefault()
+    if (addRightAway && urls.length === 1) addRows([{ ...rows[index], url: urls[0] }])
   }
 
   function addOnEnter(event: KeyboardEvent<HTMLInputElement>) {
@@ -107,7 +116,6 @@ export function BulkDeviantArtDrafts() {
     setAddRightAway(on)
     rememberAddRightAway(on)
     if (on) addRows(rows)
-    else setRows(withTrailingEmptyRow(rows))
   }
 
   function removeResult(url: string) {
@@ -138,15 +146,23 @@ export function BulkDeviantArtDrafts() {
           <BulkLinkRow
             key={row.id}
             row={row}
-            urlRef={index === 0 ? firstUrlRef : undefined}
             removable={!addRightAway && index < rows.length - 1}
             onChange={(change) => changeRow(index, change)}
-            onPaste={(event) => pasteLinks(index, event)}
+            onPaste={(event) => pasteLink(index, event)}
             onKeyDown={addOnEnter}
             onRemove={() => removeRow(index)}
           />
         ))}
       </div>
+      {refusedPaste && <p className="error">Paste one link per box.</p>}
+      {asking.length > 0 && (
+        <ContextDialog
+          key={asking[0].id}
+          url={asking[0].url}
+          onConfirm={(context) => finishAsking(asking[0], context)}
+          onCancel={() => finishAsking(asking[0], null)}
+        />
+      )}
       <div className="bulk-drafts-actions">
         <button type="button" className="primary" disabled={filledCount === 0} onClick={() => addRows(rows)}>
           {filledCount > 1 ? `Add ${filledCount} drafts` : 'Add draft'}
@@ -204,7 +220,6 @@ export function BulkDeviantArtDrafts() {
 
 interface BulkLinkRowProps {
   row: BulkRow
-  urlRef?: Ref<HTMLInputElement>
   removable: boolean
   onChange: (change: Partial<BulkRow>) => void
   onPaste: (event: ClipboardEvent<HTMLInputElement>) => void
@@ -212,11 +227,10 @@ interface BulkLinkRowProps {
   onRemove: () => void
 }
 
-function BulkLinkRow({ row, urlRef, removable, onChange, onPaste, onKeyDown, onRemove }: BulkLinkRowProps) {
+function BulkLinkRow({ row, removable, onChange, onPaste, onKeyDown, onRemove }: BulkLinkRowProps) {
   return (
     <div className="bulk-drafts-row">
       <input
-        ref={urlRef}
         type="text"
         value={row.url}
         onChange={(e) => onChange({ url: e.target.value })}
@@ -225,15 +239,14 @@ function BulkLinkRow({ row, urlRef, removable, onChange, onPaste, onKeyDown, onR
         aria-label="DeviantArt link"
         placeholder="DeviantArt link"
       />
-      <input
-        type="text"
-        value={row.visionContext}
-        maxLength={MAX_VISION_CONTEXT_LENGTH}
-        onChange={(e) => onChange({ visionContext: e.target.value })}
-        aria-label="Context for the vision model"
-        placeholder="Optional context for the vision model, e.g. who a person is"
-        title="Optional context for the vision model, e.g. who a person is, or details the image alone does not show"
-      />
+      <label className="inline-check" title="Ask for additional context for the vision model before adding">
+        <input
+          type="checkbox"
+          checked={row.askForContext}
+          onChange={(e) => onChange({ askForContext: e.target.checked })}
+        />
+        Additional Context
+      </label>
       <button
         type="button"
         className={removable ? 'link-button' : 'link-button bulk-drafts-row-spacer'}

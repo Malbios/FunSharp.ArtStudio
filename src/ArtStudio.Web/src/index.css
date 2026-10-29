@@ -1007,7 +1007,7 @@ main {
 
 .bulk-drafts-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 1rem;
 }
@@ -1016,18 +1016,46 @@ main {
   visibility: hidden;
 }
 
-@media (max-width: 700px) {
-  .bulk-drafts-rows {
-    gap: 1rem;
-  }
+.context-dialog {
+  width: min(64rem, calc(100vw - 2rem));
+}
 
+.context-dialog-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.context-dialog-image img {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  margin: 0 auto;
+  border-radius: var(--radius);
+}
+
+.context-dialog-image .hint {
+  text-align: center;
+}
+
+.context-dialog-url {
+  color: var(--muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
   .bulk-drafts-row {
-    grid-template-columns: minmax(0, 1fr) auto;
     gap: 0.5rem;
   }
 
-  .bulk-drafts-row > input:nth-child(2) {
-    grid-row: 2;
+  .context-dialog-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .context-dialog-image img {
+    max-height: 35vh;
   }
 }
 

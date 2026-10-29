@@ -1,7 +1,7 @@
 export interface BulkRow {
   id: number
   url: string
-  visionContext: string
+  askForContext: boolean
 }
 
 export interface WaitingUrl {
@@ -9,29 +9,25 @@ export interface WaitingUrl {
   visionContext?: string
 }
 
+export interface RowsToAdd {
+  now: WaitingUrl[]
+  askFirst: BulkRow[]
+}
+
 let lastRowId = 0
 
-export const emptyRow = (): BulkRow => ({ id: ++lastRowId, url: '', visionContext: '' })
+export const emptyRow = (): BulkRow => ({ id: ++lastRowId, url: '', askForContext: false })
 
-const isEmpty = (row: BulkRow) => row.url.trim() === '' && row.visionContext.trim() === ''
+const hasUrl = (row: BulkRow) => row.url.trim() !== ''
 
 export function withTrailingEmptyRow(rows: BulkRow[]): BulkRow[] {
-  return rows.length > 0 && isEmpty(rows[rows.length - 1]) ? rows : [...rows, emptyRow()]
+  return rows.length > 0 && !hasUrl(rows[rows.length - 1]) ? rows : [...rows, emptyRow()]
 }
 
-/** Puts each pasted link on a row of its own; the row pasted into keeps its context for the first link. */
-export function spreadPastedLinks(rows: BulkRow[], index: number, urls: string[]): BulkRow[] {
-  const [first, ...rest] = urls
-  return [
-    ...rows.slice(0, index),
-    { ...rows[index], url: first },
-    ...rest.map((url) => ({ ...emptyRow(), url })),
-    ...rows.slice(index + 1),
-  ]
-}
-
-export function waitingUrls(rows: BulkRow[]): WaitingUrl[] {
-  return rows
-    .filter((row) => row.url.trim() !== '')
-    .map((row) => ({ url: row.url.trim(), visionContext: row.visionContext.trim() || undefined }))
+export function rowsToAdd(rows: BulkRow[]): RowsToAdd {
+  const filled = rows.filter(hasUrl).map((row) => ({ ...row, url: row.url.trim() }))
+  return {
+    now: filled.filter((row) => !row.askForContext).map((row) => ({ url: row.url })),
+    askFirst: filled.filter((row) => row.askForContext),
+  }
 }
