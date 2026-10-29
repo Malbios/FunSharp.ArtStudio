@@ -56,15 +56,17 @@ public static class DeviantArtEndpoints
             .Select(g => new { DeviationId = g.Key, SetId = g.Min(s => s.Id) })
             .ToDictionaryAsync(d => d.DeviationId, d => d.SetId, ct);
         var blocked = await db.BlockedArtists.Select(a => a.Username).ToListAsync(ct);
-        var authors = await db.PromptSets
-            .Where(s => s.DeviantArtAuthor != null && s.DeviantArtAuthor != "")
-            .GroupBy(s => EF.Functions.Collate(s.DeviantArtAuthor!, "NOCASE"))
-            .Select(g => new { Username = g.Min(s => s.DeviantArtAuthor)!, Published = g.Any(s => s.PublishedAt != null) })
-            .ToListAsync(ct);
+        // Grouped here: SQLite would scan all sets again for every author to tell whether one was published.
+        var authors = (await db.PromptSets
+                .Where(s => s.DeviantArtAuthor != null && s.DeviantArtAuthor != "")
+                .Select(s => new { Username = s.DeviantArtAuthor!, Published = s.PublishedAt != null })
+                .ToListAsync(ct))
+            .GroupBy(s => s.Username, StringComparer.OrdinalIgnoreCase)
+            .ToList();
         return new KnownDeviationsDto(
             used, blocked, (await auth.GetStatusAsync(ct)).Username,
-            authors.Select(a => a.Username).ToList(),
-            authors.Where(a => a.Published).Select(a => a.Username).ToList());
+            authors.Select(g => g.Key).ToList(),
+            authors.Where(g => g.Any(s => s.Published)).Select(g => g.Key).ToList());
     }
 
     private static async Task<BlockArtistResultDto> BlockArtistAsync(
