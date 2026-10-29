@@ -87,8 +87,18 @@ export function BulkDeviantArtDrafts() {
   function finishAsking(row: BulkRow, context: string | null) {
     if (context !== null) enqueue([{ url: row.url, visionContext: context || undefined }])
     const keepRow = context === null && !addRightAway
-    if (!keepRow) setRows((current) => withTrailingEmptyRow(current.filter((existing) => existing.id !== row.id)))
+    if (!keepRow) removeRowById(row.id)
     setAsking((current) => current.slice(1))
+  }
+
+  function rejectAsked(row: BulkRow, failure: Error) {
+    setResults((previous) => [...previous.filter((existing) => existing.url !== row.url), failedResult(row.url, failure)])
+    removeRowById(row.id)
+    setAsking((current) => current.slice(1))
+  }
+
+  function removeRowById(id: number) {
+    setRows((current) => withTrailingEmptyRow(current.filter((existing) => existing.id !== id)))
   }
 
   function changeRow(index: number, change: Partial<BulkRow>) {
@@ -133,8 +143,7 @@ export function BulkDeviantArtDrafts() {
       const { id } = await api.addDeviantArtDraft(url, visionContext)
       return { url, status: 'added', setId: id }
     } catch (failure) {
-      const existingSetId = failure instanceof ApiError ? failure.existingSetId : null
-      return { url, status: 'failed', error: (failure as Error).message, existingSetId }
+      return failedResult(url, failure as Error)
     }
   }
 
@@ -161,6 +170,7 @@ export function BulkDeviantArtDrafts() {
           url={asking[0].url}
           onConfirm={(context) => finishAsking(asking[0], context)}
           onCancel={() => finishAsking(asking[0], null)}
+          onRejected={(failure) => rejectAsked(asking[0], failure)}
         />
       )}
       <div className="bulk-drafts-actions">
@@ -171,6 +181,7 @@ export function BulkDeviantArtDrafts() {
           <input type="checkbox" checked={addRightAway} onChange={(e) => toggleAddRightAway(e.target.checked)} />
           Add each URL right away
         </label>
+        {asking.length > 0 && <span className="hint">Checking the link…</span>}
         {progress && (
           <span className="hint">
             Adding {Math.min(progress.done + 1, progress.total)} of {progress.total}…
@@ -216,6 +227,11 @@ export function BulkDeviantArtDrafts() {
       )}
     </section>
   )
+}
+
+function failedResult(url: string, failure: Error): BulkResult {
+  const existingSetId = failure instanceof ApiError ? failure.existingSetId : null
+  return { url, status: 'failed', error: failure.message, existingSetId }
 }
 
 interface BulkLinkRowProps {

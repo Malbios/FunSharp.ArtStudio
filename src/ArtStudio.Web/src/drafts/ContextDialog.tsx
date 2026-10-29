@@ -8,29 +8,38 @@ interface Props {
   url: string
   onConfirm: (context: string) => void
   onCancel: () => void
+  /** The link can't become a draft, so the dialog never opens. */
+  onRejected: (failure: Error) => void
 }
 
 /** Asks what the vision model should know about one DeviantArt link's image before it becomes a draft. */
-export function ContextDialog({ url, onConfirm, onCancel }: Props) {
+export function ContextDialog({ url, onConfirm, onCancel, onRejected }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const onRejectedRef = useRef(onRejected)
   const [context, setContext] = useState('')
   const [preview, setPreview] = useState<DeviationPreview>()
-  const [previewError, setPreviewError] = useState<string>()
 
   useEffect(() => {
-    dialogRef.current?.showModal()
-  }, [])
+    onRejectedRef.current = onRejected
+  })
 
   useEffect(() => {
     let current = true
     api.previewDeviation(url).then(
       (loaded) => current && setPreview(loaded),
-      (failure: Error) => current && setPreviewError(failure.message),
+      (failure: Error) => current && onRejectedRef.current(failure),
     )
     return () => {
       current = false
     }
   }, [url])
+
+  useEffect(() => {
+    if (!preview) return
+    dialogRef.current?.showModal()
+    textareaRef.current?.focus()
+  }, [preview])
 
   function confirm(event?: FormEvent) {
     event?.preventDefault()
@@ -60,13 +69,11 @@ export function ContextDialog({ url, onConfirm, onCancel }: Props) {
                 {preview.title ?? 'Untitled'} by {preview.author}
               </p>
             )}
-            {previewError && <p className="error">{previewError}</p>}
-            {!preview && !previewError && <p className="hint">Loading…</p>}
           </div>
           <label className="field">
             <span className="context-dialog-url">{url}</span>
             <textarea
-              autoFocus
+              ref={textareaRef}
               rows={8}
               value={context}
               maxLength={MAX_CONTEXT_LENGTH}
