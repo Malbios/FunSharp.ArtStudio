@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Job, JobKind, JobStatus, QueueState } from '../api'
-import { pausedLabel, pendingCounts, queueSections } from './queueSections'
+import { pendingCounts, queueSections } from './queueSections'
 
 let nextId = 1
 function job(kind: JobKind, status: JobStatus = 'Queued'): Job {
@@ -67,15 +67,6 @@ describe('queueSections', () => {
 
     expect(sections.map((s) => s.kind)).toEqual(['Image', 'Video'])
     expect(sections.every((s) => s.waitingNote === null)).toBe(true)
-  })
-})
-
-describe('pausedLabel', () => {
-  it('names the paused kinds', () => {
-    expect(pausedLabel(state([]))).toBeNull()
-    expect(pausedLabel(state([], { imagesPaused: true }))).toBe('images paused')
-    expect(pausedLabel(state([], { videosPaused: true }))).toBe('videos paused')
-    expect(pausedLabel(state([], { imagesPaused: true, videosPaused: true }))).toBe('paused')
   })
 })
 

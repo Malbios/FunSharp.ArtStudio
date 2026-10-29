@@ -53,14 +53,6 @@ export function queueSections(state: QueueState): QueueSection[] {
   })
 }
 
-/** The nav badge: which kinds are paused, if any. */
-export function pausedLabel(state: QueueState): string | null {
-  if (state.imagesPaused && state.videosPaused) return 'paused'
-  if (state.imagesPaused) return 'images paused'
-  if (state.videosPaused) return 'videos paused'
-  return null
-}
-
 /** The nav badges: how many images and videos are queued or rendering, failed jobs left out. */
 export function pendingCounts(state: QueueState): Record<JobKind, number> {
   const pending = state.active.filter((job) => job.status !== 'Failed')
