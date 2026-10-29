@@ -5,6 +5,8 @@ A Chrome extension that adds two entries to the right-click menu on deviantart.c
 - **Add to Art Studio**: adds the post as a draft right away, like pasting its link into Bulk add on the Drafts page.
 - **Add to Art Studio with context…**: first asks what the vision model should know about the image.
 
+The result ("Added as draft #N", or why the post was refused) shows in the bottom right corner of the page.
+
 The entries only show while Art Studio is running. Chrome rechecks every 30 seconds and whenever you switch tabs, so they
 can take that long to appear or disappear after you start or stop Art Studio.
 

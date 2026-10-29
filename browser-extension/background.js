@@ -1,5 +1,6 @@
 import { showContextDialog } from './contextDialog.js'
 import { postUrlFrom } from './deviationLink.js'
+import { showToast } from './toast.js'
 
 const DEFAULT_ADDRESS = 'http://localhost:5180'
 const ADD = 'add'
@@ -74,33 +75,58 @@ async function askForContext(tabId, preview) {
 
 async function addToArtStudio(info, tab) {
   const url = postUrlFrom(info.linkUrl, info.pageUrl)
-  if (!url) return notify("That isn't a DeviantArt post.")
+  if (!url) return report(tab, { message: "That isn't a DeviantArt post.", failed: true })
 
   const address = await artStudioAddress()
   try {
     let visionContext
     if (info.menuItemId === ADD_WITH_CONTEXT) {
+      await showOnPage(tab, { message: 'Checking the link…', failed: false })
       const preview = await post(address, '/api/deviantart/preview', { url })
+      await clearReport(tab)
       const context = await askForContext(tab.id, preview)
       if (context === null) return
       visionContext = context || undefined
     }
+    await showOnPage(tab, { message: 'Adding…', failed: false })
     const { id } = await post(address, '/api/drafts/deviantart', { url, visionContext })
-    await notify(`Added as draft #${id}.`, url, `${address}/?draft=${id}`)
+    await report(tab, { message: `Added as draft #${id}.`, failed: false, openUrl: `${address}/?draft=${id}`, openLabel: 'Open draft' })
   } catch (failure) {
     const existingSetId = failure instanceof ArtStudioError ? failure.existingSetId : null
-    await notify(failure.message, url, existingSetId === null ? undefined : `${address}/sets/${existingSetId}`)
+    await report(tab, {
+      message: failure.message,
+      failed: true,
+      openUrl: existingSetId === null ? undefined : `${address}/sets/${existingSetId}`,
+      openLabel: `Open set #${existingSetId}`,
+    })
   }
 }
 
-async function notify(message, postUrl, openUrl) {
-  const id = await chrome.notifications.create({
-    type: 'basic',
-    iconUrl: 'icons/icon128.png',
-    title: 'Art Studio',
-    message,
-    contextMessage: postUrl ?? '',
-  })
+/** Shows the result on the page, where it can't be missed; a system notification only where the page can't show it. */
+async function report(tab, result) {
+  if (!(await showOnPage(tab, result))) await notify(result)
+}
+
+async function showOnPage(tab, result) {
+  try {
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: showToast, args: [result] })
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function clearReport(tab) {
+  await chrome.scripting
+    .executeScript({
+      target: { tabId: tab.id },
+      func: () => document.querySelectorAll('[data-art-studio-toast]').forEach((toast) => toast.remove()),
+    })
+    .catch(() => {})
+}
+
+async function notify({ message, openUrl }) {
+  const id = await chrome.notifications.create({ type: 'basic', iconUrl: 'icons/icon128.png', title: 'Art Studio', message })
   if (openUrl) await chrome.storage.session.set({ [`notification:${id}`]: openUrl })
 }
 
