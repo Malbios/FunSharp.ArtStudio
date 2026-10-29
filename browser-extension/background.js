@@ -7,7 +7,9 @@ const DEFAULT_ADDRESS = 'http://localhost:5180'
 const ADD = 'add'
 const HIDE_KNOWN = 'hide-known-on-home'
 const CHECK_ALARM = 'check-art-studio'
-const CHECK_TIMEOUT_MS = 2000
+// A stopped Art Studio refuses the connection at once, so this only limits how long a busy one may take.
+const CHECK_TIMEOUT_MS = 10000
+const NO_NEWS = Symbol('no news')
 
 async function artStudioAddress() {
   const { address } = await chrome.storage.local.get('address')
@@ -66,6 +68,7 @@ async function showHideKnown() {
  */
 async function checkArtStudio() {
   const known = await fetchKnownDeviations(await artStudioAddress())
+  if (known === NO_NEWS) return
   const running = known !== null
   await chrome.storage.local.set({ artStudioRunning: running, ...(running && { known }) })
   try {
@@ -79,8 +82,8 @@ async function fetchKnownDeviations(address) {
   try {
     const response = await fetch(`${address}/api/deviantart/known`, { signal: AbortSignal.timeout(CHECK_TIMEOUT_MS) })
     return response.ok ? await response.json() : null
-  } catch {
-    return null
+  } catch (failure) {
+    return failure?.name === 'TimeoutError' ? NO_NEWS : null
   }
 }
 
