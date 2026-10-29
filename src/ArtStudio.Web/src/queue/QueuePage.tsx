@@ -4,6 +4,7 @@ import { useLoad } from '../live/useLoad'
 import { Pager } from '../paging/Pager'
 import { usePagedItems } from '../paging/usePagedItems'
 import { JobTile } from './JobTile'
+import { PromptQueueSection } from './PromptQueueSection'
 import { queueSections, type QueueSection } from './queueSections'
 
 export function QueuePage() {
@@ -27,6 +28,7 @@ export function QueuePage() {
 
       {queue.error && <p className="error">{queue.error}</p>}
       {data && queueSections(data).map((section) => <QueueSectionView key={section.kind} section={section} />)}
+      <PromptQueueSection />
     </div>
   )
 }

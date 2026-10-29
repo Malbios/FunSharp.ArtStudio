@@ -1,17 +1,12 @@
 import { Link } from 'react-router-dom'
-import type { Job, QueueMove } from '../api'
+import type { Job } from '../api'
 import { OrderLabel } from '../prompt/OrderLabel'
 import { useReturnState } from '../sets/returnTo'
 import { useNow } from '../live/useNow'
 import { jobProgressLabel, jobSettingsLabel, jobTimeLabel } from './jobLabels'
+import { MOVES } from './queueMoves'
 import { useJobActions } from './useJobActions'
 
-const MOVES: { move: QueueMove; label: string; title: string; earlier: boolean }[] = [
-  { move: 'Top', label: '⤒ Top', title: 'Run next among the waiting jobs of its kind', earlier: true },
-  { move: 'Up', label: '↑ Up', title: 'Move one place earlier among the jobs of its kind', earlier: true },
-  { move: 'Down', label: '↓ Down', title: 'Move one place later among the jobs of its kind', earlier: false },
-  { move: 'Bottom', label: '⤓ Bottom', title: 'Move after all waiting jobs of its kind', earlier: false },
-]
 
 interface Props {
   job: Job

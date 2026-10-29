@@ -46,6 +46,7 @@ public static class ServiceRegistration
         services.AddSingleton<StudioNotifier>();
         services.AddScoped<QueueService>();
         services.AddScoped<SetService>();
+        services.AddScoped<PromptQueueService>();
         services.AddHttpClient(DeviantArtService.HttpClientName, http =>
         {
             http.Timeout = TimeSpan.FromSeconds(30);

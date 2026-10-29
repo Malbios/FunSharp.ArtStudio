@@ -148,6 +148,17 @@ export type PromptGenerationState = 'None' | 'Queued' | 'Running' | 'Done' | 'Fa
 
 export type PromptGenerationKind = 'Generate' | 'Modify'
 
+export interface PromptQueueItem {
+  setId: number
+  state: PromptGenerationState
+  kind: PromptGenerationKind
+  isDraft: boolean
+  sourceImageUrl: string | null
+  deviantArtAuthor: string | null
+  /** The vision context of a new prompt, or the instructions of a modification. */
+  note: string | null
+}
+
 export interface PromptGeneration {
   state: PromptGenerationState
   kind: PromptGenerationKind
@@ -486,6 +497,9 @@ export const api = {
   cancelJob: (jobId: number) => request<void>('POST', `/api/jobs/${jobId}/cancel`),
   retryJob: (jobId: number) => request<void>('POST', `/api/jobs/${jobId}/retry`),
   moveJob: (jobId: number, move: QueueMove) => request<void>('POST', `/api/jobs/${jobId}/move`, { move }),
+  promptQueue: () => request<PromptQueueItem[]>('GET', '/api/prompt-queue'),
+  movePrompt: (setId: number, move: QueueMove) => request<void>('POST', `/api/prompt-queue/${setId}/move`, { move }),
+  cancelPrompt: (setId: number) => request<void>('POST', `/api/prompt-queue/${setId}/cancel`),
 
   previewDeviation: (url: string) => request<DeviationPreview>('POST', '/api/deviantart/preview', { url }),
   blockedArtists: () => request<BlockedArtist[]>('GET', '/api/blocked-artists'),

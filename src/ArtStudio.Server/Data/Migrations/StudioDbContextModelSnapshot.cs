@@ -385,6 +385,9 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<bool>("PromptGenerationTruncated")
                         .HasColumnType("INTEGER");
 
+                    b.Property<long>("PromptQueuePosition")
+                        .HasColumnType("INTEGER");
+
                     b.Property<long?>("PublishedAt")
                         .HasColumnType("INTEGER");
 

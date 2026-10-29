@@ -34,6 +34,7 @@ public sealed class SetService(
     DeviantArtService deviantArtService,
     GenerationQueue queue,
     PromptGenerationQueue promptQueue,
+    PromptQueueService promptQueueOrder,
     PostSuggestionQueue postSuggestions,
     VisionApiKey visionApiKey,
     StudioNotifier notifier,
@@ -227,11 +228,14 @@ public sealed class SetService(
             throw new UserFacingException("Set the vision API key in Settings first.");
         var failed = await db.PromptSets
             .Where(s => s.IsDraft && s.PromptGeneration == PromptGenerationState.Failed)
+            .OrderBy(s => s.Id)
             .ToListAsync(ct);
         var now = clock.GetUtcNow();
+        var position = await promptQueueOrder.PositionsForAsync(requested: true, failed.Count, ct);
         foreach (var set in failed)
         {
             set.PromptGeneration = PromptGenerationState.Queued;
+            set.PromptQueuePosition = position++;
             set.PromptGenerationQueuedAt = now;
             set.PromptGenerationRequested = true;
             set.PromptGenerationError = null;
@@ -304,6 +308,7 @@ public sealed class SetService(
 
     private async Task MarkPromptGenerationQueuedAsync(PromptSet set, ImagesToQueue? images, bool requested, CancellationToken ct)
     {
+        set.PromptQueuePosition = await promptQueueOrder.PositionsForAsync(requested, count: 1, ct);
         set.PromptGeneration = PromptGenerationState.Queued;
         set.PromptGenerationQueuedAt = clock.GetUtcNow();
         set.PromptGenerationRequested = requested;
