@@ -1,9 +1,11 @@
 /**
  * Runs inside the DeviantArt tab (injected through chrome.scripting), so it must not use anything from outside its
- * own body. Shows the result of adding a post in the bottom right corner for a few seconds.
+ * own body. Shows the result of adding a post in the bottom right corner. Successes fade out like Art Studio's own
+ * messages; errors stay until closed, and progress stays until the result replaces it.
  */
-export function showToast({ message, failed, openUrl, openLabel }) {
-  const VISIBLE_MS = 6000
+export function showToast({ message, failed, pending = false, openUrl, openLabel }) {
+  const VISIBLE_MS = 5000
+  const fadesOut = !failed && !pending
   const host = document.createElement('div')
   host.style.all = 'initial'
   const root = host.attachShadow({ mode: 'closed' })
@@ -11,10 +13,11 @@ export function showToast({ message, failed, openUrl, openLabel }) {
     <style>
       .toast { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 2147483647; max-width: 26rem;
         display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 10px;
-        background: #1c1d22; color: #e8e8ec; border: 1px solid #34353d; border-left: 4px solid #8b7cf6;
+        background: #1c1d22; color: #e8e8ec; border: 1px solid #34353d; border-left: 12px solid #8b7cf6;
         box-shadow: 0 8px 24px rgb(0 0 0 / 0.45); font: 14px/1.4 system-ui, sans-serif;
         transition: opacity 0.3s ease; }
-      .toast.failed { border-left-color: #f0616d; }
+      .toast.succeeded { border-left-color: #6fd49a; }
+      .toast.failed { border-left-color: #f27474; }
       .title { font-weight: 600; margin-right: 0.25rem; }
       a { color: #b3a8ff; white-space: nowrap; }
       button { all: unset; cursor: pointer; color: #9a9ba6; padding: 0 0.25rem; }
@@ -27,6 +30,7 @@ export function showToast({ message, failed, openUrl, openLabel }) {
 
   const toast = root.querySelector('.toast')
   toast.classList.toggle('failed', failed)
+  toast.classList.toggle('succeeded', fadesOut)
   root.querySelector('.message').textContent = message
   const link = root.querySelector('a')
   if (openUrl) {
@@ -41,9 +45,11 @@ export function showToast({ message, failed, openUrl, openLabel }) {
     setTimeout(() => host.remove(), 300)
   }
   root.querySelector('button').addEventListener('click', close)
-  let timer = setTimeout(close, VISIBLE_MS)
-  toast.addEventListener('mouseenter', () => clearTimeout(timer))
-  toast.addEventListener('mouseleave', () => (timer = setTimeout(close, VISIBLE_MS)))
+  if (fadesOut) {
+    let timer = setTimeout(close, VISIBLE_MS)
+    toast.addEventListener('mouseenter', () => clearTimeout(timer))
+    toast.addEventListener('mouseleave', () => (timer = setTimeout(close, VISIBLE_MS)))
+  }
 
   document.querySelectorAll('[data-art-studio-toast]').forEach((previous) => previous.remove())
   host.dataset.artStudioToast = ''

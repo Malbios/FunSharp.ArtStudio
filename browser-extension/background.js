@@ -102,14 +102,14 @@ async function addToArtStudio(info, tab) {
   try {
     let visionContext
     if (await asksForContext()) {
-      await showOnPage(tab, { message: 'Checking the link…', failed: false })
+      await showOnPage(tab, { message: 'Checking the link…', failed: false, pending: true })
       const preview = await post(address, '/api/deviantart/preview', { url })
       await clearReport(tab)
       const context = await askForContext(tab.id, preview)
       if (context === null) return
       visionContext = context || undefined
     }
-    await showOnPage(tab, { message: 'Adding…', failed: false })
+    await showOnPage(tab, { message: 'Adding…', failed: false, pending: true })
     const { id } = await post(address, '/api/drafts/deviantart', { url, visionContext })
     await report(tab, { message: `Added as draft #${id}.`, failed: false, openUrl: `${address}/?draft=${id}`, openLabel: 'Open draft' })
   } catch (failure) {

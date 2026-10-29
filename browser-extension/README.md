@@ -11,7 +11,8 @@ Clicking the extension's toolbar icon switches between two modes:
 
 Chrome would put a second entry into a submenu, so there is one entry with a mode instead.
 
-The result ("Added as draft #N", or why the post was refused) shows in the bottom right corner of the page.
+The result shows in the bottom right corner of the page. "Added as draft #N" fades out after 5 seconds; an error (why
+the post was refused) stays until you close it.
 
 The entry only shows while Art Studio is running. Chrome rechecks every 30 seconds and whenever you switch tabs, so it
 can take that long to appear or disappear after you start or stop Art Studio.
