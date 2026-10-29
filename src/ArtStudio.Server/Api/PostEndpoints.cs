@@ -1,5 +1,7 @@
+using ArtStudio.Server.Data;
 using ArtStudio.Server.DeviantArt;
 using ArtStudio.Server.Vision;
+using Microsoft.EntityFrameworkCore;
 
 namespace ArtStudio.Server.Api;
 
@@ -8,6 +10,11 @@ public sealed record MatureGalleriesRequest(IReadOnlyList<string> FolderIds);
 public sealed record SuggestedTitleDto(string Title);
 
 public sealed record SuggestedTagsDto(IReadOnlyList<string> Tags);
+
+public sealed record ExtraPickDto(int Position, string FileName, string Url);
+
+/// <summary>The picks the browser extension adds in DeviantArt's editor of a set's Stash item.</summary>
+public sealed record StashExtraPicksDto(int SetId, IReadOnlyList<ExtraPickDto> Picks);
 
 public static class PostEndpoints
 {
@@ -40,5 +47,18 @@ public static class PostEndpoints
         post.MapPost("extra-picks", async (int id, ExtraPicksFolder folder, CancellationToken ct) =>
             new { Folder = await folder.OpenAsync(id, ct) });
         post.MapPost("extra-picks/close", (int id, ExtraPicksFolder folder) => folder.Close(id));
+
+        app.MapGet("/api/stash/{stashItemId:long}/extra-picks", GetStashExtraPicksAsync);
+    }
+
+    private static async Task<IResult> GetStashExtraPicksAsync(
+        long stashItemId, StudioDbContext db, ExtraPicksFolder folder, CancellationToken ct)
+    {
+        var setId = await db.PromptSets.Where(s => s.StashItemId == stashItemId).Select(s => (int?)s.Id).FirstOrDefaultAsync(ct);
+        if (setId is not { } id)
+            return Results.NotFound();
+        var picks = await folder.ListAsync(id, ct);
+        return Results.Ok(new StashExtraPicksDto(
+            id, picks.Select(p => new ExtraPickDto(p.Position, p.FileName, ApiUrls.Image(p.ImageId))).ToList()));
     }
 }

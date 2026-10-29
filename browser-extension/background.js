@@ -174,6 +174,40 @@ chrome.action.onClicked.addListener(async () => {
   await chrome.storage.local.set({ askForContext: !(await asksForContext()) })
 })
 chrome.contextMenus.onClicked.addListener((info, tab) => void addToArtStudio(info, tab))
+/** The editor's content script can't reach localhost itself, so the files pass through here as base64. */
+async function extraPicks(stashItemId) {
+  const address = await artStudioAddress()
+  const response = await fetch(`${address}/api/stash/${encodeURIComponent(stashItemId)}/extra-picks`).catch(() => null)
+  return response?.ok ? await response.json() : null
+}
+
+async function extraPickFiles(picks) {
+  const address = await artStudioAddress()
+  return Promise.all(
+    picks.map(async ({ fileName, url }) => {
+      const response = await fetch(`${address}${url}`)
+      if (!response.ok) throw new Error(`Art Studio could not send ${fileName} (${response.status}).`)
+      const bytes = new Uint8Array(await response.arrayBuffer())
+      let binary = ''
+      for (let start = 0; start < bytes.length; start += 0x8000) binary += String.fromCharCode(...bytes.subarray(start, start + 0x8000))
+      return { fileName, type: response.headers.get('Content-Type') ?? 'image/png', base64: btoa(binary) }
+    }),
+  )
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === 'extra-picks') {
+    void extraPicks(message.stashItemId).then(sendResponse)
+    return true
+  }
+  if (message?.type === 'extra-pick-files') {
+    extraPickFiles(message.picks).then(
+      (files) => sendResponse({ files }),
+      (failure) => sendResponse({ error: failure.message }),
+    )
+    return true
+  }
+})
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (message?.type === 'add' && sender.tab)
     void addToArtStudio({ linkUrl: message.linkUrl, pageUrl: message.pageUrl }, sender.tab)

@@ -328,6 +328,37 @@ public sealed class PostingTests : IDisposable
     }
 
     [Fact]
+    public async Task StashExtraPicks_ListPicksTwoAndUpInPickOrder_ByTheStashItem()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, picked) = await CreateReadySetAsync(3);
+        (await StashAsync(setId)).EnsureSuccessStatusCode();
+        var stashItemId = (await GetSetAsync(_client, setId)).Post.StashItemId;
+
+        var extra = await _client.GetFromJsonAsync<StashExtraPicksDto>($"/api/stash/{stashItemId}/extra-picks", Json);
+
+        Assert.Equal(setId, extra!.SetId);
+        Assert.Equal(
+            [new ExtraPickDto(2, "02.png", $"/api/images/{picked[1]}"), new ExtraPickDto(3, "03.png", $"/api/images/{picked[2]}")],
+            extra.Picks);
+    }
+
+    [Fact]
+    public async Task StashExtraPicks_AreEmptyForOnePick_AndNotFoundForAnUnknownItem()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, _) = await CreateReadySetAsync(1);
+        (await StashAsync(setId)).EnsureSuccessStatusCode();
+        var stashItemId = (await GetSetAsync(_client, setId)).Post.StashItemId;
+
+        var extra = await _client.GetFromJsonAsync<StashExtraPicksDto>($"/api/stash/{stashItemId}/extra-picks", Json);
+        var unknown = await _client.GetAsync("/api/stash/987654321/extra-picks");
+
+        Assert.Empty(extra!.Picks);
+        Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
+    }
+
+    [Fact]
     public async Task ExtraPicks_WithOnlyOnePick_IsRejected()
     {
         var (setId, _) = await CreateReadySetAsync(1);

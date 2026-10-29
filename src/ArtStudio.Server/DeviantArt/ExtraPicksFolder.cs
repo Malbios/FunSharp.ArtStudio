@@ -67,16 +67,26 @@ public sealed class ExplorerFolderOpener(ILogger<ExplorerFolderOpener> logger) :
 /// DeviantArt's API takes one image per deviation, so picks #2 and up are added by hand in its editor. This puts
 /// copies of them, numbered in pick order, into a folder of their own to drag from.
 /// </summary>
+public sealed record ExtraPick(int Position, int ImageId, string FilePath)
+{
+    /// <summary>The name the pick goes by in the folder and in DeviantArt's editor, so either can tell what is there.</summary>
+    public string FileName => $"{Position:00}{Path.GetExtension(FilePath)}";
+}
+
 public sealed class ExtraPicksFolder(StudioDbContext db, AppPaths paths, IFolderOpener opener)
 {
-    public async Task<string> OpenAsync(int setId, CancellationToken ct)
-    {
-        var files = await db.Picks
+    /// <summary>Picks #2 and up, in pick order.</summary>
+    public async Task<IReadOnlyList<ExtraPick>> ListAsync(int setId, CancellationToken ct) =>
+        await db.Picks
             .Where(p => p.PromptSetId == setId)
             .OrderBy(p => p.Position)
-            .Join(db.Images, p => p.GeneratedImageId, i => i.Id, (p, i) => new { p.Position, i.FilePath })
+            .Join(db.Images, p => p.GeneratedImageId, i => i.Id, (p, i) => new ExtraPick(p.Position, i.Id, i.FilePath))
             .Skip(1)
             .ToListAsync(ct);
+
+    public async Task<string> OpenAsync(int setId, CancellationToken ct)
+    {
+        var files = await ListAsync(setId, ct);
         if (files.Count == 0)
             throw new UserFacingException("This set has no picks besides #1.");
 
@@ -86,7 +96,7 @@ public sealed class ExtraPicksFolder(StudioDbContext db, AppPaths paths, IFolder
         {
             if (!File.Exists(file.FilePath))
                 throw new UserFacingException($"The file of pick #{file.Position} is missing.");
-            File.Copy(file.FilePath, Path.Combine(folder, $"{file.Position:00}{Path.GetExtension(file.FilePath)}"));
+            File.Copy(file.FilePath, Path.Combine(folder, file.FileName));
         }
 
         opener.Open(folder);
