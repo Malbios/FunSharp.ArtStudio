@@ -388,6 +388,12 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<long>("PromptQueuePosition")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("PublishGalleryId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PublishMatureLevel")
+                        .HasColumnType("TEXT");
+
                     b.Property<long?>("PublishedAt")
                         .HasColumnType("INTEGER");
 

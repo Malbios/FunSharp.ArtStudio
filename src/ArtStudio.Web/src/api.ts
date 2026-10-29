@@ -221,7 +221,12 @@ export interface PostDetails {
   publishedAt: string | null
   /** A title and tags are being suggested in the background. */
   suggesting: boolean
+  /** The gallery and mature level chosen for publishing this set; null until chosen. */
+  publishGalleryId: string | null
+  publishMatureLevel: PublishMatureLevel | null
 }
+
+export type PublishMatureLevel = 'none' | MatureLevel
 
 export interface DeviationImage {
   index: number
@@ -529,6 +534,8 @@ export const api = {
     request<void>('POST', `/api/sets/${setId}/post/stash`, { title, description, tags }),
   publish: (setId: number, galleryId: string, isMature: boolean, matureLevel: MatureLevel | null) =>
     request<void>('POST', `/api/sets/${setId}/post/publish`, { galleryId, isMature, matureLevel }),
+  savePublishChoice: (setId: number, galleryId: string, matureLevel: PublishMatureLevel) =>
+    request<void>('PUT', `/api/sets/${setId}/post/publish-choice`, { galleryId, matureLevel }),
   forgetStash: (setId: number) => request<void>('POST', `/api/sets/${setId}/post/forget-stash`),
 
   settings: () => request<Settings>('GET', '/api/settings'),

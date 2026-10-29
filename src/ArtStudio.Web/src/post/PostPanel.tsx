@@ -1,6 +1,16 @@
-import { useEffect, useState, type FormEvent } from 'react'
-import { api, type Gallery, type MatureLevel, type SetDetail } from '../api'
-import { hasOnlyDefaultTags, initialPostFields, MAX_TITLE_LENGTH, stashDescription, stashEditorUrl, withSuggestedTags } from './postDefaults'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { api, type Gallery, type PublishMatureLevel, type SetDetail } from '../api'
+import {
+  hasOnlyDefaultTags,
+  initialPostFields,
+  initialPublishChoice,
+  matureLevelOf,
+  MAX_TITLE_LENGTH,
+  stashDescription,
+  stashEditorUrl,
+  withSuggestedTags,
+  type PublishChoice,
+} from './postDefaults'
 
 interface PostPanelProps {
   set: SetDetail
@@ -216,23 +226,28 @@ function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & 
 
 function PublishForm({ set, onPublished }: Pick<PostPanelProps, 'set' | 'onPublished'>) {
   const [galleries, setGalleries] = useState<Gallery[]>()
-  const [galleryId, setGalleryId] = useState('')
-  const [isMature, setIsMature] = useState(false)
-  const [matureLevel, setMatureLevel] = useState<MatureLevel>('moderate')
+  const [choice, setChoice] = useState<PublishChoice>({ galleryId: '', matureLevel: 'none' })
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState<string>()
+  const savingRef = useRef(Promise.resolve())
+  const { galleryId, matureLevel } = choice
 
   useEffect(() => {
     api.galleries().then((loaded) => {
       setGalleries(loaded)
-      const lastUsed = loaded.find((gallery) => gallery.lastUsed)
-      if (lastUsed) chooseGallery(lastUsed)
+      setChoice(initialPublishChoice(loaded, set.post))
     }, (failure: Error) => setError(failure.message))
-  }, [])
+    // Only on opening the set: later changes come from this form itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [set.id])
 
-  function chooseGallery(gallery: Gallery | undefined) {
-    setGalleryId(gallery?.folderId ?? '')
-    setIsMature(gallery?.mature ?? false)
+  // One save at a time, so quick changes can't arrive out of order and leave an older choice saved.
+  function change(next: PublishChoice) {
+    setChoice(next)
+    setError(undefined)
+    savingRef.current = savingRef.current
+      .then(() => api.savePublishChoice(set.id, next.galleryId, next.matureLevel))
+      .catch((failure: Error) => setError(failure.message))
   }
 
   async function publish(event: FormEvent) {
@@ -241,6 +256,7 @@ function PublishForm({ set, onPublished }: Pick<PostPanelProps, 'set' | 'onPubli
     setPublishing(true)
     setError(undefined)
     try {
+      const isMature = matureLevel !== 'none'
       await api.publish(set.id, galleryId, isMature, isMature ? matureLevel : null)
       onPublished()
     } catch (failure) {
@@ -257,7 +273,10 @@ function PublishForm({ set, onPublished }: Pick<PostPanelProps, 'set' | 'onPubli
           <select
             value={galleryId}
             disabled={!galleries}
-            onChange={(e) => chooseGallery(galleries?.find((gallery) => gallery.folderId === e.target.value))}
+            onChange={(e) => {
+              const gallery = galleries?.find((candidate) => candidate.folderId === e.target.value)
+              change({ galleryId: gallery?.folderId ?? '', matureLevel: matureLevelOf(gallery) })
+            }}
           >
             <option value="">{galleries ? 'Choose a gallery…' : 'Loading galleries…'}</option>
             {galleries?.map((gallery) => (
@@ -272,13 +291,10 @@ function PublishForm({ set, onPublished }: Pick<PostPanelProps, 'set' | 'onPubli
           <span>Mature</span>
           <select
             aria-label="Mature level"
-            value={isMature ? matureLevel : 'no'}
-            onChange={(e) => {
-              setIsMature(e.target.value !== 'no')
-              if (e.target.value !== 'no') setMatureLevel(e.target.value as MatureLevel)
-            }}
+            value={matureLevel}
+            onChange={(e) => change({ galleryId, matureLevel: e.target.value as PublishMatureLevel })}
           >
-            <option value="no">No</option>
+            <option value="none">No</option>
             <option value="moderate">Moderate</option>
             <option value="strict">Strict</option>
           </select>

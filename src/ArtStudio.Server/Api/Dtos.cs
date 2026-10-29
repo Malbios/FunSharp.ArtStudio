@@ -173,11 +173,13 @@ public sealed record PostDto(
     DateTimeOffset? StashedAt,
     string? PublishedUrl,
     DateTimeOffset? PublishedAt,
-    bool Suggesting)
+    bool Suggesting,
+    string? PublishGalleryId,
+    string? PublishMatureLevel)
 {
     public static PostDto From(PromptSet set, bool suggesting) => new(
         set.PostTitle, set.PostDescription, set.PostTags, set.StashItemId?.ToString(), set.StashedAt, set.PublishedUrl, set.PublishedAt,
-        suggesting);
+        suggesting, set.PublishGalleryId, set.PublishMatureLevel);
 }
 
 /// <summary>A paragraph order such as "Style,Characters,Setting,Composition"; without one, the set's latest order is used.</summary>

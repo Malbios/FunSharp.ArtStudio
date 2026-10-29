@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import type { PostDetails } from '../api'
-import { DEFAULT_TAGS, hasOnlyDefaultTags, initialPostFields, stashDescription, stashEditorUrl, withSuggestedTags } from './postDefaults'
+import type { Gallery, PostDetails } from '../api'
+import {
+  DEFAULT_TAGS,
+  hasOnlyDefaultTags,
+  initialPostFields,
+  initialPublishChoice,
+  stashDescription,
+  stashEditorUrl,
+  withSuggestedTags,
+} from './postDefaults'
 
 const noPost: PostDetails = {
   title: null,
@@ -11,7 +19,38 @@ const noPost: PostDetails = {
   publishedUrl: null,
   publishedAt: null,
   suggesting: false,
+  publishGalleryId: null,
+  publishMatureLevel: null,
 }
+
+describe('initial publish choice', () => {
+  const galleries: Gallery[] = [
+    { folderId: 'scenery', name: 'Scenery', mature: false, lastUsed: true },
+    { folderId: 'spicy', name: 'Spicy', mature: true, lastUsed: false },
+  ]
+
+  it('starts at the gallery published to last, with its mature setting', () => {
+    expect(initialPublishChoice(galleries, noPost)).toEqual({ galleryId: 'scenery', matureLevel: 'none' })
+  })
+
+  it('keeps what was chosen for the set', () => {
+    expect(initialPublishChoice(galleries, { publishGalleryId: 'spicy', publishMatureLevel: 'strict' })).toEqual({
+      galleryId: 'spicy',
+      matureLevel: 'strict',
+    })
+  })
+
+  it('falls back to the gallery published to last when the chosen one is gone, keeping the mature choice', () => {
+    expect(initialPublishChoice(galleries, { publishGalleryId: 'deleted', publishMatureLevel: 'moderate' })).toEqual({
+      galleryId: 'scenery',
+      matureLevel: 'moderate',
+    })
+  })
+
+  it('has no gallery when none was chosen or published to', () => {
+    expect(initialPublishChoice([{ ...galleries[1], lastUsed: false }], noPost)).toEqual({ galleryId: '', matureLevel: 'none' })
+  })
+})
 
 it('tells default-only tags from real ones', () => {
   expect(hasOnlyDefaultTags('')).toBe(true)

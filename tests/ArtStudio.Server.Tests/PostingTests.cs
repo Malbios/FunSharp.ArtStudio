@@ -259,6 +259,34 @@ public sealed class PostingTests : IDisposable
     }
 
     [Fact]
+    public async Task PublishChoice_IsKeptOnTheSet_UntilChangedAgain()
+    {
+        var (setId, _) = await CreateReadySetAsync(1);
+        Assert.Null((await GetSetAsync(_client, setId)).Post.PublishGalleryId);
+
+        (await _client.PutAsJsonAsync($"/api/sets/{setId}/post/publish-choice", new { galleryId = "F-SPICY", matureLevel = "strict" }))
+            .EnsureSuccessStatusCode();
+        var chosen = (await GetSetAsync(_client, setId)).Post;
+        (await _client.PutAsJsonAsync($"/api/sets/{setId}/post/publish-choice", new { galleryId = "F-SCENERY", matureLevel = "none" }))
+            .EnsureSuccessStatusCode();
+        var changed = (await GetSetAsync(_client, setId)).Post;
+
+        Assert.Equal(("F-SPICY", "strict"), (chosen.PublishGalleryId, chosen.PublishMatureLevel));
+        Assert.Equal(("F-SCENERY", "none"), (changed.PublishGalleryId, changed.PublishMatureLevel));
+    }
+
+    [Fact]
+    public async Task PublishChoice_WithAnUnknownMatureLevel_IsRefused()
+    {
+        var (setId, _) = await CreateReadySetAsync(1);
+
+        var response = await _client.PutAsJsonAsync($"/api/sets/{setId}/post/publish-choice", new { galleryId = "F-SPICY", matureLevel = "extreme" });
+
+        Assert.Contains("how mature", await ErrorOf(response));
+        Assert.Null((await GetSetAsync(_client, setId)).Post.PublishMatureLevel);
+    }
+
+    [Fact]
     public async Task StashExtraPicks_ListPicksTwoAndUpInPickOrder_ByTheStashItem()
     {
         await _factory.ConnectDeviantArtAsync();

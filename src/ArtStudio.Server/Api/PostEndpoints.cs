@@ -44,6 +44,8 @@ public static class PostEndpoints
             await posting.PublishAsync(id, request, ct));
         post.MapPost("forget-stash", async (int id, DeviantArtPosting posting, CancellationToken ct) =>
             await posting.ForgetStashAsync(id, ct));
+        post.MapPut("publish-choice", async (int id, PublishChoiceRequest request, DeviantArtPosting posting, CancellationToken ct) =>
+            await posting.SavePublishChoiceAsync(id, request, ct));
         app.MapGet("/api/stash/{stashItemId:long}/extra-picks", GetStashExtraPicksAsync);
     }
 

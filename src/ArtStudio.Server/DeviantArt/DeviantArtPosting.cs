@@ -16,6 +16,8 @@ public sealed record StashRequest(string Title, string? Description, string? Tag
 
 public sealed record PublishRequest(string GalleryId, bool IsMature, string? MatureLevel);
 
+public sealed record PublishChoiceRequest(string? GalleryId, string MatureLevel);
+
 public sealed partial class DeviantArtPosting(
     StudioDbContext db,
     AppPaths paths,
@@ -27,6 +29,7 @@ public sealed partial class DeviantArtPosting(
     private const int GalleryPageSize = 50;
     private const char IdSeparator = ',';
     private static readonly string?[] MatureLevels = ["moderate", "strict"];
+    private const string NotMature = "none";
 
     public async Task StashAsync(int setId, StashRequest request, CancellationToken ct)
     {
@@ -128,6 +131,19 @@ public sealed partial class DeviantArtPosting(
     }
 
     private static string Flag(bool value) => value ? "true" : "false";
+
+    /// <summary>Keeps the gallery and mature level picked for a set, so its publish form shows them again later.</summary>
+    public async Task SavePublishChoiceAsync(int setId, PublishChoiceRequest request, CancellationToken ct)
+    {
+        var level = request.MatureLevel?.Trim();
+        if (level != NotMature && !MatureLevels.Contains(level))
+            throw new UserFacingException("Choose how mature the deviation is: no, moderate or strict.");
+        var set = await db.PromptSets.SingleOrDefaultAsync(s => s.Id == setId, ct) ?? throw new UserFacingException("Set not found.");
+
+        set.PublishGalleryId = string.IsNullOrWhiteSpace(request.GalleryId) ? null : request.GalleryId.Trim();
+        set.PublishMatureLevel = level;
+        await db.SaveChangesAsync(ct);
+    }
 
     public async Task ForgetStashAsync(int setId, CancellationToken ct)
     {

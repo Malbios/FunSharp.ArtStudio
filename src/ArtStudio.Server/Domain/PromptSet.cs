@@ -61,6 +61,9 @@ public class PromptSet
     public string? PostDescription { get; set; }
     public string? PostTags { get; set; }
     public long? StashItemId { get; set; }
+    /// <summary>The gallery and mature level ("none", "moderate" or "strict") chosen for publishing; null until chosen.</summary>
+    public string? PublishGalleryId { get; set; }
+    public string? PublishMatureLevel { get; set; }
     public DateTimeOffset? StashedAt { get; set; }
     public string? PublishedUrl { get; set; }
     public string? PublishedDeviationId { get; set; }
