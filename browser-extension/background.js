@@ -50,6 +50,7 @@ async function showMode() {
 /** Shows the menu entry only while Art Studio answers, since Chrome can't ask right when the menu opens. */
 async function checkArtStudio() {
   const running = await isArtStudioRunning(await artStudioAddress())
+  await chrome.storage.local.set({ artStudioRunning: running })
   try {
     await chrome.contextMenus.update(ADD, { visible: running })
   } catch {
@@ -168,6 +169,10 @@ chrome.action.onClicked.addListener(async () => {
   await chrome.storage.local.set({ askForContext: !(await asksForContext()) })
 })
 chrome.contextMenus.onClicked.addListener((info, tab) => void addToArtStudio(info, tab))
+chrome.runtime.onMessage.addListener((message, sender) => {
+  if (message?.type === 'add' && sender.tab)
+    void addToArtStudio({ linkUrl: message.linkUrl, pageUrl: message.pageUrl }, sender.tab)
+})
 chrome.notifications.onClicked.addListener(async (id) => {
   const key = `notification:${id}`
   const { [key]: openUrl } = await chrome.storage.session.get(key)

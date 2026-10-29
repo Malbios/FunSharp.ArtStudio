@@ -2,10 +2,12 @@
   "manifest_version": 3,
   "name": "Art Studio for DeviantArt",
   "version": "1.0.0",
-  "description": "Adds DeviantArt posts to Art Studio as drafts from the right-click menu.",
+  "description": "Adds DeviantArt posts to Art Studio as drafts, from a hover button or the right-click menu.",
   "permissions": ["contextMenus", "alarms", "notifications", "scripting", "storage"],
   "host_permissions": ["http://localhost/*", "*://*.deviantart.com/*"],
   "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [{ "matches": ["*://*.deviantart.com/*"], "js": ["hoverButton.js"] }],
+  "web_accessible_resources": [{ "resources": ["deviationLink.js"], "matches": ["*://*.deviantart.com/*"] }],
   "action": {
     "default_title": "Art Studio: adds right away. Click to ask for context first.",
     "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
