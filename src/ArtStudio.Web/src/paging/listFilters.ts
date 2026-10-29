@@ -45,4 +45,17 @@ export const ARCHIVED_FILTERS: ListFilter<SetSummary>[] = [HAS_VIDEOS, NEW_VIDEO
 
 export const isDraftReady = (draft: SetSummary) => draft.prompt.trim() !== '' && !isPromptPending(draft.promptGeneration)
 
-export const DRAFT_FILTERS: ListFilter<SetSummary>[] = [{ key: 'ready', label: 'Prompt ready', matches: isDraftReady }]
+export const DRAFT_FILTERS: ListFilter<SetSummary>[] = [
+  {
+    key: 'pending',
+    label: 'Generating or queued',
+    matches: (draft) => isPromptPending(draft.promptGeneration),
+    excludes: ['settled'],
+  },
+  {
+    key: 'settled',
+    label: 'Ready or failed',
+    matches: (draft) => isDraftReady(draft) || draft.promptGeneration.state === 'Failed',
+    excludes: ['pending'],
+  },
+]

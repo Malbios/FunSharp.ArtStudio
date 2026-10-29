@@ -97,11 +97,23 @@ describe('has videos filter', () => {
 })
 
 describe('draft filters', () => {
-  it('shows drafts with a prompt and nothing pending as ready', () => {
-    expect(matches(DRAFT_FILTERS, 'ready', summary({ prompt: 'A fox.', state: 'Done' }))).toBe(true)
-    expect(matches(DRAFT_FILTERS, 'ready', summary({ prompt: 'A fox.', state: 'None' }))).toBe(true)
-    expect(matches(DRAFT_FILTERS, 'ready', summary({ prompt: '  ', state: 'Done' }))).toBe(false)
-    expect(matches(DRAFT_FILTERS, 'ready', summary({ prompt: 'A fox.', state: 'Running' }))).toBe(false)
-    expect(matches(DRAFT_FILTERS, 'ready', summary({ prompt: 'A fox.', state: 'Queued' }))).toBe(false)
+  it('shows drafts whose prompt is being generated or waits for it as generating or queued', () => {
+    expect(matches(DRAFT_FILTERS, 'pending', summary({ state: 'Running' }))).toBe(true)
+    expect(matches(DRAFT_FILTERS, 'pending', summary({ prompt: 'A fox.', state: 'Queued' }))).toBe(true)
+    expect(matches(DRAFT_FILTERS, 'pending', summary({ prompt: 'A fox.', state: 'Done' }))).toBe(false)
+    expect(matches(DRAFT_FILTERS, 'pending', summary({ state: 'Failed' }))).toBe(false)
+  })
+
+  it('shows drafts with a finished prompt, or a failed one, as ready or failed', () => {
+    expect(matches(DRAFT_FILTERS, 'settled', summary({ prompt: 'A fox.', state: 'Done' }))).toBe(true)
+    expect(matches(DRAFT_FILTERS, 'settled', summary({ prompt: 'A fox.', state: 'None' }))).toBe(true)
+    expect(matches(DRAFT_FILTERS, 'settled', summary({ prompt: '', state: 'Failed' }))).toBe(true)
+    expect(matches(DRAFT_FILTERS, 'settled', summary({ prompt: 'A fox.', state: 'Running' }))).toBe(false)
+    expect(matches(DRAFT_FILTERS, 'settled', summary({ prompt: '  ', state: 'None' }))).toBe(false)
+  })
+
+  it('never combines the two', () => {
+    expect(DRAFT_FILTERS.find((filter) => filter.key === 'pending')!.excludes).toEqual(['settled'])
+    expect(DRAFT_FILTERS.find((filter) => filter.key === 'settled')!.excludes).toEqual(['pending'])
   })
 })
