@@ -47,10 +47,14 @@ async function showMode() {
   })
 }
 
-/** Shows the menu entry only while Art Studio answers, since Chrome can't ask right when the menu opens. */
+/**
+ * Shows the menu entry only while Art Studio answers, since Chrome can't ask right when the menu opens. The same
+ * request brings the posts Art Studio has and the users it refuses, so the hover button can tell from links alone.
+ */
 async function checkArtStudio() {
-  const running = await isArtStudioRunning(await artStudioAddress())
-  await chrome.storage.local.set({ artStudioRunning: running })
+  const known = await fetchKnownDeviations(await artStudioAddress())
+  const running = known !== null
+  await chrome.storage.local.set({ artStudioRunning: running, ...(running && { known }) })
   try {
     await chrome.contextMenus.update(ADD, { visible: running })
   } catch {
@@ -58,12 +62,12 @@ async function checkArtStudio() {
   }
 }
 
-async function isArtStudioRunning(address) {
+async function fetchKnownDeviations(address) {
   try {
-    const response = await fetch(`${address}/api/settings`, { signal: AbortSignal.timeout(CHECK_TIMEOUT_MS) })
-    return response.ok
+    const response = await fetch(`${address}/api/deviantart/known`, { signal: AbortSignal.timeout(CHECK_TIMEOUT_MS) })
+    return response.ok ? await response.json() : null
   } catch {
-    return false
+    return null
   }
 }
 
@@ -122,6 +126,7 @@ async function addToArtStudio(info, tab) {
       openLabel: `Open set #${existingSetId}`,
     })
   }
+  await checkArtStudio()
 }
 
 /** Shows the result on the page, where it can't be missed; a system notification only where the page can't show it. */
@@ -172,6 +177,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => void addToArtStudio(inf
 chrome.runtime.onMessage.addListener((message, sender) => {
   if (message?.type === 'add' && sender.tab)
     void addToArtStudio({ linkUrl: message.linkUrl, pageUrl: message.pageUrl }, sender.tab)
+  if (message?.type === 'open-set' && Number.isInteger(message.setId))
+    void artStudioAddress().then((address) => chrome.tabs.create({ url: `${address}/sets/${message.setId}` }))
 })
 chrome.notifications.onClicked.addListener(async (id) => {
   const key = `notification:${id}`

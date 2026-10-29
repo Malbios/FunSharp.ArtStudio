@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ArtStudio.Server.Api;
 using ArtStudio.Server.Data;
 using ArtStudio.Server.Domain;
 using ArtStudio.Server.Tests.Fakes;
@@ -272,6 +273,25 @@ public sealed class DeviantArtTests : IDisposable
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("your own artwork", (await ReadJsonAsync(response)).GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task KnownDeviations_ListUsedPostsWithTheirFirstSet_BlockedUsers_AndTheOwnUsername()
+    {
+        var first = await SeedSetAsync("someartist", s => s.DeviationId = "123456");
+        await SeedSetAsync("someartist", s => s.DeviationId = "123456");
+        var other = await SeedSetAsync("otherartist", s => s.DeviationId = "777");
+        await SeedSetAsync(null);
+        (await _client.PostAsJsonAsync("/api/blocked-artists", new { username = "HiddenAuthor" })).EnsureSuccessStatusCode();
+
+        var before = await _client.GetFromJsonAsync<KnownDeviationsDto>("/api/deviantart/known", Json);
+        await _factory.ConnectDeviantArtAsync();
+        var after = await _client.GetFromJsonAsync<KnownDeviationsDto>("/api/deviantart/known", Json);
+
+        Assert.Equal(new Dictionary<string, int> { ["123456"] = first, ["777"] = other }, before!.UsedDeviations);
+        Assert.Equal(["HiddenAuthor"], before.BlockedUsers);
+        Assert.Null(before.OwnUsername);
+        Assert.Equal(FakeDeviantArt.Username, after!.OwnUsername);
     }
 
     private async Task<int> SeedSetAsync(string? author, Action<PromptSet>? stage = null)

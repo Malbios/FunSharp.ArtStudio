@@ -15,6 +15,14 @@ Clicking the extension's toolbar icon switches between two modes:
 
 Chrome would put a second entry into a submenu, so there is one entry with a mode instead.
 
+The button already shows what Art Studio would say, from the link alone:
+
+- **"✓AS"** (grey): the post is already in Art Studio; clicking opens that set.
+- **"–AS"** (grey): the post is by a blocked user or is your own artwork; clicking does nothing.
+
+For that, the extension fetches the list of known posts and blocked users with its regular check, so a post added
+elsewhere (Bulk add, the New set page) turns grey within 30 seconds. DeviantArt is never asked.
+
 The result shows in the bottom right corner of the page. "Added as draft #N" fades out after 5 seconds; an error (why
 the post was refused) stays until you close it.
 

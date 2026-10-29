@@ -15,6 +15,10 @@ public sealed record BlockedArtistDto(int Id, string Username, DateTimeOffset Cr
 /// <summary>PostedUrls are the archived sets already on DeviantArt, whose API cannot unpublish them.</summary>
 public sealed record BlockArtistResultDto(BlockedArtistDto Artist, int ArchivedSets, int DeletedDrafts, IReadOnlyList<string> PostedUrls);
 
+/// <summary>What the browser extension needs to tell from a link alone whether a post would be refused.</summary>
+public sealed record KnownDeviationsDto(
+    IReadOnlyDictionary<string, int> UsedDeviations, IReadOnlyList<string> BlockedUsers, string? OwnUsername);
+
 public static class DeviantArtEndpoints
 {
     public static void MapDeviantArtEndpoints(this IEndpointRouteBuilder app)
@@ -22,6 +26,7 @@ public static class DeviantArtEndpoints
         app.MapPost("/api/deviantart/preview",
             (DeviationPreviewRequest request, DeviantArtService deviantArt, CancellationToken ct) =>
                 deviantArt.PreviewAsync(request.Url, ct));
+        app.MapGet("/api/deviantart/known", GetKnownDeviationsAsync);
 
         var blocked = app.MapGroup("/api/blocked-artists");
         blocked.MapGet("", async (StudioDbContext db, CancellationToken ct) =>
@@ -35,6 +40,19 @@ public static class DeviantArtEndpoints
             await db.BlockedArtists.Where(a => a.Id == id).ExecuteDeleteAsync(ct);
             return Results.NoContent();
         });
+    }
+
+    private static async Task<KnownDeviationsDto> GetKnownDeviationsAsync(
+        StudioDbContext db, DeviantArtAuth auth, CancellationToken ct)
+    {
+        // The lowest set id, like the "already used in set #N" check names.
+        var used = await db.PromptSets
+            .Where(s => s.DeviationId != null)
+            .GroupBy(s => s.DeviationId!)
+            .Select(g => new { DeviationId = g.Key, SetId = g.Min(s => s.Id) })
+            .ToDictionaryAsync(d => d.DeviationId, d => d.SetId, ct);
+        var blocked = await db.BlockedArtists.Select(a => a.Username).ToListAsync(ct);
+        return new KnownDeviationsDto(used, blocked, (await auth.GetStatusAsync(ct)).Username);
     }
 
     private static async Task<BlockArtistResultDto> BlockArtistAsync(
