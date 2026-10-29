@@ -1,4 +1,4 @@
-// Content script on DeviantArt: a "+ AS" button over the post image under the mouse, while Art Studio runs.
+// Content script on DeviantArt: a "+AS" button over the post image under the mouse, while Art Studio runs.
 // It sits in its own overlay instead of inside DeviantArt's elements, so neither side's scripts or styles interfere.
 ;(async () => {
   const { isDeviantArtPost } = await import(chrome.runtime.getURL('deviationLink.js'))
@@ -28,17 +28,46 @@
   showMode()
 
   function showMode() {
-    button.textContent = askForContext ? '+ AS…' : '+ AS'
+    button.textContent = askForContext ? '+AS…' : '+AS'
     button.title = askForContext ? 'Add to Art Studio with context' : 'Add to Art Studio'
   }
 
-  /** The post an image belongs to: the post its link opens, or the page's own post for an unlinked image there. */
-  function postFor(image) {
+  const isLargeEnough = (image) => {
     const rect = image.getBoundingClientRect()
-    if (rect.width < MIN_IMAGE_SIZE || rect.height < MIN_IMAGE_SIZE) return null
-    const link = image.closest('a[href]')?.href
-    if (link) return isDeviantArtPost(link) ? { image, linkUrl: link } : null
-    return isDeviantArtPost(location.href) ? { image, linkUrl: undefined } : null
+    return rect.width >= MIN_IMAGE_SIZE && rect.height >= MIN_IMAGE_SIZE
+  }
+
+  const contains = (element, { x, y }) => {
+    const rect = element.getBoundingClientRect()
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+  }
+
+  const postLinkOf = (element) => {
+    const link = element.closest('a[href]')
+    return link && isDeviantArtPost(link.href) ? link : null
+  }
+
+  // Some layouts put the post link beside the image, or let the image ignore the mouse, so the image is looked for
+  // around the post link under the mouse too.
+  function imageNear(link, point) {
+    let container = link
+    for (let level = 0; level < 4 && container; level++, container = container.parentElement) {
+      const image = [...container.querySelectorAll('img')].find((img) => contains(img, point) && isLargeEnough(img))
+      if (image) return image
+    }
+    return null
+  }
+
+  /** The post under the mouse: the post a thumbnail's link opens, or the page's own post for its unlinked image. */
+  function postAt(point, underMouse) {
+    const directImage = underMouse.find((element) => element instanceof HTMLImageElement)
+    const link = underMouse.map(postLinkOf).find(Boolean)
+    if (link) {
+      const image = directImage && isLargeEnough(directImage) ? directImage : imageNear(link, point)
+      return image ? { image, linkUrl: link.href } : null
+    }
+    if (!directImage || !isLargeEnough(directImage) || directImage.closest('a[href]')) return null
+    return isDeviantArtPost(location.href) ? { image: directImage, linkUrl: undefined } : null
   }
 
   function hide() {
@@ -50,7 +79,7 @@
     const rect = target.image.getBoundingClientRect()
     host.style.display = 'block'
     host.style.top = `${rect.top + INSET_PX}px`
-    host.style.left = `${rect.right - host.offsetWidth - INSET_PX}px`
+    host.style.left = `${rect.left + INSET_PX}px`
   }
 
   // DeviantArt lays title overlays over its thumbnails, so look through everything under the mouse for the image.
@@ -59,8 +88,7 @@
     if (!running || !pointer) return hide()
     const underMouse = document.elementsFromPoint(pointer.x, pointer.y)
     if (underMouse[0] === host) return
-    const image = underMouse.find((element) => element instanceof HTMLImageElement)
-    const post = image && postFor(image)
+    const post = postAt(pointer, underMouse)
     if (!post) return hide()
     target = post
     place()

@@ -3,14 +3,14 @@
 A Chrome extension that adds DeviantArt posts to Art Studio as drafts, like pasting their links into Bulk add on the
 Drafts page. There are two ways:
 
-- **"+ AS" button**: hover over a post's image (a thumbnail, or the image on the post's own page) and click the button
-  in its top right corner.
+- **"+AS" button**: hover over a post's image (a thumbnail, or the image on the post's own page) and click the button
+  in its top left corner.
 - **Right-click menu**: **Add to Art Studio** on deviantart.com images and links.
 
 Clicking the extension's toolbar icon switches between two modes:
 
-- **Add right away** (no badge): the button reads "+ AS" and the entry "Add to Art Studio".
-- **Ask for context first** (badge "CTX"): the button reads "+ AS…" and the entry "Add to Art Studio with context…";
+- **Add right away** (no badge): the button reads "+AS" and the entry "Add to Art Studio".
+- **Ask for context first** (badge "CTX"): the button reads "+AS…" and the entry "Add to Art Studio with context…";
   both first ask what the vision model should know about the image.
 
 Chrome would put a second entry into a submenu, so there is one entry with a mode instead.
