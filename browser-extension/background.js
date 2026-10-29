@@ -212,7 +212,12 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   if (message?.type === 'add' && sender.tab)
     void addToArtStudio({ linkUrl: message.linkUrl, pageUrl: message.pageUrl }, sender.tab)
   if (message?.type === 'open-set' && Number.isInteger(message.setId))
-    void artStudioAddress().then((address) => chrome.tabs.create({ url: `${address}/sets/${message.setId}` }))
+    void artStudioAddress().then((address) =>
+      chrome.tabs.create({
+        url: `${address}/sets/${message.setId}`,
+        ...(sender.tab && { index: sender.tab.index + 1, openerTabId: sender.tab.id }),
+      }),
+    )
 })
 chrome.notifications.onClicked.addListener(async (id) => {
   const key = `notification:${id}`
