@@ -96,7 +96,13 @@ export function Lightbox({
       <div className="lightbox-body">
         <div className="lightbox-images">
           <figure className="generated">
-            <img src={image.url} alt={`Generated image ${index + 1}`} />
+            <img
+              src={image.url}
+              alt={`Generated image ${index + 1}`}
+              className="opens-original"
+              title="Open in original size in a new tab"
+              onClick={() => window.open(image.url, '_blank')}
+            />
             <figcaption>{pickNumber > 0 ? `Generated (picked #${pickNumber})` : 'Generated'}</figcaption>
           </figure>
           {sourceImageUrl && (

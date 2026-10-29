@@ -1454,6 +1454,10 @@ span.image-tile-pick {
   object-fit: contain;
 }
 
+.lightbox-images img.opens-original {
+  cursor: zoom-in;
+}
+
 .lightbox-images figcaption {
   color: var(--muted);
   font-size: 0.85rem;
