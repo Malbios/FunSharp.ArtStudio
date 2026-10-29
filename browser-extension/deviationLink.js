@@ -31,6 +31,18 @@ export function postUrlFrom(linkUrl, pageUrl) {
   return [linkUrl, pageUrl].find((url) => url && isDeviantArtPost(url)) ?? null
 }
 
+export function isHomePage(url) {
+  try {
+    const parsed = new URL(url)
+    return parsed.hostname.toLowerCase() === 'www.deviantart.com' && parsed.pathname === '/'
+  } catch {
+    return false
+  }
+}
+
+/** Posts Art Studio has already, or wouldn't take. */
+export const isKnown = (state) => state.kind !== 'add'
+
 /** Whether Art Studio would take the post, from what it already has, without asking anyone. */
 export function postState(post, known) {
   const setId = known?.usedDeviations?.[post.id]

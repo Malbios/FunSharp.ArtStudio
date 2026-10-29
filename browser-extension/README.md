@@ -23,6 +23,9 @@ The button already shows what Art Studio would say, from the link alone:
 For that, the extension fetches the list of known posts and blocked users with its regular check, so a post added
 elsewhere (Bulk add, the New set page) turns grey within 30 seconds. DeviantArt is never asked.
 
+Right-clicking the toolbar icon offers **Hide known posts on the home page**: while it's checked and Art Studio runs,
+DeviantArt's home page leaves out the thumbnails that would show "✓AS" or "–AS" (their row keeps a gap instead).
+
 The result shows in the bottom right corner of the page. "Added as draft #N" fades out after 5 seconds; an error (why
 the post was refused) stays until you close it.
 

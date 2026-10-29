@@ -5,6 +5,7 @@ import { showToast } from './toast.js'
 const DEFAULT_ADDRESS = 'http://localhost:5180'
 // Chrome puts a second entry of the same extension into a submenu, so one entry serves both modes.
 const ADD = 'add'
+const HIDE_KNOWN = 'hide-known-on-home'
 const CHECK_ALARM = 'check-art-studio'
 const CHECK_TIMEOUT_MS = 2000
 
@@ -27,6 +28,13 @@ function createMenus() {
       documentUrlPatterns: ['*://*.deviantart.com/*'],
       visible: false,
     })
+    chrome.contextMenus.create({
+      id: HIDE_KNOWN,
+      title: 'Hide known posts on the home page',
+      type: 'checkbox',
+      contexts: ['action'],
+    })
+    void showHideKnown()
     void showMode()
     void checkArtStudio()
   })
@@ -45,6 +53,11 @@ async function showMode() {
       ? 'Art Studio: asks for context before adding. Click to add right away instead.'
       : 'Art Studio: adds right away. Click to ask for context first.',
   })
+}
+
+async function showHideKnown() {
+  const { hideKnownOnHome } = await chrome.storage.local.get('hideKnownOnHome')
+  await chrome.contextMenus.update(HIDE_KNOWN, { checked: hideKnownOnHome === true }).catch(() => {})
 }
 
 /**
@@ -169,11 +182,15 @@ chrome.tabs.onUpdated.addListener((_tabId, change) => {
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.address) void checkArtStudio()
   if (changes.askForContext) void showMode()
+  if (changes.hideKnownOnHome) void showHideKnown()
 })
 chrome.action.onClicked.addListener(async () => {
   await chrome.storage.local.set({ askForContext: !(await asksForContext()) })
 })
-chrome.contextMenus.onClicked.addListener((info, tab) => void addToArtStudio(info, tab))
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === HIDE_KNOWN) void chrome.storage.local.set({ hideKnownOnHome: info.checked === true })
+  else void addToArtStudio(info, tab)
+})
 /** The editor's content script can't reach localhost itself, so the files pass through here as base64. */
 async function extraPicks(stashItemId) {
   const address = await artStudioAddress()

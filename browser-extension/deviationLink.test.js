@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { parsePost, postState, postUrlFrom } from './deviationLink.js'
+import { isHomePage, isKnown, parsePost, postState, postUrlFrom } from './deviationLink.js'
 
 const post = 'https://www.deviantart.com/someartist/art/Misty-Forest-123456'
 const otherPost = 'https://www.deviantart.com/otherartist/art/Lake-654321'
@@ -55,5 +55,23 @@ describe('postState', () => {
     assert.deepEqual(postState(parsePost(otherPost), known), { kind: 'add' })
     assert.deepEqual(postState(parsePost('https://www.deviantart.com/deviation/999'), known), { kind: 'add' })
     assert.deepEqual(postState(parsePost(post), undefined), { kind: 'add' })
+  })
+
+  it('counts used, own and blocked posts as known', () => {
+    assert.equal(isKnown(postState(parsePost(post), known)), true)
+    assert.equal(isKnown(postState(parsePost('https://www.deviantart.com/studio-owner/art/Mine-1'), known)), true)
+    assert.equal(isKnown(postState(parsePost('https://www.deviantart.com/hiddenauthor/art/Theirs-2'), known)), true)
+    assert.equal(isKnown(postState(parsePost(otherPost), known)), false)
+  })
+})
+
+describe('isHomePage', () => {
+  it('is only the front page of www.deviantart.com, with or without a query', () => {
+    assert.equal(isHomePage('https://www.deviantart.com/'), true)
+    assert.equal(isHomePage('https://www.deviantart.com/?topic=fantasy'), true)
+    assert.equal(isHomePage('https://www.deviantart.com/someartist/gallery'), false)
+    assert.equal(isHomePage(post), false)
+    assert.equal(isHomePage('https://someartist.deviantart.com/'), false)
+    assert.equal(isHomePage('not a url'), false)
   })
 })

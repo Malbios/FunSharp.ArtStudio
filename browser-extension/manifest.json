@@ -8,6 +8,7 @@
   "background": { "service_worker": "background.js", "type": "module" },
   "content_scripts": [
     { "matches": ["*://*.deviantart.com/*"], "js": ["hoverButton.js"] },
+    { "matches": ["*://www.deviantart.com/*"], "js": ["homeFilter.js"] },
     { "matches": ["https://www.deviantart.com/_deviation_submit/*"], "js": ["stashEditor.js"] }
   ],
   "web_accessible_resources": [{ "resources": ["deviationLink.js"], "matches": ["*://*.deviantart.com/*"] }],
