@@ -3,8 +3,8 @@ import { postUrlFrom } from './deviationLink.js'
 import { showToast } from './toast.js'
 
 const DEFAULT_ADDRESS = 'http://localhost:5180'
+// Chrome puts a second entry of the same extension into a submenu, so one entry serves both modes.
 const ADD = 'add'
-const ADD_WITH_CONTEXT = 'add-with-context'
 const CHECK_ALARM = 'check-art-studio'
 const CHECK_TIMEOUT_MS = 2000
 
@@ -13,26 +13,47 @@ async function artStudioAddress() {
   return (address || DEFAULT_ADDRESS).replace(/\/+$/, '')
 }
 
+async function asksForContext() {
+  const { askForContext } = await chrome.storage.local.get('askForContext')
+  return askForContext === true
+}
+
 function createMenus() {
   chrome.contextMenus.removeAll(() => {
-    const shared = { contexts: ['image', 'link'], documentUrlPatterns: ['*://*.deviantart.com/*'], visible: false }
-    chrome.contextMenus.create({ ...shared, id: ADD, title: 'Add to Art Studio' })
-    chrome.contextMenus.create({ ...shared, id: ADD_WITH_CONTEXT, title: 'Add to Art Studio with context…' })
+    chrome.contextMenus.create({
+      id: ADD,
+      title: 'Add to Art Studio',
+      contexts: ['image', 'link'],
+      documentUrlPatterns: ['*://*.deviantart.com/*'],
+      visible: false,
+    })
+    void showMode()
     void checkArtStudio()
   })
   // 30 seconds is the shortest interval Chrome allows.
   chrome.alarms.create(CHECK_ALARM, { periodInMinutes: 0.5 })
 }
 
-/** Shows the menu entries only while Art Studio answers, since Chrome can't ask right when the menu opens. */
+/** The menu entry, toolbar badge and tooltip say whether adding asks for context first. */
+async function showMode() {
+  const ask = await asksForContext()
+  await chrome.contextMenus.update(ADD, { title: ask ? 'Add to Art Studio with context…' : 'Add to Art Studio' }).catch(() => {})
+  await chrome.action.setBadgeText({ text: ask ? 'CTX' : '' })
+  await chrome.action.setBadgeBackgroundColor({ color: '#8b7cf6' })
+  await chrome.action.setTitle({
+    title: ask
+      ? 'Art Studio: asks for context before adding. Click to add right away instead.'
+      : 'Art Studio: adds right away. Click to ask for context first.',
+  })
+}
+
+/** Shows the menu entry only while Art Studio answers, since Chrome can't ask right when the menu opens. */
 async function checkArtStudio() {
   const running = await isArtStudioRunning(await artStudioAddress())
-  for (const id of [ADD, ADD_WITH_CONTEXT]) {
-    try {
-      await chrome.contextMenus.update(id, { visible: running })
-    } catch {
-      // The menus are being created again; that run checks once they exist.
-    }
+  try {
+    await chrome.contextMenus.update(ADD, { visible: running })
+  } catch {
+    // The menu is being created again; that run checks once it exists.
   }
 }
 
@@ -80,7 +101,7 @@ async function addToArtStudio(info, tab) {
   const address = await artStudioAddress()
   try {
     let visionContext
-    if (info.menuItemId === ADD_WITH_CONTEXT) {
+    if (await asksForContext()) {
       await showOnPage(tab, { message: 'Checking the link…', failed: false })
       const preview = await post(address, '/api/deviantart/preview', { url })
       await clearReport(tab)
@@ -141,6 +162,10 @@ chrome.tabs.onUpdated.addListener((_tabId, change) => {
 })
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.address) void checkArtStudio()
+  if (changes.askForContext) void showMode()
+})
+chrome.action.onClicked.addListener(async () => {
+  await chrome.storage.local.set({ askForContext: !(await asksForContext()) })
 })
 chrome.contextMenus.onClicked.addListener((info, tab) => void addToArtStudio(info, tab))
 chrome.notifications.onClicked.addListener(async (id) => {

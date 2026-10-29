@@ -1,13 +1,19 @@
 # Art Studio for DeviantArt
 
-A Chrome extension that adds two entries to the right-click menu on deviantart.com images and links:
+A Chrome extension that adds **Add to Art Studio** to the right-click menu on deviantart.com images and links. It adds
+the post as a draft, like pasting its link into Bulk add on the Drafts page.
 
-- **Add to Art Studio**: adds the post as a draft right away, like pasting its link into Bulk add on the Drafts page.
-- **Add to Art Studio with context…**: first asks what the vision model should know about the image.
+Clicking the extension's toolbar icon switches between two modes:
+
+- **Add right away** (no badge): the entry reads "Add to Art Studio".
+- **Ask for context first** (badge "CTX"): the entry reads "Add to Art Studio with context…" and first asks what the
+  vision model should know about the image.
+
+Chrome would put a second entry into a submenu, so there is one entry with a mode instead.
 
 The result ("Added as draft #N", or why the post was refused) shows in the bottom right corner of the page.
 
-The entries only show while Art Studio is running. Chrome rechecks every 30 seconds and whenever you switch tabs, so they
+The entry only shows while Art Studio is running. Chrome rechecks every 30 seconds and whenever you switch tabs, so it
 can take that long to appear or disappear after you start or stop Art Studio.
 
 ## Install
@@ -15,6 +21,8 @@ can take that long to appear or disappear after you start or stop Art Studio.
 1. Open `chrome://extensions`.
 2. Turn on **Developer mode** (top right).
 3. Click **Load unpacked** and pick this `browser-extension` folder.
+4. Pin the extension: click the puzzle icon in Chrome's toolbar, then the pin next to "Art Studio for DeviantArt", so
+   its icon (and the mode badge) stays visible.
 
 After changing the files, click the reload icon on the extension's card.
 
