@@ -8,18 +8,23 @@
   const ANCHORED = 'data-art-studio-anchored'
   const BORDER_WIDTH = '3px'
   const BORDER_COLORS = { inspiring: '#f2c66d', published: '#ff00ff' }
+  const STRIPE_WIDTH = '6px'
   const MAX_TILE_LEVELS = 6
 
   const settings = await chrome.storage.local.get(['artStudioRunning', 'known', 'hideKnownOnHome'])
   let frame = 0
 
   // The tile's own outline would be covered by DeviantArt's positioned layers inside it, so the border is drawn on top.
+  // Striped, because artists frame their own work in plain colors. The mask leaves only the border of the stripes.
   const style = document.createElement('style')
   style.textContent = [
     `[${HIDDEN}] { display: none !important; }`,
     `[${ANCHORED}] { position: relative !important; }`,
-    `[${INSPIRED}]::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; border: ${BORDER_WIDTH} solid; }`,
-    ...Object.entries(BORDER_COLORS).map(([level, color]) => `[${INSPIRED}="${level}"]::after { border-color: ${color}; }`),
+    `[${INSPIRED}]::after { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+      border: ${BORDER_WIDTH} solid transparent;
+      mask: linear-gradient(#000 0 0) padding-box exclude, linear-gradient(#000 0 0) border-box; }`,
+    ...Object.entries(BORDER_COLORS).map(([level, color]) => `[${INSPIRED}="${level}"]::after {
+      background: repeating-linear-gradient(45deg, ${color} 0 ${STRIPE_WIDTH}, #fff ${STRIPE_WIDTH} calc(2 * ${STRIPE_WIDTH})) border-box; }`),
   ].join('\n')
   document.documentElement.append(style)
 
