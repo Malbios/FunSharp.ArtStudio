@@ -8,7 +8,7 @@
   const ANCHORED = 'data-art-studio-anchored'
   const BORDER_WIDTH = '3px'
   const BORDER_COLORS = { inspiring: '#f2c66d', published: '#ff00ff' }
-  const STRIPE_WIDTH = '6px'
+  const STRIPE_WIDTH = '16px'
   const MAX_TILE_LEVELS = 6
 
   const settings = await chrome.storage.local.get(['artStudioRunning', 'known', 'hideKnownOnHome'])
