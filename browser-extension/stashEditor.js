@@ -65,29 +65,29 @@
     return document.documentElement.scrollHeight <= innerHeight
   }
 
+  // Stays at the bottom and moves left of DeviantArt's controls there, such as the submit buttons.
   function place() {
     const { width, height } = host.getBoundingClientRect()
-    const left = innerWidth - EDGE_GAP - width - CLEARANCE
-    const right = innerWidth - EDGE_GAP + CLEARANCE
+    const top = innerHeight - EDGE_GAP - height - CLEARANCE
     const controls = [...document.querySelectorAll(CONTROLS)]
       .map((control) => ({ control, rect: control.getBoundingClientRect() }))
-      .filter(({ rect }) => rect.width > 0 && rect.height > 0 && rect.right > left && rect.left < right)
+      .filter(({ rect }) => rect.width > 0 && rect.height > 0 && rect.bottom > top)
     const pinned = new Map()
     const isPinned = (control) => {
       if (!pinned.has(control)) pinned.set(control, staysOnScreen(control))
       return pinned.get(control)
     }
 
-    let bottom = innerHeight - EDGE_GAP
+    let right = innerWidth - EDGE_GAP
     for (;;) {
-      const top = bottom - height
+      const left = right - width
       const blocking = controls.filter(
-        ({ control, rect }) => rect.bottom > top - CLEARANCE && rect.top < bottom + CLEARANCE && isPinned(control),
+        ({ control, rect }) => rect.right > left - CLEARANCE && rect.left < right + CLEARANCE && isPinned(control),
       )
-      if (blocking.length === 0 || top <= EDGE_GAP) break
-      bottom = Math.min(...blocking.map(({ rect }) => rect.top)) - CLEARANCE
+      if (blocking.length === 0 || left <= EDGE_GAP) break
+      right = Math.min(...blocking.map(({ rect }) => rect.left)) - CLEARANCE
     }
-    host.style.bottom = `${innerHeight - Math.max(bottom, height + EDGE_GAP)}px`
+    host.style.right = `${innerWidth - Math.max(right, width + EDGE_GAP)}px`
   }
 
   let placing = false
