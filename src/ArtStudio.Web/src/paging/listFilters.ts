@@ -12,8 +12,24 @@ const NEW_VIDEOS: ListFilter<SetSummary> = {
 
 export const SET_FILTERS: ListFilter<SetSummary>[] = [
   { key: 'idle', label: 'Not generating', matches: (set) => !set.hasActiveJob },
-  { key: 'unpicked', label: 'No picks', matches: (set) => set.pickedCount === 0, excludes: ['picked'] },
-  { key: 'picked', label: 'Has picks', matches: (set) => set.pickedCount > 0, excludes: ['unpicked'] },
+  {
+    key: 'unpicked',
+    label: 'No picks',
+    matches: (set) => set.pickedCount === 0,
+    excludes: ['one-pick', 'several-picks'],
+  },
+  {
+    key: 'one-pick',
+    label: 'One pick',
+    matches: (set) => set.pickedCount === 1,
+    excludes: ['unpicked', 'several-picks'],
+  },
+  {
+    key: 'several-picks',
+    label: 'More than one pick',
+    matches: (set) => set.pickedCount > 1,
+    excludes: ['unpicked', 'one-pick'],
+  },
   {
     key: 'modifying',
     label: 'Prompt being modified',

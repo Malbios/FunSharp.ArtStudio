@@ -40,9 +40,16 @@ describe('set filters', () => {
     expect(matches(SET_FILTERS, 'unpicked', summary({ pickedCount: 2 }))).toBe(false)
   })
 
-  it('shows only sets with picked images when with picks', () => {
-    expect(matches(SET_FILTERS, 'picked', summary({ pickedCount: 1 }))).toBe(true)
-    expect(matches(SET_FILTERS, 'picked', summary({ pickedCount: 0 }))).toBe(false)
+  it('shows only sets with exactly one picked image when with one pick', () => {
+    expect(matches(SET_FILTERS, 'one-pick', summary({ pickedCount: 1 }))).toBe(true)
+    expect(matches(SET_FILTERS, 'one-pick', summary({ pickedCount: 0 }))).toBe(false)
+    expect(matches(SET_FILTERS, 'one-pick', summary({ pickedCount: 2 }))).toBe(false)
+  })
+
+  it('shows only sets with two or more picked images when with more than one pick', () => {
+    expect(matches(SET_FILTERS, 'several-picks', summary({ pickedCount: 2 }))).toBe(true)
+    expect(matches(SET_FILTERS, 'several-picks', summary({ pickedCount: 1 }))).toBe(false)
+    expect(matches(SET_FILTERS, 'several-picks', summary({ pickedCount: 0 }))).toBe(false)
   })
 
   it('splits sets by whether their prompt is waiting for or being modified', () => {
