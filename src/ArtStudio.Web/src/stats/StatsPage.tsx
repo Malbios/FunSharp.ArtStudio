@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type DeviantArtStats, type DeviationStats, type InspirationStats, type PipelineStats, type PresetStats, type SourceKind } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { useLoad } from '../live/useLoad'
+import { Pager } from '../paging/Pager'
+import { usePagedItems } from '../paging/usePagedItems'
 import { DailyBarChart } from './DailyBarChart'
 import { formatAge, formatCompact, formatCount, formatDay, formatDecimal, formatPercent, formatSigned } from './format'
 import { nextSortOrder, sortRows, type SortOrder } from './sortRows'
@@ -145,6 +147,8 @@ function DeviantArtSection({ stats }: { stats: DeviantArtStats }) {
   )
 }
 
+const TABLE_PAGE_SIZE = 25
+
 interface Column<T> {
   key: keyof T
   label: string
@@ -152,8 +156,36 @@ interface Column<T> {
   numeric?: boolean
 }
 
-function SortableTable<T>({ rows, columns, initial, rowKey }: { rows: T[]; columns: Column<T>[]; initial: SortOrder<T>; rowKey: (row: T) => string | number }) {
+interface TableProps<T> {
+  rows: T[]
+  columns: Column<T>[]
+  initial: SortOrder<T>
+  rowKey: (row: T) => string | number
+}
+
+function SortableTable<T>({ rows, columns, initial, rowKey }: TableProps<T>) {
   const [order, setOrder] = useState(initial)
+  return <TableView rows={sortRows(rows, order)} columns={columns} order={order} onSort={setOrder} rowKey={rowKey} />
+}
+
+/** Sorted over all rows first, so page 1 is the real top; a new sort goes back to page 1. */
+function PagedSortableTable<T>({ pageParam, ...props }: TableProps<T> & { pageParam: string }) {
+  const [order, setOrder] = useState(props.initial)
+  const sorted = useMemo(() => sortRows(props.rows, order), [props.rows, order])
+  const paged = usePagedItems(sorted, pageParam, TABLE_PAGE_SIZE)
+  const sort = (next: SortOrder<T>) => {
+    setOrder(next)
+    paged.setPage(1)
+  }
+  return (
+    <>
+      <TableView rows={paged.pageItems} columns={props.columns} order={order} onSort={sort} rowKey={props.rowKey} />
+      <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
+    </>
+  )
+}
+
+function TableView<T>({ rows, columns, order, onSort, rowKey }: Omit<TableProps<T>, 'initial'> & { order: SortOrder<T>; onSort: (order: SortOrder<T>) => void }) {
   return (
     <div className="stats-table-scroll">
       <table className="stats-table">
@@ -165,7 +197,7 @@ function SortableTable<T>({ rows, columns, initial, rowKey }: { rows: T[]; colum
                 className={column.numeric ? 'number' : undefined}
                 aria-sort={order.key === column.key ? (order.direction === 'asc' ? 'ascending' : 'descending') : undefined}
               >
-                <button type="button" className="sort-button" onClick={() => setOrder(nextSortOrder(order, column.key))}>
+                <button type="button" className="sort-button" onClick={() => onSort(nextSortOrder(order, column.key))}>
                   {column.label}
                   {order.key === column.key && <span aria-hidden="true">{order.direction === 'asc' ? ' ▲' : ' ▼'}</span>}
                 </button>
@@ -174,7 +206,7 @@ function SortableTable<T>({ rows, columns, initial, rowKey }: { rows: T[]; colum
           </tr>
         </thead>
         <tbody>
-          {sortRows(rows, order).map((row) => (
+          {rows.map((row) => (
             <tr key={rowKey(row)}>
               {columns.map((column) => (
                 <td key={String(column.key)} className={column.numeric ? 'number' : undefined}>
@@ -218,8 +250,9 @@ const DEVIATION_COLUMNS: Column<DeviationStats>[] = [
 
 function DeviationTable({ deviations }: { deviations: DeviationStats[] }) {
   return (
-    <SortableTable
+    <PagedSortableTable
       rows={deviations}
+      pageParam="deviationsPage"
       columns={DEVIATION_COLUMNS}
       initial={{ key: 'views', direction: 'desc' }}
       rowKey={(deviation) => deviation.setId}

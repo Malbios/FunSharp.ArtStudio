@@ -12,13 +12,13 @@ export interface PagedItems<T> {
 }
 
 /**
- * Splits items into pages of PAGE_SIZE; the page number is kept in the URL so Back returns to it. Lists sharing a page
+ * Splits items into pages of pageSize; the page number is kept in the URL so Back returns to it. Lists sharing a page
  * each need their own parameter name.
  */
-export function usePagedItems<T>(items: T[] | undefined, pageParam = PAGE_PARAM): PagedItems<T> {
+export function usePagedItems<T>(items: T[] | undefined, pageParam = PAGE_PARAM, pageSize = PAGE_SIZE): PagedItems<T> {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedPage = Number(searchParams.get(pageParam)) || 1
-  const pageCount = Math.max(1, Math.ceil((items?.length ?? 0) / PAGE_SIZE))
+  const pageCount = Math.max(1, Math.ceil((items?.length ?? 0) / pageSize))
   const page = items ? Math.min(Math.max(1, requestedPage), pageCount) : requestedPage
 
   const setPage = useCallback(
@@ -39,7 +39,7 @@ export function usePagedItems<T>(items: T[] | undefined, pageParam = PAGE_PARAM)
   }, [items, page, requestedPage, setPage])
 
   return {
-    pageItems: items?.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) ?? [],
+    pageItems: items?.slice((page - 1) * pageSize, page * pageSize) ?? [],
     page,
     pageCount,
     setPage,
