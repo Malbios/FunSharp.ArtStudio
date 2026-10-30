@@ -8,8 +8,6 @@
   if (!extra || extra.picks.length === 0) return
 
   const EDGE_GAP = 20
-  const CLEARANCE = 12
-  const CONTROLS = 'button, a[href], input, select, textarea, [role=button]'
 
   const host = document.createElement('div')
   host.style.cssText = `all: initial; position: fixed; right: ${EDGE_GAP}px; bottom: ${EDGE_GAP}px; z-index: 2147483646;`
@@ -50,63 +48,12 @@
     return extra.picks.filter((pick) => !present.has(pick.fileName))
   }
 
-  const scrollsItself = (element) => {
-    const { overflowY } = getComputedStyle(element)
-    return (overflowY === 'auto' || overflowY === 'scroll') && element.scrollHeight > element.clientHeight
-  }
-
-  // Content scrolling past underneath is left alone, so the box doesn't jump around while scrolling.
-  function staysOnScreen(control) {
-    for (let element = control; element && element !== document.documentElement; element = element.parentElement) {
-      const { position } = getComputedStyle(element)
-      if (position === 'fixed' || position === 'sticky') return true
-      if (scrollsItself(element)) return false
-    }
-    return document.documentElement.scrollHeight <= innerHeight
-  }
-
-  // Stays at the bottom and moves left of DeviantArt's controls there, such as the submit buttons.
-  function place() {
-    const { width, height } = host.getBoundingClientRect()
-    const top = innerHeight - EDGE_GAP - height - CLEARANCE
-    const controls = [...document.querySelectorAll(CONTROLS)]
-      .map((control) => ({ control, rect: control.getBoundingClientRect() }))
-      .filter(({ rect }) => rect.width > 0 && rect.height > 0 && rect.bottom > top)
-    const pinned = new Map()
-    const isPinned = (control) => {
-      if (!pinned.has(control)) pinned.set(control, staysOnScreen(control))
-      return pinned.get(control)
-    }
-
-    let right = innerWidth - EDGE_GAP
-    for (;;) {
-      const left = right - width
-      const blocking = controls.filter(
-        ({ control, rect }) => rect.right > left - CLEARANCE && rect.left < right + CLEARANCE && isPinned(control),
-      )
-      if (blocking.length === 0 || left <= EDGE_GAP) break
-      right = Math.min(...blocking.map(({ rect }) => rect.left)) - CLEARANCE
-    }
-    host.style.right = `${innerWidth - Math.max(right, width + EDGE_GAP)}px`
-  }
-
-  let placing = false
-  function schedulePlace() {
-    if (placing) return
-    placing = true
-    requestAnimationFrame(() => {
-      placing = false
-      place()
-    })
-  }
-
   function show(text, state, action) {
     message.textContent = text
     box.classList.toggle('done', state === 'done')
     box.classList.toggle('failed', state === 'failed')
     button.hidden = !action
     if (action) button.textContent = action
-    schedulePlace()
   }
 
   function refresh() {
@@ -143,9 +90,5 @@
 
   document.documentElement.append(host)
   refresh()
-  new MutationObserver(() => {
-    refresh()
-    schedulePlace()
-  }).observe(document.documentElement, { childList: true, subtree: true })
-  addEventListener('resize', schedulePlace)
+  new MutationObserver(refresh).observe(document.documentElement, { childList: true, subtree: true })
 })()
