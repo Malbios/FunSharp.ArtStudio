@@ -11,7 +11,8 @@
   const STRIPE_WIDTH = '16px'
   const MAX_TILE_LEVELS = 6
 
-  const settings = await chrome.storage.local.get(['artStudioRunning', 'known', 'hideKnownOnHome'])
+  const SETTINGS = ['artStudioRunning', 'known', 'hideKnownOnHome', 'hideInspiringOnHome', 'hidePublishedOnHome']
+  const settings = await chrome.storage.local.get(SETTINGS)
   let frame = 0
 
   // The tile's own outline would be covered by DeviantArt's positioned layers inside it, so the border is drawn on top.
@@ -55,8 +56,11 @@
       for (const link of document.querySelectorAll('a[href]')) {
         const post = parsePost(link.href)
         if (!post) continue
-        const hides = settings.hideKnownOnHome === true && isKnown(postState(post, settings.known))
         const level = inspirationLevel(post, settings.known)
+        const hides =
+          (settings.hideKnownOnHome === true && isKnown(postState(post, settings.known))) ||
+          (settings.hideInspiringOnHome === true && level !== null) ||
+          (settings.hidePublishedOnHome === true && level === 'published')
         if (!hides && !level) continue
         const tile = tileOf(link, post.id)
         if (hides) hidden.add(tile)
@@ -82,7 +86,7 @@
   }
 
   chrome.storage.onChanged.addListener((changes) => {
-    for (const key of ['artStudioRunning', 'known', 'hideKnownOnHome']) if (changes[key]) settings[key] = changes[key].newValue
+    for (const key of SETTINGS) if (changes[key]) settings[key] = changes[key].newValue
     scheduleApply()
   })
   new MutationObserver(scheduleApply).observe(document.documentElement, { childList: true, subtree: true })

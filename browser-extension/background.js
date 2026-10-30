@@ -5,7 +5,12 @@ import { showToast } from './toast.js'
 const DEFAULT_ADDRESS = 'http://localhost:5180'
 // Chrome puts a second entry of the same extension into a submenu, so one entry serves both modes.
 const ADD = 'add'
-const HIDE_KNOWN = 'hide-known-on-home'
+/** Toolbar menu checkboxes, each stored under its own key. */
+const HOME_SWITCHES = [
+  { id: 'hide-known-on-home', key: 'hideKnownOnHome', title: 'Hide known posts on the home page' },
+  { id: 'hide-inspiring-on-home', key: 'hideInspiringOnHome', title: 'Hide users who inspired a set or draft' },
+  { id: 'hide-published-on-home', key: 'hidePublishedOnHome', title: 'Hide users with a published set' },
+]
 const CHECK_ALARM = 'check-art-studio'
 // A stopped Art Studio refuses the connection at once, so this only limits how long a busy one may take.
 const CHECK_TIMEOUT_MS = 10000
@@ -30,13 +35,8 @@ function createMenus() {
       documentUrlPatterns: ['*://*.deviantart.com/*'],
       visible: false,
     })
-    chrome.contextMenus.create({
-      id: HIDE_KNOWN,
-      title: 'Hide known posts on the home page',
-      type: 'checkbox',
-      contexts: ['action'],
-    })
-    void showHideKnown()
+    for (const { id, title } of HOME_SWITCHES) chrome.contextMenus.create({ id, title, type: 'checkbox', contexts: ['action'] })
+    void showHomeSwitches()
     void showMode()
     void checkArtStudio()
   })
@@ -57,9 +57,9 @@ async function showMode() {
   })
 }
 
-async function showHideKnown() {
-  const { hideKnownOnHome } = await chrome.storage.local.get('hideKnownOnHome')
-  await chrome.contextMenus.update(HIDE_KNOWN, { checked: hideKnownOnHome === true }).catch(() => {})
+async function showHomeSwitches() {
+  const stored = await chrome.storage.local.get(HOME_SWITCHES.map(({ key }) => key))
+  for (const { id, key } of HOME_SWITCHES) await chrome.contextMenus.update(id, { checked: stored[key] === true }).catch(() => {})
 }
 
 /**
@@ -185,13 +185,14 @@ chrome.tabs.onUpdated.addListener((_tabId, change) => {
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.address) void checkArtStudio()
   if (changes.askForContext) void showMode()
-  if (changes.hideKnownOnHome) void showHideKnown()
+  if (HOME_SWITCHES.some(({ key }) => changes[key])) void showHomeSwitches()
 })
 chrome.action.onClicked.addListener(async () => {
   await chrome.storage.local.set({ askForContext: !(await asksForContext()) })
 })
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === HIDE_KNOWN) void chrome.storage.local.set({ hideKnownOnHome: info.checked === true })
+  const homeSwitch = HOME_SWITCHES.find(({ id }) => id === info.menuItemId)
+  if (homeSwitch) void chrome.storage.local.set({ [homeSwitch.key]: info.checked === true })
   else void addToArtStudio(info, tab)
 })
 /** The editor's content script can't reach localhost itself, so the files pass through here as base64. */
