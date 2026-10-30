@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Gallery, PostDetails } from '../api'
 import {
+  awaitsInspirationLink,
   DEFAULT_TAGS,
   hasOnlyDefaultTags,
   initialPostFields,
@@ -90,6 +91,13 @@ describe('stash description', () => {
 
   it('is just the typed description without a DeviantArt inspiration', () => {
     expect(stashDescription(' A fox at dawn. ', null)).toBe('A fox at dawn.')
+  })
+
+  it('asks for the link only while the uploaded description still ends with Inspired by', () => {
+    expect(awaitsInspirationLink('A fox at dawn.\n\nInspired by\n', url)).toBe(true)
+    expect(awaitsInspirationLink('A fox at dawn.', url)).toBe(false)
+    expect(awaitsInspirationLink(null, url)).toBe(false)
+    expect(awaitsInspirationLink('Inspired by\n', null)).toBe(false)
   })
 })
 

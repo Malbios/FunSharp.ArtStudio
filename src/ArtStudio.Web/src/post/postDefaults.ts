@@ -18,6 +18,10 @@ export function stashDescription(description: string, deviantArtUrl: string | nu
   return `${typed ? `${typed}\n\n` : ''}${INSPIRED_BY}\n`
 }
 
+/** Art Studio leaves "Inspired by" out on upload when the inspiration is gone from DeviantArt. */
+export const awaitsInspirationLink = (description: string | null, deviantArtUrl: string | null) =>
+  deviantArtUrl !== null && (description ?? '').trimEnd().endsWith(INSPIRED_BY)
+
 export function hasOnlyDefaultTags(tags: string) {
   const defaults = DEFAULT_TAGS.split(' ')
   return tags

@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using ArtStudio.Server.Data;
+using ArtStudio.Server.Domain;
 using ArtStudio.Server.Generation;
 using ArtStudio.Server.Hubs;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +23,7 @@ public sealed partial class DeviantArtPosting(
     StudioDbContext db,
     AppPaths paths,
     DeviantArtApi api,
+    DeviantArtService deviantArt,
     StudioNotifier notifier,
     TimeProvider clock)
 {
@@ -30,6 +32,7 @@ public sealed partial class DeviantArtPosting(
     private const char IdSeparator = ',';
     private static readonly string?[] MatureLevels = ["moderate", "strict"];
     private const string NotMature = "none";
+    private const string InspiredBy = "Inspired by";
 
     public async Task StashAsync(int setId, StashRequest request, CancellationToken ct)
     {
@@ -47,6 +50,8 @@ public sealed partial class DeviantArtPosting(
         var tags = ParseTags(request.Tags);
         // Not trimmed: a description ending in "Inspired by" keeps its final line break for the link to be pasted after.
         var description = string.IsNullOrWhiteSpace(request.Description) ? "" : request.Description;
+        if (await HasLostInspirationAsync(set, description, ct))
+            description = WithoutInspiredBy(description);
 
         var mainPick = await db.Picks
             .Where(p => p.PromptSetId == setId)
@@ -57,13 +62,8 @@ public sealed partial class DeviantArtPosting(
         if (!File.Exists(mainPick))
             throw new UserFacingException("The file of pick #1 is missing.");
 
-        using var form = new MultipartFormDataContent { { new StringContent(title), "title" } };
-        if (description.Length > 0)
-            form.Add(new StringContent(DescriptionHtml(description)), "artist_comments");
-        foreach (var tag in tags)
-            form.Add(new StringContent(tag), "tags[]");
-        form.Add(new StringContent("true"), "is_ai_generated");
-        form.Add(new StringContent("false"), "noai");
+        using var form = new MultipartFormDataContent();
+        AddDetails(form, title, description, tags, keepsEmptyDescription: false);
         var file = new ByteArrayContent(await File.ReadAllBytesAsync(mainPick, ct));
         file.Headers.ContentType = new MediaTypeHeaderValue(ImageStore.ContentTypeFor(mainPick));
         form.Add(file, "file", Path.GetFileName(mainPick));
@@ -93,6 +93,9 @@ public sealed partial class DeviantArtPosting(
             throw new UserFacingException("Choose a gallery.");
         if (request.IsMature && !MatureLevels.Contains(request.MatureLevel))
             throw new UserFacingException("Choose how mature the deviation is: moderate or strict.");
+
+        if (await HasLostInspirationAsync(set, set.PostDescription, ct))
+            await RemoveInspiredByFromStashAsync(set, ct);
 
         List<KeyValuePair<string, string>> fields =
         [
@@ -128,6 +131,44 @@ public sealed partial class DeviantArtPosting(
         (await SettingsStore.LoadAsync(db, paths, ct)).LastGalleryId = request.GalleryId.Trim();
         await db.SaveChangesAsync(ct);
         await notifier.SetUpdated(setId);
+    }
+
+    private async Task<bool> HasLostInspirationAsync(PromptSet set, string? description, CancellationToken ct) =>
+        set.DeviantArtUrl is not null && EndsWithInspiredByLine(description) && await deviantArt.IsGoneAsync(set.DeviantArtUrl, ct);
+
+    private static bool EndsWithInspiredByLine(string? description)
+    {
+        var trimmed = (description ?? "").TrimEnd();
+        return trimmed.EndsWith(InspiredBy, StringComparison.Ordinal)
+            && (trimmed.Length == InspiredBy.Length || trimmed[^(InspiredBy.Length + 1)] == '\n');
+    }
+
+    private static string WithoutInspiredBy(string description) => description.TrimEnd()[..^InspiredBy.Length].TrimEnd();
+
+    // Replaces the Stash item's details, and with them whatever was changed in DeviantArt's editor.
+    private async Task RemoveInspiredByFromStashAsync(PromptSet set, CancellationToken ct)
+    {
+        var description = WithoutInspiredBy(set.PostDescription!);
+        using var form = new MultipartFormDataContent { { new StringContent(set.StashItemId!.Value.ToString()), "itemid" } };
+        AddDetails(form, set.PostTitle ?? "", description, ParseTags(set.PostTags), keepsEmptyDescription: true);
+        var answer = await SendAsync(HttpMethod.Post, "stash/submit", form, ct);
+        if (answer["status"]?.GetValue<string>() != "success")
+            throw new UserFacingException("DeviantArt did not confirm removing \"Inspired by\" from the Stash item, whose inspiration is gone.");
+        set.PostDescription = description;
+        await db.SaveChangesAsync(ct);
+    }
+
+    // An update leaves out no description, since DeviantArt would keep the old one.
+    private static void AddDetails(MultipartFormDataContent form, string title, string description, IReadOnlyList<string> tags,
+        bool keepsEmptyDescription)
+    {
+        form.Add(new StringContent(title), "title");
+        if (description.Length > 0 || keepsEmptyDescription)
+            form.Add(new StringContent(DescriptionHtml(description)), "artist_comments");
+        foreach (var tag in tags)
+            form.Add(new StringContent(tag), "tags[]");
+        form.Add(new StringContent("true"), "is_ai_generated");
+        form.Add(new StringContent("false"), "noai");
     }
 
     private static string Flag(bool value) => value ? "true" : "false";

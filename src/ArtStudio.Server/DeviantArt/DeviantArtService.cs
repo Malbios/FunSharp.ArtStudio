@@ -94,6 +94,24 @@ public sealed class DeviantArtService(
         }
     }
 
+    /// <summary>
+    /// Whether DeviantArt says the deviation no longer exists. When it can't be asked, the deviation counts as still
+    /// there, so a hiccup never drops its credit.
+    /// </summary>
+    public async Task<bool> IsGoneAsync(string deviationUrl, CancellationToken ct)
+    {
+        try
+        {
+            using var response = await Http().GetAsync($"{OEmbedEndpoint}?url={Uri.EscapeDataString(deviationUrl)}", ct);
+            return response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone;
+        }
+        catch (Exception failure) when (failure is HttpRequestException || (failure is TaskCanceledException && !ct.IsCancellationRequested))
+        {
+            logger.LogWarning(failure, "Could not check whether {Url} still exists", deviationUrl);
+            return false;
+        }
+    }
+
     private async Task EnsureUsableArtistAsync(string username, string? ownUsername, CancellationToken ct)
     {
         if (string.Equals(username, ownUsername, StringComparison.OrdinalIgnoreCase))

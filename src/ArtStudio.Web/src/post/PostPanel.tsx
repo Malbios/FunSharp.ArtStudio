@@ -7,6 +7,7 @@ import {
   matureLevelOf,
   MAX_TITLE_LENGTH,
   stashDescription,
+  awaitsInspirationLink,
   stashEditorUrl,
   withSuggestedTags,
   type PublishChoice,
@@ -171,9 +172,10 @@ function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & 
   const [error, setError] = useState<string>()
   const [linkCopied, setLinkCopied] = useState(false)
   const extraPicks = set.pickedImageIds.length - 1
+  const pastesLink = awaitsInspirationLink(set.post.description, set.deviantArtUrl)
 
   async function copyInspirationLink() {
-    if (!set.deviantArtUrl) return
+    if (!pastesLink || !set.deviantArtUrl) return
     try {
       await navigator.clipboard.writeText(set.deviantArtUrl)
       setLinkCopied(true)
@@ -210,8 +212,8 @@ function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & 
           {extraPicks > 0
             ? `, add ${extraPicks === 1 ? 'pick #2' : `picks #2–#${extraPicks + 1}`} with the Art Studio box there (browser extension)`
             : ''}
-          {set.deviantArtUrl ? ', paste the copied inspiration link after "Inspired by"' : ''}
-          {extraPicks > 0 || set.deviantArtUrl ? ' and save.' : ' to check it.'}
+          {pastesLink ? ', paste the copied inspiration link after "Inspired by"' : ''}
+          {extraPicks > 0 || pastesLink ? ' and save.' : ' to check it.'}
           {linkCopied && <span className="hint"> Copied the inspiration link to the clipboard.</span>}
         </li>
       </ol>

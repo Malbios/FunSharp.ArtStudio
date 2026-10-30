@@ -155,6 +155,81 @@ public sealed class PostingTests : IDisposable
         (await _client.DeleteAsync($"/api/sets/{setId}/ready")).EnsureSuccessStatusCode();
     }
 
+    private const string InspirationUrl = "https://www.deviantart.com/someartist/art/Fox-123456789";
+
+    private async Task InspireAsync(int setId)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<StudioDbContext>();
+        (await db.PromptSets.SingleAsync(s => s.Id == setId)).DeviantArtUrl = InspirationUrl;
+        await db.SaveChangesAsync();
+    }
+
+    private string? DescriptionSent(List<StashPart> submission) =>
+        submission.SingleOrDefault(p => p.Name == "artist_comments")?.Value;
+
+    [Fact]
+    public async Task Stash_WhenTheInspirationIsGone_LeavesOutInspiredBy()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, _) = await CreateReadySetAsync(1);
+        await InspireAsync(setId);
+        _factory.DeviantArt.OEmbedFailure = HttpStatusCode.NotFound;
+
+        (await StashAsync(setId, description: "A fox at dawn.\n\nInspired by\n")).EnsureSuccessStatusCode();
+
+        Assert.Equal("A fox at dawn.", DescriptionSent(_factory.DeviantArt.StashSubmissions.Single()));
+        Assert.Equal("A fox at dawn.", (await GetSetAsync(_client, setId)).Post.Description);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    public async Task Stash_WhenTheInspirationIsThereOrCannotBeChecked_KeepsInspiredBy(HttpStatusCode? oEmbed)
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, _) = await CreateReadySetAsync(1);
+        await InspireAsync(setId);
+        _factory.DeviantArt.OEmbedFailure = oEmbed;
+
+        (await StashAsync(setId, description: "Inspired by\n")).EnsureSuccessStatusCode();
+
+        Assert.Equal("Inspired by<br />", DescriptionSent(_factory.DeviantArt.StashSubmissions.Single()));
+    }
+
+    [Fact]
+    public async Task Publish_WhenTheInspirationWentAwayAfterTheUpload_RemovesInspiredByFromTheStashItemFirst()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, _) = await CreateReadySetAsync(1);
+        await InspireAsync(setId);
+        (await StashAsync(setId, description: "Inspired by\n", tags: "fox")).EnsureSuccessStatusCode();
+        _factory.DeviantArt.OEmbedFailure = HttpStatusCode.NotFound;
+
+        (await PublishAsync(setId)).EnsureSuccessStatusCode();
+
+        var update = _factory.DeviantArt.StashSubmissions[1];
+        Assert.Equal(
+            [$"itemid={FakeDeviantArt.StashItemId}", "title=Ember Fox", "artist_comments=", "tags[]=fox", "is_ai_generated=true", "noai=false"],
+            update.Select(p => $"{p.Name}={p.Value}"));
+        Assert.Single(_factory.DeviantArt.Publications);
+        Assert.Equal("", (await GetSetAsync(_client, setId)).Post.Description);
+    }
+
+    [Fact]
+    public async Task Publish_WhenTheInspirationIsThere_LeavesTheStashItemAlone()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        var (setId, _) = await CreateReadySetAsync(1);
+        await InspireAsync(setId);
+        (await StashAsync(setId, description: "Inspired by\n")).EnsureSuccessStatusCode();
+
+        (await PublishAsync(setId)).EnsureSuccessStatusCode();
+
+        Assert.Single(_factory.DeviantArt.StashSubmissions);
+        Assert.Single(_factory.DeviantArt.Publications);
+    }
+
     private Task<HttpResponseMessage> PublishAsync(int setId, string galleryId = "F-RANDOM", bool isMature = false,
         string? matureLevel = null) =>
         _client.PostAsJsonAsync($"/api/sets/{setId}/post/publish", new { galleryId, isMature, matureLevel });

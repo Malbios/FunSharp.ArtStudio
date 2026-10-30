@@ -21,6 +21,8 @@ public sealed class FakeDeviantArt : HttpMessageHandler
     public bool Mature { get; set; }
     public int ExtraImages { get; set; }
     public int OEmbedCalls { get; private set; }
+    /// <summary>When set, oEmbed answers with this status, like NotFound for a deleted deviation.</summary>
+    public HttpStatusCode? OEmbedFailure { get; set; }
     public List<string> DeviationApiRequests { get; } = [];
     public int AccessTokenLifetimeSeconds { get; set; } = 3600;
     public bool RejectRefresh { get; set; }
@@ -64,6 +66,8 @@ public sealed class FakeDeviantArt : HttpMessageHandler
         {
             OEmbedCalls++;
             var title = HttpUtility.ParseQueryString(uri.Query)["url"];
+            if (OEmbedFailure is { } status)
+                return new HttpResponseMessage(status);
             return FakeHttpHandler.Json($$"""
                 { "type": "photo", "title": "{{title}}", "url": "{{ImageUrl}}", "author_name": "{{Author}}", "width": 1600, "height": 900,
                   "safety": "{{(Mature ? "adult" : "nonadult")}}" }
