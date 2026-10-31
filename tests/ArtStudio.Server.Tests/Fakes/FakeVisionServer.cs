@@ -9,7 +9,7 @@ public sealed class FakeVisionServer : HttpMessageHandler
 {
     public volatile bool HoldAnswers;
     public volatile bool Unreachable;
-    public volatile string Answer = "A fox in the snow.";
+    public volatile string Answer = "A fox in the snow.\n\nA quiet winter forest.\n\nEye-level view, soft light.\n\nPainterly illustration.";
     public volatile string FinishReason = "stop";
     public HttpStatusCode Status { get; set; } = HttpStatusCode.OK;
     public int CancelledRequests { get; private set; }

@@ -125,8 +125,15 @@ public sealed class PromptGenerationWorker(
         var image = await File.ReadAllBytesAsync(imagePath, ct);
         var answer = await visionClient.DescribeAsync(
             key, image, ImageStore.ContentTypeFor(imagePath), instruction.For(context), ct);
-        return (answer, PromptCleaner.Clean(answer.Text));
+        var prompt = PromptCleaner.Clean(answer.Text);
+        var paragraphs = PromptModifier.Paragraphs(prompt).Count;
+        if (paragraphs < SettingCompositionAndStyle)
+            throw new UserFacingException(
+                $"The vision model returned only {paragraphs} of at least {SettingCompositionAndStyle} paragraphs (setting, composition and style).");
+        return (answer, prompt);
     }
+
+    private const int SettingCompositionAndStyle = 3;
 
     private async Task<(VisionAnswer Answer, string Prompt)> ModifyAsync(
         string key, string basePrompt, int? paragraphIndex, string? section, string instructions, CancellationToken ct)

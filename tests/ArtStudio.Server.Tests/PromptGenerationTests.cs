@@ -242,6 +242,25 @@ public sealed class PromptGenerationTests : IDisposable
     }
 
     [Fact]
+    public async Task PartialAnswer_Fails_AndIsRetriedWithTheOtherFailedDrafts()
+    {
+        await SetVisionApiKeyAsync(_client);
+        _factory.Vision.Answer = "A fox with rust-red fur sits on a rock.\n\nA misty forest.";
+        var setId = await CreateUploadDraftAsync();
+        await WaitForStateAsync(setId, PromptGenerationState.Failed);
+
+        var failed = await GetSetAsync(_client, setId);
+        Assert.Contains("only 2 of at least 3 paragraphs", failed.PromptGeneration.Error);
+        Assert.Equal("", failed.Prompt);
+
+        _factory.Vision.Answer = "A fox.\n\nA misty forest.\n\nEye-level view.\n\nWatercolour.";
+        var response = await _client.PostAsync("/api/drafts/retry-failed-prompts", null);
+        Assert.Equal(1, (await response.Content.ReadFromJsonAsync<JsonObject>())!["retried"]!.GetValue<int>());
+        await WaitForStateAsync(setId, PromptGenerationState.Done);
+        Assert.Equal(_factory.Vision.Answer, (await GetSetAsync(_client, setId)).Prompt);
+    }
+
+    [Fact]
     public async Task ClickedPrompt_GoesAheadOfWaitingAutomaticOnes_WithoutStoppingTheRunningOne()
     {
         byte[] Png(byte marker) => [0x89, 0x50, 0x4E, 0x47, marker];
@@ -326,7 +345,7 @@ public sealed class PromptGenerationTests : IDisposable
     public async Task SetWithImages_GetsTheCleanedNewPromptAsItsOwn()
     {
         await SetVisionApiKeyAsync(_client);
-        _factory.Vision.Answer = "An adult fox’s den.\r\nIn snow.";
+        _factory.Vision.Answer = "An adult fox’s den.\r\nIn snow.\r\n\r\nPines.\r\n\r\nWide view.";
         var setId = await _factory.CreateSetAsync(_client, "the original prompt", count: 1, addSource: form =>
         {
             form.Add(new StringContent("Upload"), "sourceKind");
@@ -341,7 +360,7 @@ public sealed class PromptGenerationTests : IDisposable
         await WaitForStateAsync(setId, PromptGenerationState.Done);
         await WaitUntilAsync(async () => (await GetSetAsync(_client, setId)).Jobs.Count == 2, "the job for the new prompt");
 
-        const string cleaned = "An fox's den.\nIn snow.";
+        const string cleaned = "An fox's den.\nIn snow.\n\nPines.\n\nWide view.";
         var set = await GetSetAsync(_client, setId);
         Assert.Equal(cleaned, set.PromptGeneration.Text);
         Assert.Equal(cleaned, set.Prompt);
