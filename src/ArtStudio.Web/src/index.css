@@ -1239,11 +1239,22 @@ main {
 
 .set-toolbar {
   flex-wrap: wrap;
+  position: sticky;
+  top: var(--top-bar-height, 0px);
+  z-index: 9;
+  margin: -1.5rem -1.5rem 1rem;
+  padding: 0.6rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
 }
 
-.set-toolbar-bottom {
-  justify-content: flex-end;
-  margin-top: 1.5rem;
+.set-toolbar h2 {
+  white-space: nowrap;
+}
+
+.set-toolbar-error {
+  flex-basis: 100%;
+  margin: 0;
 }
 
 .set-section {
@@ -1264,7 +1275,7 @@ main {
 
 .set-inspiration-column {
   position: sticky;
-  top: 5rem;
+  top: calc(var(--top-bar-height, 0px) + var(--set-toolbar-height, 0px) + 1rem);
   overflow-wrap: anywhere;
 }
 

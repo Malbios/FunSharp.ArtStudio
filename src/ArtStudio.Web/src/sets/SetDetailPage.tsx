@@ -8,6 +8,7 @@ import { OtherSetsByArtist } from '../deviantart/OtherSetsByArtist'
 import { PostPanel } from '../post/PostPanel'
 import { OrderLabel } from '../prompt/OrderLabel'
 import { JobRow } from '../queue/JobRow'
+import { shareHeight } from '../shareHeight'
 import { Lightbox } from './Lightbox'
 import { PickedStrip } from './PickedStrip'
 import { RequeueWithPreset } from './RequeueWithPreset'
@@ -16,6 +17,7 @@ import { SetVideos } from './SetVideos'
 import { movedItem, useDragReorder } from './useDragReorder'
 
 const DEFAULT_MORE_COUNT = 2
+const shareToolbarHeight = shareHeight('--set-toolbar-height')
 
 export function SetDetailPage() {
   const setId = Number(useParams().id)
@@ -210,11 +212,11 @@ export function SetDetailPage() {
 
   return (
     <div>
-      <div className="toolbar set-toolbar">
+      <div className="toolbar set-toolbar" ref={shareToolbarHeight}>
         <h2>Set #{data.id}</h2>
         {setActions}
+        {error && <p className="error set-toolbar-error">{error}</p>}
       </div>
-      {error && <p className="error">{error}</p>}
       {isReadyToPost && (
         <div className="queue-banner ready-banner">
           <span>Ready to post since {new Date(data.readyToPostAt!).toLocaleString()}.</span>
@@ -353,7 +355,6 @@ export function SetDetailPage() {
       )}
 
       {error && <p className="error">{error}</p>}
-      <div className="toolbar set-toolbar set-toolbar-bottom">{setActions}</div>
 
       {lightboxIndex !== null && shownImages[lightboxIndex] && (
         <Lightbox

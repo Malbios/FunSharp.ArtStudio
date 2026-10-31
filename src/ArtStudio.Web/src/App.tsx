@@ -17,7 +17,10 @@ import { pendingCounts } from './queue/queueSections'
 import { MakeVideoPage } from './sets/MakeVideoPage'
 import { SetDetailPage } from './sets/SetDetailPage'
 import { SetsPage } from './sets/SetsPage'
+import { shareHeight } from './shareHeight'
 import { StatsPage } from './stats/StatsPage'
+
+const shareTopBarHeight = shareHeight('--top-bar-height')
 
 function NewSetRoute() {
   const location = useLocation()
@@ -167,7 +170,7 @@ function QueueNavLink() {
 export default function App() {
   return (
     <BrowserRouter>
-      <header className="top-bar">
+      <header className="top-bar" ref={shareTopBarHeight}>
         <h1>Art Studio</h1>
         <nav>
           <NavLink to="/" end>
