@@ -84,7 +84,7 @@ function PublishFromCard({ setId, onPublished }: { setId: number; onPublished: (
     return (
       <div className="set-card-publish">
         <button type="button" className="success" disabled={opening} onClick={() => void open()}>
-          {opening ? 'Opening…' : 'Publish…'}
+          {opening ? 'Opening…' : 'Publish'}
         </button>
         {error && <p className="error">{error}</p>}
       </div>
