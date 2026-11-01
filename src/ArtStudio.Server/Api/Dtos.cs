@@ -138,7 +138,9 @@ public sealed record SetSummaryDto(
     DateTimeOffset? PublishedAt,
     bool HasTitleAndTags,
     int VideoCount,
-    int UnviewedVideoCount);
+    int UnviewedVideoCount,
+    string? PublishGalleryId,
+    string? PublishMatureLevel);
 
 public sealed record SetDetailDto(
     int Id,

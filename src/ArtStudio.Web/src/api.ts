@@ -142,6 +142,8 @@ export interface SetSummary {
   publishedAt: string | null
   /** Has a title and tags beyond the default ones. */
   hasTitleAndTags: boolean
+  publishGalleryId: string | null
+  publishMatureLevel: PublishMatureLevel | null
 }
 
 export type PromptGenerationState = 'None' | 'Queued' | 'Running' | 'Done' | 'Failed'

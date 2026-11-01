@@ -362,6 +362,9 @@ public sealed class PostingTests : IDisposable
 
         Assert.Equal(("F-SPICY", "strict"), (chosen.PublishGalleryId, chosen.PublishMatureLevel));
         Assert.Equal(("F-SCENERY", "none"), (changed.PublishGalleryId, changed.PublishMatureLevel));
+        var listed = Assert.Single(await SetsInStageAsync("ready"));
+        Assert.Equal(("F-SCENERY", "none"),
+            (listed.GetProperty("publishGalleryId").GetString(), listed.GetProperty("publishMatureLevel").GetString()));
     }
 
     [Fact]

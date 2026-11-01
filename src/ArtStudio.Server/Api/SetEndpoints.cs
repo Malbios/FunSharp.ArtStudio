@@ -118,7 +118,9 @@ public static class SetEndpoints
                 s.Set.PublishedAt,
                 !PostSuggestionQueue.NeedsSuggestions(s.Set),
                 s.VideoCount,
-                s.UnviewedVideoCount))
+                s.UnviewedVideoCount,
+                s.Set.PublishGalleryId,
+                s.Set.PublishMatureLevel))
             .ToList();
     }
 

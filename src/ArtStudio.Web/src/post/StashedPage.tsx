@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../api'
+import { api, type Gallery, type SetSummary } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { NewVideosBadge } from '../sets/NewVideosBadge'
 import { initialPublishChoice } from './postDefaults'
@@ -14,6 +14,7 @@ import { usePagedItems } from '../paging/usePagedItems'
 export function StashedPage() {
   const sets = useLoad(() => api.sets('ready'))
   useStudioEvents(['SetUpdated', 'SetDeleted'], sets.reload)
+  const galleries = useLoad(() => api.galleries())
   const stashed = sets.data?.filter((set) => set.stashed)
   const filter = useListFilter('stashed', stashed, STASHED_FILTERS)
   const paged = usePagedItems(filter.items)
@@ -25,6 +26,7 @@ export function StashedPage() {
         <h2>Stashed</h2>
       </div>
       {sets.error && <p className="error">{sets.error}</p>}
+      {galleries.error && <p className="error">No galleries: {galleries.error}</p>}
       {stashed?.length === 0 && <p className="hint">Nothing in the Stash. Upload a set from its page on Post.</p>}
       {stashed && stashed.length > 0 && (
         <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} filter={filter} />
@@ -53,7 +55,7 @@ export function StashedPage() {
                   </span>
                 )}
               </div>
-              <PublishFromCard setId={set.id} onPublished={sets.reload} />
+              <PublishFromCard set={set} galleries={galleries.data} onPublished={sets.reload} />
             </div>
           </div>
         ))}
@@ -63,20 +65,25 @@ export function StashedPage() {
   )
 }
 
+interface PublishFromCardProps {
+  set: SetSummary
+  galleries: Gallery[] | undefined
+  onPublished: () => void
+}
+
 /** Publishes right away to the gallery the set's publish form would start at. */
-function PublishFromCard({ setId, onPublished }: { setId: number; onPublished: () => void }) {
+function PublishFromCard({ set, galleries, onPublished }: PublishFromCardProps) {
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState<string>()
+  const { galleryId, matureLevel } = initialPublishChoice(galleries ?? [], set)
+  const gallery = galleries?.find((candidate) => candidate.folderId === galleryId)
 
   async function publish() {
     setPublishing(true)
     setError(undefined)
     try {
-      const [set, galleries] = await Promise.all([api.set(setId), api.galleries()])
-      const { galleryId, matureLevel } = initialPublishChoice(galleries, set.post)
-      if (!galleryId) throw new Error('No gallery chosen yet. Choose one on the set page.')
       const isMature = matureLevel !== 'none'
-      await api.publish(setId, galleryId, isMature, isMature ? matureLevel : null)
+      await api.publish(set.id, galleryId, isMature, isMature ? matureLevel : null)
       onPublished()
     } catch (failure) {
       setError((failure as Error).message)
@@ -86,7 +93,14 @@ function PublishFromCard({ setId, onPublished }: { setId: number; onPublished: (
 
   return (
     <div className="set-card-publish">
-      <button type="button" className="success" disabled={publishing} onClick={() => void publish()}>
+      {galleries && (
+        <p className="hint">
+          {gallery
+            ? `To ${gallery.name}${matureLevel === 'none' ? '' : `, mature (${matureLevel})`}`
+            : 'No gallery chosen yet. Choose one on the set page.'}
+        </p>
+      )}
+      <button type="button" className="success" disabled={publishing || !gallery} onClick={() => void publish()}>
         {publishing ? 'Publishing…' : 'Publish'}
       </button>
       {error && <p className="error">{error}</p>}
