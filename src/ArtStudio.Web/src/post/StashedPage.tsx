@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, type SetDetail } from '../api'
+import { api } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { NewVideosBadge } from '../sets/NewVideosBadge'
-import { PublishForm } from './PostPanel'
+import { initialPublishChoice } from './postDefaults'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { STASHED_FILTERS } from '../paging/listFilters'
@@ -63,44 +63,33 @@ export function StashedPage() {
   )
 }
 
+/** Publishes right away to the gallery the set's publish form would start at. */
 function PublishFromCard({ setId, onPublished }: { setId: number; onPublished: () => void }) {
-  const [set, setSet] = useState<SetDetail>()
-  const [opening, setOpening] = useState(false)
+  const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState<string>()
 
-  async function open() {
-    setOpening(true)
+  async function publish() {
+    setPublishing(true)
     setError(undefined)
     try {
-      setSet(await api.set(setId))
+      const [set, galleries] = await Promise.all([api.set(setId), api.galleries()])
+      const { galleryId, matureLevel } = initialPublishChoice(galleries, set.post)
+      if (!galleryId) throw new Error('No gallery chosen yet. Choose one on the set page.')
+      const isMature = matureLevel !== 'none'
+      await api.publish(setId, galleryId, isMature, isMature ? matureLevel : null)
+      onPublished()
     } catch (failure) {
       setError((failure as Error).message)
-    } finally {
-      setOpening(false)
+      setPublishing(false)
     }
   }
 
-  if (!set)
-    return (
-      <div className="set-card-publish">
-        <button type="button" className="success" disabled={opening} onClick={() => void open()}>
-          {opening ? 'Opening…' : 'Publish'}
-        </button>
-        {error && <p className="error">{error}</p>}
-      </div>
-    )
   return (
     <div className="set-card-publish">
-      <PublishForm
-        set={set}
-        onPublished={() => {
-          setSet(undefined)
-          onPublished()
-        }}
-      />
-      <button type="button" className="link-button" onClick={() => setSet(undefined)}>
-        Cancel
+      <button type="button" className="success" disabled={publishing} onClick={() => void publish()}>
+        {publishing ? 'Publishing…' : 'Publish'}
       </button>
+      {error && <p className="error">{error}</p>}
     </div>
   )
 }
