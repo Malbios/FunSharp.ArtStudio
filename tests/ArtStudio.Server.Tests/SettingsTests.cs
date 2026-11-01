@@ -160,6 +160,20 @@ public sealed class SettingsTests : IDisposable
         Assert.Equal(JsonValueKind.Null, (await AddPresetAsync()).GetProperty("paragraphOrder").ValueKind);
     }
 
+    [Fact]
+    public async Task QuickPreset_IsStored_AndClearedWhenTheBlockStopsBeingAPreset()
+    {
+        var added = await (await _client.PostAsJsonAsync("/api/building-blocks",
+            new { label = "Oil", kind = "Preset", artStyle = "Oil.", quickPreset = true })).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(added.GetProperty("quickPreset").GetBoolean());
+        Assert.False((await AddPresetAsync()).GetProperty("quickPreset").GetBoolean());
+
+        (await _client.PutAsJsonAsync($"/api/building-blocks/{Id(added)}",
+            new { label = "Oil", kind = "Text", text = "Oil.", quickPreset = true })).EnsureSuccessStatusCode();
+
+        Assert.False((await BlocksAsync()).Single(b => Id(b) == Id(added)).GetProperty("quickPreset").GetBoolean());
+    }
+
     private async Task<JsonElement> AddPresetAsync()
     {
         var response = await _client.PostAsJsonAsync("/api/building-blocks", new { label = "Oil", kind = "Preset", imageCount = 2 });

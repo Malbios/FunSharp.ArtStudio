@@ -231,11 +231,12 @@ public sealed record BuildingBlockDto(
     string? ParagraphOrder,
     int SortOrder,
     string? ImageUrl,
-    IReadOnlyList<int> PresetIds)
+    IReadOnlyList<int> PresetIds,
+    bool QuickPreset)
 {
     public static BuildingBlockDto From(BuildingBlock block) => new(
         block.Id, block.Kind, block.Label, block.Text, block.ArtStyle, block.Resolution, block.ImageCount, block.ParagraphOrder,
-        block.SortOrder, ApiUrls.PresetImage(block), block.BundledPresetIds());
+        block.SortOrder, ApiUrls.PresetImage(block), block.BundledPresetIds(), block.QuickPreset);
 }
 
 public sealed record VisionSettingsDto(bool HasApiKey);

@@ -304,6 +304,7 @@ export interface BuildingBlock {
   imageUrl: string | null
   /** A bundle's presets in order. */
   presetIds: number[]
+  quickPreset: boolean
 }
 
 /** What a preset changes on the page; null leaves that part as it is. */
@@ -313,6 +314,7 @@ export interface PresetFields {
   resolution: string | null
   imageCount: number | null
   paragraphOrder: string | null
+  quickPreset: boolean
 }
 
 export interface BlockedArtist {

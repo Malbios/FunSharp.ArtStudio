@@ -8,7 +8,7 @@ import { insertAtSelection } from '../prompt/insertAtSelection'
 import { NORMAL_ORDER, parseOrder, serializeOrder } from '../prompt/paragraphOrder'
 import { PresetImage, readClipboardImage } from './PresetImage'
 
-const EMPTY_PRESET: PresetFields = { label: '', artStyle: null, resolution: null, imageCount: null, paragraphOrder: null }
+const EMPTY_PRESET: PresetFields = { label: '', artStyle: null, resolution: null, imageCount: null, paragraphOrder: null, quickPreset: false }
 
 /** `blocks` is shared with the bundles editor, so bundles see preset changes right away. */
 export function PresetsEditor({ blocks }: { blocks: Loaded<BuildingBlock[]> }) {
@@ -84,13 +84,14 @@ export function PresetsEditor({ blocks }: { blocks: Loaded<BuildingBlock[]> }) {
       <h3>Presets</h3>
       <p className="hint">
         Shown above the building blocks. Clicking one applies it: it replaces the Art style box and sets Resolution and
-        Images. Empty fields leave that part as it is. The example image shows when hovering the preset.
+        Images. Empty fields leave that part as it is. The example image shows when hovering the preset. A quick button
+        shows on the Queue draft page and queues the draft right away with only the preset's art style swapped in.
       </p>
       <div className="editable-list">
         {insertPoint(0)}
         {list.map((preset, index) => [
           <PresetRow
-            key={`${preset.id}-${preset.label}-${preset.artStyle}-${preset.resolution}-${preset.imageCount}-${preset.paragraphOrder}`}
+            key={`${preset.id}-${preset.label}-${preset.artStyle}-${preset.resolution}-${preset.imageCount}-${preset.paragraphOrder}-${preset.quickPreset}`}
             preset={preset}
             resolutions={resolutions.data ?? []}
             canMoveUp={index > 0}
@@ -132,6 +133,7 @@ function PresetRow(props: RowProps) {
     resolution: preset.resolution,
     imageCount: preset.imageCount,
     paragraphOrder: preset.paragraphOrder,
+    quickPreset: preset.quickPreset,
   }
   const [fields, setFields] = useState(saved)
   const changed = JSON.stringify(fields) !== JSON.stringify(saved)
@@ -226,6 +228,14 @@ function PresetInputs({ fields, resolutions, onChange }: InputsProps) {
         onChange={(e) => change({ imageCount: e.target.value ? Number(e.target.value) : null })}
       />
       <div className="preset-order">
+        <label className="inline-check">
+          <input
+            type="checkbox"
+            checked={fields.quickPreset}
+            onChange={(e) => change({ quickPreset: e.target.checked })}
+          />
+          Quick button on Queue draft
+        </label>
         <label className="inline-check">
           <input
             type="checkbox"

@@ -187,9 +187,7 @@ export function NewSetPage() {
     if (!prompt.trim()) return setError('Enter a prompt.')
     await send(async () => {
       if (baseSet && isDraft) {
-        draftSettings.cancel()
-        await api.queueDraft(baseSet.id, prompt, resolution, count, queueFirst, paragraphOrder)
-        navigate('/drafts')
+        await queueDraft(baseSet, prompt)
       } else if (baseSet) {
         await api.moreImages(baseSet.id, count, prompt, resolution, queueFirst, paragraphOrder)
         navigate(locationState ? returnToFrom(locationState) : `/sets/${baseSet.id}`)
@@ -201,6 +199,18 @@ export function NewSetPage() {
         setCreated({ id, asDraft: false })
       }
     })
+  }
+
+  async function queueDraft(draft: SetDetail, draftPrompt: string) {
+    draftSettings.cancel()
+    await api.queueDraft(draft.id, draftPrompt, resolution, count, queueFirst, paragraphOrder)
+    navigate('/drafts')
+  }
+
+  async function queueWithArtStyleOf(preset: BuildingBlock) {
+    if (!baseSet) return
+    if (!prompt.trim()) return setError('Enter a prompt.')
+    await send(() => queueDraft(baseSet, joinParagraphs(withArtStyle(paragraphs, preset.artStyle))))
   }
 
   async function saveDraft() {
@@ -413,7 +423,11 @@ export function NewSetPage() {
         )}
       </form>
 
-      <BuildingBlockChips onApplyPreset={applyPreset} />
+      <BuildingBlockChips
+        onApplyPreset={applyPreset}
+        onQuickPreset={isDraft ? (preset) => void queueWithArtStyleOf(preset) : undefined}
+        quickPresetsDisabled={submitting || !baseSet}
+      />
     </div>
   )
 }

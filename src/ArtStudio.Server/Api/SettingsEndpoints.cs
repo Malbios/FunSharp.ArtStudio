@@ -22,7 +22,8 @@ public sealed record BuildingBlockRequest(
     string? Resolution = null,
     int? ImageCount = null,
     IReadOnlyList<int>? PresetIds = null,
-    string? ParagraphOrder = null);
+    string? ParagraphOrder = null,
+    bool QuickPreset = false);
 
 public sealed record ReorderRequest(IReadOnlyList<int> Ids);
 
@@ -210,6 +211,8 @@ public static class SettingsEndpoints
         }
         if (block.Kind != BuildingBlockKind.Bundle)
             block.PresetIds = null;
+        if (block.Kind != BuildingBlockKind.Preset)
+            block.QuickPreset = false;
     }
 
     private static async Task ApplyBundleAsync(
@@ -271,5 +274,6 @@ public static class SettingsEndpoints
         block.Resolution = resolution;
         block.ImageCount = request.ImageCount;
         block.ParagraphOrder = paragraphOrder;
+        block.QuickPreset = request.QuickPreset;
     }
 }

@@ -25,6 +25,9 @@ public class BuildingBlock
     public string? ParagraphOrder { get; set; }
     public string? ImagePath { get; set; }
 
+    /// <summary>A preset shown as its own button on the Queue draft page, which queues the draft with its art style.</summary>
+    public bool QuickPreset { get; set; }
+
     /// <summary>The bundle's preset ids in order, comma-separated.</summary>
     public string? PresetIds { get; set; }
 

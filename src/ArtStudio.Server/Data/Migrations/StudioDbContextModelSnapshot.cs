@@ -68,6 +68,9 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<string>("PresetIds")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("QuickPreset")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Resolution")
                         .HasColumnType("TEXT");
 

@@ -648,6 +648,13 @@ main {
   color: var(--success);
 }
 
+.quick-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: -0.6rem 0 1rem;
+}
+
 .preset-picker {
   width: min(64rem, calc(100vw - 2rem));
   max-height: calc(100vh - 4rem);

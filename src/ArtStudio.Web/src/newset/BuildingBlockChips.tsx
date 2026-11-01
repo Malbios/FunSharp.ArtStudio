@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type BuildingBlock } from '../api'
 import { useLoad } from '../live/useLoad'
+import { describePreset } from '../prompt/presets'
 import { PresetPicker } from './PresetPicker'
 
 const FLASH_MS = 1200
@@ -11,12 +12,20 @@ interface Flash {
   text: string
 }
 
-export function BuildingBlockChips({ onApplyPreset }: { onApplyPreset: (preset: BuildingBlock) => void }) {
+interface Props {
+  onApplyPreset: (preset: BuildingBlock) => void
+  /** Shows the quick presets as buttons that call this. */
+  onQuickPreset?: (preset: BuildingBlock) => void
+  quickPresetsDisabled?: boolean
+}
+
+export function BuildingBlockChips({ onApplyPreset, onQuickPreset, quickPresetsDisabled }: Props) {
   const blocks = useLoad(api.buildingBlocks)
   const [flash, setFlash] = useState<Flash>()
   const [pickingPreset, setPickingPreset] = useState(false)
   const [appliedPreset, setAppliedPreset] = useState<string>()
   const presets = blocks.data?.filter((block) => block.kind === 'Preset') ?? []
+  const quickPresets = onQuickPreset ? presets.filter((preset) => preset.quickPreset) : []
   const textBlocks = blocks.data?.filter((block) => block.kind === 'Text')
 
   function flashChip(id: number, text: string) {
@@ -46,6 +55,21 @@ export function BuildingBlockChips({ onApplyPreset }: { onApplyPreset: (preset: 
         >
           {appliedPreset ? `Applied: ${appliedPreset}` : `Presets (${presets.length})`}
         </button>
+      )}
+      {quickPresets.length > 0 && (
+        <div className="quick-presets">
+          {quickPresets.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              title={`Queue with this art style\n${describePreset(preset)}`}
+              disabled={quickPresetsDisabled}
+              onClick={() => onQuickPreset?.(preset)}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
       )}
       {pickingPreset && <PresetPicker presets={presets} onChoose={apply} onClose={() => setPickingPreset(false)} />}
       <h3>Building blocks</h3>
