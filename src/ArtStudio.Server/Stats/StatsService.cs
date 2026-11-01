@@ -65,7 +65,24 @@ public sealed class StatsService(StudioDbContext db, DeviantArtAuth auth, TimePr
             DeviantArtStats(connected, fetchedAt, deviations, snapshots, now),
             PresetStats(presets, images, picks, presetByImage, deviations),
             PipelineStats(sets, jobs, images, picks, now),
-            InspirationStats(sets, deviations));
+            InspirationStats(sets, deviations),
+            PublishedPerDay(sets, picks, now));
+    }
+
+    private List<DailyPublishedDto> PublishedPerDay(List<SetRow> sets, List<PickRow> picks, DateTimeOffset now)
+    {
+        var picksBySet = picks.GroupBy(p => p.SetId).ToDictionary(group => group.Key, group => group.Count());
+        var publishedByDay = sets
+            .Where(s => s.PublishedAt is not null)
+            .GroupBy(s => LocalDay(s.PublishedAt!.Value))
+            .ToDictionary(group => group.Key, group => (Sets: group.Count(), Images: group.Sum(s => picksBySet.GetValueOrDefault(s.Id))));
+        var today = LocalDay(now);
+        return Enumerable.Range(0, ChartDays)
+            .Select(offset => today.AddDays(offset - ChartDays + 1))
+            .Select(day => publishedByDay.TryGetValue(day, out var published)
+                ? new DailyPublishedDto(day, published.Sets, published.Images)
+                : new DailyPublishedDto(day, 0, 0))
+            .ToList();
     }
 
     // Jobs don't record their preset, only the prompt its art style was written into; the longest match is the most specific.

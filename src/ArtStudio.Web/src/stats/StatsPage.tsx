@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { api, type DeviantArtStats, type DeviationStats, type InspirationStats, type PipelineStats, type PresetStats, type SourceKind } from '../api'
+import { api, type DailyPublished, type DeviantArtStats, type DeviationStats, type InspirationStats, type PipelineStats, type PresetStats, type SourceKind } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { useLoad } from '../live/useLoad'
 import { Pager } from '../paging/Pager'
@@ -64,6 +64,7 @@ export function StatsPage() {
       {stats.data && (
         <div className="stats-sections">
           <DeviantArtSection stats={stats.data.deviantArt} />
+          <PublishingSection perDay={stats.data.publishedPerDay} />
           <PresetSection presets={stats.data.presets} />
           <PipelineSection pipeline={stats.data.pipeline} />
           <InspirationSection inspiration={stats.data.inspiration} />
@@ -143,6 +144,27 @@ function DeviantArtSection({ stats }: { stats: DeviantArtStats }) {
           <DeviationTable deviations={stats.deviations} />
         </>
       )}
+    </section>
+  )
+}
+
+function PublishingSection({ perDay }: { perDay: DailyPublished[] }) {
+  return (
+    <section className="panel stats-section">
+      <h3>Publishing</h3>
+      <div className="stats-charts">
+        <DailyBarChart
+          title="Sets published per day"
+          unit="sets"
+          values={perDay.map((day) => ({ day: day.day, value: day.sets }))}
+        />
+        <DailyBarChart
+          title="Images published per day"
+          unit="images"
+          values={perDay.map((day) => ({ day: day.day, value: day.images }))}
+        />
+      </div>
+      <p className="hint">A set's images are its picks.</p>
     </section>
   )
 }

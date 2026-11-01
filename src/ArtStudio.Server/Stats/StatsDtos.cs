@@ -6,7 +6,11 @@ public sealed record StatsDto(
     DeviantArtStatsDto DeviantArt,
     IReadOnlyList<PresetStatsDto> Presets,
     PipelineStatsDto Pipeline,
-    InspirationStatsDto Inspiration);
+    InspirationStatsDto Inspiration,
+    IReadOnlyList<DailyPublishedDto> PublishedPerDay);
+
+/// <summary>A published set's images are its picks.</summary>
+public sealed record DailyPublishedDto(DateOnly Day, int Sets, int Images);
 
 public sealed record DeviantArtStatsDto(
     bool Connected,

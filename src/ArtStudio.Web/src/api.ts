@@ -406,6 +406,14 @@ export interface Stats {
   presets: PresetStats[]
   pipeline: PipelineStats
   inspiration: InspirationStats
+  publishedPerDay: DailyPublished[]
+}
+
+/** A published set's images are its picks. */
+export interface DailyPublished {
+  day: string
+  sets: number
+  images: number
 }
 
 export class ApiError extends Error {

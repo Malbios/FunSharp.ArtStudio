@@ -294,6 +294,22 @@ public sealed class StatsTests : IDisposable
     }
 
     [Fact]
+    public async Task Stats_CountSetsAndTheirPickedImagesPublishedPerDay()
+    {
+        await SeedSetAsync("fox", 3, [0, 1], Published(daysAgo: 0));
+        await SeedSetAsync("owl", 2, [0], Published(daysAgo: 3));
+        await SeedSetAsync("cat", 4, [0, 1, 2], set => { Published(daysAgo: 3)(set); set.ArchivedAt = DateTimeOffset.UtcNow; });
+        await SeedSetAsync("unpublished", 2, [0, 1]);
+
+        var perDay = (await StatsAsync()).PublishedPerDay;
+
+        Assert.Equal(StatsService.ChartDays, perDay.Count);
+        Assert.Equal(new DailyPublishedDto(Today, 1, 2), perDay[^1]);
+        Assert.Equal(new DailyPublishedDto(Today.AddDays(-3), 2, 4), perDay[^4]);
+        Assert.Equal((3, 6), (perDay.Sum(d => d.Sets), perDay.Sum(d => d.Images)));
+    }
+
+    [Fact]
     public async Task Stats_RankTheArtistsWhoInspiredTheMostSets()
     {
         var published = await SeedSetAsync("fox", 1, [0], set => { Published(daysAgo: 2)(set); set.DeviantArtAuthor = "alice"; set.SourceKind = SourceKind.DeviantArt; });
