@@ -442,6 +442,9 @@ namespace ArtStudio.Server.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("DefaultGalleryId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("DeviantArtClientId")
                         .HasColumnType("TEXT");
 

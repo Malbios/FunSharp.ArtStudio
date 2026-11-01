@@ -26,9 +26,25 @@ const noPost: PostDetails = {
 
 describe('initial publish choice', () => {
   const galleries: Gallery[] = [
-    { folderId: 'scenery', name: 'Scenery', mature: false, lastUsed: true },
-    { folderId: 'spicy', name: 'Spicy', mature: true, lastUsed: false },
+    { folderId: 'scenery', name: 'Scenery', mature: false, lastUsed: true, isDefault: false },
+    { folderId: 'spicy', name: 'Spicy', mature: true, lastUsed: false, isDefault: false },
   ]
+  const withDefault = (folderId: string) => galleries.map((gallery) => ({ ...gallery, isDefault: gallery.folderId === folderId }))
+
+  it('starts at the default gallery over the one published to last, with its mature setting', () => {
+    expect(initialPublishChoice(withDefault('spicy'), noPost)).toEqual({ galleryId: 'spicy', matureLevel: 'moderate' })
+  })
+
+  it('keeps what was chosen for the set over the default gallery', () => {
+    expect(initialPublishChoice(withDefault('spicy'), { publishGalleryId: 'scenery', publishMatureLevel: 'none' })).toEqual({
+      galleryId: 'scenery',
+      matureLevel: 'none',
+    })
+  })
+
+  it('falls back to the gallery published to last when the default one is gone', () => {
+    expect(initialPublishChoice(withDefault('deleted'), noPost)).toEqual({ galleryId: 'scenery', matureLevel: 'none' })
+  })
 
   it('starts at the gallery published to last, with its mature setting', () => {
     expect(initialPublishChoice(galleries, noPost)).toEqual({ galleryId: 'scenery', matureLevel: 'none' })

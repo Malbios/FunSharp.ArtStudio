@@ -46,8 +46,8 @@ export interface PublishChoice {
 export const matureLevelOf = (gallery: Gallery | undefined): PublishMatureLevel => (gallery?.mature ? 'moderate' : 'none')
 
 /**
- * What the set was last set to, as far as it still applies; otherwise the gallery published to last, with its own
- * mature setting.
+ * What the set was last set to, as far as it still applies; otherwise the default gallery, or else the gallery
+ * published to last, with its own mature setting.
  */
 export function initialPublishChoice(
   galleries: Gallery[],
@@ -55,6 +55,7 @@ export function initialPublishChoice(
 ): PublishChoice {
   const gallery =
     galleries.find((candidate) => candidate.folderId === post.publishGalleryId) ??
+    galleries.find((candidate) => candidate.isDefault) ??
     galleries.find((candidate) => candidate.lastUsed)
   return { galleryId: gallery?.folderId ?? '', matureLevel: post.publishMatureLevel ?? matureLevelOf(gallery) }
 }

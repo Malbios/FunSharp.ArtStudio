@@ -282,6 +282,7 @@ export interface Gallery {
   name: string
   mature: boolean
   lastUsed: boolean
+  isDefault: boolean
 }
 
 export type MatureLevel = 'moderate' | 'strict'
@@ -526,6 +527,8 @@ export const api = {
   galleries: () => request<Gallery[]>('GET', '/api/deviantart/galleries'),
   saveMatureGalleries: (folderIds: string[]) =>
     request<Gallery[]>('PUT', '/api/deviantart/mature-galleries', { folderIds }),
+  saveDefaultGallery: (folderId: string | null) =>
+    request<Gallery[]>('PUT', '/api/deviantart/default-gallery', { folderId }),
   deviantArtTitle: (setId: number) =>
     request<{ title: string | null }>('POST', `/api/sets/${setId}/deviantart-title`),
   suggestTitle: (setId: number) => request<{ title: string }>('POST', `/api/sets/${setId}/post/suggest-title`),

@@ -7,6 +7,8 @@ namespace ArtStudio.Server.Api;
 
 public sealed record MatureGalleriesRequest(IReadOnlyList<string> FolderIds);
 
+public sealed record DefaultGalleryRequest(string? FolderId);
+
 public sealed record SuggestedTitleDto(string Title);
 
 public sealed record SuggestedTagsDto(IReadOnlyList<string> Tags);
@@ -24,6 +26,11 @@ public static class PostEndpoints
         app.MapPut("/api/deviantart/mature-galleries", async (MatureGalleriesRequest request, DeviantArtPosting posting, CancellationToken ct) =>
         {
             await posting.SaveMatureGalleriesAsync(request.FolderIds ?? [], ct);
+            return await posting.GalleriesAsync(ct);
+        });
+        app.MapPut("/api/deviantart/default-gallery", async (DefaultGalleryRequest request, DeviantArtPosting posting, CancellationToken ct) =>
+        {
+            await posting.SaveDefaultGalleryAsync(request.FolderId, ct);
             return await posting.GalleriesAsync(ct);
         });
 

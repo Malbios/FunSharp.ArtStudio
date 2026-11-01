@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, type DeviantArtApp } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
+import { DefaultGallery } from './DefaultGallery'
 import { MatureGalleries } from './MatureGalleries'
 
 const DEVELOPER_APPS_URL = 'https://www.deviantart.com/developers/apps'
@@ -106,7 +107,12 @@ export function DeviantArtConnection() {
         </form>
       </details>
 
-      {app.connected && <MatureGalleries />}
+      {app.connected && (
+        <>
+          <DefaultGallery />
+          <MatureGalleries />
+        </>
+      )}
 
       {error && <p className="error">{error}</p>}
 

@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ArtStudio.Server.DeviantArt;
 
-public sealed record Gallery(string FolderId, string Name, bool Mature, bool LastUsed);
+public sealed record Gallery(string FolderId, string Name, bool Mature, bool LastUsed, bool IsDefault);
 
 public sealed record StashRequest(string Title, string? Description, string? Tags);
 
@@ -236,7 +236,9 @@ public sealed partial class DeviantArtPosting(
                 var folderId = folder?["folderid"]?.GetValue<string>();
                 var name = folder?["name"]?.GetValue<string>();
                 if (folderId is not null && name is not null)
-                    galleries.Add(new Gallery(folderId, name, matureIds.Contains(folderId), folderId == settings.LastGalleryId));
+                    galleries.Add(new Gallery(
+                        folderId, name, matureIds.Contains(folderId), folderId == settings.LastGalleryId,
+                        folderId == settings.DefaultGalleryId));
             }
             offset = page["has_more"]?.GetValue<bool>() == true ? page["next_offset"]?.GetValue<int>() : null;
         }
@@ -248,6 +250,13 @@ public sealed partial class DeviantArtPosting(
         var settings = await SettingsStore.LoadAsync(db, paths, ct);
         var ids = folderIds.Select(id => id.Trim()).Where(id => id.Length > 0).Distinct().ToList();
         settings.MatureGalleryIds = ids.Count == 0 ? null : string.Join(IdSeparator, ids);
+        await db.SaveChangesAsync(ct);
+    }
+
+    public async Task SaveDefaultGalleryAsync(string? folderId, CancellationToken ct)
+    {
+        var settings = await SettingsStore.LoadAsync(db, paths, ct);
+        settings.DefaultGalleryId = string.IsNullOrWhiteSpace(folderId) ? null : folderId.Trim();
         await db.SaveChangesAsync(ct);
     }
 

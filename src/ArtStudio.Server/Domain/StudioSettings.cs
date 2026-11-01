@@ -20,6 +20,7 @@ public class StudioSettings
     public string? ProtectedVisionApiKey { get; set; }
     public string? MatureGalleryIds { get; set; }
     public string? LastGalleryId { get; set; }
+    public string? DefaultGalleryId { get; set; }
     public DateTimeOffset? DeviationStatsFetchedAt { get; set; }
     public string? GoogleClientId { get; set; }
     public string? ProtectedGoogleClientSecret { get; set; }

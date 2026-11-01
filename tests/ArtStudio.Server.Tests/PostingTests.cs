@@ -53,6 +53,20 @@ public sealed class PostingTests : IDisposable
     }
 
     [Fact]
+    public async Task DefaultGallery_IsRemembered_UntilCleared()
+    {
+        await _factory.ConnectDeviantArtAsync();
+        async Task<string?[]> DefaultsAsync() =>
+            (await GalleriesAsync()).Where(g => g.GetProperty("isDefault").GetBoolean()).Select(g => g.GetProperty("folderId").GetString()).ToArray();
+
+        (await _client.PutAsJsonAsync("/api/deviantart/default-gallery", new { folderId = "F-SPICY" })).EnsureSuccessStatusCode();
+        Assert.Equal(["F-SPICY"], await DefaultsAsync());
+
+        (await _client.PutAsJsonAsync("/api/deviantart/default-gallery", new { folderId = (string?)null })).EnsureSuccessStatusCode();
+        Assert.Empty(await DefaultsAsync());
+    }
+
+    [Fact]
     public async Task Galleries_WithoutConnection_AskToConnect()
     {
         var error = await ErrorOf(await _client.GetAsync("/api/deviantart/galleries"));
