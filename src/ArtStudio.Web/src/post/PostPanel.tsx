@@ -226,7 +226,12 @@ function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & 
   )
 }
 
-function PublishForm({ set, onPublished }: Pick<PostPanelProps, 'set' | 'onPublished'>) {
+interface PublishFormProps {
+  set: Pick<SetDetail, 'id' | 'post'>
+  onPublished: () => void
+}
+
+export function PublishForm({ set, onPublished }: PublishFormProps) {
   const [galleries, setGalleries] = useState<Gallery[]>()
   const [choice, setChoice] = useState<PublishChoice>({ galleryId: '', matureLevel: 'none' })
   const [publishing, setPublishing] = useState(false)

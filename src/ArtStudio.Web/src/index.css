@@ -1235,6 +1235,23 @@ main {
   font-size: 0.9rem;
 }
 
+.set-card-publish {
+  margin-top: 0.6rem;
+}
+
+.set-card-publish .publish-form {
+  margin: 0 0 0.4rem;
+}
+
+.set-card-publish .field-row {
+  flex-direction: column;
+  gap: 0;
+}
+
+.set-card-publish .field.narrow {
+  flex-basis: auto;
+}
+
 /* Set detail */
 
 .set-toolbar {

@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../api'
+import { api, type SetDetail } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { NewVideosBadge } from '../sets/NewVideosBadge'
+import { PublishForm } from './PostPanel'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
 import { STASHED_FILTERS } from '../paging/listFilters'
@@ -51,11 +53,54 @@ export function StashedPage() {
                   </span>
                 )}
               </div>
+              <PublishFromCard setId={set.id} onPublished={sets.reload} />
             </div>
           </div>
         ))}
       </div>
       {pager}
+    </div>
+  )
+}
+
+function PublishFromCard({ setId, onPublished }: { setId: number; onPublished: () => void }) {
+  const [set, setSet] = useState<SetDetail>()
+  const [opening, setOpening] = useState(false)
+  const [error, setError] = useState<string>()
+
+  async function open() {
+    setOpening(true)
+    setError(undefined)
+    try {
+      setSet(await api.set(setId))
+    } catch (failure) {
+      setError((failure as Error).message)
+    } finally {
+      setOpening(false)
+    }
+  }
+
+  if (!set)
+    return (
+      <div className="set-card-publish">
+        <button type="button" className="success" disabled={opening} onClick={() => void open()}>
+          {opening ? 'Opening…' : 'Publish…'}
+        </button>
+        {error && <p className="error">{error}</p>}
+      </div>
+    )
+  return (
+    <div className="set-card-publish">
+      <PublishForm
+        set={set}
+        onPublished={() => {
+          setSet(undefined)
+          onPublished()
+        }}
+      />
+      <button type="button" className="link-button" onClick={() => setSet(undefined)}>
+        Cancel
+      </button>
     </div>
   )
 }
