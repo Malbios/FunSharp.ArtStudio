@@ -52,7 +52,10 @@ public sealed class StatsService(StudioDbContext db, DeviantArtAuth auth, TimePr
             .OrderBy(b => b.SortOrder)
             .Select(b => new PresetRow(b.Id, b.Label, b.ArtStyle!))
             .ToListAsync(ct);
-        var fetchedAt = await db.Settings.Select(s => s.DeviationStatsFetchedAt).FirstOrDefaultAsync(ct);
+        var fetchedAt = await db.Settings
+            .Where(s => s.Id == StudioSettings.SingletonId)
+            .Select(s => s.DeviationStatsFetchedAt)
+            .SingleOrDefaultAsync(ct);
         var connected = await auth.IsConnectedAsync(ct);
 
         var now = clock.GetUtcNow();
