@@ -2,8 +2,10 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using ArtStudio.Server.Data;
 using ArtStudio.Server.Domain;
 using ArtStudio.Server.Tests.Fakes;
+using Microsoft.Extensions.DependencyInjection;
 using static ArtStudio.Server.Tests.Fakes.StudioAppFactory;
 
 namespace ArtStudio.Server.Tests;
@@ -241,6 +243,31 @@ public sealed class QueueTests : IDisposable
 
         (await MoveAsync(ids[0], "Bottom")).EnsureSuccessStatusCode();
         Assert.Equal([ids[2], ids[1], ids[3], ids[0]], await OrderAsync());
+    }
+
+    [Fact]
+    public async Task TopAndBottom_ChangeOnlyTheMovedJobsPosition()
+    {
+        (await _client.PostAsync("/api/queue/pause", null)).EnsureSuccessStatusCode();
+        var ids = new List<int>();
+        foreach (var prompt in new[] { "a", "b", "c", "d" })
+            ids.Add(await SingleJobIdAsync(await _factory.CreateSetAsync(_client, prompt, count: 1)));
+        Dictionary<int, long> Positions()
+        {
+            using var scope = _factory.Services.CreateScope();
+            return scope.ServiceProvider.GetRequiredService<StudioDbContext>().Jobs.ToDictionary(j => j.Id, j => j.QueuePosition);
+        }
+        int[] Changed(Dictionary<int, long> before, Dictionary<int, long> after) =>
+            [.. ids.Where(id => before[id] != after[id])];
+
+        var beforeTop = Positions();
+        (await MoveAsync(ids[3], "Top")).EnsureSuccessStatusCode();
+        var afterTop = Positions();
+        (await MoveAsync(ids[0], "Bottom")).EnsureSuccessStatusCode();
+
+        Assert.Equal([ids[3]], Changed(beforeTop, afterTop));
+        Assert.Equal([ids[0]], Changed(afterTop, Positions()));
+        Assert.Equal([ids[3], ids[1], ids[2], ids[0]], (await GetQueueAsync(_client)).Active.Select(j => j.Id));
     }
 
     private static void QueueFirst(MultipartFormDataContent form) => form.Add(new StringContent("true"), "queueFirst");

@@ -151,7 +151,10 @@ public sealed class QueueService(
         await SetPausedAsync(job.Kind, false, ct);
     }
 
-    /// <summary>Moves a waiting job among the waiting jobs of its kind; the others keep their relative order.</summary>
+    /// <summary>
+    /// Moves a waiting job among the waiting jobs of its kind; the others keep their positions. Only the moved job (and
+    /// for Up and Down its neighbour) changes, since every changed job makes each open page reload.
+    /// </summary>
     public async Task MoveAsync(int jobId, QueueMove move, CancellationToken ct)
     {
         var kind = await db.Jobs.Where(j => j.Id == jobId).Select(j => (JobKind?)j.Kind).SingleOrDefaultAsync(ct);
@@ -167,24 +170,26 @@ public sealed class QueueService(
         if (index == waiting.Count - 1 && move is QueueMove.Down or QueueMove.Bottom)
             throw new UserFacingException("This job is already last.");
 
-        var target = move switch
-        {
-            QueueMove.Top => 0,
-            QueueMove.Up => index - 1,
-            QueueMove.Down => index + 1,
-            _ => waiting.Count - 1,
-        };
-        var positions = waiting.Select(j => j.QueuePosition).ToList();
         var job = waiting[index];
-        waiting.RemoveAt(index);
-        waiting.Insert(target, job);
-        var moved = waiting.Where((candidate, position) => candidate.QueuePosition != positions[position]).ToList();
-        for (var position = 0; position < waiting.Count; position++)
-            waiting[position].QueuePosition = positions[position];
+        List<GenerationJob> changed = [job];
+        switch (move)
+        {
+            case QueueMove.Top:
+                job.QueuePosition = waiting[0].QueuePosition - 1;
+                break;
+            case QueueMove.Bottom:
+                job.QueuePosition = await db.Jobs.MaxAsync(j => j.QueuePosition, ct) + 1;
+                break;
+            default:
+                var neighbour = waiting[move == QueueMove.Up ? index - 1 : index + 1];
+                (job.QueuePosition, neighbour.QueuePosition) = (neighbour.QueuePosition, job.QueuePosition);
+                changed.Add(neighbour);
+                break;
+        }
         await db.SaveChangesAsync(ct);
 
-        foreach (var changed in moved)
-            await notifier.JobUpdated(changed.Id, changed.PromptSetId);
+        foreach (var updated in changed)
+            await notifier.JobUpdated(updated.Id, updated.PromptSetId);
     }
 
     /// <summary>Pauses or resumes the image or the video jobs, or both when no kind is given.</summary>
