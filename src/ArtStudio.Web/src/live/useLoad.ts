@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { coalesce } from './coalesce'
 
 export interface Loaded<T> {
   data: T | undefined
@@ -6,30 +7,27 @@ export interface Loaded<T> {
   reload: () => void
 }
 
-/** Loads data on mount and whenever `key` changes; `reload` refetches on demand. */
+/** Loads data on mount and whenever `key` changes; `reload` refetches on demand, one request at a time. */
 export function useLoad<T>(load: () => Promise<T>, key: unknown = null): Loaded<T> {
   const [data, setData] = useState<T>()
   const [error, setError] = useState<string>()
   const loadRef = useRef(load)
-  const requestCounter = useRef(0)
+  const coalescedReload = useRef<() => void>(undefined)
 
   useEffect(() => {
     loadRef.current = load
   })
 
   const reload = useCallback(() => {
-    const requestId = ++requestCounter.current
-    loadRef.current().then(
-      (result) => {
-        if (requestId !== requestCounter.current) return
-        setData(result)
+    coalescedReload.current ??= coalesce(async () => {
+      try {
+        setData(await loadRef.current())
         setError(undefined)
-      },
-      (failure: Error) => {
-        if (requestId !== requestCounter.current) return
-        setError(failure.message)
-      },
-    )
+      } catch (failure) {
+        setError((failure as Error).message)
+      }
+    })
+    coalescedReload.current()
   }, [])
 
   useEffect(() => reload(), [reload, key])
