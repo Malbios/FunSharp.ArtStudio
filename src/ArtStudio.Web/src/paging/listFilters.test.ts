@@ -119,8 +119,17 @@ describe('draft filters', () => {
     expect(matches(DRAFT_FILTERS, 'settled', summary({ prompt: '  ', state: 'None' }))).toBe(false)
   })
 
-  it('never combines the two', () => {
-    expect(DRAFT_FILTERS.find((filter) => filter.key === 'pending')!.excludes).toEqual(['settled'])
+  it('shows drafts whose prompt is neither pending nor failed as not generating, queued or failed', () => {
+    expect(matches(DRAFT_FILTERS, 'quiet', summary({ prompt: 'A fox.', state: 'Done' }))).toBe(true)
+    expect(matches(DRAFT_FILTERS, 'quiet', summary({ prompt: '', state: 'None' }))).toBe(true)
+    expect(matches(DRAFT_FILTERS, 'quiet', summary({ prompt: 'A fox.', state: 'Failed' }))).toBe(false)
+    expect(matches(DRAFT_FILTERS, 'quiet', summary({ prompt: 'A fox.', state: 'Queued' }))).toBe(false)
+    expect(matches(DRAFT_FILTERS, 'quiet', summary({ state: 'Running' }))).toBe(false)
+  })
+
+  it('never combines pending with the others', () => {
+    expect(DRAFT_FILTERS.find((filter) => filter.key === 'pending')!.excludes).toEqual(['settled', 'quiet'])
     expect(DRAFT_FILTERS.find((filter) => filter.key === 'settled')!.excludes).toEqual(['pending'])
+    expect(DRAFT_FILTERS.find((filter) => filter.key === 'quiet')!.excludes).toEqual(['pending'])
   })
 })
