@@ -72,12 +72,12 @@ export const DRAFT_FILTERS: ListFilter<SetSummary>[] = [
     key: 'settled',
     label: 'Ready or failed',
     matches: (draft) => isDraftReady(draft) || draft.promptGeneration.state === 'Failed',
-    excludes: ['pending'],
+    excludes: ['pending', 'quiet'],
   },
   {
     key: 'quiet',
-    label: 'Not generating, queued or failed',
+    label: 'Ready or no prompt yet',
     matches: (draft) => !isPromptPending(draft.promptGeneration) && draft.promptGeneration.state !== 'Failed',
-    excludes: ['pending'],
+    excludes: ['pending', 'settled'],
   },
 ]
