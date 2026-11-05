@@ -157,6 +157,33 @@ public sealed class StatsTests : IDisposable
         Assert.Equal(100, Assert.Single(await SnapshotsAsync()).Views);
     }
 
+    [Fact]
+    public async Task Stats_TimeNewPromptRunsPerDay_LeavingOutModificationsAndOlderRuns()
+    {
+        var now = DateTimeOffset.UtcNow.AddMinutes(-1);
+        PromptRun Run(TimeSpan finishedBefore, double minutes, bool succeeded = true, PromptGenerationKind kind = PromptGenerationKind.Generate) =>
+            new() { PromptSetId = 1, Kind = kind, StartedAt = now - finishedBefore - TimeSpan.FromMinutes(minutes), FinishedAt = now - finishedBefore, Succeeded = succeeded };
+        await SeedAsync(db => db.PromptRuns.AddRange(
+            Run(TimeSpan.Zero, 10),
+            Run(TimeSpan.Zero, 20, succeeded: false),
+            Run(TimeSpan.FromDays(3), 30),
+            Run(TimeSpan.Zero, 1, kind: PromptGenerationKind.Modify),
+            Run(TimeSpan.FromDays(StatsService.ChartDays + 1), 60)));
+
+        var vision = (await StatsAsync()).Vision;
+
+        Assert.Equal((3, 1), (vision.Runs, vision.Failed));
+        Assert.Equal(20, vision.AverageMinutes!.Value, 3);
+        Assert.Equal(30, vision.LongestMinutes!.Value, 3);
+        Assert.Equal(StatsService.ChartDays, vision.Daily.Count);
+        var today = vision.Daily[^1];
+        Assert.Equal((Today, 2), (today.Day, today.Runs));
+        Assert.Equal(15, today.AverageMinutes!.Value, 3);
+        Assert.Equal(20, today.LongestMinutes!.Value, 3);
+        Assert.Equal(30, vision.Daily[^4].LongestMinutes!.Value, 3);
+        Assert.Equal(new DailyPromptTimeDto(Today.AddDays(-1), 0, null, null), vision.Daily[^2]);
+    }
+
     private async Task<StatsDto> StatsAsync() => (await _client.GetFromJsonAsync<StatsDto>("/api/stats", StudioAppFactory.Json))!;
 
     private async Task SeedAsync(Action<StudioDbContext> seed)

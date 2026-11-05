@@ -12,6 +12,8 @@ interface DailyBarChartProps {
   title: string
   unit: string
   values: DailyValue[]
+  /** Replaces the total, for values whose sum means nothing. */
+  summary?: string
 }
 
 const INITIAL_WIDTH = 640
@@ -20,7 +22,7 @@ const PLOT = { top: 10, right: 4, bottom: 22, left: 44 }
 const MAX_BAR_WIDTH = 24
 const BAR_GAP = 2
 
-export function DailyBarChart({ title, unit, values }: DailyBarChartProps) {
+export function DailyBarChart({ title, unit, values, summary }: DailyBarChartProps) {
   const [hovered, setHovered] = useState<number>()
   const plotRef = useRef<HTMLDivElement>(null)
   const width = useElementWidth(plotRef, INITIAL_WIDTH)
@@ -40,9 +42,7 @@ export function DailyBarChart({ title, unit, values }: DailyBarChartProps) {
     <figure className="daily-chart">
       <figcaption>
         <h4>{title}</h4>
-        <span className="hint">
-          {total.toLocaleString()} {unit} in {values.length} days
-        </span>
+        <span className="hint">{summary ?? `${total.toLocaleString()} ${unit} in ${values.length} days`}</span>
       </figcaption>
       <div className="daily-chart-plot" ref={plotRef}>
         <svg width={width} height={HEIGHT} role="img" aria-label={`${title}: ${total} ${unit} in ${values.length} days`}>

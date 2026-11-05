@@ -302,6 +302,35 @@ namespace ArtStudio.Server.Data.Migrations
                     b.ToTable("Picks");
                 });
 
+            modelBuilder.Entity("ArtStudio.Server.Domain.PromptRun", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("FinishedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PromptSetId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("StartedAt")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Succeeded")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FinishedAt");
+
+                    b.ToTable("PromptRuns");
+                });
+
             modelBuilder.Entity("ArtStudio.Server.Domain.PromptSet", b =>
                 {
                     b.Property<int>("Id")

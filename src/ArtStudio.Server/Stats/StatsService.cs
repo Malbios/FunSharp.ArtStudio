@@ -27,6 +27,8 @@ public sealed class StatsService(StudioDbContext db, DeviantArtAuth auth, TimePr
 
     private sealed record SnapshotRow(int SetId, DateOnly Day, int Views, int Favourites, int Comments, int Downloads);
 
+    private sealed record PromptRunRow(DateTimeOffset StartedAt, DateTimeOffset FinishedAt, bool Succeeded);
+
     private sealed record PresetRow(int Id, string Label, string ArtStyle);
 
     private sealed record Deviation(SetRow Set, int? PresetId, DeviationStatsDto Dto);
@@ -59,6 +61,11 @@ public sealed class StatsService(StudioDbContext db, DeviantArtAuth auth, TimePr
         var connected = await auth.IsConnectedAsync(ct);
 
         var now = clock.GetUtcNow();
+        var monthAgo = now.AddDays(-ChartDays);
+        var promptRuns = await db.PromptRuns
+            .Where(r => r.Kind == PromptGenerationKind.Generate && r.FinishedAt >= monthAgo)
+            .Select(r => new PromptRunRow(r.StartedAt, r.FinishedAt, r.Succeeded))
+            .ToListAsync(ct);
         var presetByJob = jobs.ToDictionary(job => job.Id, job => PresetOf(job.Prompt, presets)?.Id);
         var presetByImage = images.ToDictionary(image => image.Id, image => presetByJob.GetValueOrDefault(image.JobId));
         var mainPickBySet = picks.GroupBy(p => p.SetId).ToDictionary(group => group.Key, group => group.MinBy(p => p.Position)!.ImageId);
@@ -69,7 +76,27 @@ public sealed class StatsService(StudioDbContext db, DeviantArtAuth auth, TimePr
             PresetStats(presets, images, picks, presetByImage, deviations),
             PipelineStats(sets, jobs, images, picks, now),
             InspirationStats(sets, deviations),
-            PublishedPerDay(sets, picks, now));
+            PublishedPerDay(sets, picks, now),
+            VisionStats(promptRuns, now));
+    }
+
+    private VisionStatsDto VisionStats(List<PromptRunRow> runs, DateTimeOffset now)
+    {
+        static double Minutes(PromptRunRow run) => (run.FinishedAt - run.StartedAt).TotalMinutes;
+        var runsByDay = runs.GroupBy(r => LocalDay(r.FinishedAt)).ToDictionary(group => group.Key, group => group.ToList());
+        var today = LocalDay(now);
+        var daily = Enumerable.Range(0, ChartDays)
+            .Select(offset => today.AddDays(offset - ChartDays + 1))
+            .Select(day => runsByDay.TryGetValue(day, out var dayRuns)
+                ? new DailyPromptTimeDto(day, dayRuns.Count, dayRuns.Average(Minutes), dayRuns.Max(Minutes))
+                : new DailyPromptTimeDto(day, 0, null, null))
+            .ToList();
+        return new VisionStatsDto(
+            runs.Count,
+            runs.Count(r => !r.Succeeded),
+            runs.Count == 0 ? null : runs.Average(Minutes),
+            runs.Count == 0 ? null : runs.Max(Minutes),
+            daily);
     }
 
     private List<DailyPublishedDto> PublishedPerDay(List<SetRow> sets, List<PickRow> picks, DateTimeOffset now)

@@ -1,3 +1,4 @@
+using ArtStudio.Server.Api;
 using ArtStudio.Server.Data;
 using ArtStudio.Server.Domain;
 using ArtStudio.Server.Generation;
@@ -70,13 +71,15 @@ public sealed class PromptGenerationWorker(
         var db = scope.ServiceProvider.GetRequiredService<StudioDbContext>();
         // Registered before the set shows as running, so a cancel right after the state change is never missed.
         var runToken = queue.BeginRun(setId, stoppingToken);
+        var startedAt = clock.GetUtcNow();
+        var kind = PromptGenerationKind.Generate;
         try
         {
             var claimed = await db.PromptSets
                 .Where(s => s.Id == setId && s.PromptGeneration == PromptGenerationState.Queued)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(set => set.PromptGeneration, PromptGenerationState.Running)
-                    .SetProperty(set => set.PromptGenerationStartedAt, clock.GetUtcNow())
+                    .SetProperty(set => set.PromptGenerationStartedAt, startedAt)
                     .SetProperty(set => set.PromptGenerationFinishedAt, (DateTimeOffset?)null)
                     .SetProperty(set => set.PromptGenerationError, (string?)null), stoppingToken);
             if (claimed == 0)
@@ -84,19 +87,24 @@ public sealed class PromptGenerationWorker(
             await notifier.SetUpdated(setId);
 
             var set = await db.PromptSets.AsNoTracking().SingleAsync(s => s.Id == setId, runToken);
+            kind = PromptGenerationDto.From(set).Kind;
             var key = await apiKey.GetAsync(runToken)
                 ?? throw new UserFacingException("Set the vision API key in Settings.");
             var (answer, prompt) = set is { ModifyInstructions: { } instructions, ModifyBasePrompt: { } basePrompt }
                 ? await ModifyAsync(key, basePrompt, set.ModifyParagraphIndex, set.ModifySection, instructions, runToken)
                 : await DescribeSourceImageAsync(key, set.SourceImagePath, set.VisionContext, runToken);
+            var finishedAt = clock.GetUtcNow();
             var finished = await FinishRunningAsync(db, setId, s => s
                 .SetProperty(set => set.GeneratedPrompt, prompt)
                 .SetProperty(set => set.Prompt, prompt)
                 .SetProperty(set => set.PromptGeneration, PromptGenerationState.Done)
-                .SetProperty(set => set.PromptGenerationFinishedAt, clock.GetUtcNow())
+                .SetProperty(set => set.PromptGenerationFinishedAt, finishedAt)
                 .SetProperty(set => set.PromptGenerationTruncated, answer.Truncated));
             if (finished)
+            {
+                await RecordRunAsync(db, new PromptRun { PromptSetId = setId, Kind = kind, StartedAt = startedAt, FinishedAt = finishedAt, Succeeded = true });
                 await QueueImagesAsync(scope.ServiceProvider.GetRequiredService<SetService>(), setId);
+            }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
@@ -110,10 +118,13 @@ public sealed class PromptGenerationWorker(
         {
             if (ex is not (VisionException or UserFacingException))
                 logger.LogError(ex, "Prompt generation for set {SetId} failed", setId);
-            await FinishRunningAsync(db, setId, s => s
+            var finishedAt = clock.GetUtcNow();
+            var failed = await FinishRunningAsync(db, setId, s => s
                 .SetProperty(set => set.PromptGeneration, PromptGenerationState.Failed)
-                .SetProperty(set => set.PromptGenerationFinishedAt, clock.GetUtcNow())
+                .SetProperty(set => set.PromptGenerationFinishedAt, finishedAt)
                 .SetProperty(set => set.PromptGenerationError, ex.Message));
+            if (failed)
+                await RecordRunAsync(db, new PromptRun { PromptSetId = setId, Kind = kind, StartedAt = startedAt, FinishedAt = finishedAt, Succeeded = false });
         }
         finally
         {
@@ -146,6 +157,12 @@ public sealed class PromptGenerationWorker(
         var answer = await visionClient.CompleteWithoutThinkingAsync(
             key, PromptModifier.BuildInstruction(basePrompt, paragraphIndex, section, instructions), ct);
         return (answer, PromptModifier.Apply(basePrompt, paragraphIndex, answer.Text));
+    }
+
+    private static async Task RecordRunAsync(StudioDbContext db, PromptRun run)
+    {
+        db.PromptRuns.Add(run);
+        await db.SaveChangesAsync(CancellationToken.None);
     }
 
     private async Task QueueImagesAsync(SetService setService, int setId)

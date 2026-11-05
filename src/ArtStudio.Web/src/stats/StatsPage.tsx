@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { api, type DailyPublished, type DeviantArtStats, type DeviationStats, type InspirationStats, type PipelineStats, type PresetStats, type SourceKind } from '../api'
+import { api, type DailyPublished, type DeviantArtStats, type DeviationStats, type InspirationStats, type PipelineStats, type PresetStats, type SourceKind, type VisionStats } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { useLoad } from '../live/useLoad'
 import { Pager } from '../paging/Pager'
@@ -67,6 +67,7 @@ export function StatsPage() {
           <PublishingSection perDay={stats.data.publishedPerDay} />
           <PresetSection presets={stats.data.presets} />
           <PipelineSection pipeline={stats.data.pipeline} />
+          <VisionSection vision={stats.data.vision} />
           <InspirationSection inspiration={stats.data.inspiration} />
         </div>
       )}
@@ -364,6 +365,37 @@ function PipelineSection({ pipeline }: { pipeline: PipelineStats }) {
           values={pipeline.imagesPerDay.map((day) => ({ day: day.day, value: day.count }))}
         />
       </div>
+    </section>
+  )
+}
+
+const roundedMinutes = (minutes: number | null) => (minutes === null ? 0 : Math.round(minutes * 10) / 10)
+const formatMinutes = (minutes: number | null) => (minutes === null ? '–' : `${formatDecimal(minutes)} min`)
+
+function VisionSection({ vision }: { vision: VisionStats }) {
+  return (
+    <section className="panel stats-section">
+      <h3>Vision prompts</h3>
+      <div className="stat-tiles">
+        <StatTile label="Prompts, last 30 days" value={vision.runs.toLocaleString()} detail={`${vision.failed.toLocaleString()} failed`} />
+        <StatTile label="Average time" value={formatMinutes(vision.averageMinutes)} detail="per prompt" />
+        <StatTile label="Longest time" value={formatMinutes(vision.longestMinutes)} />
+      </div>
+      <div className="stats-charts">
+        <DailyBarChart
+          title="Average prompt time per day"
+          unit="min"
+          summary={`average ${formatMinutes(vision.averageMinutes)} over ${vision.runs.toLocaleString()} prompts`}
+          values={vision.daily.map((day) => ({ day: day.day, value: roundedMinutes(day.averageMinutes) }))}
+        />
+        <DailyBarChart
+          title="Longest prompt time per day"
+          unit="min"
+          summary={`longest ${formatMinutes(vision.longestMinutes)}`}
+          values={vision.daily.map((day) => ({ day: day.day, value: roundedMinutes(day.longestMinutes) }))}
+        />
+      </div>
+      <p className="hint">New prompts only, including failed ones; modified prompts are quick and left out. Counted since prompt times were first recorded.</p>
     </section>
   )
 }

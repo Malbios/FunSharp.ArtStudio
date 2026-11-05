@@ -412,6 +412,24 @@ export interface Stats {
   pipeline: PipelineStats
   inspiration: InspirationStats
   publishedPerDay: DailyPublished[]
+  vision: VisionStats
+}
+
+/** New prompts written by the vision model in the last 30 days; modified prompts are left out. */
+export interface VisionStats {
+  runs: number
+  failed: number
+  averageMinutes: number | null
+  longestMinutes: number | null
+  daily: DailyPromptTime[]
+}
+
+/** By the day a run finished; the minutes are null on days without runs. */
+export interface DailyPromptTime {
+  day: string
+  runs: number
+  averageMinutes: number | null
+  longestMinutes: number | null
 }
 
 /** A published set's images are its picks. */

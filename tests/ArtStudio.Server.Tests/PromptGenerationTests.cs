@@ -385,6 +385,32 @@ public sealed class PromptGenerationTests : IDisposable
         var done = (await GetSetAsync(_client, setId)).PromptGeneration;
         Assert.Equal(running.StartedAt, done.StartedAt);
         Assert.True(done.FinishedAt >= done.StartedAt);
+        var run = Assert.Single(await PromptRunsAsync());
+        Assert.Equal((setId, PromptGenerationKind.Generate, true), (run.PromptSetId, run.Kind, run.Succeeded));
+        Assert.Equal((done.StartedAt, done.FinishedAt), (run.StartedAt, run.FinishedAt));
+    }
+
+    [Fact]
+    public async Task CancelledRun_IsNotKeptForStats()
+    {
+        await SetVisionApiKeyAsync(_client);
+        _factory.Vision.HoldAnswers = true;
+        var setId = await CreateUploadDraftAsync();
+        await WaitForStateAsync(setId, PromptGenerationState.Running);
+
+        (await _client.PostAsync($"/api/prompt-queue/{setId}/cancel", null)).EnsureSuccessStatusCode();
+        _factory.Vision.HoldAnswers = false;
+        await WaitForStateAsync(setId, PromptGenerationState.None);
+        var second = await CreateUploadDraftAsync();
+        await WaitForStateAsync(second, PromptGenerationState.Done);
+
+        Assert.Equal([second], (await PromptRunsAsync()).Select(r => r.PromptSetId));
+    }
+
+    private async Task<List<PromptRun>> PromptRunsAsync()
+    {
+        using var scope = _factory.Services.CreateScope();
+        return await scope.ServiceProvider.GetRequiredService<StudioDbContext>().PromptRuns.ToListAsync();
     }
 
     [Fact]
@@ -398,6 +424,7 @@ public sealed class PromptGenerationTests : IDisposable
         var failed = (await GetSetAsync(_client, setId)).PromptGeneration;
         Assert.NotNull(failed.StartedAt);
         Assert.True(failed.FinishedAt >= failed.StartedAt);
+        Assert.False(Assert.Single(await PromptRunsAsync()).Succeeded);
     }
 
     [Fact]

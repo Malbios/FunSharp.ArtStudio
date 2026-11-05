@@ -7,7 +7,14 @@ public sealed record StatsDto(
     IReadOnlyList<PresetStatsDto> Presets,
     PipelineStatsDto Pipeline,
     InspirationStatsDto Inspiration,
-    IReadOnlyList<DailyPublishedDto> PublishedPerDay);
+    IReadOnlyList<DailyPublishedDto> PublishedPerDay,
+    VisionStatsDto Vision);
+
+/// <summary>New prompts written by the vision model in the last 30 days; modified prompts are left out.</summary>
+public sealed record VisionStatsDto(int Runs, int Failed, double? AverageMinutes, double? LongestMinutes, IReadOnlyList<DailyPromptTimeDto> Daily);
+
+/// <summary>By the day a run finished; the minutes are null on days without runs.</summary>
+public sealed record DailyPromptTimeDto(DateOnly Day, int Runs, double? AverageMinutes, double? LongestMinutes);
 
 /// <summary>A published set's images are its picks.</summary>
 public sealed record DailyPublishedDto(DateOnly Day, int Sets, int Images);
