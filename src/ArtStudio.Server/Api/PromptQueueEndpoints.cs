@@ -11,14 +11,16 @@ public sealed record PromptQueueItemDto(
     bool IsDraft,
     string? SourceImageUrl,
     string? DeviantArtAuthor,
-    string? Note)
+    string? Note,
+    DateTimeOffset? StartedAt)
 {
     public static PromptQueueItemDto From(PromptSet set)
     {
         var kind = PromptGenerationDto.From(set).Kind;
         return new(
             set.Id, set.PromptGeneration, kind, set.IsDraft, ApiUrls.SourceImage(set), set.DeviantArtAuthor,
-            kind == PromptGenerationKind.Modify ? set.ModifyInstructions : set.VisionContext);
+            kind == PromptGenerationKind.Modify ? set.ModifyInstructions : set.VisionContext,
+            set.PromptGeneration == PromptGenerationState.Running ? set.PromptGenerationStartedAt : null);
     }
 }
 

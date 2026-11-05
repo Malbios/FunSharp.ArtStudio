@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { api, type SetSummary } from '../api'
+import { useNow } from '../live/useNow'
 import { generateActionLabel } from '../prompt/generateAction'
 import { PROMPT_BADGES } from '../prompt/promptBadges'
+import { promptTimeLabel } from '../prompt/promptTimeLabel'
 
 export function DraftPromptStatus({ draft, onError }: { draft: SetSummary; onError: (message: string) => void }) {
   const [busy, setBusy] = useState(false)
+  const timeLabel = promptTimeLabel(draft.promptGeneration, useNow())
   const { state, kind, error, truncated } = draft.promptGeneration
   const badge = PROMPT_BADGES[kind][state]
   const action = generateActionLabel(draft.promptGeneration, draft.prompt.trim() !== '')
@@ -24,6 +27,7 @@ export function DraftPromptStatus({ draft, onError }: { draft: SetSummary; onErr
     <>
       <div className="job-meta">
         {badge && <span className={`badge status-${badge.status}`}>{badge.label}</span>}
+        {timeLabel && <span className="hint">{timeLabel}</span>}
         {state === 'Done' && truncated && <span className="hint">may be cut off</span>}
         {action && (
           <button type="button" className="link-button" disabled={busy} onClick={() => void generate()}>

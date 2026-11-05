@@ -214,10 +214,14 @@ public sealed record VideoResolutionPresetDto(string Name, double Megapixels, st
 
 public sealed record DeviantArtDraftRequest(string Url, string? VisionContext = null);
 
-public sealed record PromptGenerationDto(PromptGenerationState State, PromptGenerationKind Kind, string? Error, bool Truncated, string? Text)
+/// <summary>The times are of the latest run; FinishedAt is null while it runs.</summary>
+public sealed record PromptGenerationDto(
+    PromptGenerationState State, PromptGenerationKind Kind, string? Error, bool Truncated, string? Text,
+    DateTimeOffset? StartedAt, DateTimeOffset? FinishedAt)
 {
     public static PromptGenerationDto From(PromptSet set) =>
-        new(set.PromptGeneration, set.ModifyInstructions is null ? PromptGenerationKind.Generate : PromptGenerationKind.Modify, set.PromptGenerationError, set.PromptGenerationTruncated, set.GeneratedPrompt);
+        new(set.PromptGeneration, set.ModifyInstructions is null ? PromptGenerationKind.Generate : PromptGenerationKind.Modify, set.PromptGenerationError, set.PromptGenerationTruncated, set.GeneratedPrompt,
+            set.PromptGenerationStartedAt, set.PromptGenerationFinishedAt);
 }
 
 public sealed record BuildingBlockDto(

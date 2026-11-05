@@ -379,10 +379,16 @@ namespace ArtStudio.Server.Data.Migrations
                     b.Property<string>("PromptGenerationError")
                         .HasColumnType("TEXT");
 
+                    b.Property<long?>("PromptGenerationFinishedAt")
+                        .HasColumnType("INTEGER");
+
                     b.Property<long?>("PromptGenerationQueuedAt")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("PromptGenerationRequested")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("PromptGenerationStartedAt")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("PromptGenerationTruncated")

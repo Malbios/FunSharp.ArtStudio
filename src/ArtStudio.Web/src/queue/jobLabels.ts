@@ -12,7 +12,7 @@ export function jobSettingsLabel(job: Job): string {
     .join(' · ')
 }
 
-function formatDuration(seconds: number): string {
+export function formatDuration(seconds: number): string {
   if (seconds < 60) return 'less than a minute'
   const minutes = Math.round(seconds / 60)
   if (minutes < 90) return `${minutes} min`

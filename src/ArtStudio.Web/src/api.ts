@@ -159,6 +159,8 @@ export interface PromptQueueItem {
   deviantArtAuthor: string | null
   /** The vision context of a new prompt, or the instructions of a modification. */
   note: string | null
+  /** Set while it runs. */
+  startedAt: string | null
 }
 
 export interface PromptGeneration {
@@ -167,6 +169,9 @@ export interface PromptGeneration {
   error: string | null
   truncated: boolean
   text: string | null
+  /** Of the latest run; finishedAt is null while it runs. */
+  startedAt: string | null
+  finishedAt: string | null
 }
 
 export interface ModifiedParagraph {

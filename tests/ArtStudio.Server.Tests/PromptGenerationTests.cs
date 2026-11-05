@@ -369,6 +369,38 @@ public sealed class PromptGenerationTests : IDisposable
     }
 
     [Fact]
+    public async Task Run_RecordsWhenItStartedAndFinished()
+    {
+        await SetVisionApiKeyAsync(_client);
+        _factory.Vision.HoldAnswers = true;
+        var setId = await CreateUploadDraftAsync();
+        await WaitForStateAsync(setId, PromptGenerationState.Running);
+
+        var running = (await GetSetAsync(_client, setId)).PromptGeneration;
+        Assert.NotNull(running.StartedAt);
+        Assert.Null(running.FinishedAt);
+
+        _factory.Vision.HoldAnswers = false;
+        await WaitForStateAsync(setId, PromptGenerationState.Done);
+        var done = (await GetSetAsync(_client, setId)).PromptGeneration;
+        Assert.Equal(running.StartedAt, done.StartedAt);
+        Assert.True(done.FinishedAt >= done.StartedAt);
+    }
+
+    [Fact]
+    public async Task FailedRun_RecordsWhenItFinished()
+    {
+        await SetVisionApiKeyAsync(_client);
+        _factory.Vision.Status = HttpStatusCode.ServiceUnavailable;
+        var setId = await CreateUploadDraftAsync();
+        await WaitForStateAsync(setId, PromptGenerationState.Failed);
+
+        var failed = (await GetSetAsync(_client, setId)).PromptGeneration;
+        Assert.NotNull(failed.StartedAt);
+        Assert.True(failed.FinishedAt >= failed.StartedAt);
+    }
+
+    [Fact]
     public async Task ApiKey_IsStoredProtected_AndNeverReturned()
     {
         Assert.False((await _client.GetFromJsonAsync<JsonElement>("/api/vision")).GetProperty("hasApiKey").GetBoolean());

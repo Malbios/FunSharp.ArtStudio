@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { api, type PromptQueueItem } from '../api'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
+import { useNow } from '../live/useNow'
+import { promptTimeLabel } from '../prompt/promptTimeLabel'
 import { Pager } from '../paging/Pager'
 import { usePagedItems } from '../paging/usePagedItems'
 import { MOVES } from './queueMoves'
@@ -52,6 +54,7 @@ function PromptTile({ item, canMoveUp, canMoveDown }: PromptTileProps) {
   const [error, setError] = useState<string>()
   const openUrl = item.isDraft ? `/?draft=${item.setId}` : `/sets/${item.setId}`
   const label = `${item.isDraft ? 'draft' : 'set'} #${item.setId}`
+  const timeLabel = promptTimeLabel({ state: item.state, startedAt: item.startedAt, finishedAt: null }, useNow())
 
   async function run(action: () => Promise<void>) {
     setBusy(true)
@@ -81,6 +84,7 @@ function PromptTile({ item, canMoveUp, canMoveDown }: PromptTileProps) {
           <span className={`badge status-${item.state}`}>{item.state}</span>
           <span>{item.kind === 'Modify' ? 'Modify prompt' : 'New prompt'}</span>
           <span>{label}</span>
+          {timeLabel && <span className="hint">{timeLabel}</span>}
         </div>
         {item.note && <div className="hint prompt-queue-note">{item.note}</div>}
         {error && <div className="job-error">{error}</div>}

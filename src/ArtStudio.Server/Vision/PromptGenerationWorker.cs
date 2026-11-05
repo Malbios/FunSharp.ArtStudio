@@ -13,6 +13,7 @@ public sealed class PromptGenerationWorker(
     VisionApiKey apiKey,
     VisionInstruction instruction,
     StudioNotifier notifier,
+    TimeProvider clock,
     ILogger<PromptGenerationWorker> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -75,6 +76,8 @@ public sealed class PromptGenerationWorker(
                 .Where(s => s.Id == setId && s.PromptGeneration == PromptGenerationState.Queued)
                 .ExecuteUpdateAsync(s => s
                     .SetProperty(set => set.PromptGeneration, PromptGenerationState.Running)
+                    .SetProperty(set => set.PromptGenerationStartedAt, clock.GetUtcNow())
+                    .SetProperty(set => set.PromptGenerationFinishedAt, (DateTimeOffset?)null)
                     .SetProperty(set => set.PromptGenerationError, (string?)null), stoppingToken);
             if (claimed == 0)
                 return;
@@ -90,6 +93,7 @@ public sealed class PromptGenerationWorker(
                 .SetProperty(set => set.GeneratedPrompt, prompt)
                 .SetProperty(set => set.Prompt, prompt)
                 .SetProperty(set => set.PromptGeneration, PromptGenerationState.Done)
+                .SetProperty(set => set.PromptGenerationFinishedAt, clock.GetUtcNow())
                 .SetProperty(set => set.PromptGenerationTruncated, answer.Truncated));
             if (finished)
                 await QueueImagesAsync(scope.ServiceProvider.GetRequiredService<SetService>(), setId);
@@ -108,6 +112,7 @@ public sealed class PromptGenerationWorker(
                 logger.LogError(ex, "Prompt generation for set {SetId} failed", setId);
             await FinishRunningAsync(db, setId, s => s
                 .SetProperty(set => set.PromptGeneration, PromptGenerationState.Failed)
+                .SetProperty(set => set.PromptGenerationFinishedAt, clock.GetUtcNow())
                 .SetProperty(set => set.PromptGenerationError, ex.Message));
         }
         finally
