@@ -1,8 +1,8 @@
-// Content script on DeviantArt: on the home page, borders the thumbnails of users who already inspired a set, and hides
-// those of posts Art Studio already knows when switched on.
-// DeviantArt changes pages without reloading, so every page is watched and the home page is told by its address.
+// Content script on DeviantArt: on the home page and users' galleries and favourites, borders the thumbnails of users
+// who already inspired a set, and hides those of posts Art Studio already knows when switched on.
+// DeviantArt changes pages without reloading, so every page is watched and those pages are told by their address.
 ;(async () => {
-  const { inspirationLevel, isHomePage, isKnown, parsePost, postState } = await import(chrome.runtime.getURL('deviationLink.js'))
+  const { inspirationLevel, isFilteredPage, isKnown, parsePost, postState } = await import(chrome.runtime.getURL('deviationLink.js'))
   const HIDDEN = 'data-art-studio-hidden'
   const INSPIRED = 'data-art-studio-inspired'
   const ANCHORED = 'data-art-studio-anchored'
@@ -49,7 +49,7 @@
 
   function apply() {
     frame = 0
-    const active = settings.artStudioRunning === true && isHomePage(location.href)
+    const active = settings.artStudioRunning === true && isFilteredPage(location.href)
     const hidden = new Set()
     const inspired = new Map()
     if (active) {

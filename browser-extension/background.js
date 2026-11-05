@@ -7,7 +7,7 @@ const DEFAULT_ADDRESS = 'http://localhost:5180'
 const ADD = 'add'
 /** Toolbar menu checkboxes, each stored under its own key. */
 const HOME_SWITCHES = [
-  { id: 'hide-known-on-home', key: 'hideKnownOnHome', title: 'Hide known posts on the home page' },
+  { id: 'hide-known-on-home', key: 'hideKnownOnHome', title: 'Hide known posts on the home page and galleries' },
   { id: 'hide-inspiring-on-home', key: 'hideInspiringOnHome', title: 'Hide users who inspired a set or draft' },
   { id: 'hide-published-on-home', key: 'hidePublishedOnHome', title: 'Hide users with a published set' },
 ]

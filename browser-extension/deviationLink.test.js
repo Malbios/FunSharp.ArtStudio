@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { inspirationLevel, isHomePage, isKnown, parsePost, postState, postUrlFrom } from './deviationLink.js'
+import { inspirationLevel, isFilteredPage, isKnown, parsePost, postState, postUrlFrom } from './deviationLink.js'
 
 const post = 'https://www.deviantart.com/someartist/art/Misty-Forest-123456'
 const otherPost = 'https://www.deviantart.com/otherartist/art/Lake-654321'
@@ -80,13 +80,25 @@ describe('inspirationLevel', () => {
   })
 })
 
-describe('isHomePage', () => {
-  it('is only the front page of www.deviantart.com, with or without a query', () => {
-    assert.equal(isHomePage('https://www.deviantart.com/'), true)
-    assert.equal(isHomePage('https://www.deviantart.com/?topic=fantasy'), true)
-    assert.equal(isHomePage('https://www.deviantart.com/someartist/gallery'), false)
-    assert.equal(isHomePage(post), false)
-    assert.equal(isHomePage('https://someartist.deviantart.com/'), false)
-    assert.equal(isHomePage('not a url'), false)
+describe('isFilteredPage', () => {
+  it('is the front page of www.deviantart.com, with or without a query', () => {
+    assert.equal(isFilteredPage('https://www.deviantart.com/'), true)
+    assert.equal(isFilteredPage('https://www.deviantart.com/?topic=fantasy'), true)
+  })
+
+  it("is a user's gallery or favourites, with any folder", () => {
+    assert.equal(isFilteredPage('https://www.deviantart.com/someartist/gallery'), true)
+    assert.equal(isFilteredPage('https://www.deviantart.com/someartist/gallery/all'), true)
+    assert.equal(isFilteredPage('https://www.deviantart.com/someartist/gallery/12345/landscapes'), true)
+    assert.equal(isFilteredPage('https://www.deviantart.com/someartist/favourites'), true)
+    assert.equal(isFilteredPage('https://www.deviantart.com/someartist/favourites/67890/dragons?page=2'), true)
+  })
+
+  it('is not a post, a profile, another page, a subdomain or a broken link', () => {
+    assert.equal(isFilteredPage(post), false)
+    assert.equal(isFilteredPage('https://www.deviantart.com/someartist'), false)
+    assert.equal(isFilteredPage('https://www.deviantart.com/someartist/about'), false)
+    assert.equal(isFilteredPage('https://someartist.deviantart.com/'), false)
+    assert.equal(isFilteredPage('not a url'), false)
   })
 })

@@ -23,12 +23,13 @@ The button already shows what Art Studio would say, from the link alone:
 For that, the extension fetches the list of known posts and blocked users with its regular check, so a post added
 elsewhere (Bulk add, the New set page) turns grey within 30 seconds. DeviantArt is never asked.
 
-Right-clicking the toolbar icon offers **Hide known posts on the home page**: while it's checked and Art Studio runs,
-DeviantArt's home page leaves out the thumbnails that would show "✓AS" or "–AS" (their row keeps a gap instead).
-**Hide users who inspired a set or draft** and **Hide users with a published set** leave out every home page thumbnail
-of those users the same way.
+Right-clicking the toolbar icon offers **Hide known posts on the home page and galleries**: while it's checked and Art
+Studio runs, DeviantArt's home page and every user's gallery and favourites leave out the thumbnails that would show
+"✓AS" or "–AS" (their row keeps a gap instead). **Hide users who inspired a set or draft** and **Hide users with a
+published set** leave out every thumbnail of those users on the same pages the same way, so such a user's own gallery
+shows empty.
 
-While Art Studio runs, the home page also borders the thumbnails of users who already inspired a set or draft, with diagonal stripes on white: amber
+While Art Studio runs, those pages also border the thumbnails of users who already inspired a set or draft, with diagonal stripes on white: amber
 when you have at least one of their images, magenta once one of those sets is published.
 
 The result shows in the bottom right corner of the page. "Added as draft #N" fades out after 5 seconds; an error (why

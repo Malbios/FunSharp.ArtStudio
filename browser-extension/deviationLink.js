@@ -31,10 +31,14 @@ export function postUrlFrom(linkUrl, pageUrl) {
   return [linkUrl, pageUrl].find((url) => url && isDeviantArtPost(url)) ?? null
 }
 
-export function isHomePage(url) {
+const GALLERY_PATH = /^\/[A-Za-z0-9_-]+\/(?:gallery|favourites)(?:\/.*)?$/
+
+/** Pages whose thumbnails get bordered and hidden: the home page, and a user's gallery and favourites. */
+export function isFilteredPage(url) {
   try {
     const parsed = new URL(url)
-    return parsed.hostname.toLowerCase() === 'www.deviantart.com' && parsed.pathname === '/'
+    if (parsed.hostname.toLowerCase() !== 'www.deviantart.com') return false
+    return parsed.pathname === '/' || GALLERY_PATH.test(parsed.pathname)
   } catch {
     return false
   }
