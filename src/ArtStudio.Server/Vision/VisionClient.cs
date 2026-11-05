@@ -14,7 +14,7 @@ public sealed class VisionClient(IHttpClientFactory httpClientFactory, IConfigur
     public const string HttpClientName = "vision";
     public const string ServerUrlKey = "ArtStudio:VisionServerUrl";
     public const string DefaultServerUrl = "http://127.0.0.1:18080";
-    public static readonly TimeSpan Timeout = TimeSpan.FromMinutes(15);
+    public static readonly TimeSpan Timeout = TimeSpan.FromMinutes(45);
 
     private const string ChatCompletionsPath = "/v1/chat/completions";
     private const string Model = "vision";
