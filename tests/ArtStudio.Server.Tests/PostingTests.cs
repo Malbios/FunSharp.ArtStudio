@@ -148,7 +148,7 @@ public sealed class PostingTests : IDisposable
         await _factory.ConnectDeviantArtAsync();
         var setId = await _factory.CreateSetAsync(_client, "fox");
 
-        Assert.Contains("Only sets in Post", await ErrorOf(await StashAsync(setId)));
+        Assert.Contains("Only sets in Postable", await ErrorOf(await StashAsync(setId)));
     }
 
     [Fact]

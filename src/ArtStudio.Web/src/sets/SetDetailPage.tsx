@@ -150,7 +150,7 @@ export function SetDetailPage() {
       : isReadyToPost && isStashed
         ? { to: '/stashed', label: 'All stashed' }
         : isReadyToPost
-          ? { to: '/post', label: 'All posts' }
+          ? { to: '/post', label: 'All postable' }
           : { to: '/sets', label: 'All sets' }
   const readyBlocker =
     data.pickedImageIds.length === 0
@@ -191,7 +191,7 @@ export function SetDetailPage() {
             type="button"
             className="success"
             disabled={readyBlocker !== null}
-            title={readyBlocker ?? 'Move this set to Post'}
+            title={readyBlocker ?? 'Move this set to Postable'}
             onClick={() => void changeStage(() => api.markReadyToPost(setId), returnTo)}
           >
             Ready to post

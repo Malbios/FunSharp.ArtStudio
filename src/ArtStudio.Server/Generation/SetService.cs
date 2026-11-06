@@ -339,7 +339,7 @@ public sealed class SetService(
         var set = await FindSetAsync(setId, ct);
         EnsureNotArchived(set);
         if (!await db.Picks.AnyAsync(p => p.PromptSetId == setId, ct))
-            throw new UserFacingException("Pick at least one image before moving the set to Post.");
+            throw new UserFacingException("Pick at least one image before moving the set to Postable.");
         if (await db.Jobs.AnyAsync(j => j.PromptSetId == setId && (j.Status == JobStatus.Queued || j.Status == JobStatus.Running), ct))
             throw new UserFacingException("Wait for or cancel the set's queued and running jobs first.");
 

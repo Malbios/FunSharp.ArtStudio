@@ -41,7 +41,7 @@ switch tabs, so they can take that long to appear or disappear after you start o
 ## Extra picks in DeviantArt's editor
 
 DeviantArt's API takes one image per deviation, so Art Studio uploads pick #1 to Stash. When you open that Stash item
-in DeviantArt's editor ("Open in DeviantArt's editor" on the set's Post tab), a box in the bottom right corner (above
+in DeviantArt's editor ("Open in DeviantArt's editor" on the set's page in Postable), a box in the bottom right corner (above
 DeviantArt's own buttons there) offers to
 add picks #2 and up: one click hands them to the editor in pick order, named `02.png`, `03.png` and so on, as if you
 had picked them in a file dialog. Picks already in the editor (by those names) are left out, so you can't add one

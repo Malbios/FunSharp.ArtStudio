@@ -48,7 +48,7 @@ export function PostPage() {
   return (
     <div>
       <div className="toolbar">
-        <h2>Post</h2>
+        <h2>Postable</h2>
       </div>
       {sets.error && <p className="error">{sets.error}</p>}
       {unstashed?.length === 0 &&

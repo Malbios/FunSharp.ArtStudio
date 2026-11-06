@@ -29,7 +29,7 @@ export function StashedPage() {
       </div>
       {sets.error && <p className="error">{sets.error}</p>}
       {galleries.error && <p className="error">No galleries: {galleries.error}</p>}
-      {stashed?.length === 0 && <p className="hint">Nothing in the Stash. Upload a set from its page on Post.</p>}
+      {stashed?.length === 0 && <p className="hint">Nothing in the Stash. Upload a set from its page on Postable.</p>}
       {stashed && stashed.length > 0 && (
         <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} filter={filter} />
       )}

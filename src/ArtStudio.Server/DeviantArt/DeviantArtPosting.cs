@@ -38,7 +38,7 @@ public sealed partial class DeviantArtPosting(
     {
         var set = await db.PromptSets.SingleOrDefaultAsync(s => s.Id == setId, ct) ?? throw new UserFacingException("Set not found.");
         if (set.ReadyToPostAt is null || set.ArchivedAt is not null)
-            throw new UserFacingException("Only sets in Post can be uploaded to DeviantArt.");
+            throw new UserFacingException("Only sets in Postable can be uploaded to DeviantArt.");
         if (set.StashItemId is not null)
             throw new UserFacingException("This set is already in your Stash.");
 

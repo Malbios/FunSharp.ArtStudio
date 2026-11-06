@@ -108,7 +108,7 @@ function PostNavLink() {
 
   return (
     <NavLink to="/post">
-      Post
+      Postable
       {toUpload > 0 && (
         <span className="nav-count" title={`${toUpload} to upload to the Stash`}>
           {toUpload}

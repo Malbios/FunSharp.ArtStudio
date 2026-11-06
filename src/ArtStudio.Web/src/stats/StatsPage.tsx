@@ -325,7 +325,7 @@ function PipelineSection({ pipeline }: { pipeline: PipelineStats }) {
       <div className="stat-tiles">
         <StatTile label="Drafts" value={stages.drafts.toLocaleString()} to="/drafts" />
         <StatTile label="Sets" value={stages.working.toLocaleString()} to="/sets" />
-        <StatTile label="Post" value={stages.post.toLocaleString()} to="/post" />
+        <StatTile label="Postable" value={stages.post.toLocaleString()} to="/post" />
         <StatTile label="Stashed" value={stages.stashed.toLocaleString()} to="/stashed" />
         <StatTile label="Published" value={stages.published.toLocaleString()} to="/published" />
         <StatTile label="Archived" value={stages.archived.toLocaleString()} to="/archive" />
@@ -336,7 +336,7 @@ function PipelineSection({ pipeline }: { pipeline: PipelineStats }) {
           value={formatCompact(pipeline.images)}
           detail={`${pipeline.imagesLast7Days.toLocaleString()} in 7 days, ${pipeline.imagesLast30Days.toLocaleString()} in 30`}
         />
-        <StatTile label="Pick rate" value={formatPercent(pipeline.pickRate)} detail="of images in sets that reached Post" />
+        <StatTile label="Pick rate" value={formatPercent(pipeline.pickRate)} detail="of images in sets that reached Postable" />
         <StatTile
           label="Render time"
           value={pipeline.secondsPerImage === null ? '–' : `${formatDecimal(pipeline.secondsPerImage)} s`}
@@ -348,14 +348,14 @@ function PipelineSection({ pipeline }: { pipeline: PipelineStats }) {
           detail={`${pipeline.jobsFailedLast30Days.toLocaleString()} failed`}
         />
         <StatTile
-          label="To Post"
+          label="To Postable"
           value={pipeline.medianDaysToReady === null ? '–' : `${formatDecimal(pipeline.medianDaysToReady)} d`}
           detail="median from created"
         />
         <StatTile
           label="To published"
           value={pipeline.medianDaysReadyToPublished === null ? '–' : `${formatDecimal(pipeline.medianDaysReadyToPublished)} d`}
-          detail="median from Post"
+          detail="median from Postable"
         />
       </div>
       <div className="stats-charts">
