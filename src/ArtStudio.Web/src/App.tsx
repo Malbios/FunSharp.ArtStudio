@@ -52,7 +52,7 @@ function DraftsNavLink() {
   const drafts = useLoad(() => api.sets('draft'))
   useStudioEvents(['SetUpdated', 'SetDeleted', 'JobUpdated'], drafts.reload)
   const ready = drafts.data?.filter(isDraftReady).length ?? 0
-  const pending = (drafts.data?.length ?? 0) - ready
+  const failed = drafts.data?.filter((draft) => draft.promptGeneration.state === 'Failed').length ?? 0
 
   return (
     <NavLink to="/drafts">
@@ -62,9 +62,9 @@ function DraftsNavLink() {
           {ready}
         </span>
       )}
-      {pending > 0 && (
-        <span className="nav-count pending" title={`${pending} still without a prompt`}>
-          {pending}
+      {failed > 0 && (
+        <span className="nav-count failed" title={`${failed} failed to generate a prompt`}>
+          {failed}
         </span>
       )}
     </NavLink>
@@ -138,6 +138,9 @@ function StashedNavLink() {
 function QueueNavLink() {
   const queue = useLoad(api.queue)
   useStudioEvents(['JobUpdated', 'QueueStateChanged', 'SetDeleted'], queue.reload)
+  const prompts = useLoad(api.promptQueue)
+  useStudioEvents(['SetUpdated', 'SetDeleted'], prompts.reload)
+  const pendingPrompts = prompts.data?.length ?? 0
   const pending = queue.data ? pendingCounts(queue.data) : { Image: 0, Video: 0 }
   const failed = queue.data?.active.some((job) => job.status === 'Failed') ?? false
   const imagesPaused = queue.data?.imagesPaused ?? false
@@ -146,6 +149,14 @@ function QueueNavLink() {
   return (
     <NavLink to="/queue">
       Queue
+      {pendingPrompts > 0 && (
+        <span
+          className="nav-count"
+          title={`${pendingPrompts} ${pendingPrompts === 1 ? 'prompt' : 'prompts'} waiting for or running on the vision model`}
+        >
+          {pendingPrompts} p
+        </span>
+      )}
       {pending.Image > 0 && (
         <span
           className={imagesPaused ? 'nav-count paused' : 'nav-count'}
@@ -173,11 +184,11 @@ export default function App() {
       <header className="top-bar" ref={shareTopBarHeight}>
         <h1>Art Studio</h1>
         <nav>
+          <QueueNavLink />
           <NavLink to="/" end>
             New
           </NavLink>
           <DraftsNavLink />
-          <QueueNavLink />
           <SetsNavLink />
           <PostNavLink />
           <StashedNavLink />
