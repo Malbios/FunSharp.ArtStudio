@@ -17,16 +17,23 @@ interface PostPanelProps {
   set: SetDetail
   onChanged: () => void
   onPublished: () => void
+  onOpenedEditor: () => void
 }
 
-export function PostPanel({ set, onChanged, onPublished }: PostPanelProps) {
+export function PostPanel({ set, onChanged, onPublished, onOpenedEditor }: PostPanelProps) {
   return (
     <section className="panel post-panel">
       <h3>Post to DeviantArt</h3>
       {set.post.publishedUrl ? (
         <Published set={set} />
       ) : set.post.stashItemId ? (
-        <InStash set={set} stashItemId={set.post.stashItemId} onChanged={onChanged} onPublished={onPublished} />
+        <InStash
+          set={set}
+          stashItemId={set.post.stashItemId}
+          onChanged={onChanged}
+          onPublished={onPublished}
+          onOpenedEditor={onOpenedEditor}
+        />
       ) : (
         <StashForm set={set} onChanged={onChanged} />
       )}
@@ -168,7 +175,7 @@ function OriginalTitle({ set }: { set: SetDetail }) {
   )
 }
 
-function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & { stashItemId: string }) {
+function InStash({ set, stashItemId, onChanged, onPublished, onOpenedEditor }: PostPanelProps & { stashItemId: string }) {
   const [error, setError] = useState<string>()
   const [linkCopied, setLinkCopied] = useState(false)
   const extraPicks = set.pickedImageIds.length - 1
@@ -206,7 +213,15 @@ function InStash({ set, stashItemId, onChanged, onPublished }: PostPanelProps & 
       </p>
       <ol className="post-steps">
         <li>
-          <a href={stashEditorUrl(stashItemId)} target="_blank" rel="noreferrer" onClick={() => void copyInspirationLink()}>
+          <a
+            href={stashEditorUrl(stashItemId)}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => {
+              void copyInspirationLink()
+              onOpenedEditor()
+            }}
+          >
             Open in DeviantArt's editor
           </a>
           {extraPicks > 0

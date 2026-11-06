@@ -236,6 +236,7 @@ export function SetDetailPage() {
           set={data}
           onChanged={set.reload}
           onPublished={() => navigate('/stashed')}
+          onOpenedEditor={goBack}
         />
       )}
       {isArchived && (

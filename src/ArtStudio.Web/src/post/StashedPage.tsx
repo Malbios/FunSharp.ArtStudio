@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, type Gallery, type SetSummary } from '../api'
 import { DeviantArtUserLink } from '../deviantart/DeviantArtUserLink'
 import { NewVideosBadge } from '../sets/NewVideosBadge'
+import { useReturnState } from '../sets/returnTo'
 import { initialPublishChoice } from './postDefaults'
 import { useStudioEvents } from '../live/studioHub'
 import { useLoad } from '../live/useLoad'
@@ -19,6 +20,7 @@ export function StashedPage() {
   const filter = useListFilter('stashed', stashed, STASHED_FILTERS)
   const paged = usePagedItems(filter.items)
   const pager = <Pager page={paged.page} pageCount={paged.pageCount} onChange={paged.setPage} />
+  const returnState = useReturnState()
 
   return (
     <div>
@@ -35,7 +37,7 @@ export function StashedPage() {
       <div className="set-grid">
         {paged.pageItems.map((set) => (
           <div key={set.id} className="panel set-card">
-            <Link to={`/sets/${set.id}`}>
+            <Link to={`/sets/${set.id}`} state={returnState}>
               {set.previewImageUrl ? (
                 <img className="set-card-image" src={set.previewImageUrl} alt="" loading="lazy" />
               ) : (
@@ -44,7 +46,7 @@ export function StashedPage() {
             </Link>
             <div className="set-card-body">
               <div className="job-meta">
-                <Link to={`/sets/${set.id}`}>#{set.id}</Link>
+                <Link to={`/sets/${set.id}`} state={returnState}>#{set.id}</Link>
                 <span>
                   {set.pickedCount} {set.pickedCount === 1 ? 'pick' : 'picks'}
                 </span>
